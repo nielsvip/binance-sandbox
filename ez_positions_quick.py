@@ -16117,6 +16117,7 @@ class FastDataManager:
         self._cold_data = {}
         self._last_loaded_file = None
         self.using_shared_memory = True
+        self.parabolic_exit_states = {}
         self.trade_manager = trade_manager
         self.positions_service = positions_service or getattr(
             trade_manager, "positions_service", None
@@ -26557,36 +26558,44 @@ async def check_exit_candidates_for_account(
                         _sw_get(symbol, position_side, "PARABOLIC_EXIT_ENABLED", True)
                     )
                 ):
+                    _pe_ltf = bool(getattr(config, "LIVE_5m_trading_ENABLED", False))
                     _pe_k15m = safe_fetch_float(indicators.get("k_15m", 50), 50)
-                    _pe_dc_high_3m = safe_fetch_float(
-                        indicators.get("dc_high_3m", 0), 0
-                    )
-                    _pe_dc_low_3m = safe_fetch_float(indicators.get("dc_low_3m", 0), 0)
-                    _pe_low_3m = safe_fetch_float(indicators.get("low_3m", 0), 0)
-                    _pe_low_3m_prev = safe_fetch_float(
-                        indicators.get("low_3m_prev", 0), 0
-                    )
-                    _pe_high_3m = safe_fetch_float(indicators.get("high_3m", 0), 0)
-                    _pe_high_3m_prev = safe_fetch_float(
-                        indicators.get("high_3m_prev", 0), 0
-                    )
-                    _pe_no_decel = True
-                    if (
-                        hasattr(data_manager, "delta_tracker")
-                        and data_manager.delta_tracker
-                    ):
+                    if _pe_ltf:
+                        _pe_dc_high_3m = safe_fetch_float(indicators.get("dc_high_3m", 0), 0)
+                        _pe_dc_low_3m = safe_fetch_float(indicators.get("dc_low_3m", 0), 0)
+                        _pe_low_3m = safe_fetch_float(indicators.get("low_3m", 0), 0)
+                        _pe_low_3m_prev = safe_fetch_float(indicators.get("low_3m_prev", 0), 0)
+                        _pe_high_3m = safe_fetch_float(indicators.get("high_3m", 0), 0)
+                        _pe_high_3m_prev = safe_fetch_float(indicators.get("high_3m_prev", 0), 0)
+                        _pe_no_decel = True
+                        if hasattr(data_manager, "delta_tracker") and data_manager.delta_tracker:
+                            try:
+                                _pe_sig = data_manager.delta_tracker.update(symbol, indicators, position_state=None)
+                                if _pe_sig is not None:
+                                    _pe_no_decel = (_pe_sig.bull_accel) if is_long else (_pe_sig.bear_accel)
+                            except Exception:
+                                pass
+                    else:
+                        from vec_decisions.parabolic_delta import step_native
+                        _pe_dc_high_3m = safe_fetch_float(indicators.get("dc_high4_15m"), 0)
+                        _pe_dc_low_3m = safe_fetch_float(indicators.get("dc_low4_15m"), 0)
+                        _pe_low_3m = safe_fetch_float(indicators.get("low_15m"), 0)
+                        _pe_low_3m_prev = safe_fetch_float(indicators.get("low_15m_prev"), 0)
+                        _pe_high_3m = safe_fetch_float(indicators.get("high_15m"), 0)
+                        _pe_high_3m_prev = safe_fetch_float(indicators.get("high_15m_prev"), 0)
                         try:
-                            _pe_sig = data_manager.delta_tracker.update(
-                                symbol, indicators, position_state=None
+                            _pe_accel = step_native(
+                                getattr(data_manager, "parabolic_exit_states", {}),
+                                symbol,
+                                is_long,
+                                indicators,
+                                False,
+                                getattr(config, "DELTA_TF_WEIGHTS", None),
                             )
-                            if _pe_sig is not None:
-                                _pe_no_decel = (
-                                    (_pe_sig.bull_accel)
-                                    if is_long
-                                    else (_pe_sig.bear_accel)
-                                )
-                        except Exception:
-                            pass
+                            _pe_no_decel = (_pe_accel["bull_accel"]) if is_long else (_pe_accel["bear_accel"])
+                        except (KeyError, IndexError, TypeError, ValueError) as _pe_state_error:
+                            _pe_no_decel = False
+                            logger.warning(f"[PARABOLIC_EXIT_STATE_INVALID] {position_key}: {_pe_state_error}")
                     if (
                         is_long
                         and _pe_k15m > 90

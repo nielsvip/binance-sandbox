@@ -122,8 +122,21 @@ def prepare(npz, n, is_long, cfg, close, safe, symbol=None):
         al = al + ((a > b) if is_long else (a < b)).astype(np.int8)
     P["htf_aligned"] = al
     P["trend_veto"] = (al == 3) & _b(cfg, "TREND_REGIME_VETO_ENABLED", True)
-    # --- parabolic ---
-    P["para_lvl"] = np.zeros(n)
+    # --- PARABOLIC_EXIT: native 3m fields pair to current/prior 15m inputs while LTF is off ---
+    P["parabolic_npz"] = npz
+    _para_ltf = _b(cfg, "LIVE_5m_trading_ENABLED", False)
+    _para_tf = "3m" if _para_ltf else "15m"
+    P["parabolic_ts"] = np.asarray(npz.get("timestamp_3m" if _para_ltf else "timestamps", npz.get("timestamp_15m", np.zeros(n))))
+    P["para_lvl"] = safe(npz, f"dc_high4_{_para_tf}" if is_long else f"dc_low4_{_para_tf}", n, 0.0)
+    if is_long:
+        _para_now = safe(npz, f"low_{_para_tf}", n, 0.0)
+        _para_prev = safe(npz, f"low_{_para_tf}_prev", n, 0.0)
+        P["crack"] = (_para_now > 0) & (_para_prev > 0) & (_para_now < _para_prev)
+    else:
+        _para_now = safe(npz, f"high_{_para_tf}", n, 0.0)
+        _para_prev = safe(npz, f"high_{_para_tf}_prev", n, 0.0)
+        P["crack"] = (_para_now > 0) & (_para_prev > 0) & (_para_now > _para_prev)
+    P["para_now"], P["para_prev"] = _para_now, _para_prev
     # --- SRS band levels ---
     tf = str(getattr(cfg, "STRUCTURAL_RANGE_SHIFT_TF", "dc_4h") or "dc_4h")
     hk, lk = _BAND_TF.get(tf, ("dc_high_4h", "dc_low_4h"))
@@ -180,12 +193,23 @@ def step(P, cfg, i, px, st):
     in_grace = (age < grace_m) and not st.get("was_augmented", False)
     reason = k1m_exit_reason(P, cfg, i, st)
     # 1. PARABOLIC_EXIT (no switch in live — always on)
-    if reason is None and not in_grace and _b(cfg, "PARABOLIC_EXIT_ENABLED", True):
-        k15, lvl = P["k15"][i], P["para_lvl"][i]
-        if is_long and k15 > 90 and lvl > 0 and px > lvl and P["crack"][i]:
-            reason = f"PARABOLIC_EXIT_LONG_k15={k15:.0f}"
-        elif (not is_long) and k15 < 10 and lvl > 0 and px < lvl and P["crack"][i]:
-            reason = f"PARABOLIC_EXIT_SHORT_k15={k15:.0f}"
+    if reason is None and not in_grace and not st.get("is_hedge", False) and _b(cfg, "PARABOLIC_EXIT_ENABLED", True):
+        para_state = st.get("parabolic_state")
+        if para_state is not None:
+            try:
+                from vec_decisions.parabolic_delta import step_npz, validate_parabolic_inputs
+
+                ltf_enabled = _b(cfg, "LIVE_5m_trading_ENABLED", False)
+                validate_parabolic_inputs(P["parabolic_npz"], P["n"], ltf_enabled)
+                accel = step_npz(para_state, P["parabolic_npz"], i, P["parabolic_ts"][i], getattr(cfg, "DELTA_TF_WEIGHTS", None), ltf_enabled)
+                no_decel = accel["bull_accel"] if is_long else accel["bear_accel"]
+                k15, lvl = float(P["k15"][i]), float(P["para_lvl"][i])
+                if is_long and k15 > 90 and lvl > 0 and px > lvl and no_decel and P["crack"][i]:
+                    reason = f"PARABOLIC_EXIT_LONG_k15={k15:.0f}_px>{lvl:.6f}_low15m={P['para_now'][i]:.6f}<prev{P['para_prev'][i]:.6f}"
+                elif (not is_long) and k15 < 10 and lvl > 0 and px < lvl and no_decel and P["crack"][i]:
+                    reason = f"PARABOLIC_EXIT_SHORT_k15={k15:.0f}_px<{lvl:.6f}_high15m={P['para_now'][i]:.6f}>prev{P['para_prev'][i]:.6f}"
+            except (KeyError, IndexError, TypeError, ValueError) as exc:
+                para_state["invalid_reason"] = str(exc)
     # 2. STRUCTURAL_RANGE_SHIFT_EXIT. 3m WT is paired to the available 15m WT per
     # SWITCH_WIRING_GUIDE §4; the shared predicate preserves the source thresholds.
     if reason is None and not in_grace and _b(cfg, "STRUCTURAL_RANGE_SHIFT_EXIT", False):

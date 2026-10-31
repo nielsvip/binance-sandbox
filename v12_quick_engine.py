@@ -18003,6 +18003,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
 
     trades = _ExitGateLedger("trades")
     pos = None
+    _parabolic_exit_state = {}
     _bar_pos_snapshot = None
     _bar_control_snapshot = None
     _pending_exit_restore = None
@@ -18476,7 +18477,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _n3_obl = None
     # MOP-UP M 2026-10-04 (C41 DD_BOUNCE_ENABLED): Prepared only when master ON (crypto only).
     _wirem_dd = None
-    if bool(getattr(cfg, "DD_BOUNCE_ENABLED", False)) and not is_tradier:
+    if bool(getattr(cfg, "DD_BOUNCE_ENABLED", False)):
         try:
             import vec_decisions.wirem_dd_bounce as _wirem_dd_mod
 
@@ -19331,6 +19332,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _ssh_losses = int(getattr(cfg, "STALE_SET_HALT_LOSSES", 2))
         _ssh_closes = []
         _ssh_idx = 0
+    _wirem_dd_state = None
     for i in range(n):
         if _score_start_ts > 0 and float(ts[i]) <= _score_start_ts:
             continue
@@ -21097,6 +21099,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         in str(pos.get("entry_reason", "")).upper(),
                         "was_augmented": int(pos.get("n_augments", 0)) > 0,
                         "is_hedge": bool(pos.get("is_hedge", False)),
+                        "parabolic_state": _parabolic_exit_state.setdefault((str(sym).upper(), bool(is_long)), {}),
                     },
                 )
             )
@@ -22428,9 +22431,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # Twin bypasses _augment_allowed + _aug_cd_bars; respects htf/qta/_sa_cap
         # (execution-level guards, analogous to live order-level guards).
         _dd_fire = False
+        _dd_reason = ""
         if (
             _wirem_dd is not None
-            and (not is_tradier)
             and pos is not None
             and float(pos.get("qty", 0) or 0) > 0
         ):
@@ -22442,13 +22445,22 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     i,
                     px,
                     live_pnl_pct,
-                    pos.get("wirem_dd"),
+                    _wirem_dd_state,
                     float(ts[i]) if i < len(ts) else 0.0,
                     cfg,
                 )
                 if _dd_ok:
                     _dd_fire = True
                     pos["wirem_dd_pending"] = (_dd_st, _dd_tf)
+                    _dd_prev_px = float(
+                        (_wirem_dd_state or {}).get(
+                            "px", 0.0 if is_long else float("inf")
+                        )
+                    )
+                    _dd_reason = (
+                        f"DD_BOUNCE_AUG_{_dd_tf} wt={float(_dd_st['wt']):.1f} "
+                        f"px={px:.2f}>prev={_dd_prev_px:.2f} g={live_pnl_pct:.2f}%"
+                    )
             except Exception:
                 _dd_fire = False
         # WIRING LANE L2 2026-10-05: augment-at-loss fire (HIGHER-LOW / LOWER-HIGH only, NEVER falling knife: HL/LH struct mask + strictly at-loss/breakeven). Bypasses ONLY the profit gate below; htf/qta/cap/cooldown all still apply.
@@ -22630,6 +22642,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     ]  # MOP-UP M C41: live dd_qty = pos_amt (1x add, no regime/size mults)
                     if pos.get("wirem_dd_pending") is not None:
                         _dd_committed, _dd_comm_tf = pos.pop("wirem_dd_pending")
+                        _wirem_dd_state = _dd_committed
                         pos["wirem_dd"] = _dd_committed
                     if _n4_tr_new is not None:
                         pos["n4_tr"] = (
@@ -22735,6 +22748,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             "reason": (_qos_reason if _qos_fire else "")
                             or _aal_reason
                             or _hq_reason
+                            or (
+                                _n4_reason
+                                if _n4_fire and str(_n4_reason).startswith("WT_D_BOUNCE_AUG")
+                                else ""
+                            )
+                            or _dd_reason
                             or _n4_reason
                             or _gl_reason
                             or "VEC_AUGMENT_SIG",

@@ -27,16 +27,67 @@ OUT = Path(os.environ.get("FWDSTATE_OUT_DIR") or ROOT / "data" / "forward_state"
 DEFAULT_STORE_DBS = (Path.home() / "binance" / "data" / "hourly_reconfig" / "per_sym_store.db", ROOT / "data" / "hourly_reconfig" / "per_sym_store.db")
 
 
+# USER 2026-10-31 "make sure 7D and 30D and 60D are makred correctly in the sql's so nothing can use the wrong one".
+# Each store now states its window in kv_json['store_identity'] (tools/per_sym_window_identity.py) and refuses WRITES of
+# another window. This is the READ side: a state producer declares the window it is building (PER_SYM_WINDOW_DAYS,
+# default 30 — every 30D lane) and refuses a store that says it holds a different one, so a lane that inherited the
+# wrong PER_SYM_STORE_DB publishes NOTHING instead of states built from the other window's settings. An unstamped
+# store still resolves (with a warning) so no lane is cut off before every copy has been stamped.
+EXPECTED_WINDOW_DAYS = int(os.environ.get("PER_SYM_WINDOW_DAYS", "30"))
+_IDENTITY_CACHE = {}
+
+
+def store_identity(db):
+    """kv_json['store_identity'] of `db`, or None when the store has not been stamped."""
+    path = str(Path(db).resolve())
+    try:
+        stamp_ns = Path(path).stat().st_mtime_ns
+    except OSError:
+        return None
+    hit = _IDENTITY_CACHE.get(path)
+    if hit and hit[0] == stamp_ns:
+        return hit[1]
+    ident = None
+    try:
+        con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=5)
+        try:
+            row = con.execute("SELECT value_json FROM kv_json WHERE key='store_identity'").fetchone()
+            ident = json.loads(row[0]) if row else None
+        finally:
+            con.close()
+    except (sqlite3.Error, ValueError, TypeError):
+        ident = None
+    _IDENTITY_CACHE[path] = (stamp_ns, ident)
+    return ident
+
+
+def _window_ok(db):
+    ident = store_identity(db)
+    if not ident:
+        if not _IDENTITY_CACHE.get(("warned", db)):
+            _IDENTITY_CACHE[("warned", db)] = True
+            print(f"WARNING: {db} carries no store_identity yet; assuming it is the {EXPECTED_WINDOW_DAYS}D store this process expects", file=sys.stderr, flush=True)
+        return True
+    got = int(ident.get("window_days") or 0)
+    if got != EXPECTED_WINDOW_DAYS:
+        print(f"REFUSED: {db} holds {got}D settings (kv_json store_identity {ident.get('kind')}) but this process builds "
+              f"{EXPECTED_WINDOW_DAYS}D states (PER_SYM_WINDOW_DAYS) — publishing nothing rather than trading the wrong window",
+              file=sys.stderr, flush=True)
+        return False
+    return True
+
+
 def store_db():
     """PER_SYM_STORE_DB when set and present, else the canonical store. 2026-10-27: S2's quarter lane ran this tool with
     no PER_SYM_STORE_DB and rsynced 64 "missing live settings" states over S1's good ones (22:09:50Z); a missing store
-    now resolves to the canonical one, and when none exists main() refuses to publish anything."""
+    now resolves to the canonical one, and when none exists main() refuses to publish anything. A store whose stated
+    window differs from PER_SYM_WINDOW_DAYS resolves to None as well, so the same refusal covers it."""
     db = os.environ.get("PER_SYM_STORE_DB")
     if db and Path(db).is_file():
-        return str(db)
+        return str(db) if _window_ok(str(db)) else None
     for cand in DEFAULT_STORE_DBS:
         if cand.is_file():
-            return str(cand)
+            return str(cand) if _window_ok(str(cand)) else None
     return None
 
 
@@ -258,7 +309,31 @@ def state_for(symside, window_days=30):
     if _anc:
         ov = {**ov, "STALE_SET_RECALC_EPOCH": _anc["STALE_SET_RECALC_EPOCH"], "STALE_SET_APPLY_EPOCH": _anc["STALE_SET_APPLY_EPOCH"]}
         setting_meta = {**setting_meta, "stale_anchor": _anc}
-    res = evaluate_prepared_sanitized(prep, ov, window_days, include_ledger=True) or {}
+    try:
+        from tools.v15_execution_provenance import capture_engine_invocation, persist_provenance
+        _capture = capture_engine_invocation()
+        _evaluation_started = False
+        try:
+            with _capture:
+                _evaluation_started = True
+                res = evaluate_prepared_sanitized(prep, ov, window_days, include_ledger=True) or {}
+            _capture_doc = _capture.result()
+        except Exception:
+            if _evaluation_started:
+                raise
+            res = evaluate_prepared_sanitized(prep, ov, window_days, include_ledger=True) or {}
+            _capture_doc = {"capture_status": "UNVERIFIED", "capture_errors": ["capture hook could not be installed"]}
+        if _capture_doc.get("capture_status") == "VERIFIED":
+            try:
+                execution_provenance = persist_provenance(OUT, _capture_doc)
+            except Exception as _capture_exc:
+                execution_provenance = {"capture_status": "UNVERIFIED", "capture_errors": [f"persist {type(_capture_exc).__name__}: {str(_capture_exc)[:160]}"], "capture_ms": _capture_doc.get("capture_ms")}
+        else:
+            execution_provenance = {key: value for key, value in _capture_doc.items() if key not in ("config", "npz_manifest")}
+    except Exception as _capture_exc:
+        # A provenance import/setup failure falls back to the existing evaluator without changing its output.
+        res = evaluate_prepared_sanitized(prep, ov, window_days, include_ledger=True) or {}
+        execution_provenance = {"capture_status": "UNVERIFIED", "capture_errors": [f"capture {type(_capture_exc).__name__}: {str(_capture_exc)[:160]}"]}
     perf_valid = res.get("valid") is True
     perf_reason = res.get("invalid_reason")
     completed_performance_gate = perf_valid or bool(
@@ -271,7 +346,8 @@ def state_for(symside, window_days=30):
     )
     if not completed_performance_gate:
         return {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside, "ok": False,
-                "reason": perf_reason or "invalid_30d_replay", "src": src, "npz_tail": tail, **setting_meta}
+                "reason": perf_reason or "invalid_30d_replay", "src": src, "npz_tail": tail,
+                "execution_provenance": execution_provenance, **setting_meta}
     led = [t for t in (res.get("ledger") or []) if isinstance(t, dict)]
     # Preserve the exact replay inputs and acts used for this published verdict.
     import numpy as _npmod
@@ -286,6 +362,7 @@ def state_for(symside, window_days=30):
     out = {"ts": time.strftime("%FT%TZ", time.gmtime()), "sym_side": symside, "ok": True,
            "src": src, "npz_tail": tail, "window_days": window_days,
            "engine_ast_sha256": _engine_ast_sha256(), **setting_meta,
+           "execution_provenance": execution_provenance,
            "input_sha256": input_hashes, "ledger_sha256": ledger_hash, "ledger": led,
            "gain_pct": res.get("gain_pct"), "trades": res.get("trades"),
            "valid": True, "performance_valid": perf_valid,

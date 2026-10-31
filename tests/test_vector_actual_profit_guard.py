@@ -75,3 +75,28 @@ def test_only_current_bar_against_wt_authorizes_deterioration_loss_close():
     assert module.verified_deterioration_wt15_trigger(order, "crypto", {ss}, {**against, "bar_ts": bar + 900}, now) is None
     assert module.verified_deterioration_wt15_trigger(order, "crypto", {ss}, {**against, "wt1_15m": 2.0}, now) is None
     assert module.verified_deterioration_wt15_trigger({**order, "deterioration_wt15_bar": bar - 900}, "crypto", {ss}, against, now) is None
+
+
+def test_loss_close_reaches_dry_run_only_with_verified_current_wt(monkeypatch, tmp_path):
+    bar = 1793132100
+    monkeypatch.setattr(module.time, "time", lambda: bar + 910)
+    ss = "XUSDT_LONG"
+    runner = module.Trader.__new__(module.Trader)
+    runner.venue, runner.out, runner.root = "crypto", tmp_path, tmp_path
+    runner.a = SimpleNamespace(dry_run=True)
+    runner.done, runner.quiet, runner.filled_open_anchors = set(), set(), set()
+    runner.halted_now = {ss}
+    rows = []
+    runner._ledger = rows.append
+    runner.alert = lambda *args, **kwargs: None
+    runner.wt15 = lambda _: {"bar_ts": bar, "wt1_15m": -2.0, "wt2_15m": 1.0, "src": "tail"}
+    runner.broker = SimpleNamespace(positions=lambda account: {ss: {"qty": 2, "entry": 100}}, price=lambda symbol: 90, size=lambda order, held, price: (2, ""), send=lambda *args: pytest.fail("dry run sent a live order"))
+    order = {"acct": "ang", "ss": ss, "act": "CLOSE", "qty": 2, "key": f"ang|{ss}|{bar}|DETERIORATED_CLOSE", "why": "WT against", "deterioration_wt15_bar": bar}
+    runner.send_orders("ang", [order], {ss: {"qty": 2, "entry": 100}}, False)
+    assert rows[-1]["status"] == "DRY_RUN"
+    assert rows[-1]["wt15_exit_authorization"]["bar"] == bar
+    runner.wt15 = lambda _: {"bar_ts": bar - 900, "wt1_15m": -2.0, "wt2_15m": 1.0}
+    runner.quiet.clear()
+    rows.clear()
+    runner.send_orders("ang", [order], {ss: {"qty": 2, "entry": 100}}, False)
+    assert rows[-1]["status"] == "REFUSED_NONSTOP_LOSS_CLOSE"

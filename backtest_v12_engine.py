@@ -4444,9 +4444,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         trade_manager._v8_position_fixture_root = str(_replay_position_root)
         v8_logger.info(f"PositionService ready — {sum(len(v) for v in positions_service.positions_by_account.values())} empty replay slots")
     except Exception as e:
-        v8_logger.warning(f"PositionService bootstrap failed ({e}) — creating empty")
-        trade_manager.positions = {}
-        trade_manager.positions_by_account = {account_key: {}}
+        v8_logger.error(f"PositionService bootstrap failed ({e}) — aborting replay")
+        raise RuntimeError(f"replay PositionService fixture bootstrap failed: {e}") from e
     finally:
         ez_positions_service.Config = _service_config_type
 

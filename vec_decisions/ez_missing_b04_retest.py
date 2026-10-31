@@ -114,3 +114,24 @@ def dc_high_break_retest_mask(npz, n, is_long, cfg, safe):
         channels[tf] = (current, previous)
     fire, multiplier, winning_tf, _, _ = dc_high_break_retest_core(price, is_long, channels, k, d, k_prev)
     return fire, multiplier, winning_tf
+
+
+def tradier_flat_open_proposal(indicators, current_price, is_long, enabled, start_size):
+    """Native Tradier flat-open proposal for the existing B04 switch.
+
+    Returns (reason, conviction, qty) or None; queueing and earlier-source
+    precedence remain owned by tradier_manage.process_position.
+    """
+    try:
+        price = float(current_price)
+        if not bool(enabled) or not (price > 0.0):
+            return None
+        fire, detail, mult = dc_high_break_retest_live_adapter(
+            indicators or {}, price, bool(is_long)
+        )
+        if not fire:
+            return None
+        qty = max(1, int(float(start_size) * float(mult) / price))
+        return f"B04_DC_RETEST_{detail}", 88.0, qty
+    except (TypeError, ValueError, OverflowError):
+        return None

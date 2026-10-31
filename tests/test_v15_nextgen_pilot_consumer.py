@@ -51,7 +51,7 @@ def fixture(tmp_path):
         reservations.append(target)
         return json.loads(target.read_text())
     classify = lambda cell, current: dict(row, eligible=True, current_epoch_measured=True, pos_sym=0)
-    consumer = C.FirstPassConsumer(context, classify, reserve, {}, lambda row, current: 2, lambda row, current: 'newly_wired', lambda *args: {})
+    consumer = C.FirstPassConsumer(context, classify, reserve, {}, lambda row, current: 2, lambda row, current: 'newly_wired')
     consumer.begin_batch({'FLAG': False})
     return row, consumer, contexts, reservations
 
@@ -84,7 +84,7 @@ def test_actual_row_plan_restores_low_frequency_new_yellow_without_static_measur
     assert all(settings['OTHER_WINNER'] == '15m' for label, settings in second['items'])
     assert all(label != 'naked' for label, settings in second['items'])
     assert len(reservations) == 2
-    assert contexts[-2]['scientific_identity']['accepted_chain_sha256'] != contexts[-1]['scientific_identity']['accepted_chain_sha256']
+    assert len({item['scientific_identity']['accepted_chain_sha256'] for item in contexts}) == 2
     assert second['static']['nextgen_allocation']['current_epoch_measured_cells'] == 0
 
 
@@ -156,3 +156,53 @@ def test_actual_worker_artifact_binding_rejects_result_tamper_and_shared_thread(
     changed = dict(path=str(path), sha256=C.priority.evidence.sha(path))
     with pytest.raises(ValueError, match='artifacts mismatch'):
         C.bind_worker_measurement(changed, cell, bound_context, {'FLAG': True})
+
+
+def test_chained_actual_row_receipts_control_completion_and_resume_not_done_booleans(tmp_path, monkeypatch):
+    import multiprocessing
+    row, consumer, contexts, _ = fixture(tmp_path)
+    original_factory = consumer.context_factory
+    npz_digest = contexts[-1]['current_epoch']['sources'][1]['sha256']
+    def context(chain):
+        result = original_factory(chain)
+        result['scientific_identity'] = dict(result['scientific_identity'], npz_sha256=npz_digest)
+        result['first_pass_start_chain_sha256'] = C.priority.evidence.guard.fingerprint({'FLAG': False})
+        return result
+    consumer.end_batch()
+    consumer.context_factory = context
+    consumer.begin_batch({'FLAG': False})
+    directory = tmp_path / 'captured'
+    directory.mkdir()
+    consumer.capture_directory = str(directory)
+    monkeypatch.setitem(sys.modules, 'v12_quick_engine', SimpleNamespace(__file__=str(tmp_path / 'v12_quick_engine.py')))
+    monkeypatch.setitem(sys.modules, 'tools.opt.v12_pilot', SimpleNamespace(evaluate_prepared_sanitized=lambda *args: None))
+    monkeypatch.setattr(multiprocessing, 'current_process', lambda: SimpleNamespace(name='ForkProcess-test-fixture'))
+    def capture(prepared, settings, evaluate, days):
+        result = dict(valid=True, gain_pct=0.0, execution_ledger=[])
+        configs = [dict(settings)]
+        return result, dict(input_cutoff_sha256='d'*64, effective_config_values=configs, effective_config_sha256=C.priority.evidence.guard.fingerprint(configs), execution_ledger_sha256=C.priority.evidence.guard.fingerprint([]), result_sha256=C.priority.evidence.guard.fingerprint(C.priority.evidence.guard.result_fields(result)))
+    monkeypatch.setattr(C.priority.evidence.guard, 'capture_actual', capture)
+    legal = C.capture_legal(dict(hdrs=['FILTER=15m'], h2f={'FILTER=15m': dict(filter='FILTER', opt='15m')}))
+    consumer.apply(dict(kind='eval', hdrs=[], h2f={}), legal, row, {'FLAG': False})
+    items = [('naked', {'FLAG': True}), ('FILTER=15m', {'FLAG': True, 'FILTER': '15m'})]
+    consumer.register_plan(row, {'FLAG': False}, {'FLAG': True}, items, False)
+    incomplete = consumer.finish_row(row, {'FLAG': False})
+    assert not incomplete['complete']
+    for label, settings in items:
+        C.evaluate_fork_worker({}, settings, 30, consumer.worker_capture_spec())
+    assert consumer.finish_row(row, {'FLAG': False})['complete']
+    receipt = consumer.require_first_pass_complete([('EXIT', 3, 'FLAG', True)], {'done': {}}, {'FLAG': False})
+    assert receipt['complete'] and len(receipt['actual_row_sources']) == 1
+    consumer.end_batch()
+    consumer.completed.clear()
+    consumer.plans.clear()
+    consumer.measurements.clear()
+    consumer.begin_batch({'FLAG': False})
+    assert consumer.resume_completed_rows({'FLAG': False}) == [row]
+    with pytest.raises(ValueError, match='no winner reset'):
+        consumer.resume_completed_rows({'FLAG': True})
+    worker = next(directory.glob(C.priority.evidence.guard.fingerprint(items[0][1]) + '_*.json'))
+    worker.write_text('{}')
+    assert not consumer.verified_completed_rows()['complete']
+    with pytest.raises(ValueError, match='incomplete'):
+        consumer.require_first_pass_complete([('EXIT', 3, 'FLAG', True)], {'done': {'fake': {'complete': True}}}, {'FLAG': False})

@@ -119,25 +119,28 @@ def capture_legal(info):
 
 
 class FirstPassConsumer:
-    def __init__(self, context_factory, classify, reserve, state, budget, row_status, completion_audit, capture_directory=None):
+    def __init__(self, context_factory, classify, reserve, state, budget, row_status, capture_directory=None):
         self.context_factory = context_factory
         self.classify = classify
         self.reserve = reserve
         self.state = copy.deepcopy(state)
         self.budget = budget
         self.row_status = row_status
-        self.completion_audit = completion_audit
         self.attempts = {}
         self.batch_epoch = None
         self.capture_directory = capture_directory
         self.batch_context = None
         self.measurements = {}
         self.legal_rows = {}
+        self.plans = {}
+        self.completed = {}
+        self.batch_start_chain = None
     def begin_batch(self, chain):
         context = self.context_factory(copy.deepcopy(chain))
         priority.validate_epoch_sources(context['current_epoch'])
         self.batch_epoch = context['current_epoch']
         self.batch_context = context
+        self.batch_start_chain = copy.deepcopy(chain)
     def worker_capture_spec(self):
         if self.batch_epoch is None or self.capture_directory is None:
             raise ValueError('explicit isolated worker evidence directory and validated batch required')
@@ -153,6 +156,161 @@ class FirstPassConsumer:
         if priority.evidence.guard.fingerprint(resolved) != order['physical_row_order_sha256']:
             raise ValueError('resolved pilot queue differs from source-bound physical template order')
         return True
+    def register_plan(self, row, chain, switch_variant, items, is_running):
+        key = priority.evidence.guard.fingerprint(row)
+        context = self.context_factory(copy.deepcopy(chain))
+        self.plans[key] = dict(row=copy.deepcopy(row), chain_before=copy.deepcopy(chain), context=context, switch_variant=copy.deepcopy(switch_variant), items=dict(items), is_running=is_running)
+    def record_structural(self, row, static, chain):
+        reason = str(static.get('reason') or '')
+        prefixes = ('NO_CANDIDATE:', 'NOT_IN_CONFIG:', 'INVENTED_ALT:', 'TYPE_MISMATCH:', 'ABLATION_NEVER_ON:', 'MAXAUG_NEVER_ZERO:')
+        if static.get('kind') != 'skip' or not reason.startswith(prefixes) or static.get('nextgen_legal') or static.get('hdrs'):
+            return {'complete': False, 'status': 'unclassified_skip_not_measurement'}
+        context = self.context_factory(copy.deepcopy(chain))
+        classifier = next((source for source in context['current_epoch']['sources'] if source['asset'] == 'v15_pilot.py'), None)
+        if classifier is None:
+            raise ValueError('structural exclusion requires bound actual pilot classifier source')
+        chain_hash = priority.evidence.guard.fingerprint(chain)
+        record = dict(schema='current_first_pass_row/1', status='source_classified_structurally_ineligible', complete=True, measured=False, row=copy.deepcopy(row), source_epoch_sha256=context['current_epoch']['id'], scientific_identity=priority.scientific_identity(context), chain_before=priority.evidence.guard.normalized(chain), chain_after=priority.evidence.guard.normalized(chain), chain_before_sha256=chain_hash, chain_after_sha256=chain_hash, classification=dict(reason=reason, producer='v15_pilot._row_static', source=dict(classifier)))
+        path = priority.Path(self.capture_directory) / ('row_' + priority.evidence.guard.fingerprint(record) + '.json')
+        payload = json.dumps(record, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
+        if not path.exists():
+            with path.open('xb') as stream:
+                stream.write(payload)
+                stream.flush()
+                os.fsync(stream.fileno())
+        elif path.read_bytes() != payload:
+            raise ValueError('structural classifier artifact content differs')
+        source = dict(path=str(path), sha256=priority.evidence.sha(path))
+        self.completed[priority.evidence.guard.fingerprint(row)] = dict(record=priority._freeze(record), source=priority._freeze(source))
+        return {'complete': True, 'status': record['status'], 'measured': False, 'source': source}
+    def _find_measurement(self, cell, context, settings):
+        if self.capture_directory is None:
+            return None
+        prefix = priority.evidence.guard.fingerprint(settings)
+        for path in sorted(priority.Path(self.capture_directory).glob(prefix + '_*.json')):
+            source = dict(path=str(path), sha256=priority.evidence.sha(path))
+            try:
+                return bind_worker_measurement(source, cell, context, settings)
+            except (ValueError, KeyError, json.JSONDecodeError):
+                continue
+        return None
+    def finish_row(self, row, chain_after):
+        key = priority.evidence.guard.fingerprint(row)
+        plan = self.plans.get(key)
+        legal = self.legal_rows.get(key)
+        if plan is None or legal is None:
+            saved = self.completed.get(key)
+            if saved and saved['record'].get('status') == 'source_classified_structurally_ineligible':
+                return {'complete': True, 'status': saved['record']['status'], 'measured': False, 'source': saved['source']}
+            return {'status': 'unknown_no_actual_plan', 'complete': False}
+        context = plan['context']
+        measured, missing = {}, []
+        wanted = {'naked': plan['switch_variant'], **{label: settings for label, settings in plan['items'].items() if label in legal['h2f']}}
+        for label in ['naked'] + list(legal['hdrs']):
+            binding = legal['h2f'].get(label, {'filter': '__NAKED__', 'opt': None})
+            cell = dict(row, filter=binding['filter'], opt=binding['opt'])
+            proof = self._find_measurement(cell, context, wanted[label]) if label in wanted else None
+            identity = priority.evidence.guard.fingerprint(dict(row=row, filter=cell['filter'], opt=cell['opt'], scientific_context=priority.scientific_identity(context)))
+            proof = proof or self.measurements.get(identity)
+            if proof is None:
+                missing.append(label)
+            else:
+                measured[label] = proof
+                self.measurements[identity] = proof
+        if missing:
+            return {'status': 'incomplete', 'complete': False, 'missing_actual_measurements': missing}
+        before_hash = priority.evidence.guard.fingerprint(plan['chain_before'])
+        after_hash = priority.evidence.guard.fingerprint(chain_after)
+        transition = None
+        if before_hash != after_hash:
+            transition = self._find_measurement(dict(row, filter='__ACCEPTED_TRANSITION__', opt=None), context, chain_after)
+            if transition is None or transition['record']['evaluation_status'] != 'evaluated_valid':
+                return {'status': 'incomplete_unproven_promoted_chain', 'complete': False}
+        expected_settings = dict(wanted)
+        for label, proof in measured.items():
+            if label not in expected_settings:
+                expected_settings[label] = priority.evidence.guard.decoded(json.loads(priority.Path(proof['source']['path']).read_text())['requested_settings'])
+        record = dict(schema='current_first_pass_row/1', row=copy.deepcopy(row), source_epoch_sha256=context['current_epoch']['id'], scientific_identity=priority.scientific_identity(context), chain_before=priority.evidence.guard.normalized(plan['chain_before']), chain_after=priority.evidence.guard.normalized(chain_after), expected_settings=priority.evidence.guard.normalized(expected_settings), legal=priority.evidence.guard.normalized(dict(legal)), chain_before_sha256=before_hash, chain_after_sha256=after_hash, measurements={label: dict(proof['source']) for label, proof in measured.items()}, transition_source=dict(transition['source']) if transition is not None else None, status='all_legal_cells_actually_measured', complete=True)
+        path = priority.Path(self.capture_directory) / ('row_' + priority.evidence.guard.fingerprint(record) + '.json')
+        payload = json.dumps(record, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
+        if path.exists():
+            if path.read_bytes() != payload:
+                raise ValueError('existing row evidence differs')
+        else:
+            with path.open('xb') as stream:
+                stream.write(payload)
+                stream.flush()
+                os.fsync(stream.fileno())
+        self.completed[key] = dict(record=priority._freeze(record), source=priority._freeze(dict(path=str(path), sha256=priority.evidence.sha(path))))
+        return {'status': 'all_legal_cells_actually_measured', 'complete': True, 'source': self.completed[key]['source']}
+    def _validated_row_record(self, source):
+        path = priority.Path(source['path'])
+        if priority.evidence.sha(path) != source['sha256']:
+            raise ValueError('row completion source changed')
+        record = json.loads(path.read_text())
+        if record.get('schema') != 'current_first_pass_row/1' or record.get('source_epoch_sha256') != self.batch_context['current_epoch']['id']:
+            raise ValueError('row completion belongs to another engine epoch')
+        before = priority.evidence.guard.decoded(record['chain_before'])
+        after = priority.evidence.guard.decoded(record['chain_after'])
+        context = self.context_factory(before)
+        if priority.scientific_identity(context) != record['scientific_identity'] or priority.evidence.guard.fingerprint(before) != record['chain_before_sha256'] or priority.evidence.guard.fingerprint(after) != record['chain_after_sha256']:
+            raise ValueError('row completion scientific chain differs')
+        row = record['row']
+        if record.get('status') == 'source_classified_structurally_ineligible':
+            classification = record.get('classification') or {}
+            source = classification.get('source')
+            if record.get('measured') is not False or before != after or source not in list(context['current_epoch']['sources']) or not str(classification.get('reason') or '').startswith(('NO_CANDIDATE:', 'NOT_IN_CONFIG:', 'INVENTED_ALT:', 'TYPE_MISMATCH:', 'ABLATION_NEVER_ON:', 'MAXAUG_NEVER_ZERO:')):
+                raise ValueError('structural row has no matching source-bound exclusion')
+            return record
+        legal = priority.evidence.guard.decoded(record['legal'])
+        settings = priority.evidence.guard.decoded(record['expected_settings'])
+        if set(record['measurements']) != {'naked', *legal['hdrs']}:
+            raise ValueError('row completion omits an original legal yellow')
+        for label, measurement in record['measurements'].items():
+            binding = legal['h2f'].get(label, {'filter': '__NAKED__', 'opt': None})
+            cell = dict(row, filter=binding['filter'], opt=binding['opt'])
+            if label != 'naked':
+                resolved = self.classify(cell, context)
+                if resolved.get('eligible') is not True or priority.evidence.guard.fingerprint({key: resolved.get(key) for key in ('tab', 'row', 'switch', 'cand')}) != priority.evidence.guard.fingerprint(row):
+                    raise ValueError('recorded yellow is no longer eligible in exact row')
+            bind_worker_measurement(measurement, cell, context, settings[label])
+        if before != after:
+            transition = record.get('transition_source')
+            if not transition or bind_worker_measurement(transition, dict(row, filter='__ACCEPTED_TRANSITION__', opt=None), context, after)['record']['evaluation_status'] != 'evaluated_valid':
+                raise ValueError('row promotion lacks actual valid engine evaluation')
+        return record
+    def verified_completed_rows(self):
+        if self.batch_context is None:
+            raise ValueError('resume audit requires active source-bound batch')
+        order = self.batch_context.get('row_order_proof')
+        seed = self.batch_context.get('first_pass_start_chain_sha256')
+        if not isinstance(order, VerifiedRowOrder) or not isinstance(seed, str) or len(seed) != 64:
+            raise ValueError('resume requires verified physical row order and retained KG output chain identity')
+        candidates = {}
+        if self.capture_directory is not None:
+            for path in sorted(priority.Path(self.capture_directory).glob('row_*.json')):
+                source = dict(path=str(path), sha256=priority.evidence.sha(path))
+                try:
+                    record = self._validated_row_record(source)
+                except (ValueError, KeyError, json.JSONDecodeError):
+                    continue
+                candidates.setdefault(priority.evidence.guard.fingerprint(record['row']), []).append((record, source))
+        prefix, sources, cursor = [], [], seed
+        for row in order['rows']:
+            matches = [(record, source) for record, source in candidates.get(priority.evidence.guard.fingerprint(row), []) if record['chain_before_sha256'] == cursor]
+            unique = {(record['chain_after_sha256'], priority.evidence.guard.fingerprint(record['measurements'])) for record, source in matches}
+            if len(unique) != 1:
+                break
+            record, source = matches[0]
+            prefix.append(dict(row))
+            sources.append(source)
+            cursor = record['chain_after_sha256']
+        return dict(rows=prefix, sources=sources, final_chain_sha256=cursor, complete=len(prefix) == len(order['rows']), expected_rows=len(order['rows']))
+    def resume_completed_rows(self, chain):
+        audited = self.verified_completed_rows()
+        if audited['final_chain_sha256'] != priority.evidence.guard.fingerprint(chain):
+            raise ValueError('accepted resume chain has no matching source-bound first-pass prefix; no winner reset permitted')
+        return audited['rows']
     def end_batch(self):
         if self.batch_epoch is None:
             raise ValueError('evaluation batch was not source-validated')
@@ -226,15 +384,27 @@ class FirstPassConsumer:
     def require_first_pass_complete(self, physical_rows, progress, chain):
         context = self.context_factory(copy.deepcopy(chain))
         priority.validate_epoch_sources(context['current_epoch'])
-        receipt = self.completion_audit(copy.deepcopy(physical_rows), copy.deepcopy(progress), context)
-        if not isinstance(receipt, priority.FrozenRecord) or receipt.get('schema') != 'source_bound_first_pass_audit/1':
-            raise ValueError('actual source-bound first-pass completion audit required; counters are not proof')
-        if receipt.get('scientific_identity') != priority.scientific_identity(context) or receipt.get('physical_row_order_sha256') != priority.evidence.guard.fingerprint(physical_rows):
-            raise ValueError('first-pass audit belongs to different chain or physical row order')
-        if receipt.get('complete') is not True:
-            raise ValueError('first-pass incomplete: research phases remain deferred')
+        if not context.get('first_pass_start_chain_sha256'):
+            raise ValueError('source-bound retained KG output chain required, not a done counter')
+        resolved = [dict(tab=tab, row=row, switch=switch, cand=cand) for tab, row, switch, cand in physical_rows]
+        order = context.get('row_order_proof')
+        if not isinstance(order, VerifiedRowOrder) or priority.evidence.guard.fingerprint(resolved) != order['physical_row_order_sha256']:
+            raise ValueError('completion queue differs from verified physical order')
+        audited = self.verified_completed_rows()
+        if not audited['complete'] or audited['final_chain_sha256'] != priority.evidence.guard.fingerprint(chain):
+            raise ValueError('first-pass incomplete or promoted chain differs: research phases remain deferred')
+        receipt = dict(schema='source_bound_first_pass_audit/1', scientific_identity=priority.scientific_identity(context), physical_row_order_sha256=order['physical_row_order_sha256'], actual_row_sources=audited['sources'], complete=True, scope='all legal cells have actual same-era engine/config/ledger/cutoff proofs and chained row transitions; no old done counter or publication print used')
+        path = priority.Path(self.capture_directory) / ('first_pass_' + priority.evidence.guard.fingerprint(receipt) + '.json')
+        payload = json.dumps(receipt, sort_keys=True, separators=(',', ':')).encode()
+        if not path.exists():
+            with path.open('xb') as stream:
+                stream.write(payload)
+                stream.flush()
+                os.fsync(stream.fileno())
+        elif path.read_bytes() != payload:
+            raise ValueError('first-pass audit artifact content differs')
         priority.validate_epoch_sources(context['current_epoch'])
-        return receipt
+        return priority._freeze(dict(receipt, source=dict(path=str(path), sha256=priority.evidence.sha(path))))
     def record_attempt(self, reservation, header, status, measurement=None):
         if status not in ('failed', 'skipped', 'evaluated_valid', 'evaluated_inadmissible'):
             raise ValueError('explicit actual attempt status required')

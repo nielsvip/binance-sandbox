@@ -1,5 +1,5 @@
 {
-  "computed_at": "2026-10-31T03:09:29.351000+00:00",
+  "computed_at": "2026-10-31T03:19:32.916010+00:00",
   "status": "IN_PROGRESS_ONE_FROZEN_ENTRY_EXIT_FIXTURE_PASS_FULL_PARITY_UNPROVEN",
   "fleet_deployed": "PARTIAL_AUTO_PUSH_DISCOVERED; NOT_A_REVIEWED_FLEET_BATCH",
   "log_text_preserved": true,
@@ -303,6 +303,37 @@
     "accounts": "all tradeable sym_sides; compare ang/inf commonkeys overmatchingeligibility",
     "errors": "zero unexplained runtimeerrors and VEC discrepancies; preserve messages",
     "quantities": "User explicitly permits differences; diagnostic only unless changes action presence/timing",
-    "reference": "Actual rolling forward vector pipeline on each identical historical 15m bar"
-  }
+    "reference": "Actual rolling forward vector pipeline on each identical historical 15m bar",
+    "data_coverage_diagnostic": {
+      "manifest": "/tmp/binance_producer_stage_20261031/manifest.json",
+      "symbols": [
+        "1000PEPEUSDC",
+        "BCHUSDC",
+        "HYPEUSDT"
+      ],
+      "bars_per_symbol": 1344,
+      "source": "actual frozen canonical15mklines, no synthesizedbars",
+      "scope": "three-symbol diagnostic cohort only"
+    }
+  },
+  "agent_backup_provenance_incidents": [
+    {
+      "agent": "quick_paths",
+      "issue": "Two manually named backup filename sets do not correctly encode actual creation time",
+      "files": [
+        "backups/before_k1m_pair15_*_202610310312.py",
+        "backups/before_k1m_bb_precedence_test_2026103103XX.py"
+      ],
+      "authoritative_alternatives": [
+        "backups/before_k1m_pair15_*_202610310305.py",
+        "backups/before_k1m_bb_precedence_test_202610310306.py"
+      ],
+      "status": "Stray files retained, not used to claim a before-edit snapshot or test date; reported to user"
+    },
+    {
+      "agent": "tradier_paths",
+      "issue": "Missing separate backup before follow-up refactor of newly added B04 inline adapter into shared proposal helper",
+      "status": "Original pre-B04 backup preserved; subsequent current snapshot does not retroactively satisfy missing backup; reported to user"
+    }
+  ]
 }

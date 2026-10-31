@@ -1,6 +1,7 @@
 """Scalar DeltaTracker and paired per-bar PARABOLIC acceleration parity."""
 
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -14,9 +15,11 @@ from vec_decisions.parabolic_delta import (
     normalize_bar_timestamp,
     snapshot_from_npz,
     step,
+    step_native,
     validate_npz_inputs,
 )
 from wt_dc_delta import DEFAULT_CFG, DeltaTracker
+from vec_decisions.live_exit_chain import step as live_exit_chain_step
 
 
 def _bar_indicators(index, is_long):
@@ -108,3 +111,82 @@ def test_timestamp_accepts_epoch_or_iso_and_rejects_missing():
     assert normalize_bar_timestamp("2026-10-31T00:00:00Z") == expected
     with pytest.raises(ValueError, match="completed-bar timestamp"):
         normalize_bar_timestamp(None)
+
+
+def test_irregular_eligible_bars_reentry_and_duplicate_timestamp_keep_shared_state():
+    state = {}
+    rows = [_bar_indicators(i, True) for i in range(7)]
+    outputs = [step(state, rows[i], rows[i]["timestamp_15m"], DEFAULT_CFG["tf_weights"]) for i in (0, 2, 2, 6)]
+    assert outputs[1] == outputs[2]
+    assert state["last_bar_timestamp"] == rows[6]["timestamp_15m"]
+    assert len(state["previous_fields"]) > 0
+    # Closing and reentering does not replace this external symbol/side state.
+    state_map = {("TESTUSDC", True): state}
+    before = state_map[("TESTUSDC", True)]
+    step(before, rows[6], rows[6]["timestamp_15m"], DEFAULT_CFG["tf_weights"])
+    assert state_map[("TESTUSDC", True)] is before
+
+
+def test_native_state_key_is_symbol_side_and_same_bar_is_account_independent():
+    states = {}
+    indicators = _bar_indicators(3, True)
+    first = step_native(states, "testusdc", True, indicators, False, DEFAULT_CFG["tf_weights"])
+    # There is deliberately no account argument/key: a second account at the same
+    # completed bar observes the one cached symbol/side evaluation.
+    second = step_native(states, "TESTUSDC", True, indicators, False, DEFAULT_CFG["tf_weights"])
+    assert second == first
+    assert list(states) == [("TESTUSDC", True)]
+
+
+def _parabolic_npz(n=2):
+    arrays = {"timestamps": np.array([1_800_000_000 + 900 * i for i in range(n)], dtype=float)}
+    for i in range(n):
+        row = _bar_indicators(i + 1, True)
+        for tf in ("15m", "1h", "4h", "D"):
+            for field in TF_FIELDS:
+                arrays.setdefault(f"{field}_{tf}", np.zeros(n))[i] = row[f"{field}_{tf}"]
+                if field in WT_DELTA_FIELDS:
+                    arrays.setdefault(f"{field}_prev_{tf}", np.zeros(n))[i] = row[f"{field}_{tf}"] - 1.0
+                elif field in DC_DELTA_FIELDS:
+                    arrays.setdefault(f"{field}_{tf}_prev", np.zeros(n))[i] = row[f"{field}_{tf}_prev"]
+    arrays.update({
+        "dc_high4_15m": np.array([100.0, 100.0]),
+        "dc_low4_15m": np.array([50.0, 50.0]),
+        "low_15m": np.array([9.0, 9.0]),
+        "low_15m_prev": np.array([10.0, 10.0]),
+        "high_15m": np.array([11.0, 11.0]),
+        "high_15m_prev": np.array([10.0, 10.0]),
+        "k_15m": np.array([95.0, 95.0]),
+        "k_15m_prev": np.array([94.0, 94.0]),
+    })
+    return arrays
+
+
+def test_actual_live_exit_chain_parabolic_hook_wins_same_bar_srs_collision():
+    npz = _parabolic_npz()
+    P = {
+        "n": 2, "is_long": True, "parabolic_npz": npz,
+        "parabolic_ts": npz["timestamps"], "k1m": np.full(2, 50.0),
+        "k1mp": np.full(2, 50.0), "k15": npz["k_15m"],
+        "para_lvl": npz["dc_high4_15m"], "crack": np.array([True, True]),
+        "para_now": npz["low_15m"], "para_prev": npz["low_15m_prev"],
+        "htf_aligned": np.zeros(2), "srs_hi": np.array([100.0, 100.0]),
+        "srs_lo": np.array([90.0, 90.0]), "k1h": np.array([80.0, 80.0]),
+        "k1hp": np.array([81.0, 81.0]), "k15p": np.array([96.0, 96.0]),
+        "w": {"1h": (np.ones(2), np.full(2, 2.0)), "15m": (np.ones(2), np.full(2, 2.0))},
+        "srs_tf": "dc_4h",
+    }
+    cfg = SimpleNamespace(
+        K1M_EXTREME_REVERSE_ENABLED=False, REENTRY_GRACE_MINUTES=30.0,
+        PARABOLIC_EXIT_ENABLED=True, LIVE_5m_trading_ENABLED=False,
+        DELTA_TF_WEIGHTS=dict(DEFAULT_CFG["tf_weights"]),
+        STRUCTURAL_RANGE_SHIFT_EXIT=True, STRUCTURAL_RANGE_SHIFT_K_HIGH=75.0,
+        STRUCTURAL_RANGE_SHIFT_K_LOW=25.0, STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS=100.0,
+        HTF_EXIT_VETO_ENABLED=False, KEY_LEVEL_CRASH_ENABLED=False,
+    )
+    result = live_exit_chain_step(
+        P, cfg, 0, 101.0,
+        {"gain": 1.0, "peak": 1.0, "age_min": 900.0, "entry_price": 110.0,
+         "was_augmented": False, "is_hedge": False, "parabolic_state": {}},
+    )
+    assert result and result[0].startswith("PARABOLIC_EXIT_LONG")

@@ -101,8 +101,10 @@ def audit_replay_logs(paths):
         with path.open(errors="replace") as stream:
             for line_number, line in enumerate(stream, 1):
                 kinds = []
-                if re.search(r"\b(?:ERROR|CRITICAL)\b|Traceback \(most recent call last\)", line):
+                if re.search(r"\bERROR\b|Traceback \(most recent call last\)", line):
                     kinds.append("RUNTIME_ERROR")
+                if re.search(r"\bCRITICAL\b", line):
+                    kinds.append("CRITICAL_MESSAGE_REQUIRES_REVIEW")
                 if "VEC_" in line or "WOULD-BLOCK" in line:
                     kinds.append("VECTOR_DIAGNOSTIC_REQUIRES_REVIEW")
                 for kind in kinds:

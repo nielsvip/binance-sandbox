@@ -209,6 +209,8 @@ def test_real_engine_cycle_tp_output_is_quantized_against_live_inventory():
         "open_3m": close,
         "dc_low_4h": np.full(n, 80.0),
         "dc_high_4h": np.full(n, 120.0),
+        "dc_low4_15m": np.full(n, 80.0),
+        "dc_high4_15m": np.full(n, 120.0),
         "dc_low_15m": np.full(n, 90.0),
         "dc_high_15m": np.full(n, 130.0),
     }
@@ -288,6 +290,8 @@ def _seeded_npz_for_account_gate():
         "timestamp_3m": timestamps,
         "dc_low_4h": np.full(n, 10.0),
         "dc_high_4h": np.full(n, 200.0),
+        "dc_low4_15m": np.full(n, 10.0),
+        "dc_high4_15m": np.full(n, 200.0),
     }
 
 
