@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-31 16:48 UTC",
- "total_capital_usd": 45.61,
+ "generated_at": "2026-10-31 17:22 UTC",
+ "total_capital_usd": 45.51,
  "tier_capital": {
   "A": 0.0,
-  "B": 45.61,
+  "B": 45.51,
   "C": 0.0
  },
  "tier_count": {
@@ -12,43 +12,41 @@
   "C": 0
  },
  "winners": [],
- "losers": [
-  "flz:ETHUSDC_SHORT"
- ],
+ "losers": [],
  "mediocre": [],
  "positions": [
   {
    "pk": "flz:ETHUSDC_SHORT",
    "symbol": "ETHUSDC",
    "account": "flz",
-   "value_usd": 20.24,
-   "gain_pct": -0.574,
+   "value_usd": 20.2,
+   "gain_pct": -0.378,
    "tier": "B",
    "perf_mult": 3.77,
    "amt": 0.009,
-   "mark": 2249.13061037
+   "mark": 2244.74350039
   },
   {
    "pk": "flz:ZECUSDC_LONG",
    "symbol": "ZECUSDC",
    "account": "flz",
-   "value_usd": 14.09,
-   "gain_pct": 0.957,
+   "value_usd": 14.06,
+   "gain_pct": 0.713,
    "tier": "B",
    "perf_mult": 1.2,
    "amt": 0.011,
-   "mark": 1280.94
+   "mark": 1277.84693889
   },
   {
    "pk": "flz:XRPUSDC_LONG",
    "symbol": "XRPUSDC",
    "account": "flz",
-   "value_usd": 11.28,
-   "gain_pct": -0.142,
+   "value_usd": 11.25,
+   "gain_pct": -0.367,
    "tier": "B",
-   "perf_mult": 2.75,
+   "perf_mult": 2.74,
    "amt": 9.0,
-   "mark": 1.25332319
+   "mark": 1.2505
   }
  ]
 }
