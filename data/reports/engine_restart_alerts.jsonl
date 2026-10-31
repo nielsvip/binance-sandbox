@@ -2258,3 +2258,4 @@
 {"ts":1793464835,"account":"men","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (168s > 120s) but host overloaded (load 211.69 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
 {"ts":1793465119,"account":"inf","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (123s > 120s) but host overloaded (load 194.91 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
 {"ts":1793465167,"account":"ang","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (60750s > 120s) but host overloaded (load 167.77 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
+{"ts":1793465478,"account":"men","kind":"engine_restart_suppressed","msg":"ez_manage SILENT (262s > 120s) but host overloaded (load 144.78 on 12 cores) — kill DEFERRED to break the kill→bootstrap→load loop"}
