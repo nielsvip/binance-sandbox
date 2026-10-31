@@ -33,6 +33,7 @@ def test_real_sqlite_components_and_future_queue_preserve_baseline(tmp_path):
     assert proof['interaction_delta'] == 4
     assert proof['kind'] == 'SWITCH_FILTER'
     assert R.verify_quartet(dict(components), x, y)['status'] == 'unverified'
+    assert R.verify_quartet(components, dict(x, value=1), y)['status'] == 'unverified'
     baseline = {'A': False, 'B': 0, 'CURRENT': 7}
     before = copy.deepcopy(baseline)
     result = R.postbaseline_queue([proof], baseline, lambda a, b, c: True, 1)
@@ -64,3 +65,6 @@ def test_engine_context_hash_and_missing_components_fail_closed(tmp_path):
     assert 'invalid_or_nonfinite_component' in result['reasons']
     assert not R.postbaseline_queue([result], {}, lambda *args: True, 99)['queue']
     assert R.verify_quartet({}, x, y)['status'] == 'unverified'
+    path.with_name(path.name + '-wal').write_bytes(b'unpinned')
+    with pytest.raises(ValueError, match='sidecar'):
+        R.read_native_components(path, R.file_sha(path), {})

@@ -41,6 +41,8 @@ def normalized(value):
         return {tag: 'frozenset' if isinstance(value, frozenset) else 'set', 'items': sorted([normalized(item) for item in value], key=lambda item: json.dumps(item, sort_keys=True))}
     if isinstance(value, list):
         return [normalized(item) for item in value]
+    if type(value) is datetime.timedelta:
+        return {tag: 'timedelta', 'days': value.days, 'seconds': value.seconds, 'microseconds': value.microseconds}
     if type(value) in (datetime.datetime, datetime.date, datetime.time):
         return {tag: type(value).__name__, 'value': value.isoformat()}
     if hasattr(value, 'dtype') and hasattr(value, 'tolist'):
@@ -68,6 +70,8 @@ def decoded(value):
         return {'tuple': tuple, 'set': set, 'frozenset': frozenset}[kind](decoded(item) for item in value['items'])
     if kind == 'dict':
         return {decoded(key): decoded(item) for key, item in value['items']}
+    if kind == 'timedelta':
+        return datetime.timedelta(days=value['days'], seconds=value['seconds'], microseconds=value['microseconds'])
     if kind in ('datetime', 'date', 'time'):
         return getattr(datetime, kind).fromisoformat(value['value'])
     if kind == 'numpy':
@@ -106,6 +110,8 @@ def load_pin(path, sym_side, defaults, npz, window_days, supported_fields=None, 
         raise PinnedBaselineError('independent previous-version actual-engine oracle required on identical frozen NPZ')
     if oracle.get('window_days') != window_days or oracle.get('holdout_days') != pin.get('holdout_days') or float(pin.get('holdout_days', 0)) != float(os.environ.get('V15_HOLDOUT_DAYS', '0')):
         raise PinnedBaselineError('previous oracle window/holdout policy differs')
+    if not pin.get('window_context') or pin['window_context'] != oracle.get('window_context'):
+        raise PinnedBaselineError('full previous fit/confirm/holdout window context required')
     defaults = {key: value for key, value in defaults.items() if str(key).isupper() and not callable(value)}
     previous = pin.get('previous_effective_defaults', {})
     defaults_source = pin.get('previous_defaults_source', {})
@@ -183,7 +189,8 @@ def capture_actual(prepared, settings, evaluate, window_days):
         metadata = {'scope': 'trusted own-run diagnostic capture before codec; not a promotion artifact', 'request_sha256': os.environ.get('V15_BASELINE_REQUEST_SHA256'), 'at_utc': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), 'config_type_census': census}
         try:
             with path.open('xb') as stream:
-                pickle.dump({'configs': configs, 'result': result}, stream, protocol=5)
+                prepared_identity = {'timestamps': (prepared.get('npz_prepared') or {}).get('timestamps'), 'window_days': prepared.get('window_days'), 'offset_days': prepared.get('offset_days', 0), 'npz_provenance': prepared.get('npz_provenance'), 'window_context': json.loads(os.environ.get('V15_BASELINE_WINDOW_CONTEXT', 'null'))}
+                pickle.dump({'configs': configs, 'result': result, 'prepared_identity': prepared_identity}, stream, protocol=5)
             metadata['pickle_sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
         except Exception as error:
             metadata['capture_error'] = repr(error)
@@ -198,8 +205,10 @@ def capture_actual(prepared, settings, evaluate, window_days):
     return result, {'reader_transformations': {key: normalized(result.get(key)) for key in ['dropped_retired_keys', 'dep_forced']}, 'input_cutoff_sha256': cutoff, 'effective_config_sha256': fingerprint(configs), 'effective_config_values': normalized(configs), 'execution_ledger_sha256': fingerprint(ledger), 'result_sha256': fingerprint(result_fields(result))}
 
 
-def enforce_actual(pin, prepared, settings, evaluate, window_days):
+def enforce_actual(pin, prepared, settings, evaluate, window_days, window_context=None):
     assert_settings(pin, settings)
+    if pin.get('window_context') is not None and window_context != pin['window_context']:
+        raise PinnedBaselineError('actual fit/confirm/holdout window changed')
     try:
         result, actual = capture_actual(prepared, settings, evaluate, window_days)
     except Exception as error:

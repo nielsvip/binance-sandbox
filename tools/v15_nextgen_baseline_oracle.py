@@ -137,6 +137,8 @@ def main():
                     raise ValueError(f'first-party dependency escaped previous root: {name}={path}')
                 origins[name] = str(path.relative_to(root))
     print(json.dumps({'phase': 'ACTUAL_PREVIOUS_BASELINE_EVALUATION' , 'pid': os.getpid(), 'at_utc': utc()}), flush=True)
+    window_context = {key: pilot._HOLDOUT.get(key) for key in ['days', 'confirm_days', 'cut', 'confirm_end', 'on', 'installed']}
+    os.environ['V15_BASELINE_WINDOW_CONTEXT'] = json.dumps(window_context, sort_keys=True)
     os.environ['V15_BASELINE_RAW_CAPTURE'] = str(side / ('previous_raw_capture_' + datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%S%fZ') + '.pickle'))
     os.environ['V15_BASELINE_REQUEST_SHA256'] = sha(args.request)
     result, proof = capture_actual(prepared, settings, evaluate_prepared_sanitized, request['window_days'])
@@ -144,7 +146,7 @@ def main():
         raise ValueError('frozen NPZ changed during previous baseline evaluation')
     ledger_path = side / 'previous_execution_ledger.json'
     ledger_path.write_text(json.dumps(result['execution_ledger'], default=lambda value: value.item() if hasattr(value, 'item') else value.tolist(), allow_nan=False))
-    proof['oracle'] = {'evaluated_at_utc': utc(), 'previous_runtime_manifest_sha256': request['previous_runtime_manifest']['sha256'], 'previous_engine_sha256': expected['v12_quick_engine.py'], 'previous_evaluator_sha256': expected['tools/opt/evaluate_v12.py'], 'npz_sha256': request['npz_sha256'], 'accepted_settings_sha256': fingerprint(settings), 'window_days': request['window_days'], 'holdout_days': request['holdout_days'], 'environment': actual_environment, 'module_origins': origins, 'materialization_receipt_sha256': request['materialization_receipt']['sha256'], 'ledger_source': {'path': str(ledger_path), 'sha256': sha(ledger_path)}}
+    proof['oracle'] = {'evaluated_at_utc': utc(), 'previous_runtime_manifest_sha256': request['previous_runtime_manifest']['sha256'], 'previous_engine_sha256': expected['v12_quick_engine.py'], 'previous_evaluator_sha256': expected['tools/opt/evaluate_v12.py'], 'npz_sha256': request['npz_sha256'], 'accepted_settings_sha256': fingerprint(settings), 'window_days': request['window_days'], 'holdout_days': request['holdout_days'], 'window_context': window_context, 'environment': actual_environment, 'module_origins': origins, 'materialization_receipt_sha256': request['materialization_receipt']['sha256'], 'ledger_source': {'path': str(ledger_path), 'sha256': sha(ledger_path)}}
     usage = resource.getrusage(resource.RUSAGE_SELF)
     receipt = {'schema': 'v15_previous_baseline_oracle/1', 'status': 'MEASURED_PREVIOUS_BASELINE_ONLY_NOT_CANDIDATE_PARITY', 'request_sha256': sha(args.request), 'accepted_source': request['accepted_source'], 'previous_defaults_source': request['previous_defaults_source'], 'previous_actual_engine_proof': proof, 'resources': {'wall_s': time.monotonic() - started, 'self_cpu_s': usage.ru_utime + usage.ru_stime, 'self_maxrss_linux_kib': usage.ru_maxrss, 'measurement_scope': 'this direct evaluator process; no optimizer launched'}, 'audit_scope': 'audited Python operations, not all native syscalls'}
     output.write_text(json.dumps(receipt, indent=2))

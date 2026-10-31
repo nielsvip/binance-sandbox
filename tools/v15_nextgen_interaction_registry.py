@@ -24,6 +24,8 @@ def file_sha(path):
 
 def read_native_components(path, expected_sha256, eval_ids):
     path = Path(path).resolve()
+    if any(Path(str(path) + suffix).exists() and Path(str(path) + suffix).stat().st_size for suffix in ('-wal', '-journal')):
+        raise ValueError('standalone immutable snapshot required; unpinned SQLite sidecar exists')
     if file_sha(path) != expected_sha256:
         raise ValueError('source snapshot hash mismatch')
     result = LoadedNativeComponents()
@@ -50,6 +52,8 @@ def read_native_components(path, expected_sha256, eval_ids):
             result[name] = dict(row, config=config, config_sha256=config_sha, source_file=str(path), source_sha256=expected_sha256, engine_sha256=extra.get('engine_sha256'), market_data_end=extra.get('market_data_end'))
     if file_sha(path) != expected_sha256:
         raise ValueError('source changed during component extraction')
+    if any(Path(str(path) + suffix).exists() and Path(str(path) + suffix).stat().st_size for suffix in ('-wal', '-journal')):
+        raise ValueError('source gained unpinned SQLite sidecar during extraction')
     result.loaded_sha256 = hashlib.sha256(json.dumps(result, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     return result
 
@@ -80,10 +84,10 @@ def verify_quartet(components, x, y):
             reasons.append('missing_or_mixed_' + key)
     base = dict(components['B']['config'])
     expected = {'B': base, 'X': dict(base, **{x['field']: x['value']}), 'Y': dict(base, **{y['field']: y['value']}), 'Z': dict(base, **{x['field']: x['value'], y['field']: y['value']})}
-    if x['field'] in base and base[x['field']] == x['value'] or y['field'] in base and base[y['field']] == y['value']:
+    if any(change['field'] in base and type(base[change['field']]) is type(change['value']) and base[change['field']] == change['value'] for change in (x, y)):
         reasons.append('identity_is_not_an_intervention')
     for name, row in components.items():
-        if row['config'] != expected[name] or experience.Canon(row['config']).set_id != row.get('config_sha256'):
+        if experience.Canon(row['config']).set_id != experience.Canon(expected[name]).set_id or experience.Canon(row['config']).set_id != row.get('config_sha256'):
             reasons.append('component_config_mismatch_' + name)
     if reasons:
         return {'status': 'unverified', 'reasons': sorted(set(reasons)), 'components': components}

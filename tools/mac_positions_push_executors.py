@@ -28,6 +28,8 @@ import subprocess
 import sys
 import tempfile
 import time
+import threading
+import fcntl
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,7 +40,9 @@ ROUTES = {
     "crypto": [("s1-int", "binance"), ("s1-pub", "binance"), ("s1", "binance"), ("niels@10.0.0.3", "binance")],
     "stocks": [("s5", "binance"), ("s5", "trc7d_root"), ("niels@10.0.0.5", "binance"), ("niels@10.0.0.5", "trc7d_root")],
 }
-SSH = ["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "StrictHostKeyChecking=accept-new"]
+SSH = ["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=2", "-o", "ServerAliveInterval=2", "-o", "ServerAliveCountMax=2", "-o", "StrictHostKeyChecking=accept-new"]
+LAST_ROUTE = {}
+REPORT_LOCK = threading.Lock()
 LIFECYCLE = ("entry_price", "opened_at", "entry_time", "max_gain", "gain", "prev_gain", "last_signal", "was_reduced",
              "was_reentered", "mark_price", "last_updated", "max_quantity", "cycle_peak_gain", "trade_wing")
 
@@ -112,14 +116,28 @@ def push(host, tree, local, digest):
     remote = f"~/{tree}/data/vector_direct/mac_positions_{local.stem.rsplit('_', 1)[-1]}.json"
     target = f"~/{tree}/data/vector_direct/{local.name}"
     try:
-        subprocess.run(SSH + [host, f"mkdir -p ~/{tree}/data/vector_direct"], check=True, capture_output=True, timeout=25)
-        subprocess.run(["rsync", "-az", "--timeout=25", "-e", " ".join(SSH), str(local), f"{host}:{target}"],
-                       check=True, capture_output=True, timeout=60)
-        got = subprocess.run(SSH + [host, f"sha256sum {target} | cut -d' ' -f1"], check=True, capture_output=True, timeout=25).stdout.decode().strip()
+        subprocess.run(SSH + [host, f"mkdir -p ~/{tree}/data/vector_direct"], check=True, capture_output=True, timeout=8)
+        subprocess.run(["rsync", "-az", "--timeout=8", "-e", " ".join(SSH), str(local), f"{host}:{target}"],
+                       check=True, capture_output=True, timeout=12)
+        got = subprocess.run(SSH + [host, f"sha256sum {target} | cut -d' ' -f1"], check=True, capture_output=True, timeout=8).stdout.decode().strip()
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError) as exc:
         detail = getattr(exc, "stderr", b"") or b""
         return {"host": host, "tree": tree, "ok": False, "error": f"{type(exc).__name__}: {detail.decode(errors='replace')[:160] or str(exc)[:160]}", "remote": remote}
     return {"host": host, "tree": tree, "ok": got == digest, "sha256": got, "remote": target}
+
+
+def push_destination(venue, tree, local, digest):
+    hosts = [host for host, target in ROUTES[venue] if target == tree]
+    preferred = LAST_ROUTE.get((venue, tree), "s1-pub" if venue == "crypto" else "s5")
+    hosts.sort(key=lambda host: host != preferred)
+    attempts = []
+    for host in hosts:
+        result = push(host, tree, local, digest)
+        attempts.append(result)
+        if result["ok"]:
+            LAST_ROUTE[(venue, tree)] = host
+            break
+    return attempts
 
 
 def write_local(doc, venue):
@@ -142,24 +160,78 @@ def run(venues, dry_run=False):
         entry = {"local": str(path), "sha256": digest, "held_total": doc["held_total"], "sides": doc["sides"],
                  "books": len(doc["books"]), "unreadable": doc["unreadable"], "routes": []}
         if not dry_run:
-            routes = ROUTES[venue]
-            with cf.ThreadPoolExecutor(max_workers=len(routes)) as pool:
-                entry["routes"] = [f.result() for f in [pool.submit(push, host, tree, path, digest) for host, tree in routes]]
+            trees = sorted({tree for host, tree in ROUTES[venue]})
+            with cf.ThreadPoolExecutor(max_workers=len(trees)) as pool:
+                entry["routes"] = [route for result in pool.map(lambda tree: push_destination(venue, tree, path, digest), trees) for route in result]
             entry["delivered"] = sorted({r["tree"] for r in entry["routes"] if r["ok"]})
-            entry["ok"] = bool(entry["delivered"])
+            entry["ok"] = entry["delivered"] == trees
         report["venues"][venue] = entry
     status = ROOT / "data" / "reports" / "mac_positions_push.json"
     status.parent.mkdir(parents=True, exist_ok=True)
-    status.write_text(json.dumps(report, indent=1, default=str))
+    with REPORT_LOCK:
+        try:
+            previous = json.loads(status.read_text())
+        except (OSError, ValueError):
+            previous = {}
+        combined = dict(previous.get("venues") or {})
+        combined.update(report["venues"])
+        temp = status.with_suffix(".tmp")
+        temp.write_text(json.dumps({**report, "venues": combined}, indent=1, default=str))
+        os.replace(temp, status)
     return report
+
+
+def book_fingerprint(venue):
+    values = []
+    for account in CRYPTO_ACCOUNTS if venue == "crypto" else STOCK_ACCOUNTS:
+        for side in ("long", "short"):
+            path = ROOT / account / f"{side}_positions.json"
+            try:
+                info = path.stat()
+                values.append((str(path), info.st_ino, info.st_mtime_ns, info.st_size))
+            except OSError:
+                values.append((str(path), None))
+    return tuple(values)
+
+
+def watch(venues):
+    lock_path = ROOT / "data" / "vector_direct" / "mac_positions_push.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("a") as lock:
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise SystemExit("position transport watcher already running")
+        completed, pending, last_send = {}, {}, {}
+        with cf.ThreadPoolExecutor(max_workers=len(venues)) as pool:
+            while True:
+                for venue in venues:
+                    job = pending.get(venue)
+                    if job is not None and job[0].done():
+                        try:
+                            report = job[0].result()["venues"][venue]
+                            if report.get("ok"):
+                                completed[venue] = job[1]
+                            print(f"{stamp()} {venue} positions delivered={report.get('delivered')} ok={report.get('ok')} held={report['held_total']}", flush=True)
+                        except Exception as exc:
+                            print(f"{stamp()} {venue} POSITION_TRANSPORT_FAILED {type(exc).__name__}: {exc}", flush=True)
+                        pending.pop(venue)
+                    fingerprint = book_fingerprint(venue)
+                    if venue not in pending and (fingerprint != completed.get(venue) or time.monotonic() - last_send.get(venue, 0) >= 5):
+                        pending[venue] = (pool.submit(run, (venue,)), fingerprint)
+                        last_send[venue] = time.monotonic()
+                time.sleep(0.25)
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--venue", choices=("crypto", "stocks", "both"), default="both")
     ap.add_argument("--dry-run", action="store_true", help="write the local document, push nothing")
+    ap.add_argument("--watch", action="store_true", help="continuously deliver changed position books; independently per venue")
     a = ap.parse_args(argv)
     venues = ("crypto", "stocks") if a.venue == "both" else (a.venue,)
+    if a.watch and not a.dry_run:
+        return watch(venues)
     report = run(venues, a.dry_run)
     for venue, entry in report["venues"].items():
         failed = [f"{r['host']}:{r['tree']} {r.get('error', 'hash mismatch')}" for r in entry["routes"] if not r["ok"]]
