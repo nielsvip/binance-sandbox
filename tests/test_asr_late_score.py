@@ -10,6 +10,7 @@ from vec_decisions.asr_late_score import apply_asr_late_score_scalar, apply_asr_
 
 def _cfg():
     return SimpleNamespace(
+        USE_1M_3M_SIGNALS_ENABLED=True,
         EMA_PULLBACK_ENABLED=True, EMA_PULLBACK_TF="15m", EMA_PULLBACK_SCORE_BONUS=35,
         BB_RSI_STOCH_SCALP_ENABLED=True, BB_RSI_STOCH_SCALP_SCORE=25,
         MACD_ZERO_CROSS_ENABLED=True, MACD_ZERO_CROSS_TF="1h", MACD_ZERO_CROSS_SCORE=15,

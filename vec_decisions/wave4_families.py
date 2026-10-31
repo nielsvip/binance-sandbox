@@ -157,16 +157,58 @@ def htf_direction_pass_raw(npz, n, is_long, config, close, safe):
         w2 = safe(npz, f"wt2_{tf}", n, 0.0)
         ok = ((w1 > w2) if is_long else (w1 < w2)) & (w1 != 0) & (w2 != 0)
         sigs.append(ok)
-    met = sigs[0].astype(np.int8) + sigs[1].astype(np.int8) + sigs[2].astype(np.int8)
+    sma = safe(npz, "sma_200_D", n, 0.0)
+    return htf_direction_pass_values(
+        sigs[0], sigs[1], sigs[2], close, sma, config, is_long
+    )
+
+
+def htf_direction_pass_values(d_ok, h4_ok, h1_ok, close, sma, config, is_long):
+    """Shared scalar/array count rule for live Tradier and the vector engine."""
+    met = (
+        np.asarray(d_ok, dtype=np.int8)
+        + np.asarray(h4_ok, dtype=np.int8)
+        + np.asarray(h1_ok, dtype=np.int8)
+    )
+    sma = np.asarray(sma, dtype=float)
+    close = np.asarray(close, dtype=float)
     if bool(getattr(config, "HTF_GATE_SIGNALS_SMA200D", True)):
-        sma = safe(npz, "sma_200_D", n, 0.0)
         sma_ok = ((close > sma) if is_long else (close < sma)) & (sma > 0)
-        met = met + np.where(sma > 0, sma_ok.astype(np.int8), 0)
+        met = met + np.where(sma > 0, np.asarray(sma_ok, dtype=np.int8), 0)
     min_conf = int(float(getattr(config, "HTF_GATE_MIN_CONFIRMATIONS", 3) or 3))
     allow = met >= min_conf
     if bool(getattr(config, "HTF_GATE_D_MANDATORY", True)):
-        allow = allow & sigs[0]
-    return allow
+        allow = allow & np.asarray(d_ok, dtype=bool)
+    return bool(allow) if np.ndim(allow) == 0 else allow
+
+
+def htf_direction_live_pass(indicators, is_long, get, close):
+    """Scalar open gate using the same per-symbol switches and predicate as v12."""
+    if not bool(get("HTF_DIRECTION_GATE_ENABLED", False)):
+        return True
+    if not bool(get("HTF_GATE_APPLY_TO_OPEN", True)):
+        return True
+    source = indicators or {}
+
+    def value(key):
+        try:
+            return float(source.get(key, 0.0) or 0.0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    d1, d2 = value("wt1_D"), value("wt2_D")
+    h41, h42 = value("wt1_4h"), value("wt2_4h")
+    h11, h12 = value("wt1_1h"), value("wt2_1h")
+    d_ok = (d1 > d2 if is_long else d1 < d2) and d1 != 0 and d2 != 0
+    h4_ok = (h41 > h42 if is_long else h41 < h42) and h41 != 0 and h42 != 0
+    h1_ok = (h11 > h12 if is_long else h11 < h12) and h11 != 0 and h12 != 0
+    params = type("HTFGateParams", (), {})()
+    params.HTF_GATE_SIGNALS_SMA200D = bool(get("HTF_GATE_SIGNALS_SMA200D", True))
+    params.HTF_GATE_MIN_CONFIRMATIONS = get("HTF_GATE_MIN_CONFIRMATIONS", 3)
+    params.HTF_GATE_D_MANDATORY = bool(get("HTF_GATE_D_MANDATORY", True))
+    return htf_direction_pass_values(
+        d_ok, h4_ok, h1_ok, close, value("sma_200_D"), params, is_long
+    )
 
 
 def bb_squeeze_entry_gate(npz, n, is_long, config, close, safe):

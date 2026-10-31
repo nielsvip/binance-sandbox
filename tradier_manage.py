@@ -50912,6 +50912,49 @@ class TradierTradeManager:
                                     await self.redis_manager.delete(exec_lock_key)
                                 return f"BLOCKED_HTF_TREND_VETO_action={action}"
 
+            # Tradier twin of the vector HTF_DIRECTION_GATE_ENABLED open mask.
+            # The existing DG_HTF_ALIGN checks remain independent and unchanged.
+            _htfd_action = str(action or "").upper()
+            if (
+                (_htfd_action in {"OPEN", "REENTRY", "REENTER", "REENTRY_OPEN", "QUICK_OPEN", "REVERSE"} or _opens_exposure)
+                and not _is_exit_or_reduce
+                and not is_hedge
+            ):
+                try:
+                    from vec_decisions.wave4_families import htf_direction_live_pass
+
+                    _htfd_get = lambda _k, _d=None: _cfg(
+                        _k, _d, account_key, symbol, position_side
+                    )
+                    if bool(_htfd_get("HTF_DIRECTION_GATE_ENABLED", False)) and bool(
+                        _htfd_get("HTF_GATE_APPLY_TO_OPEN", True)
+                    ):
+                        _htfd_ind = None
+                        try:
+                            if hasattr(self, "get_indicators"):
+                                _htfd_ind = self.get_indicators(symbol)
+                            if not _htfd_ind:
+                                _htfd_mgr = getattr(self, "tradier_indicators", None)
+                                if _htfd_mgr is not None:
+                                    _htfd_ind = await _htfd_mgr.get_indicators(symbol)
+                        except Exception as _htfd_e:
+                            logger.warning(
+                                f"[HTF_DIRECTION_GATE] {position_key}: indicator read failed ({type(_htfd_e).__name__})"
+                            )
+                        if not htf_direction_live_pass(
+                            _htfd_ind or {}, is_long, _htfd_get, float(old_price or 0.0)
+                        ):
+                            logger.warning(
+                                f"[HTF_DIRECTION_GATE] {position_key}: BLOCKED {action} side={position_side} reason={(reason or '')[:80]}"
+                            )
+                            if lock_acquired and self.redis_manager:
+                                await self.redis_manager.delete(exec_lock_key)
+                            return "BLOCKED_HTF_DIRECTION_GATE"
+                except Exception as _htfd_e:
+                    logger.warning(
+                        f"[HTF_DIRECTION_GATE] {position_key}: check failed open ({type(_htfd_e).__name__})"
+                    )
+
             # ═══════════════════════════════════════════════════════════════════════
             # HTF_TREND_VETO_ON_REDUCE — 2026-05-21 USER URGENT MANDATE
             # Block reduce/close when Daily WT still SUPPORTS position direction.

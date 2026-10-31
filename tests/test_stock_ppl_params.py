@@ -51,3 +51,12 @@ def test_generic_crypto_values_do_not_override_stock_ppl_values():
     )
     assert native["action"] == "reduce"
     assert vector_action == "REDUCE"
+
+
+def test_tradier_ppl_stop_uses_native_be_plus_sign_even_when_vec_only_flag_is_false():
+    cfg = _cfg(True)
+    cfg.PPL_BE_STOP_LIVE_SIGN = False
+    _, _, _, state = vector_ppl_step(
+        cfg, True, True, 105.6, 105.0, 0.6, {}
+    )
+    assert state["stop_level"] == 105.0 * (1.0 + 0.02 / 100.0)

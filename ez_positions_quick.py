@@ -3633,6 +3633,17 @@ class AdvancedSignalRater:
         skip_boycott=False,
         data_manager=None,
     ):
+        position_side = "LONG" if is_long else "SHORT"
+        from vec_decisions.asr_input_adapter import paired_indicator_view as _paired_asr_indicator_view, paired_event_view as _paired_asr_event_view, selected_timeframe as _select_asr_tf
+        _asr_ltf_enabled = bool(_psym_get(symbol, position_side, "USE_1M_3M_SIGNALS_ENABLED", getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False)))
+        ind, metrics, _asr_ltf_missing = _paired_asr_indicator_view(ind, metrics, _asr_ltf_enabled)
+        _asr_tf_micro = _select_asr_tf(getattr(config, "TF_MICRO", "1m"), _asr_ltf_enabled)
+        _asr_tf_scalp = _select_asr_tf(getattr(config, "TF_SCALP", "3m"), _asr_ltf_enabled)
+        _asr_tf_focus = _select_asr_tf(getattr(config, "TF_FOCUS", "3m"), _asr_ltf_enabled)
+        if _asr_ltf_missing:
+            logger.error(f"[ASR_LTF_INPUT_UNAVAILABLE] {symbol}_{position_side}: {','.join(_asr_ltf_missing)}")
+            if not is_exit:
+                return 0, "WAIT", f"ASR_LTF_INPUT_UNAVAILABLE:{','.join(_asr_ltf_missing)}"
         indicators = ind
         scalp_accounts = getattr(config, "SCALP_ACCOUNTS", [])
         if isinstance(scalp_accounts, tuple):
@@ -3644,7 +3655,6 @@ class AdvancedSignalRater:
         now = datetime.now(timezone.utc)
         now_ts = time.time()
         cand = tracker_manager._exit_template()
-        position_side = "LONG" if is_long else "SHORT"
         position_key = construct_position_key(account_key, symbol, position_side)
         _rpk = f"{symbol}_{position_side}"  # regime lookup key (without account prefix for get_symbol_setting)
         position = await tracker_manager.get_position(position_key)
@@ -3768,8 +3778,8 @@ class AdvancedSignalRater:
         # SCALP MOMENTUM BOYCOTT — uses WT micro TF direction (superior to stoch K direction)
         if should_scalp and not is_exit:
             _wt_bull_1m = metrics.get(
-                f'wt_bullish_{getattr(config, "TF_MICRO", "1m")}',
-                ind.get(f'wt_bullish_{getattr(config, "TF_MICRO", "1m")}'),
+                f'wt_bullish_{_asr_tf_micro}',
+                ind.get(f'wt_bullish_{_asr_tf_micro}'),
             )
             if _wt_bull_1m is not None:
                 if is_long and not _wt_bull_1m:
@@ -4342,8 +4352,8 @@ class AdvancedSignalRater:
         wt_score_15m = safe_fetch_float(ind.get("wt_score_15m"), 0.0)
         wt_score_1h = safe_fetch_float(ind.get("wt_score_1h"), 0.0)
         # WT from hot_metrics bridge — uses config TF hierarchy (BACKTEST_CHANGE_149)
-        _tf_m = getattr(config, "TF_MICRO", "1m")
-        _tf_s = getattr(config, "TF_SCALP", "3m")
+        _tf_m = _asr_tf_micro
+        _tf_s = _asr_tf_scalp
 
         def _wt(field, tf, default=0.0):
             return safe_fetch_float(
@@ -4420,6 +4430,7 @@ class AdvancedSignalRater:
         sentc = str(ind.get("0sentiment_classification") or "")
         local_sent = safe_fetch_float(ind.get("0market_sentiment_local"), 0.0)
         _le = _last_events_cache.get(symbol, {}) if _last_events_cache else {}
+        _le = _paired_asr_event_view(_le, _asr_ltf_enabled)
         _3m = _le.get("3m", {}).get(
             "wt_crossover", _le.get("3m", {}).get("stoch_crossover", {})
         )
@@ -4750,7 +4761,7 @@ class AdvancedSignalRater:
             _adx_val = safe_fetch_float(ind.get(f"adx_{_adx_tf}"), 50)
             _adx_ranging = getattr(config, "ADX_RANGING_THRESHOLD", 20.0)
             if _adx_val < _adx_ranging:
-                _k_focus = safe_fetch_float(ind.get(f"k_{config.TF_FOCUS}"), 50)
+                _k_focus = safe_fetch_float(ind.get(f"k_{_asr_tf_focus}"), 50)
                 if not ((is_long and _k_focus < 20) or (not is_long and _k_focus > 80)):
                     return (
                         0,

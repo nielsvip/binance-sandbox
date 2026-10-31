@@ -11,6 +11,7 @@ from vec_decisions.asr_score_core import (
 
 
 class Cfg:
+    USE_1M_3M_SIGNALS_ENABLED = True
     WT_COMPOSITE_SCORING_ENABLED = True
     WT_COMPOSITE_SCORING_ENABLED_TRADIER = False
     WT_COMPOSITE_ENTRY_STRONG = 50
@@ -155,6 +156,7 @@ def test_structure_score_matches_sha_verified_pre_edit_native_ast_and_numpy():
     end = next(i for i, node in enumerate(rate.body[start:], start) if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "_regime_info" for t in node.targets))
     native_nodes = rate.body[start:end]
     cfg = SimpleNamespace(
+        USE_1M_3M_SIGNALS_ENABLED=True,
         R_S3_DIV_STACK_ENABLED=True, R_S3_HIDDEN_BONUS=25.0, R_S3_MAIN_PENALTY=-20.0, R_S3_HTF_WEIGHT_ENABLED=True,
         R_S3_TF_WEIGHT_3M=0.25, R_S3_TF_WEIGHT_15M=0.5, R_S3_TF_WEIGHT_1H=1.0, R_S3_TF_WEIGHT_4H=2.5, R_S3_TF_WEIGHT_D=4.0,
         R_S7_HHLL_STACK_ENABLED=True, R_S7_HHLL_TFS="15m,1h,4h,D", R_S7_HHLL_MIN_INDICATORS=2, R_S7_HHLL_BONUS_PER_TF=3.0, R_S7_HHLL_MIN_TFS_FOR_BONUS=2,
@@ -198,7 +200,7 @@ def test_15m_momentum_matches_sha_verified_pre_edit_native_ast_and_numpy():
     reference = next(path for path in refs if hashlib.sha256(path.read_bytes()).hexdigest() == "c7fab7fa75c83c1996d55f80fb85ea29c5e2be33ada2740bca377a85a9cff2db")
     rate = next(node for node in ast.walk(ast.parse(reference.read_text())) if isinstance(node, ast.AsyncFunctionDef) and node.name == "rate" and node.lineno == 3616)
     native = next(node for node in rate.body if isinstance(node, ast.If) and "_wt1_15m_prev_r" in ast.unparse(node))
-    cfg = SimpleNamespace(WT15M_AGAINST_PENALTY=-5.0)
+    cfg = SimpleNamespace(WT15M_AGAINST_PENALTY=-5.0, USE_1M_3M_SIGNALS_ENABLED=True)
     rows = [
         {"wt1_15m": 3.0, "wt2_15m": 2.0, "wt1_15m_prev": 4.0},
         {"wt1_15m": 4.0, "wt2_15m": 3.0, "wt1_15m_prev": 3.0, "wt_cross_bear_3m": 1, "wt_crossover_value_3m": 2.0, "wt_crossover_value_3m_prev": 3.0},
@@ -336,7 +338,7 @@ def test_channel_k_cross_matches_sha_verified_pre_edit_native_ast_and_numpy():
         rows.append(row)
     arrays = {key: np.asarray([row.get(key, 0.0) for row in rows]) for key in set().union(*(row.keys() for row in rows))}
     for is_long in (True, False):
-        vector, _ = apply_channel_k_cross_score_vec(arrays, len(rows), is_long)
+        vector, _ = apply_channel_k_cross_score_vec(arrays, len(rows), is_long, use_ltf=True)
         for j, indicators in enumerate(rows):
             env = {"is_long": is_long, "current_price": indicators["close"], "score": 0.0, "reasons": []}
             for key in ("dc_high_1h","dc_low_1h","dc_high_D","dc_low_D","dc_high_4h","dc_low_4h","dc_basis_1h","dc_basis_D","dc_basis_4h","k_15m","k_1h","k_4h","k_D"):

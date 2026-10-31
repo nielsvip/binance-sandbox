@@ -1,6 +1,8 @@
 """ASR stochastic, DC-basis and channel-breakout score additions."""
 import numpy as np
 
+from vec_decisions.asr_input_adapter import paired_npz_view
+
 
 def apply_channel_confluence_scalar(score, values, is_long):
     """Mirror ordered per-bar K/DC score additions; values are native locals."""
@@ -30,10 +32,11 @@ def apply_channel_confluence_scalar(score, values, is_long):
     return result
 
 
-def apply_channel_confluence_vec(npz, n, is_long, score=None, current_price=None):
+def apply_channel_confluence_vec(npz, n, is_long, score=None, current_price=None, use_ltf=False):
     """Array twin; absent 1m channel arrays retain the native no-bonus path."""
     result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).copy()
     if result.shape != (n,): raise ValueError("score must have shape (n,)")
+    npz = paired_npz_view(npz, bool(use_ltf))
     px = _col(npz, "close", n, 0.0) if current_price is None else _vec(current_price, n, 0.0)
     arrays = {key: _col(npz, key, n, 50.0 if key.startswith(("k_", "d_")) else 0.0) for key in (
         "k_3m", "d_3m", "k_15m", "k_1h", "d_1h", "k_4h", "d_4h",

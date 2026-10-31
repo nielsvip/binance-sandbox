@@ -1,6 +1,8 @@
 """Shared scalar and NumPy implementation of the ASR DC-position score block."""
 import numpy as np
 
+from vec_decisions.asr_input_adapter import paired_npz_view
+
 
 _TFS = ("3m", "15m", "1h", "4h", "D")
 
@@ -68,11 +70,12 @@ def apply_dc_position_score_scalar(score, reasons, indicators, current_price, is
     return result, reasons
 
 
-def apply_dc_position_score_vec(npz, n, is_long, score=None, current_price=None):
+def apply_dc_position_score_vec(npz, n, is_long, score=None, current_price=None, use_ltf=False):
     """Vector twin for causal per-bar close and five timeframe channel arrays."""
     result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).copy()
     if result.shape != (n,):
         raise ValueError("score must have shape (n,)")
+    npz = paired_npz_view(npz, bool(use_ltf))
     price = _column(npz, "close", n, 0.0) if current_price is None else _as_column(current_price, n, 0.0)
     positions = {}
     for tf in _TFS:

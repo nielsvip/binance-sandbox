@@ -53,7 +53,7 @@ def ppl_step(config, is_tradier: bool, is_long: bool, px: float, entry_px: float
     upgraded = bool(st.get("stop_upgraded"))
     if not fired and gain_pct >= min_gain and entry_px > 0:
         # [N4 fix] live (tradier_manage.py:19340 / ez_positions_quick.py:18651): BE stop = entry*(1+buf/100) LONG, entry*(1-buf/100) SHORT (BE PLUS buffer, i.e. locks a hair of profit); vec had the sign inverted
-        _live_sign = True if not is_tradier else bool(getattr(config, 'PPL_BE_STOP_LIVE_SIGN', False))  # Crypto live always uses BE+buffer; keep the Tradier vector experiment configurable.
+        _live_sign = True if is_tradier else bool(getattr(config, "PPL_BE_STOP_LIVE_SIGN", True))
         be_stop = (entry_px * (1 + be_buffer / 100.0) if is_long else entry_px * (1 - be_buffer / 100.0)) if _live_sign else (entry_px * (1 - be_buffer / 100.0) if is_long else entry_px * (1 + be_buffer / 100.0))
         st = {"fired": True, "first_exit_price": px, "stop_level": be_stop, "stop_upgraded": False}
         return "REDUCE", frac, f"PPL_TP_g{gain_pct:.2f}%>={min_gain:.2f}%_stopBE{be_stop:.4f}", st

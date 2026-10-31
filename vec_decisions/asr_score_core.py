@@ -5,11 +5,17 @@ from typing import Any, Mapping
 
 import numpy as np
 
+from vec_decisions.asr_input_adapter import paired_npz_view
+
 
 def _cfg(cfg: Any, name: str, default: Any) -> Any:
     if isinstance(cfg, Mapping):
         return cfg.get(name, default)
     return getattr(cfg, name, default)
+
+
+def _policy_npz(npz, cfg):
+    return paired_npz_view(npz, bool(_cfg(cfg, "USE_1M_3M_SIGNALS_ENABLED", False)))
 
 
 def _float(value: Any, default: Any) -> Any:
@@ -144,6 +150,7 @@ def apply_score_prefix_vec(
     result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).copy()
     if result.shape != (n,):
         raise ValueError("score must have shape (n,)")
+    npz = _policy_npz(npz, cfg)
     masks: dict[str, np.ndarray] = {}
 
     def col(key: str, default: float) -> np.ndarray:
@@ -337,6 +344,7 @@ def apply_structure_score_vec(
     result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).copy()
     if result.shape != (n,):
         raise ValueError("score must have shape (n,)")
+    npz = _policy_npz(npz, cfg)
     masks: dict[str, np.ndarray] = {}
 
     def col(key: str, default: float) -> np.ndarray:
@@ -476,6 +484,7 @@ def apply_15m_momentum_vec(
     if result.shape != (n,):
         raise ValueError("score must have shape (n,)")
 
+    npz = _policy_npz(npz, cfg)
     def col(key: str, default: float) -> np.ndarray:
         value = npz.get(key)
         if value is None:
@@ -660,6 +669,7 @@ def apply_rank_conviction_vec(npz, n, is_long, cfg, score=None, metrics=None):
     result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).copy()
     if result.shape != (n,):
         raise ValueError("score must have shape (n,)")
+    npz = _policy_npz(npz, cfg)
     masks = {}
     if not bool(_cfg(cfg, "RANK_CONVICTION_ENABLED", True)):
         return result, masks
@@ -743,11 +753,12 @@ def apply_channel_k_cross_score_scalar(score, reasons, indicators, current_price
     return result, reasons
 
 
-def apply_channel_k_cross_score_vec(npz, n, is_long, score=None):
+def apply_channel_k_cross_score_vec(npz, n, is_long, score=None, use_ltf=False):
     """NumPy twin of native channel recovery, K-zone and DC-basis cross score slice."""
     result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).copy()
     if result.shape != (n,):
         raise ValueError("score must have shape (n,)")
+    npz = paired_npz_view(npz, bool(use_ltf))
     def col(key, default=0.0):
         value = npz.get(key)
         if value is None:

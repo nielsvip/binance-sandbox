@@ -5017,7 +5017,7 @@ class QuickConfig:
     DYN_STRUCT_TRAIL_TF: str = "4h"  # [N4] tradier_manage.py:10784 _cfg default '4h'
     DYN_STRUCT_TRAIL_MIN_GAIN_PCT: float = 0.0  # [N4] tradier_manage.py:10785
     PPL_BE_STOP_LIVE_SIGN: bool = (
-        False  # [FLT] N4 2 BE-stop sign fix as swept switch: False = legacy (neutral), True = live BE+buffer (tradier_manage.py:19340 / ez_positions_quick.py:18651)
+        False  # [FLT] Crypto vector experiment; Tradier uses the live BE+buffer sign in reduce_profit_lock.ppl_step.
     )
     STOCK_LIVE_AUGMENT_ONLY: bool = (
         False  # [N4 2b] stocks: vector augments ONLY from live's sources (False = pre-N4 gain-ladder/pullback/pyramid too)
@@ -22893,7 +22893,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 is_tradier,
                 is_long,
                 px,
-                float(pos.get("entry_price", pos["avg_price"])),
+                float(pos["avg_price"]),
                 live_pnl_pct,
                 pos.get("ppl") or {},
             )

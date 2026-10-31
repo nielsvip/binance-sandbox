@@ -4,6 +4,7 @@ import numpy as np
 from vec_decisions.asr_dc_position_score import apply_dc_position_score_scalar, apply_dc_position_score_vec
 from vec_decisions.asr_research_score import apply_research_score_scalar, apply_research_score_vec
 from vec_decisions.asr_score_core import apply_gain_quality_bonus_scalar, apply_gain_quality_bonus_vec
+from vec_decisions.asr_input_adapter import paired_npz_view
 
 
 def apply_asr_late_score_scalar(score, reasons, indicators, current_price, is_long, cfg, gain, dc_values, k_3m, d_3m, k_3m_prev, k_15m, is_exit=False):
@@ -30,6 +31,8 @@ def apply_asr_late_score_vec(npz, n, is_long, cfg, gain, score=None, current_pri
     result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).copy()
     if result.shape != (n,):
         raise ValueError("score must have shape (n,)")
+    use_ltf = bool(getattr(cfg, "USE_1M_3M_SIGNALS_ENABLED", False))
+    npz = paired_npz_view(npz, use_ltf)
     k3 = _column(npz, "k_3m", n, 50.0)
     d3 = _column(npz, "d_3m", n, 50.0)
     k3_prev = _column(npz, "k_3m_prev", n, 50.0)
@@ -40,7 +43,7 @@ def apply_asr_late_score_vec(npz, n, is_long, cfg, gain, score=None, current_pri
         knife = ((k3 > d3) & (k3 > 80) & (k3 > k3_prev)) | (k15 > 70)
     result -= knife.astype(float) * 10.0
     result, gain_masks = apply_gain_quality_bonus_vec(result, gain)
-    result, dc_masks = apply_dc_position_score_vec(npz, n, is_long, result, current_price)
+    result, dc_masks = apply_dc_position_score_vec(npz, n, is_long, result, current_price, use_ltf)
     result, research_masks = apply_research_score_vec(npz, n, is_long, cfg, result, current_price, is_exit)
     masks = {"KNIFE_PENALTY": knife}
     masks.update(gain_masks)

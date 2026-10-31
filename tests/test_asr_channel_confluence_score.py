@@ -44,7 +44,7 @@ def test_channel_confluence_matches_pre_edit_native_ast_and_numpy():
     arrays = {key: np.asarray([row.get(key, 0.0) for row in rows]) for key in set().union(*(row.keys() for row in rows))}
     for is_long in (True, False):
         scores = np.linspace(-3.0, 7.0, len(rows))
-        vector, masks = apply_channel_confluence_vec(arrays, len(rows), is_long, scores, arrays["close"])
+        vector, masks = apply_channel_confluence_vec(arrays, len(rows), is_long, scores, arrays["close"], use_ltf=True)
         for index, row in enumerate(rows):
             values = {"score": scores[index], "is_long": is_long, "current_price": row["close"], "ind": row,
                       "safe_fetch_float": safe_fetch_float, "reasons": [],

@@ -6,6 +6,8 @@ from typing import Any
 
 import numpy as np
 
+from vec_decisions.asr_input_adapter import paired_npz_view
+
 
 def _cfg(cfg: Any, name: str, default: Any) -> Any:
     return cfg.get(name, default) if isinstance(cfg, Mapping) else getattr(cfg, name, default)
@@ -138,6 +140,7 @@ def apply_research_score_vec(npz, n, is_long, cfg, score=None, current_price=Non
     result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).copy()
     if result.shape != (n,):
         raise ValueError("score must have shape (n,)")
+    npz = paired_npz_view(npz, bool(_cfg(cfg, "USE_1M_3M_SIGNALS_ENABLED", False)))
     if is_exit:
         return result, {}
     px = _column(npz, "close", n, 0.0) if current_price is None else _as_column(current_price, n, 0.0)

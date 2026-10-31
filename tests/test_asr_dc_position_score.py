@@ -40,7 +40,7 @@ def test_dc_position_score_matches_native_ast_reason_order_both_sides():
         {},
     ))
     for is_long in (True, False):
-        vector, _ = apply_dc_position_score_vec(_arrays(rows), len(rows), is_long, score=np.full(len(rows), 1.25), current_price=np.full(len(rows), 110.0))
+        vector, _ = apply_dc_position_score_vec(_arrays(rows), len(rows), is_long, score=np.full(len(rows), 1.25), current_price=np.full(len(rows), 110.0), use_ltf=True)
         for i, row in enumerate(rows):
             env = {"score": 1.25, "reasons": [], "ind": row, "current_price": 110.0, "is_long": is_long}
             for tf in ("3m", "15m", "1h", "4h", "D"):
@@ -56,5 +56,5 @@ def test_dc_position_score_matches_native_ast_reason_order_both_sides():
 def test_dc_position_score_preserves_score_and_nan_clamp_behavior():
     row = {"dc_low_3m": 100.0, "dc_high_3m": 200.0, "dc_low_15m": 100.0, "dc_high_15m": np.nan}
     scalar, _ = apply_dc_position_score_scalar(0, [], row, 110, True)
-    vector, _ = apply_dc_position_score_vec(_arrays([row]), 1, True, current_price=np.array([110]))
+    vector, _ = apply_dc_position_score_vec(_arrays([row]), 1, True, current_price=np.array([110]), use_ltf=True)
     assert vector[0] == scalar
