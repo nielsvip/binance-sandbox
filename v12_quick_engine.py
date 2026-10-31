@@ -20405,7 +20405,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 fire = True  # WIRING LANE E: morning rebuy bypasses signal vetoes above (live: queued OPEN, not a signal; order guards below still apply)
             if fire and _ang_timing_failed is not None and bool(_ang_timing_failed[i]):
                 fire = False  # live execute_now ANG timing HOLD applies to every OPEN and REENTRY
-            if fire and is_tradier and has_closed_before and not entry_sig[i] and not _ordinary_lr_flat_claim:
+            if fire and is_tradier and has_closed_before and not entry_sig[i]:
                 _csg_mask = None
                 for _mask_name, _mask_value in zip(_entry_filter_mask_names, _entry_filter_masks):
                     if _mask_name == "CIRCUIT_SHARPE_GATES_FILTER_TF":
@@ -20416,7 +20416,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     is_tradier,
                     has_closed_before,
                     bool(entry_sig[i]),
-                    _ordinary_lr_flat_claim,
                     getattr(cfg, "CIRCUIT_SHARPE_GATES_FILTER_TF", "OFF"),
                     _csg_mask,
                     i,

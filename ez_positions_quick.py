@@ -7547,7 +7547,7 @@ class AdvancedSignalRater:
             # (ez_manage.py MANDATORY PROFIT TAKE). _sw_get precedence ==
             # _psym_get (per-sym > cat_side > config); config global is now
             # False so absent-sym boards stop here too. ROLLBACK: drop `and ...`.
-            if pnl_pct > 0.5 and bool(_sw_get(symbol, side, "MOMENTUM_TP_ENABLED", True)):
+            if pnl_pct > 0.5 and bool(_sw_get(symbol, position_side, "MOMENTUM_TP_ENABLED", True)):
                 if is_long and k_15m > 90 and k_15m < k_15m_prev:
                     return (
                         -10.0,

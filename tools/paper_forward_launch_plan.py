@@ -7,11 +7,15 @@ import tempfile
 from pathlib import Path
 
 try:
-    from .paper_forward_lab import build_plan
+    from .paper_forward_lab import utc_now
+    from .paper_scenario_catalog import inventory
+    from .paper_fleet_budget import stable_host
     from .paper_inventory import digest, ingest_plan
     from .paper_scenario_db import ScenarioDB
 except ImportError:
-    from paper_forward_lab import build_plan
+    from paper_forward_lab import utc_now
+    from paper_scenario_catalog import inventory
+    from paper_fleet_budget import stable_host
     from paper_inventory import digest, ingest_plan
     from paper_scenario_db import ScenarioDB
 
@@ -27,16 +31,32 @@ def write_once(path, value):
 
 def build(root):
     root = Path(root)
-    plan = build_plan(root)
-    with sqlite3.connect((root / "data/hourly_reconfig/per_sym_store.db").resolve().as_uri() + "?mode=ro", uri=True) as source:
+    catalog = inventory(root)
+    database = root / "data/hourly_reconfig/per_sym_store.db"
+    groups, missing = [], []
+    with sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True) as source:
         source.execute("BEGIN")
-        for group in plan["groups"]:
-            row = source.execute("SELECT full_config_json FROM per_sym_active WHERE sym_side=?", (group["sym_side"],)).fetchone()
-            settings = json.loads(row[0]) if row else None
-            if digest(settings) != group["settings_sha256"]:
-                raise RuntimeError("settings changed during export; rebuild the plan")
-            group["effective_settings"] = settings
-    return plan
+        rows = source.execute("SELECT sym_side,cat_side,updated_at,full_config_json FROM per_sym_active ORDER BY sym_side").fetchall()
+        universe = [row[0] for row in rows]
+        for sym_side, cat_side, updated_at, raw in rows:
+            if not isinstance(sym_side, str) or "_" not in sym_side or sym_side.rsplit("_", 1)[1] not in ("LONG", "SHORT"):
+                missing.append({"sym_side": str(sym_side), "reason": "INVALID_SYM_SIDE"})
+                continue
+            symbol, side = sym_side.rsplit("_", 1)
+            venue = {"CRYPTO_LONG": "crypto", "CRYPTO_SHORT": "crypto", "STOCKS_LONG": "stocks", "STOCKS_SHORT": "stocks"}.get(cat_side)
+            if venue is None or not cat_side.endswith("_" + side):
+                missing.append({"sym_side": sym_side, "reason": "INVALID_CAT_SIDE"})
+                continue
+            settings = json.loads(raw) if raw else None
+            if not isinstance(settings, dict) or not settings:
+                missing.append({"sym_side": sym_side, "reason": "EMPTY_ACTIVE_SETTINGS"})
+                continue
+            settings_hash = digest(settings)
+            selected = [item["scenario_id"] for item in catalog["scenarios"] if item["venue"] == venue and item["side"] == side]
+            groups.append({"sym_side": sym_side, "venue": venue, "side": side, "host": stable_host(venue, symbol, side), "settings_updated_at": updated_at, "settings_sha256": settings_hash, "effective_settings": settings, "scenario_ids": selected, "scenario_count": len(selected), "status": "AWAITING_ADMISSION", "epoch_id": digest({"sym_side": sym_side, "settings": settings_hash, "sources": catalog["file_sha256"]})})
+    allowed = json.loads((root / "data/v15_best_first.json").read_text())["allowed"]
+    missing.extend({"sym_side": symbol, "reason": "NO_ACTIVE_SETTINGS"} for symbol in sorted(set(allowed) - set(universe)))
+    return {"schema_version": 1, "planned_at": utc_now(), "status": "PLAN_ONLY", "running_scenarios": 0, "promotion_enabled": False, "catalog": catalog, "universe_sha256": digest(universe), "universe_source": str(database) + "#per_sym_active/all", "settings_source": str(database), "groups": groups, "uncovered": missing}
 
 def export(plan, destination, remote_root, engine_root):
     destination = Path(destination)
@@ -65,7 +85,7 @@ def export(plan, destination, remote_root, engine_root):
                     native = sorted({entry for entry in ("1m", "3m", "5m") if ("_" + entry + "_") in ("_" + str(parameters["catalog"].get("switch") or "").lower() + "_")})
                     timeframe = "1m"
                     launchable = row["status"] != "PENDING_PARAMETERS"
-                    spec = {"schema_version": 1, "run_id": run_id, "epoch_id": group["epoch_id"], "scenario_id": row["scenario_id"], "planned_run_id": row["run_id"], "sym_side": group["sym_side"], "venue": group["venue"], "host": host, "plan_code_hash": code_hash, "parent_settings_sha256": base_hash, "full_settings": str(remote_batch / host / "inputs/settings" / (base_hash + ".json")), "candidate_overrides": str(remote_batch / host / "inputs/overrides" / (override_hash + ".json")), "registered_candidate_overrides": overrides, "paper_mask_release": sorted(overrides), "experiment_context": "isolated_all_blanket_paths_blocked_except_candidate_v1", "engine_root": str(engine_root), "frame_timeframe": timeframe, "required_timeframes": sorted(set([timeframe] + native)), "poll_seconds": 10, "max_age_seconds": 120, "launchable": launchable, "pending_reason": None if launchable else "PENDING_PARAMETER_VALUES", "snapshot": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".json")), "receipt": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".receipt.json"))}
+                    spec = {"schema_version": 1, "run_id": run_id, "epoch_id": group["epoch_id"], "scenario_id": row["scenario_id"], "planned_run_id": row["run_id"], "sym_side": group["sym_side"], "venue": group["venue"], "host": host, "plan_code_hash": code_hash, "parent_settings_sha256": base_hash, "full_settings": str(remote_batch / host / "inputs/settings" / (base_hash + ".json")), "candidate_overrides": str(remote_batch / host / "inputs/overrides" / (override_hash + ".json")), "registered_candidate_overrides": overrides, "paper_mask_release": sorted(overrides), "experiment_context": {"name": "isolated_all_blanket_paths_blocked_except_candidate_v1", "release_nonvectorizable": True, "release_sub15m": True}, "engine_root": str(engine_root), "frame_timeframe": timeframe, "required_timeframes": sorted(set([timeframe] + native)), "poll_seconds": 10, "max_age_seconds": 120, "launchable": launchable, "pending_reason": None if launchable else "PENDING_PARAMETER_VALUES", "snapshot": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".json")), "receipt": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".receipt.json"))}
                     filename = run_id + ".json"
                     write_once(batch / host / "specs" / filename, spec)
                     jobs[host].append({"spec_file": filename, **{key: spec[key] for key in ("run_id", "epoch_id", "scenario_id", "sym_side", "venue", "host")}})

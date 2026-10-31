@@ -33,10 +33,16 @@ def evaluate_fork_worker(prepared, settings, window_days, capture):
     settings_id = priority.evidence.guard.fingerprint(settings)
     path = directory / (settings_id + '_' + uuid.uuid4().hex + '.json')
     payload = json.dumps(record, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
-    with path.open('xb') as stream:
-        stream.write(payload)
-        stream.flush()
-        os.fsync(stream.fileno())
+    if capture.get('proof_encoding')=='cas-v1':
+        from tools import v15_nextgen_proof_store as store
+        envelope=store.pack_payload(payload,store.digest(payload),capture['baseline_configs'],directory)
+        capture['last_proof_source']=dict(envelope,encoding='cas-v1',raw_sha256=store.digest(payload),store_directory=str(directory))
+    else:
+        with path.open('xb') as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        capture['last_proof_source']=dict(path=str(path),sha256=priority.evidence.sha(path),encoding='raw-json')
     return result
 
 

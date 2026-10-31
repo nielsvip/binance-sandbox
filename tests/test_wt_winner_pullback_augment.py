@@ -1,3 +1,6 @@
+import ast
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -203,3 +206,122 @@ def test_wt_winner_augment_switch_is_crypto_only_even_if_set_true_for_tradier():
     disabled_ledger = run(False)["ledger"]
     assert enabled_ledger == disabled_ledger
     assert not any("WINNER_WT_AUGMENT" in str(row.get("reason", "")) or "BOUNCE_AUGMENT" in str(row.get("reason", "")) for row in enabled_ledger)
+
+
+def test_simulate_one_books_bounce_family_after_peak_pullback():
+    n = 4
+    prices = np.array([100.0, 103.0, 102.2, 102.2])
+    data = {
+        "timestamps": np.arange(n, dtype=float) * 900.0 + 1700000000.0,
+        "close": prices.copy(), "close_15m": prices.copy(),
+        "open_15m": prices.copy(), "high_15m": prices.copy(), "low_15m": prices.copy(),
+        "wt1_3m": np.array([0.0, 0.0, 2.0, 2.0]),
+        "wt2_3m": np.array([1.0, 1.0, 1.0, 1.0]),
+        "wt1_15m": np.array([0.0, 0.0, 2.0, 2.0]),
+        "wt2_15m": np.array([1.0, 1.0, 1.0, 1.0]),
+        "wt1_1h": np.ones(n), "wt2_1h": np.zeros(n),
+        "wt1_4h": np.ones(n), "wt2_4h": np.zeros(n),
+        "wt1_D": np.ones(n), "wt2_D": np.zeros(n),
+        "wt_trough_structure_15m": np.zeros(n), "wt_peak_structure_15m": np.zeros(n),
+        "dc_low_15m": np.full(n, 80.0), "dc_high_15m": np.full(n, 120.0),
+        "dc_low_4h": np.full(n, 70.0), "dc_high_4h": np.full(n, 130.0),
+    }
+    cfg = v12.QuickConfig()
+    cfg.apply_cat_side_defaults("CRYPTO_LONG")
+    cfg.MODE = "crypto"
+    cfg.BASE_TF = "15m"
+    cfg.START_POSITION_SIZE = 500.0
+    cfg.COOLDOWN_BARS = 0
+    cfg.MIN_HOLD_BARS = 0
+    cfg.MIN_GAIN = 3.0
+    cfg.USE_1M_3M_SIGNALS_ENABLED = True
+    cfg.WT_WINNER_PULLBACK_AUGMENT_ENABLED = True
+    cfg.HTF_DIRECTION_GATE_ENABLED = False
+    cfg.HTF_GATE_APPLY_TO_AUGMENT = False
+    cfg.STRUCTURAL_RANGE_SHIFT_EXIT = False
+    cfg.LIVE_EXIT_CHAIN_ENABLED = False
+    cfg.STOP_LOSS_ENABLED = False
+    cfg.NOLOSS_ENABLED = False
+    cfg.PROFIT_TARGET_ENABLED = False
+    cfg.PEAK_GIVEBACK_PROTECTION_ENABLED = False
+    cfg.AUGMENTED_DC_BREAK_ENABLED = False
+    cfg.BOUNCE_AUGMENT_ENABLED = False
+    cfg.PYRAMID_ENABLED = False
+    cfg.WT_CROSS_EXIT_ENABLED = False
+    cfg.ULTIMATE_DC_HARD_STOP_ENABLED = False
+    cfg.PPL_ENABLED = False
+    cfg.PARTIAL_PROFIT_LOCK_ENABLED = False
+    cfg.CYCLE_TP_TIERED_ENABLED = False
+    cfg.QUICK_CYCLE_TP_ENABLED = False
+    cfg.HAIKU_WINNER_AUGMENT_ENABLED = False
+    cfg._PARITY_PREFIX_EVAL = True
+    result = v12.simulate_one(data, "WT_BOUNCE_AUG_TEST", True, cfg, force_initial_seed=True)
+    bounces = [row for row in result["ledger"] if row.get("type") == "AUGMENT" and "BOUNCE_AUGMENT" in row.get("reason", "")]
+    assert bounces
+    assert bounces[0]["bar"] == 2
+    assert 1.5 <= float(bounces[0]["reason"].split("_")[-1].rstrip("%")) < 3.0
+
+
+def test_simulate_one_wt_hard_source_is_not_limited_by_ladder_cooldown():
+    n = 24
+    prices = np.linspace(100.0, 125.0, n)
+    data = {
+        "timestamps": np.arange(n, dtype=float) * 900.0 + 1700000000.0,
+        "close": prices.copy(), "close_15m": prices.copy(),
+        "open_15m": prices.copy(), "high_15m": prices.copy(), "low_15m": prices.copy(),
+        "wt1_3m": np.full(n, 2.0), "wt2_3m": np.ones(n),
+        "wt1_15m": np.full(n, 2.0), "wt2_15m": np.ones(n),
+        "wt1_1h": np.ones(n), "wt2_1h": np.zeros(n),
+        "wt1_4h": np.ones(n), "wt2_4h": np.zeros(n),
+        "wt1_D": np.ones(n), "wt2_D": np.zeros(n),
+        "wt_trough_structure_15m": np.zeros(n), "wt_peak_structure_15m": np.zeros(n),
+        "dc_low_15m": np.full(n, 80.0), "dc_high_15m": np.full(n, 120.0),
+        "dc_low_4h": np.full(n, 70.0), "dc_high_4h": np.full(n, 130.0),
+    }
+    cfg = v12.QuickConfig()
+    cfg.apply_cat_side_defaults("CRYPTO_LONG")
+    cfg.MODE = "crypto"
+    cfg.BASE_TF = "15m"
+    cfg.START_POSITION_SIZE = 500.0
+    cfg.COOLDOWN_BARS = 0
+    cfg.MIN_HOLD_BARS = 0
+    cfg.MIN_GAIN = 3.0
+    cfg.USE_1M_3M_SIGNALS_ENABLED = True
+    cfg.WT_WINNER_PULLBACK_AUGMENT_ENABLED = True
+    cfg.HTF_DIRECTION_GATE_ENABLED = False
+    cfg.HTF_GATE_APPLY_TO_AUGMENT = False
+    cfg.STRUCTURAL_RANGE_SHIFT_EXIT = False
+    cfg.LIVE_EXIT_CHAIN_ENABLED = False
+    cfg.STOP_LOSS_ENABLED = False
+    cfg.NOLOSS_ENABLED = False
+    cfg.PROFIT_TARGET_ENABLED = False
+    cfg.PEAK_GIVEBACK_PROTECTION_ENABLED = False
+    cfg.AUGMENTED_DC_BREAK_ENABLED = False
+    cfg.BOUNCE_AUGMENT_ENABLED = False
+    cfg.PYRAMID_ENABLED = False
+    cfg.WT_CROSS_EXIT_ENABLED = False
+    cfg.ULTIMATE_DC_HARD_STOP_ENABLED = False
+    cfg.PPL_ENABLED = False
+    cfg.PARTIAL_PROFIT_LOCK_ENABLED = False
+    cfg.CYCLE_TP_TIERED_ENABLED = False
+    cfg.QUICK_CYCLE_TP_ENABLED = False
+    cfg.HAIKU_WINNER_AUGMENT_ENABLED = False
+    cfg._PARITY_PREFIX_EVAL = True
+    result = v12.simulate_one(data, "WT_REPEAT_AUG_TEST", True, cfg, force_initial_seed=True)
+    hard_wt = [row for row in result["ledger"] if row.get("type") == "AUGMENT" and "WINNER_WT_AUGMENT" in row.get("reason", "")]
+    assert len(hard_wt) > 1
+    assert all(b - a < 20 for a, b in zip([row["bar"] for row in hard_wt], [row["bar"] for row in hard_wt][1:]))
+
+
+def test_native_epq_source_is_switch_gated_and_uses_shared_producer():
+    source = Path("ez_positions_quick.py").read_text()
+    tree = ast.parse(source)
+    function = next(
+        node for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == "check_exit_candidates_for_account"
+    )
+    segment = ast.get_source_segment(source, function)
+    assert '"WT_WINNER_PULLBACK_AUGMENT_ENABLED"' in segment
+    assert "if not hard_exit_reason and _wt_aug_enabled:" in segment
+    assert "vec_decisions.wt_winner_pullback_augment" in segment
+    assert "_wt_aug_producer(" in segment

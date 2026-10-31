@@ -35,18 +35,17 @@ def _mask(npz, tf, is_long):
 )
 def test_active_circuit_filter_gates_tradier_reentry_both_sides(is_long, wt1, wt2, passes):
     mask = np.asarray([wt1 > wt2 if is_long else wt1 < wt2])
-    assert allows_stock_reentry(True, True, True, False, False, "1h", mask, 0) is passes
-    assert allows_stock_reentry(True, False, True, False, False, "1h", mask, 0)
-    assert allows_stock_reentry(True, True, False, False, False, "1h", mask, 0)
-    assert allows_stock_reentry(True, True, True, True, False, "1h", mask, 0)
-    assert allows_stock_reentry(True, True, True, False, True, "1h", mask, 0)
+    assert allows_stock_reentry(True, True, True, False, "1h", mask, 0) is passes
+    assert allows_stock_reentry(True, False, True, False, "1h", mask, 0)
+    assert allows_stock_reentry(True, True, False, False, "1h", mask, 0)
+    assert allows_stock_reentry(True, True, True, True, "1h", mask, 0)
 
 
 def test_filter_off_and_owner_inactive_leave_reentry_unchanged():
-    assert allows_stock_reentry(True, True, True, False, False, "OFF", None, 0)
-    assert allows_stock_reentry(True, True, True, False, False, "15m", np.asarray([False]), 0)
+    assert allows_stock_reentry(True, True, True, False, "OFF", None, 0)
+    assert allows_stock_reentry(True, True, True, False, "15m", np.asarray([False]), 0)
     # A missing native snapshot value is fail-open, matching the live final gate.
-    assert allows_stock_reentry(True, True, True, False, False, "1h", None, 0)
+    assert allows_stock_reentry(True, True, True, False, "1h", None, 0)
 
 
 FROZEN_AAPL = Path(
@@ -72,8 +71,8 @@ def test_frozen_aapl_completed_hour_bar_blocks_long_reentry(monkeypatch):
 
     def capture(*args):
         allowed = original(*args)
-        mask_value = None if args[6] is None else bool(args[6][args[7]])
-        calls.append((args[7], args[5], mask_value, allowed))
+        mask_value = None if args[5] is None else bool(args[5][args[6]])
+        calls.append((args[6], args[4], mask_value, allowed))
         return allowed
 
     monkeypatch.setattr(final_filter, "allows_stock_reentry", capture)
@@ -89,6 +88,14 @@ def test_frozen_aapl_completed_hour_bar_blocks_long_reentry(monkeypatch):
     assert canonical["wt1_1h"][target] == pytest.approx(store["wt1_1h"][native_row])
     assert canonical["wt2_1h"][target] == pytest.approx(store["wt2_1h"][native_row])
     assert canonical["wt1_1h"][target] < canonical["wt2_1h"][target]
+    from backtest_v8_harness import IndicatorStore
+    import tradier_filter_tf_twins
+
+    native_snapshot = IndicatorStore(str(FROZEN_AAPL)).build_indicator_dict(native_row)
+    native_reason = tradier_filter_tf_twins.wt_cross_side_block(
+        native_snapshot.get, True, "1h", "CIRCUIT_SHARPE_GATES_TF"
+    )
+    assert native_reason == "CIRCUIT_SHARPE_GATES_TF_1h_BLOCK(wt1=-6.7_wt2=-0.3)"
     assert any(
         int(canonical["timestamps"][index]) == target_ts
         and tf == "1h"

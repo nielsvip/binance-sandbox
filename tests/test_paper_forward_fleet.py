@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 
 from tools.paper_fleet_budget import stable_host
-from tools.paper_forward_fleet import _map_worker_status, coverage_summary, discover_specs, main, reconcile, resource_worker_limit, snapshot_state_database, SpecCache
+from tools.paper_forward_fleet import DEFAULT_MAX_WORKERS, DEFAULT_POLL_SECONDS, _map_worker_status, coverage_summary, discover_specs, main, reconcile, resource_worker_limit, snapshot_state_database, SpecCache
 
 
 def _symbol_for_host(host):
@@ -113,7 +113,8 @@ def test_spec_cache_avoids_unchanged_reads_and_invalidates_on_manifest_metadata(
 def test_pending_parameters_are_registered_but_never_assigned_a_worker(tmp_path):
     specs = tmp_path / "specs"
     symbol = _symbol_for_host("s1")
-    spec = dict(_spec(tmp_path, f"{symbol}_LONG", "unresolved"), launchable=False, pending_reason="PENDING_PARAMETER_VALUES")
+    spec = {"run_id": "run-unresolved", "epoch_id": "epoch-unresolved", "scenario_id": "unresolved", "sym_side": f"{symbol}_LONG",
+            "venue": "crypto", "host": "s1", "launchable": False, "pending_reason": "PENDING_PARAMETER_VALUES"}
     _write_specs(specs, {"job.json": spec})
 
     row = discover_specs(specs)[0]
@@ -177,6 +178,8 @@ def test_once_persists_all_jobs_and_launches_only_bounded_worker(tmp_path):
     assert "--follow" in launched[0]
     assert "--manifest" in launched[0]
     assert "--engine-root" in launched[0]
+    engine_index = launched[0].index("--engine-root") + 1
+    assert launched[0][engine_index] == str((root / "runtime").resolve())
     assert all_count == 3
     assert waiting == 2
     assert heartbeat == "IDLE"
@@ -298,10 +301,10 @@ def test_cli_once_and_dry_run_are_bounded(tmp_path, monkeypatch, capsys):
     assert once_result["status_counts"]["RESOURCE_BLOCKED"] == 1
 
 
-def test_database_snapshot_is_atomic_and_reports_per_host_coverage(tmp_path):
+def test_database_snapshot_is_atomic_and_reports_per_host_coverage(tmp_path, capsys):
     specs = tmp_path / "specs"
-    symbol = _symbol_for_host("s1")
-    rows = {f"scenario-{number}.json": _spec(tmp_path, f"{symbol}_LONG", f"coverage-{number}") for number in range(2)}
+    symbols = {host: _symbol_for_host(host) for host in ("s1", "s2")}
+    rows = {f"{host}-{number}.json": _spec(tmp_path, f"{symbols[host]}_LONG", f"coverage-{host}-{number}") for host in ("s1", "s2") for number in range(2)}
     _write_specs(specs, rows)
     root = tmp_path
     (root / "data").mkdir()
@@ -316,6 +319,19 @@ def test_database_snapshot_is_atomic_and_reports_per_host_coverage(tmp_path):
     assert destination.is_file()
     assert len(result["snapshot_sha256"]) == 64
     assert result["coverage"]["by_host"]["s1"]["jobs"] == 2
-    assert coverage["total_jobs"] == 2
+    assert result["coverage"]["by_host"]["s2"]["jobs"] == 2
+    assert coverage["total_jobs"] == 4
     assert coverage["by_host"]["s1"]["sym_sides"] == 1
+    assert coverage["by_host"]["s2"]["sym_sides"] == 1
     assert coverage["by_host"]["s1"]["statuses"] == {"RESOURCE_BLOCKED": 2}
+    assert coverage["by_host"]["s2"]["statuses"] == {"ASSIGNED_OTHER_HOST": 2}
+    cli_destination = tmp_path / "upload" / "fleet_cli_snapshot.sqlite3"
+    assert main(["--state-db", str(db), "--snapshot-to", str(cli_destination)]) == 0
+    cli_result = json.loads(capsys.readouterr().out)
+    assert cli_destination.is_file()
+    assert cli_result["coverage"]["total_jobs"] == 4
+
+
+def test_coordinator_defaults_allow_configured_ceiling_with_safe_polling():
+    assert DEFAULT_MAX_WORKERS == 64
+    assert DEFAULT_POLL_SECONDS == 60

@@ -10,7 +10,7 @@ import hashlib
 import json
 import sqlite3
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -32,6 +32,17 @@ def _digest(value: Any) -> str:
 
 def _utc(ts: float) -> str:
     return datetime.fromtimestamp(ts, timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
+
+
+def _terminal_recorded_at(manifest: Mapping[str, Any], last_receipt: Mapping[str, Any]) -> str:
+    candidates = [str(value) for value in (manifest.get("ended_at"), last_receipt.get("observed_at_utc"), _utc(last_receipt["ts"])) if value]
+    parsed = []
+    for value in candidates:
+        stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if stamp.tzinfo is None:
+            raise ValueError("terminal status timestamps must include timezone")
+        parsed.append(stamp.astimezone(timezone.utc))
+    return (max(parsed) + timedelta(microseconds=1)).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
 def _journal(path: str | Path) -> tuple[dict, list[dict]]:
@@ -168,7 +179,8 @@ def _lifecycle(db: ScenarioDB, run_id: str, receipts: list[dict]) -> int:
             qty = event.get("executed_qty", event.get("quantity"))
             price = event.get("price")
             try:
-                valid_execution = event_type in {"eta", "eta_real", "webhook", "exec_now"} and float(qty) > 0 and float(price) > 0
+                verified_sink_shape = event_type in {"eta", "eta_real", "webhook", "exec_now"} or (not event_type and isinstance(event.get("params"), Mapping))
+                valid_execution = verified_sink_shape and float(qty) > 0 and float(price) > 0
             except (TypeError, ValueError):
                 valid_execution = False
             if not valid_execution or not key:
@@ -207,24 +219,30 @@ def ingest(db: ScenarioDB, journal_path: str | Path, manifest: Mapping[str, Any]
         if not receipts:
             if is_terminal and terminal_status != "FAILED":
                 raise ValueError("finished worker manifest has no committed receipts")
-            return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": 0, "execution_events": 0, "completed_lifecycles": 0, "status": "WAITING_FOR_RECEIPTS", "evidence_kind": "independent_forward"}
+            return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": 0, "execution_events": 0, "decision_rows": 0, "completed_lifecycles": 0, "status": "WAITING_FOR_RECEIPTS", "evidence_kind": "independent_forward"}
         if terminal_status in {"COMPLETED", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT"} and _journal_frame_count(journal_path) != len(receipts):
             raise ValueError("finished worker manifest has incomplete frame receipts")
         sink = PaperSQLSink(db, str(manifest["run_id"]))
-        inserted = 0
+        decision_rows = 0
+        raw_events = 0
         for row in receipts:
-            ids = sink.record_step(_utc(row["ts"]), row["receipt"])
-            inserted += len(ids)
+            source_ts = _utc(row["ts"])
+            if row["receipt"]["events"]:
+                ids = sink.record_step(source_ts, row["receipt"])
+                decision_rows += len(ids)
+                raw_events += len(row["receipt"]["events"])
+            else:
+                db.add_forward_receipt(receipt_id=sink._receipt_id(str(manifest["run_id"]), source_ts), run_id=str(manifest["run_id"]), source_ts=source_ts, payload=row["receipt"])
             status_id = "paper-heartbeat-" + _digest([manifest["run_id"], row["sequence"], row["receipt_hash"]])
             db.add_run_status(event_id=status_id, run_id=manifest["run_id"], recorded_at=str(row.get("observed_at_utc") or _utc(row["ts"])), status="RUNNING",
                               detail={"epoch_id": manifest["epoch_id"], "sequence": row["sequence"], "source_ts": _utc(row["ts"]), "receipt_hash": row["receipt_hash"]})
         completed = _lifecycle(db, str(manifest["run_id"]), receipts)
         if is_terminal:
             status_id = "paper-finished-" + _digest([manifest["run_id"], terminal_status, receipts[-1]["receipt_hash"]])
-            completion_time = str(manifest.get("ended_at") or _utc(receipts[-1]["ts"] + 0.000001))
+            completion_time = _terminal_recorded_at(manifest, receipts[-1])
             db.add_run_status(event_id=status_id, run_id=manifest["run_id"], recorded_at=completion_time, status=terminal_status,
                               detail={"epoch_id": manifest["epoch_id"], "receipts": len(receipts), "source_end": _utc(receipts[-1]["ts"]), "reason": manifest.get("reason")})
-    return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": len(receipts), "execution_events": inserted, "completed_lifecycles": completed, "status": terminal_status if is_terminal else "RUNNING", "evidence_kind": "independent_forward"}
+    return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": len(receipts), "execution_events": raw_events, "decision_rows": decision_rows, "completed_lifecycles": completed, "status": terminal_status if is_terminal else "RUNNING", "evidence_kind": "independent_forward"}
 
 
 def _journal_frame_count(path: str | Path) -> int:

@@ -55,6 +55,57 @@ def _atomic_json(path, payload):
     os.replace(temp, path)
 
 
+def build_effective_settings(settings, candidate, nonvec_keys, sub15m_blocked, experiment_context, release_keys, mode, mask_fallbacks=None):
+    release = set(release_keys)
+    if release - set(candidate):
+        raise ValueError("paper_mask_release may name candidate override keys only")
+    if release and (not isinstance(experiment_context, dict) or not experiment_context):
+        raise ValueError("paper_mask_release requires a shared nonempty experiment_context")
+    release_nonvec = experiment_context.get("release_nonvectorizable", False)
+    release_sub15m = experiment_context.get("release_sub15m", False)
+    if not isinstance(release_nonvec, bool) or not isinstance(release_sub15m, bool):
+        raise ValueError("experiment_context release flags must be booleans")
+    blocked_nonvec = {}
+    mask_fallbacks = mask_fallbacks or {}
+    for key in nonvec_keys:
+        current = settings.get(key, mask_fallbacks.get(key))
+        if isinstance(current, bool):
+            blocked_nonvec[key] = False
+        elif isinstance(current, str) and key.endswith("_TF"):
+            blocked_nonvec[key] = "None"
+        elif isinstance(current, (list, tuple, set, frozenset)):
+            blocked_nonvec[key] = type(current)()
+        elif current is None and key.endswith("_ENABLED"):
+            blocked_nonvec[key] = False
+        elif current is None and key.endswith("_ACCOUNTS"):
+            blocked_nonvec[key] = []
+        else:
+            raise ValueError(f"no known blocked baseline value for nonvectorizable knob {key}")
+    blocked_guarded = {**blocked_nonvec, **sub15m_blocked}
+    release_required = {key for key, value in candidate.items() if key in blocked_guarded and value != blocked_guarded[key]}
+    if release_required - release:
+        raise ValueError("candidate differs from blocked baseline without explicit paper_mask_release: " + ", ".join(sorted(release_required - release)))
+    if release - (set(nonvec_keys) | set(sub15m_blocked)):
+        raise ValueError("paper_mask_release includes a key outside the venue masks")
+    mask_master_keys = {"PARITY_DISABLE_NON_VECTORIZABLE", "V12_PARITY_DISABLE_NON_VECTORIZABLE", "TRC_PARITY_DISABLE_NON_VECTORIZABLE", "LTF_SUB15M_TRADING_ENABLED", "TRADIER_LTF_SUB15M_TRADING_ENABLED"}
+    if any(candidate.get(key) is True for key in mask_master_keys):
+        raise ValueError("candidate may not override paper isolation mask masters")
+    isolation_overrides = dict(blocked_nonvec)
+    isolation_overrides.update(sub15m_blocked)
+    paper_mask_release = {
+        "PARITY_DISABLE_NON_VECTORIZABLE": not release_nonvec,
+        "V12_PARITY_DISABLE_NON_VECTORIZABLE": not release_nonvec,
+        "LTF_SUB15M_TRADING_ENABLED": release_sub15m,
+    }
+    if mode == "stocks":
+        paper_mask_release["TRC_PARITY_DISABLE_NON_VECTORIZABLE"] = not release_nonvec
+    effective = dict(settings)
+    effective.update(isolation_overrides)
+    effective.update(paper_mask_release)
+    effective.update(candidate)
+    return effective, isolation_overrides, paper_mask_release
+
+
 class ContinuousJournalForwardSession(JournalForwardSession):
     """Replay the durable journal, then append distinct fresh source frames."""
 
@@ -267,7 +318,7 @@ import signal
 from datetime import datetime, timezone
 from pathlib import Path
 from tools.paper_worker_isolation import install, require_installed
-from tools.paper_forward_worker import ContinuousJournalForwardSession, _atomic_json
+from tools.paper_forward_worker import ContinuousJournalForwardSession, _atomic_json, build_effective_settings
 from tools.paper_frame_stream import FrameJournal
 from tools.paper_snapshot_store import PaperSnapshotStore
 
@@ -298,8 +349,6 @@ import ez_manage
 import tradier_manage
 
 release = set(manifest.get("paper_mask_release", []))
-if release - set(candidate):
-    raise RuntimeError("paper_mask_release may name candidate override keys only")
 if mode == "crypto":
     nonvec_keys = set(ez_manage._NON_VEC_KNOBS_EZ)
     sub15m_blocked = dict(ez_manage.SUB15M_BLOCKED_SWITCHES)
@@ -307,56 +356,18 @@ else:
     nonvec_keys = set(getattr(stock_config.TradierConfig, "PARITY_NON_VECTORIZABLE_SWITCHES", ()))
     sub15m_blocked = dict(tradier_manage.SUB15M_BLOCKED_SWITCHES)
 experiment_context = manifest.get("experiment_context", {})
-if release and (not isinstance(experiment_context, dict) or not experiment_context):
-    raise RuntimeError("paper_mask_release requires a shared nonempty experiment_context")
-nonvec_release = bool(release & nonvec_keys)
-sub15m_release = bool(release & set(sub15m_blocked))
-isolation_overrides = {}
-blocked_nonvec = {}
+mask_fallbacks = {}
 for key in nonvec_keys:
-    current = settings.get(key, getattr(crypto_config.Config, key, getattr(stock_config.TradierConfig, key, None)))
-    if isinstance(current, bool):
-        blocked_nonvec[key] = False
-    elif isinstance(current, str) and key.endswith("_TF"):
-        blocked_nonvec[key] = "None"
-    elif isinstance(current, (list, tuple, set, frozenset)):
-        blocked_nonvec[key] = type(current)()
-    elif current is None and key.endswith("_ENABLED"):
-        blocked_nonvec[key] = False
-    elif current is None and key.endswith("_ACCOUNTS"):
-        blocked_nonvec[key] = []
-    else:
-        raise RuntimeError(f"no known blocked baseline value for nonvectorizable knob {key}")
-    if key not in release:
-        isolation_overrides[key] = blocked_nonvec[key]
-for key, blocked_value in sub15m_blocked.items():
-    if key not in release:
-        isolation_overrides[key] = blocked_value
-blocked_guarded = {**blocked_nonvec, **sub15m_blocked}
-release_required = {key for key, value in candidate.items() if key in blocked_guarded and value != blocked_guarded[key]}
-if release_required - release:
-    raise RuntimeError("candidate differs from blocked baseline without explicit paper_mask_release: " + ", ".join(sorted(release_required - release)))
-mask_master_keys = {"PARITY_DISABLE_NON_VECTORIZABLE", "V12_PARITY_DISABLE_NON_VECTORIZABLE", "TRC_PARITY_DISABLE_NON_VECTORIZABLE", "LTF_SUB15M_TRADING_ENABLED", "TRADIER_LTF_SUB15M_TRADING_ENABLED"}
-if any(candidate.get(key) is True for key in mask_master_keys):
-    raise RuntimeError("candidate may not override paper isolation mask masters")
-paper_mask_release = {}
-if release:
-    paper_mask_release.update(PARITY_DISABLE_NON_VECTORIZABLE=False, V12_PARITY_DISABLE_NON_VECTORIZABLE=False)
-else:
-    isolation_overrides.update(PARITY_DISABLE_NON_VECTORIZABLE=True, V12_PARITY_DISABLE_NON_VECTORIZABLE=True)
-if mode == "stocks":
-    if release:
-        paper_mask_release["TRC_PARITY_DISABLE_NON_VECTORIZABLE"] = False
-    else:
-        isolation_overrides["TRC_PARITY_DISABLE_NON_VECTORIZABLE"] = True
-if sub15m_release:
-    paper_mask_release["LTF_SUB15M_TRADING_ENABLED"] = True
-else:
-    isolation_overrides["LTF_SUB15M_TRADING_ENABLED"] = False
-effective = dict(settings)
-effective.update(isolation_overrides)
-effective.update(paper_mask_release)
-effective.update(candidate)
+    fallback = getattr(crypto_config.Config, key, None) if mode == "crypto" else getattr(stock_config.TradierConfig, key, None)
+    if fallback is not None:
+        mask_fallbacks[key] = fallback
+try:
+    effective, isolation_overrides, paper_mask_release = build_effective_settings(
+        settings, candidate, nonvec_keys, sub15m_blocked, experiment_context,
+        release, mode, mask_fallbacks,
+    )
+except ValueError as exc:
+    raise RuntimeError(str(exc)) from exc
 
 code_path = Path(engine.__file__).resolve()
 if not code_path.is_relative_to(engine_root):
@@ -395,6 +406,8 @@ result_manifest = {
     "paper_mask_release": paper_mask_release, "context": {**manifest.get("context", {}), "experiment_context": manifest.get("experiment_context", {})},
     "candidate_getter_resolution": {}, "worker_isolation": require_installed(root),
     "engine_root": str(engine_root),
+    "promotion_eligible": False,
+    "source_time_semantics": "native source timeframe timestamp; observed_at_utc is separate; closed-bar status unverified",
     "effective_settings_file": effective_settings_path.name,
     "base_settings_file": base_settings_path.name,
     "finished": False, "status": "RUNNING",
@@ -526,17 +539,21 @@ def main(argv=None):
     parser.add_argument("--sym-side", required=True)
     parser.add_argument("--venue", required=True, choices=("crypto", "stocks"))
     parser.add_argument("--engine-root", type=Path)
+    parser.add_argument("--workspace-root", type=Path, default=ROOT)
     parser.add_argument("--snapshot", type=Path)
     parser.add_argument("--receipt", type=Path)
     parser.add_argument("--full-settings", type=Path)
     parser.add_argument("--candidate-overrides", type=Path)
     parser.add_argument("--run-dir", type=Path)
-    parser.add_argument("--output-root", type=Path, default=ROOT / "data" / "paper_forward_lab" / "runs")
+    parser.add_argument("--output-root", type=Path)
     parser.add_argument("--poll-seconds", type=float)
     parser.add_argument("--max-age-seconds", type=float)
     parser.add_argument("--account")
     parser.add_argument("--capital", type=float, default=10000)
     args = parser.parse_args(argv)
+    workspace_root = args.workspace_root.resolve()
+    if not workspace_root.is_dir() or workspace_root.is_symlink():
+        parser.error("workspace root must be a real directory")
     manifest = _read_json(args.manifest)
     if not isinstance(manifest, dict):
         parser.error("--manifest must contain a JSON object")
@@ -565,7 +582,7 @@ def main(argv=None):
     if not engine_root_value.is_absolute():
         engine_root_value = args.manifest.resolve().parent / engine_root_value
     engine_root = engine_root_value.resolve()
-    if engine_root.is_symlink() or not engine_root.is_relative_to(ROOT.resolve()) or not (engine_root / "backtest_v12_engine.py").is_file():
+    if engine_root.is_symlink() or not engine_root.is_relative_to(workspace_root) or not (engine_root / "backtest_v12_engine.py").is_file():
         parser.error("engine_root must be a real workspace directory containing backtest_v12_engine.py")
     full_settings = _read_json(full_settings_path)
     candidate = _read_json(candidate_path)
@@ -597,12 +614,12 @@ def main(argv=None):
     manifest["experiment_context"] = manifest.get("experiment_context", {})
     if manifest["paper_mask_release"] and (not isinstance(manifest["experiment_context"], dict) or not manifest["experiment_context"]):
         parser.error("nonempty paper_mask_release requires a shared experiment_context object")
-    output_root = args.output_root.resolve()
-    if not output_root.is_relative_to(ROOT.resolve()):
+    output_root = (args.output_root or workspace_root / "data" / "paper_forward_lab" / "runs").resolve()
+    if not output_root.is_relative_to(workspace_root):
         parser.error("output root must remain inside the repository workspace")
     output_root.mkdir(parents=True, exist_ok=True)
     run_dir = args.run_dir.resolve() if args.run_dir else output_root / (datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ") + "_" + uuid.uuid4().hex[:10])
-    if not run_dir.is_relative_to(ROOT.resolve()):
+    if not run_dir.is_relative_to(workspace_root):
         parser.error("run directory must remain inside the repository workspace")
     if run_dir.exists():
         if not run_dir.is_dir() or run_dir.is_symlink():
@@ -631,7 +648,7 @@ def main(argv=None):
     if not spec_path.exists():
         with spec_path.open("x", encoding="utf-8") as handle:
             handle.write(spec_bytes)
-    request = {"manifest": spec, "sym_side": args.sym_side, "symbol": symbol, "side": side, "mode": "crypto" if args.venue == "crypto" else "tradier", "full_settings": full_settings, "candidate_overrides": candidate, "engine_root": str(engine_root), "repo_root": str(ROOT.resolve()), "snapshot": str(Path(snapshot).resolve()), "receipt": str(Path(receipt).resolve()), "poll_seconds": poll_seconds, "max_age_seconds": max_age_seconds, "account": args.account or manifest.get("account", "ang" if args.venue == "crypto" else "trb"), "capital": args.capital}
+    request = {"manifest": spec, "sym_side": args.sym_side, "symbol": symbol, "side": side, "mode": "crypto" if args.venue == "crypto" else "tradier", "full_settings": full_settings, "candidate_overrides": candidate, "engine_root": str(engine_root), "repo_root": str(workspace_root), "snapshot": str(Path(snapshot).resolve()), "receipt": str(Path(receipt).resolve()), "poll_seconds": poll_seconds, "max_age_seconds": max_age_seconds, "account": args.account or manifest.get("account", "ang" if args.venue == "crypto" else "trb"), "capital": args.capital}
     request_path = run_dir / "request.json"
     request_bytes = json.dumps(request, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
     if request_path.exists() and request_path.read_text(encoding="utf-8") != request_bytes:
@@ -642,7 +659,7 @@ def main(argv=None):
     env = {key: value for key, value in os.environ.items() if not key.startswith(("V8_", "V12_", "PAPER_"))}
     env.update({"PYTHONHASHSEED": "0", "V8_HASHSEED_LOCKED": "1", "PYTHONDONTWRITEBYTECODE": "1", "V12_BASE_PATH": str(run_dir), "BASE_PATH": str(run_dir), "EZ_LOG_DIR": str(run_dir), "TRADIER_API_LOG_DIR": str(run_dir), "TMPDIR": str(run_dir), "PAPER_FORWARD_ISOLATED": "1", "V8_FORCE_REAL": "1", "V12_LIVE_ONLY_PRODUCERS": "1", "V8_RATE_GUARD_DISABLED": "1", "V8_MAX_WALL_SECS": "0", "V8_ISOLATE_SIDE": side, "V8_LADDER_ONLY_SIDE": side, "V8_SWEEP_MODE": "1", "V12_PARITY_REPORT_EVERY": "1000000", "FORWARD_AUTO_PROMOTE": "0", "PER_SYM_STORE_SQLITE_DISABLED": "0", "V12_RUN_ONE_SET_PRECEDENCE": "1"})
     with (run_dir / "worker.stdout.log").open("ab") as stdout_handle, (run_dir / "worker.stderr.log").open("ab") as stderr_handle:
-        process = subprocess.Popen([sys.executable, "-c", CHILD, str(run_dir)], cwd=ROOT, env=env, stdout=stdout_handle, stderr=stderr_handle, close_fds=True)
+        process = subprocess.Popen([sys.executable, "-c", CHILD, str(run_dir)], cwd=workspace_root, env=env, stdout=stdout_handle, stderr=stderr_handle, close_fds=True)
         try:
             returncode = process.wait()
         except KeyboardInterrupt:

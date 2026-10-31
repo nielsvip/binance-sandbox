@@ -4,6 +4,8 @@ import hashlib
 import json
 from pathlib import Path
 import zlib
+import os
+import uuid
 
 from tools import v15_nextgen_baseline_guard as guard
 
@@ -25,8 +27,16 @@ def put(directory, value):
         if zlib.decompress(path.read_bytes())!=payload:
             raise ValueError('existing content-addressed proof block differs')
     else:
-        with path.open('xb') as stream:
+        temporary=path.with_name(path.name+'.tmp_'+uuid.uuid4().hex)
+        with temporary.open('xb') as stream:
             stream.write(zlib.compress(payload,6))
+        try:
+            os.link(temporary,path)
+        except FileExistsError:
+            if zlib.decompress(path.read_bytes())!=payload:
+                raise ValueError('concurrent content-addressed block differs')
+        finally:
+            temporary.unlink()
     return dict(sha256=identity,bytes=len(payload))
 
 
@@ -41,6 +51,13 @@ def pack(raw_source, baseline_configs, directory):
     payload=Path(raw_source['path']).read_bytes()
     if digest(payload)!=raw_source['sha256']:
         raise ValueError('raw source proof changed')
+    return pack_payload(payload,raw_source['sha256'],baseline_configs,directory)
+
+
+def pack_payload(payload,raw_sha256,baseline_configs,directory):
+    raw_source={'sha256':raw_sha256}
+    if digest(payload)!=raw_sha256:
+        raise ValueError('raw proof payload identity differs')
     record=json.loads(payload)
     if record.get('schema')!='nextgen_actual_worker_measurement/1' or canonical(record)!=payload:
         raise ValueError('exact canonical raw worker format required for original byte-hash reconstruction')

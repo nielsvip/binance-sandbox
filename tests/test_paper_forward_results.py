@@ -23,7 +23,7 @@ def _fixture(tmp_path):
     journal.append_frame(100, {"close": 10})
     journal.record_receipt(100, {"events": [{"type": "eta", "action": "OPEN", "status": "FILLED", "position_key": "inf:BTCUSDC_LONG", "position_before": 0, "position_after": 2, "price": 10, "quantity": 2}], "positions": {"inf:BTCUSDC_LONG": {"quantity": 2}}})
     journal.append_frame(200, {"close": 12})
-    journal.record_receipt(200, {"events": [{"type": "webhook", "action": "CLOSE", "status": "FILLED", "position_key": "inf:BTCUSDC_LONG", "position_before": 2, "position_after": 0, "price": 12, "quantity": 2}], "positions": {"inf:BTCUSDC_LONG": {"quantity": 0}}})
+    journal.record_receipt(200, {"events": [{"params": {"type": "MARKET", "side": "SELL"}, "action": "CLOSE", "status": "FILLED", "position_key": "inf:BTCUSDC_LONG", "position_before": 2, "position_after": 0, "price": 12, "quantity": 2}], "positions": {"inf:BTCUSDC_LONG": {"quantity": 0}}})
     journal.close()
     return db, tmp_path / "worker.sqlite", manifest
 
@@ -115,4 +115,23 @@ def test_execution_without_verified_fill_does_not_create_trade(tmp_path):
     connection.close()
     ingest(db, journal, manifest)
     assert db.query("SELECT COUNT(*) FROM trades WHERE run_id='actual-run-1'")[0][0] == 0
+    db.close()
+
+
+def test_empty_receipt_keeps_snapshot_without_synthetic_action(tmp_path):
+    import sqlite3
+
+    db, journal, manifest = _fixture(tmp_path)
+    manifest["finished"] = False
+    connection = sqlite3.connect(journal)
+    for closed_ts in (100, 200):
+        receipt = {"events": [], "positions": {"inf:BTCUSDC_LONG": {"positionAmt": 0}}}
+        body = json.dumps(receipt, sort_keys=True, separators=(",", ":"))
+        connection.execute("UPDATE frames SET receipt_hash=?,receipt_json=? WHERE closed_ts=?", (hashlib.sha256(body.encode()).hexdigest(), body, closed_ts))
+    connection.commit()
+    connection.close()
+    result = ingest(db, journal, manifest)
+    assert result["execution_events"] == result["decision_rows"] == 0
+    assert db.query("SELECT COUNT(*) FROM forward_receipts WHERE run_id='actual-run-1'")[0][0] == 2
+    assert db.query("SELECT COUNT(*) FROM decisions WHERE run_id='actual-run-1'")[0][0] == 0
     db.close()

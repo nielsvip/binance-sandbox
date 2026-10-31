@@ -174,10 +174,16 @@ def discover_specs(specs_dir):
 
 
 def _validate_spec(spec):
+    _validate_identity(spec)
+    if "launchable" in spec and not isinstance(spec["launchable"], bool):
+        raise ValueError("launchable must be boolean")
+    if not spec.get("launchable", True):
+        if not isinstance(spec.get("pending_reason", "PENDING_PARAMETER_VALUES"), str):
+            raise ValueError("pending_reason must be a string")
+        return
     missing = [key for key in REQUIRED_SPEC_FIELDS if not isinstance(spec.get(key), str) or not spec[key].strip()]
     if missing:
         raise ValueError("missing required string fields: " + ", ".join(missing))
-    _validate_identity(spec)
     sym_side = spec["sym_side"]
     symbol, side = sym_side.rsplit("_", 1)
     venue = spec["venue"].lower()
@@ -189,10 +195,6 @@ def _validate_spec(spec):
         raise ValueError("full_settings and candidate_overrides paths are required")
     if not isinstance(spec.get("engine_root"), str) or not spec["engine_root"].strip():
         raise ValueError("engine_root path is required")
-    if "launchable" in spec and not isinstance(spec["launchable"], bool):
-        raise ValueError("launchable must be boolean")
-    if not spec.get("launchable", True) and not isinstance(spec.get("pending_reason", "PENDING_PARAMETER_VALUES"), str):
-        raise ValueError("pending_reason must be a string")
     release = spec.get("paper_mask_release", [])
     if not isinstance(release, list) or any(not isinstance(key, str) for key in release):
         raise ValueError("paper_mask_release must be a list of keys")
@@ -366,7 +368,7 @@ def _upsert_discovered(connection, rows, host, now):
             if prior and prior[1] != row["spec_sha256"]:
                 status = "SPEC_CHANGED"
                 row["error"] = "spec changed without a new run_id/epoch_id; refusing duplicate-epoch execution"
-        if old and old[3] and row.get("spec_sha256") and old[3] != row["spec_sha256"] and not ready_from_pending:
+        if old and old[3] and row.get("spec_sha256") and old[3] != row["spec_sha256"] and not was_pending:
             status = "SPEC_CHANGED"
             row["error"] = "spec changed without a new run_id/epoch_id; refusing duplicate-epoch execution"
         elif old and old[0] in {"STARTING", "RUNNING", "WAITING_FRESH_INPUT", "WAITING_FOR_CAPACITY", "RESOURCE_BLOCKED", "ASSIGNED_OTHER_HOST", "COMPLETED", "FAILED", "INTERRUPTED", "SPEC_CHANGED", "PENDING_PARAMETERS"} and not ready_from_pending:

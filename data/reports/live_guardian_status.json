@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T04:31:07Z",
+ "ts": "2026-10-31T04:36:28Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 1,
    "open_positions": 1,
-   "unrealised_usd": 0.0,
+   "unrealised_usd": -0.04,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 67,
    "open_positions": 12,
-   "unrealised_usd": 0.18,
+   "unrealised_usd": 0.24,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 129,
-   "open_positions": 18,
-   "unrealised_usd": -0.02,
+   "fills_6h": 131,
+   "open_positions": 17,
+   "unrealised_usd": 0.23,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -76,8 +76,8 @@
   },
   "inf": {
    "fills_6h": 9,
-   "open_positions": 2,
-   "unrealised_usd": -0.29,
+   "open_positions": 1,
+   "unrealised_usd": -0.08,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 40,
    "open_positions": 7,
-   "unrealised_usd": 0.1,
+   "unrealised_usd": 0.14,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,65 +127,72 @@
     "67204"
    ],
    "starts_30m": 1,
-   "log_age_s": 1918.0
+   "log_age_s": 2240.0
   },
   "men": {
    "pids": [
     "92430"
    ],
    "starts_30m": 1,
-   "log_age_s": 929.0
+   "log_age_s": 1250.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 16.0
   },
   "inf": {
    "pids": [
     "68362"
    ],
    "starts_30m": 1,
-   "log_age_s": 13.0
+   "log_age_s": -0.0
   },
   "flz": {
    "pids": [
     "78871"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 190.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 500.0
+   "log_age_s": 822.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 571.0
+   "log_age_s": 892.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T04:31:10Z",
+   "ts": "2026-10-31T04:36:32Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 1918s"
+   "evidence": "ez_manage_fin.log not written for 2240s"
   },
   {
-   "ts": "2026-10-31T04:31:10Z",
+   "ts": "2026-10-31T04:36:32Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 929s"
+   "evidence": "ez_manage_men.log not written for 1250s"
+  },
+  {
+   "ts": "2026-10-31T04:36:32Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 190s"
   }
  ],
  "alert_counts": {
-  "STALE_LOG": 2
+  "STALE_LOG": 3
  },
  "active_interventions": {
   "acct:trc": {
@@ -238,5 +245,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.6
+ "sweep_s": 4.25
 }

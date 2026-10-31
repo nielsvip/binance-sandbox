@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-31T04:30:13.861530+00:00",
+  "ts": "2026-10-31T04:35:14.248868+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 1,
-  "pending_sym_sides": 59,
+  "pending_sym_sides": 58,
   "hosts": {
     "s1": {
       "published_last_60m": 1,
@@ -12,10 +12,10 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 6777,
-      "disk_free_gb": 6,
-      "load1": 23.3,
-      "dispatch_idle_why": "mem 6707MB < 8500",
+      "mem_avail_mb": 7823,
+      "disk_free_gb": 5,
+      "load1": 12.4,
+      "dispatch_idle_why": "mem 7189MB < 8500",
       "published_ss": [
         "HOOD_LONG"
       ]
@@ -31,11 +31,11 @@
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:1/h<12 (idle_why=mem 6707MB < 8500)",
-    "DISK_FLOOR:s1:6GB<40",
+    "LOW_THROUGHPUT:s1:1/h<12 (idle_why=mem 7189MB < 8500)",
+    "DISK_FLOOR:s1:5GB<40",
     "UNREACHABLE:s2",
     "UNREACHABLE:s5",
     "UNREACHABLE:s6"
   ],
-  "repair": "DISK_REPAIR:s1:6GB->7G (eval_cache_v1.db + rebuild_scratch_* deleted)"
+  "repair": "DISK_REPAIR:s1:5GB->6G (eval_cache_v1.db + rebuild_scratch_* deleted)"
 }
