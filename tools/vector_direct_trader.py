@@ -410,6 +410,18 @@ def no_information(st) -> bool:
     return (not st.get("ok")) and st.get("reason") == "missing live settings" and st.get("src") == "missing_published_per_sym_row"
 
 
+def reconcile_terminal_lifecycle(state):
+    if not isinstance(state, dict) or not state.get("ok") or not state.get("open"):
+        return state
+    ledger = state.get("ledger")
+    if not isinstance(ledger, list):
+        return state
+    openings = [int(row.get("bar", row.get("bar_entry"))) for row in ledger if isinstance(row, dict) and row.get("type") in ("OPEN", "AUGMENT") and row.get("bar", row.get("bar_entry")) is not None]
+    endings = [int(row["bar_exit"]) for row in ledger if isinstance(row, dict) and row.get("type") == "REDUCE" and row.get("pnl_is_lifecycle") is True and not row.get("unrealised") and row.get("bar_exit") is not None]
+    if not openings or not endings or max(endings) < max(openings):
+        return state
+    return {**state, "open": False, "engine_qty": 0.0, "engine_open_qty": 0.0, "engine_open_bar_ts": None, "entry_bar": None, "entry_px": None, "consumer_state_repair": "recorded_terminal_reduction_closed_lifecycle"}
+
 def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_qty=None, wt15=None, noinfo_age=None, untradeable=None, untradeable_close=True, halted=None):
     """Orders that converge one account to the board. positions: {ss: {"qty": abs qty, "price": px}} read just now.
     prev_qty: {ss: broker qty observed BEFORE this bar closed} — an AUGMENT/REDUCE the broker already shows was done by
@@ -1144,7 +1156,7 @@ class Trader:
         for ss in sides:
             d = read_json(self.state_dir / f"{ss}.json")
             if isinstance(d, dict):
-                out[ss] = d
+                out[ss] = reconcile_terminal_lifecycle(d)
         return out
 
     def positions(self, acct):
@@ -1393,7 +1405,7 @@ class Trader:
             if ss not in states and float(p.get("qty") or 0) > 0 and getattr(self, "state_dir", None):
                 d = read_json(self.state_dir / f"{ss}.json")
                 if isinstance(d, dict):
-                    states[ss] = d
+                    states[ss] = reconcile_terminal_lifecycle(d)
         return states
 
     def alert(self, kind, **fields):

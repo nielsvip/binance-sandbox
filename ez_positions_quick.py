@@ -29721,6 +29721,7 @@ async def check_entry_candidates_for_account(
                             data_manager=data_manager,
                         )
                 should_trade = False
+                _vec_reentry_fire = False
                 pyramid_data = None
                 _dc_breakout_entry = False
                 _formation_size_mult = 1.0
@@ -30169,11 +30170,29 @@ async def check_entry_candidates_for_account(
                             _rt_name = _reentry_triggers.fire_live(_rt_cfg, is_long, current_price, indicators, _rt_exit_px, _rt_exit_ts, _rt_path, asof_ts=now)
                             if _rt_name:
                                 should_trade = True
+                                _vec_reentry_fire = True
                                 _dc_breakout_entry = True
                                 score = max(score, 20.0)
                                 reason = _rt_name
                                 rec = "STRONG_BUY" if is_long else "STRONG_SELL"
                                 logger.warning(f"[{_rt_name}] {position_key}: flat re-entry trigger fired at {current_price:.6f}")
+                        if _rt_exit_ts > 0 and not should_trade and bool(_sw_get(symbol, position_side, "REENTRY_TIER_MODEL_ENABLED", False)):
+                            from types import SimpleNamespace as _ReentryConfig
+                            import vec_decisions.reentry_tiers as _reentry_tiers
+                            _tier_cfg = _ReentryConfig(**{key: _sw_get(symbol, position_side, key, getattr(config, key, default)) for key, default in (("REENTRY_MIN_GAP_MINUTES", 0.0), ("REENTRY_EXHAUSTED_PARTIAL_ENABLED", True), ("REENTRY_TIER2_PRICE_PCT", 0.003), ("REENTRY_TIER2_MIN_MINUTES", 10.0))})
+                            _tier_k = safe_fetch_float(indicators.get("k_15m", 50), 50.0)
+                            _tier_kp = safe_fetch_float(indicators.get("k_15m_prev", _tier_k), _tier_k)
+                            _tier_d = safe_fetch_float(indicators.get("d_15m", 50), 50.0)
+                            _tier_mins = max(0.0, (now - _rt_exit_ts) / 60.0)
+                            _tier_name = _reentry_tiers.tier_fire(is_long, current_price, _rt_exit_px, _tier_mins, _tier_cfg, _tier_k, _tier_kp, _tier_d)
+                            if _tier_name:
+                                should_trade = True
+                                _vec_reentry_fire = True
+                                _dc_breakout_entry = True
+                                score = max(score, _reentry_tiers.tier_score(_tier_name))
+                                reason = _reentry_tiers.tier_reason(_tier_name, is_long, _rt_exit_px, current_price, _tier_k, _tier_mins)
+                                rec = "STRONG_BUY" if is_long else "STRONG_SELL"
+                                logger.warning(f"[{_tier_name}] {position_key}: flat vector tier re-entry fired at {current_price:.6f}")
                     except Exception as _rt_error:
                         logger.warning(f"[REENTRY_TRIGGERS] {position_key}: flat path error: {_rt_error}")
                 # == EVALUATE_REENTRY (ported from ez_manage.py:16010) — 7-block per-symbol reentry evaluator ==
@@ -31377,7 +31396,7 @@ async def check_entry_candidates_for_account(
                     _gr_min_tfs_entry = int(
                         _psym_get(symbol, position_side, "GOLDEN_RULE_HTF_MIN_TFS", getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 0))
                     )
-                    if _gr_min_tfs_entry > 0:
+                    if _gr_min_tfs_entry > 0 and not _vec_reentry_fire:
                         try:
                             _gr_min_ind_entry = int(
                                 _psym_get(symbol, position_side, "GOLDEN_RULE_MIN_IND", getattr(config, "GOLDEN_RULE_MIN_IND", 2))

@@ -103,3 +103,27 @@ def test_crypto_order_ceiling_comes_from_venue_config(monkeypatch):
     monkeypatch.setattr(trader, "ENTRY_NOTIONAL_CEILING_USD", 3200.0)
     trader.apply_venue_sizing("crypto")
     assert trader.ENTRY_NOTIONAL_CEILING_USD == config.Config().MAX_ORDER_VALUE
+
+
+def test_consumer_honors_recorded_terminal_reduction_even_with_old_producer(tmp_path):
+    ledger = [{"type": "OPEN", "bar": 1, "qty": 100}, {"type": "REDUCE", "bar_entry": 1, "bar_exit": 3, "qty": 100, "pnl_is_lifecycle": True}]
+    state = {"ok": True, "open": True, "engine_qty": 0, "ledger": ledger, "npz_tail": 10000}
+    (tmp_path / "TESTUSDT_LONG.json").write_text(json.dumps(state))
+    obj = trader.Trader.__new__(trader.Trader)
+    obj.state_dir = tmp_path
+    loaded = obj.load_states(["TESTUSDT_LONG"])["TESTUSDT_LONG"]
+    assert loaded["open"] is False and loaded["consumer_state_repair"]
+    assert state["open"] is True
+    orders, notes = trader.plan_account("ang", "crypto", ["TESTUSDT_LONG"], {"TESTUSDT_LONG": loaded}, {"TESTUSDT_LONG": {"qty": 3}}, 10000, set(), lambda *args: True)
+    assert [(order["act"], order["qty"]) for order in orders] == [("CLOSE", 3)]
+    assert trader.plan_account("ang", "crypto", ["TESTUSDT_LONG"], {"TESTUSDT_LONG": loaded}, {}, 10000, set(), lambda *args: True)[0] == []
+    state["ledger"].append({"type": "OPEN", "bar": 4, "qty": 20})
+    assert trader.reconcile_terminal_lifecycle(state)["open"] is True
+
+
+def test_legacy_empty_newborn_timeframe_matches_actual_engine_fallback():
+    from tools.switch_types import coerce
+    assert coerce("NEWBORN_LOSS_KILL_VEL_TF", "", "crypto")[:2] == (True, "15m")
+    assert coerce("NEWBORN_LOSS_KILL_VEL_TF", "", "stocks")[:2] == (True, "15m")
+    assert coerce("NEWBORN_LOSS_KILL_VEL_TF", "nonsense", "crypto")[0] is False
+    assert coerce("BB_BOUNCE_ENTRY_TF", "", "crypto")[0] is False

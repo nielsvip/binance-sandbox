@@ -1,0 +1,160 @@
+{
+  "audit": "ENABLE_TR_SWING_ENTRIES fleet code/cache/entrypoint review",
+  "captured_at_utc": "2026-10-31T00:10:59Z",
+  "conclusion": {
+    "cached_resurrection": "No viable cache-only module found: matching helper caches have no source; existing-source caches containing the token are stale, except timestamp-current V20 pilot caches whose source only prints the message",
+    "functional_read_found": false,
+    "limits": "Process list records entrypoint paths and counts at one instant; it cannot prove what code objects an already-running interpreter imported before that instant. The active pilot files were launched after their source modification times in the earlier process snapshot.",
+    "remaining_literal_code": "Diagnostic print string only; no switch read, gate evaluation, configuration access, or process entrypoint call identified"
+  },
+  "fleet_common_sources": {
+    "/home/niels/binance-sandbox/tradier_manage.py": "Hashes recorded in agent command output; no literal source hit; not used to attribute runtime hit",
+    "/home/niels/binance-sandbox/v12_quick_engine.py": "c86aded579e52f23ba8865de0d8b46a7f72b4e71ecfeab136ac5510567fb64fa (S1/S2/S5/S6)",
+    "/home/niels/binance-sandbox/v15_pilot.py": "3588e3b2168540eede250ae65d6d19e42020d03dd7d0d30f42ff5f527e4aa5d6 (all four hosts)"
+  },
+  "hosts": {
+    "s1-int": {
+      "active_source_hits": [
+        {
+          "classification": "diagnostic print text only",
+          "line": 13400,
+          "path": "/home/niels/binance-sandbox/v20_runtime/v15_pilot.py",
+          "sha256": "7163869522b20ae9726336b5f54d6ee58cf96d76d871d2b4b6f7a505a18cd601"
+        },
+        {
+          "classification": "diagnostic print text only",
+          "line": 13400,
+          "path": "/home/niels/binance-sandbox/v20_forward_runtime/v15_pilot.py",
+          "sha256": "7163869522b20ae9726336b5f54d6ee58cf96d76d871d2b4b6f7a505a18cd601"
+        }
+      ],
+      "cache_summary": "Orphan check_entry_swing_budget and zero_baseline_options caches; v15_pilot/v12_quick_engine cache entries contain the token but are stale or orphaned. No matching executable helper source.",
+      "literal_hits_under_binance_root": 0,
+      "process_entrypoints": {
+        "/home/niels/binance-sandbox/v15_pilot.py": 0,
+        "/home/niels/binance/tools/vector_direct_trader.py": 1
+      },
+      "reachable": true,
+      "standard_sandbox_pilot_sha256": "3588e3b2168540eede250ae65d6d19e42020d03dd7d0d30f42ff5f527e4aa5d6"
+    },
+    "s2": {
+      "active_source_hits": [
+        {
+          "classification": "diagnostic print text only",
+          "line": 13400,
+          "path": "/home/niels/binance-sandbox/v20_runtime/v15_pilot.py",
+          "sha256": "7163869522b20ae9726336b5f54d6ee58cf96d76d871d2b4b6f7a505a18cd601"
+        }
+      ],
+      "cache_summary": "Orphan check_entry_swing_budget and zero_baseline_options caches; root v12_quick_engine/v15_pilot caches stale or orphaned; v20_runtime v15_pilot cache timestamp-current for message-only source. No helper source.",
+      "literal_hits_under_binance_root": 0,
+      "process_entrypoints": {
+        "/home/niels/binance-sandbox/v15_pilot.py": 24,
+        "/home/niels/binance-sandbox/v20_runtime/tools/vec_bar_trigger.py": 1
+      },
+      "reachable": true,
+      "standard_sandbox_pilot_sha256": "3588e3b2168540eede250ae65d6d19e42020d03dd7d0d30f42ff5f527e4aa5d6"
+    },
+    "s5": {
+      "active_source_hits": [
+        {
+          "classification": "diagnostic print text only; no process running this filename",
+          "line": 13400,
+          "path": "/home/niels/binance-sandbox/v15_pilot_v20_option_smoke.py",
+          "sha256": "7163869522b20ae9726336b5f54d6ee58cf96d76d871d2b4b6f7a505a18cd601"
+        },
+        {
+          "classification": "diagnostic print text only",
+          "line": 13400,
+          "path": "/home/niels/binance-sandbox/v20_runtime/v15_pilot.py",
+          "sha256": "7163869522b20ae9726336b5f54d6ee58cf96d76d871d2b4b6f7a505a18cd601"
+        },
+        {
+          "classification": "diagnostic print text only",
+          "line": 13400,
+          "path": "/home/niels/binance-sandbox/v20_runtime_next/v15_pilot.py",
+          "sha256": "7163869522b20ae9726336b5f54d6ee58cf96d76d871d2b4b6f7a505a18cd601"
+        },
+        {
+          "classification": "diagnostic print text only; frozen bisect copy",
+          "line": 13400,
+          "path": "/home/niels/binance-sandbox/v20_bisect_20261026/v15_pilot.py",
+          "sha256": "7163869522b20ae9726336b5f54d6ee58cf96d76d871d2b4b6f7a505a18cd601"
+        }
+      ],
+      "cache_summary": "Orphan check_entry_swing_budget and zero_baseline_options caches; current V20 pilot caches correspond only to message-only source; older quick-engine caches stale.",
+      "literal_hits_under_binance_root": 0,
+      "process_entrypoints": {
+        "/home/niels/binance-sandbox/v15_pilot.py": 25,
+        "/home/niels/binance/tools/vector_direct_trader.py": 2
+      },
+      "reachable": true,
+      "standard_sandbox_pilot_sha256": "3588e3b2168540eede250ae65d6d19e42020d03dd7d0d30f42ff5f527e4aa5d6"
+    },
+    "s6": {
+      "active_source_hits": [
+        {
+          "classification": "diagnostic print text only",
+          "line": 13400,
+          "path": "/home/niels/binance-sandbox/v20_runtime/v15_pilot.py",
+          "sha256": "7163869522b20ae9726336b5f54d6ee58cf96d76d871d2b4b6f7a505a18cd601"
+        },
+        {
+          "classification": "diagnostic print text only",
+          "line": 13400,
+          "path": "/home/niels/binance-sandbox/v20_runtime_next/v15_pilot.py",
+          "sha256": "7163869522b20ae9726336b5f54d6ee58cf96d76d871d2b4b6f7a505a18cd601"
+        }
+      ],
+      "cache_summary": "Root v12_quick_engine cache is stale; no literal-bearing sandbox pyc hit.",
+      "literal_hits_under_binance_root": 0,
+      "process_entrypoints": {
+        "/home/niels/binance-sandbox/v15_pilot.py": 25,
+        "/home/niels/binance-sandbox/v20_runtime/tools/vec_bar_trigger.py": 1
+      },
+      "reachable": true,
+      "standard_sandbox_pilot_sha256": "3588e3b2168540eede250ae65d6d19e42020d03dd7d0d30f42ff5f527e4aa5d6"
+    }
+  },
+  "local_source_origin": {
+    "canonical_path": "/Users/niels/Documents/binance/v15_pilot.py",
+    "diagnostic_or_switch_literal_found": false,
+    "exists": true,
+    "filesystem_flags": "uchg",
+    "local_change": "not made: canonical source is locked and already lacks the diagnostic text",
+    "lock_record": "LOCKED_FILES.md records v15_pilot.py as RELOCKED; local canonical file is locked",
+    "remote_diagnostic_local_origin": "No corresponding diagnostic string in the bounded active-source search on Mac; remote V20 files are not present as matching local active sources",
+    "sha256": "3588e3b2168540eede250ae65d6d19e42020d03dd7d0d30f42ff5f527e4aa5d6"
+  },
+  "method": {
+    "access": "read-only SSH and local filesystem metadata/search",
+    "cache_scope": "Python .pyc files in same active roots; individual files over 50 MB skipped; matching cache checked against source presence and timestamp/hash freshness where determinable",
+    "mutations": "none; no remote or local code edits, no deploys or deletions",
+    "process_scope": "/proc command-line script paths and cwd; secrets and non-path arguments omitted",
+    "remote_roots": [
+      "/home/niels/binance",
+      "/home/niels/binance-sandbox"
+    ],
+    "search": "exact byte/string ENABLE_TR_SWING_ENTRIES; source paths and SHA-256 recorded; no metrics or secrets emitted",
+    "source_excluded_components": [
+      "tests",
+      "scratch",
+      "projects",
+      "backups",
+      "backup",
+      "archive",
+      "archives",
+      "history",
+      "data",
+      "reports",
+      ".git",
+      "node_modules",
+      ".venv",
+      "venv"
+    ],
+    "source_scope": [
+      ".py",
+      ".sh"
+    ]
+  }
+}

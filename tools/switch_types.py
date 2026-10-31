@@ -238,6 +238,8 @@ def _as_bool(value):
 def coerce(field, value, venue=None, *, allow_quick_float=False, strict_unknown=False, root=None):
     """(ok, coerced_value, reason). ok=False => the value must NOT be written/promoted/evaluated; reason says why."""
     field = str(field or "").strip()
+    if field == "NEWBORN_LOSS_KILL_VEL_TF" and value == "":
+        return True, "15m", "legacy empty velocity timeframe resolves to 15m in both execution paths"
     spec = field_spec(field, venue, root)
     k = spec["kind"]
     if value is None:

@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-30T23:33:48.933964+00:00",
+  "recorded_at": "2026-10-31T00:10:31.146206+00:00",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -336,5 +336,24 @@
     "candidate_linknet_first": 1,
     "evidence": "s2:/home/niels/v15_bench/reviews/nn_artifacts_20261030T231758Z_r4/reference_policy_receipt.json",
     "qualification": "candidate activation is explicit postbaseline behavior change, not a provenance-only guard; reference must preserve effective prior policy"
+  },
+  "latest_review": {
+    "retired_switch": "ENABLE_TR_SWING_ENTRIES",
+    "retired_switch_source_audit": "No functional reads found in bounded active Mac and S1/S2/S5/S6 source; remaining fleet V20 hits diagnostic text only. Historical records preserved.",
+    "retired_switch_execution_parity": "Pending real frozen-NPZ evaluation; unknown-key dropping alone insufficient because raw overrides also feed dependency expansion.",
+    "baseline_patch": "Review-only corrected schema in progress; canonical pilot unchanged. Compare effective engine config and ledger, preserve raw settings provenance independently.",
+    "local_baseline_authorization": "User keep going with everything interpreted as direct go-ahead following local unlock request; no deployment authorization inferred beyond mandatory S2 gate.",
+    "expanded_population02": {
+      "source_files": 248,
+      "before_cutoff_rows": 593034,
+      "eligible_targets": 524290,
+      "training_approved": false,
+      "context_neutral_copy": "compilation in progress; independent review pending"
+    },
+    "root_validation": "8 converter, context invariance and corpus collector tests passed in 0.48s; not engine parity or performance evidence",
+    "oracle_preparation": "Frozen S2 pre-NN runtime materializing on S6; Python and NumPy native binaries match, Linux kernel patch levels differ; no engine evaluation yet",
+    "promotion": false,
+    "measured_gain_improvement": false,
+    "measured_90pct_compute_reduction": false
   }
 }
