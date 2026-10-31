@@ -28,40 +28,71 @@ def _base(n=4):
 def test_long_gate_order_and_native_boundary_defaults():
     cfg = SimpleNamespace(BASIS_CONDITION=True, SENTIMENT_TOP_N_GATE_ENABLED=True,
         SENTIMENT_TOP_N=20, WT_MTF_VEL_GATE_ENABLED=True, WT_MTF_VEL_MIN=3,
-        WT_CHOP_GATE_ENABLED=True, WT_CHOP_MAX=8, WT_COMPOSITE_DELTA_GATE_ENABLED=True,
+        WT_CHOP_GATE_ENABLED=False, WT_CHOP_MAX=8, WT_COMPOSITE_DELTA_GATE_ENABLED=True,
         WT_COMPOSITE_DELTA_LONG_MIN=-100., WT_EXHAUST_ENTRY_GATE_ENABLED=True,
         WT_PERCENTILE_ENTRY_GATE_ENABLED=True, WT_PERCENTILE_ENTRY_OB_D=90.,
         WT_DIV_ENTRY_GATE_ENABLED=True, R_G10_HTF_DIV_GATE_ENABLED=True,
         R_G10_HTF_DIV_TFS="4h,D", R_S6_WT_MSTATE_GATE_MODE=2)
     result = asr_pre_score_entry_gates(_base(), cfg, True, np.array([99., 99., 101., 99.]))
-    assert result["reason"].tolist() == ["", "BELOW_BASIS_ALL_TF", "STOCH_15M_BEARISH", ""]
-    assert result["blocked"].tolist() == [False, True, True, False]
+    assert result["reason"].tolist() == ["BELOW_BASIS_ALL_TF", "BELOW_BASIS_ALL_TF", "WT_PERCENTILE_D", "BELOW_BASIS_ALL_TF"]
+    assert result["blocked"].tolist() == [True, True, True, True]
 
 def test_gate_precedence_across_enabled_rg_families():
     cfg = SimpleNamespace(SENTIMENT_TOP_N_GATE_ENABLED=True, SENTIMENT_TOP_N=20,
-        WT_MTF_VEL_GATE_ENABLED=True, WT_MTF_VEL_MIN=3, WT_CHOP_GATE_ENABLED=True,
+        WT_MTF_VEL_GATE_ENABLED=True, WT_MTF_VEL_MIN=3, WT_CHOP_GATE_ENABLED=False,
         WT_CHOP_MAX=8, WT_COMPOSITE_DELTA_GATE_ENABLED=True, WT_COMPOSITE_DELTA_LONG_MIN=-100.,
         WT_EXHAUST_ENTRY_GATE_ENABLED=True, WT_PERCENTILE_ENTRY_GATE_ENABLED=True,
         WT_PERCENTILE_ENTRY_OB_D=90., WT_DIV_ENTRY_GATE_ENABLED=True,
         R_G10_HTF_DIV_GATE_ENABLED=True, R_G10_HTF_DIV_TFS="4h,D", R_S6_WT_MSTATE_GATE_MODE=2)
-    result = asr_pre_score_entry_gates(_base(), cfg, True, np.full(4, 100.))
-    assert result["reason"].tolist() == ["", "SENTIMENT_TOP_N", "WT_MTF_VELOCITY", "WT_COMPOSITE_DELTA"]
+    values = _base()
+    values["wt_velocity_up_count"] = np.array([4, 2, 2, -1])
+    values["wt_percentile_D"] = np.full(4, 50.)
+    result = asr_pre_score_entry_gates(values, cfg, True, np.full(4, 100.))
+    assert result["reason"].tolist() == ["", "SENTIMENT_TOP_N", "WT_MTF_VELOCITY", ""]
 
 def test_short_rg_direction_and_mode3_warn_only():
     cfg = SimpleNamespace(SENTIMENT_TOP_N_GATE_ENABLED=True, SENTIMENT_TOP_N=20,
         WT_MTF_VEL_GATE_ENABLED=True, WT_MTF_VEL_MIN=3, WT_EXHAUST_ENTRY_GATE_ENABLED=True,
         WT_PERCENTILE_ENTRY_GATE_ENABLED=True, WT_PERCENTILE_ENTRY_OS_D=10.,
         WT_DIV_ENTRY_GATE_ENABLED=True, R_G10_HTF_DIV_GATE_ENABLED=True,
-        R_G10_HTF_DIV_TFS="4h,D", R_S6_WT_MSTATE_GATE_MODE=3)
-    result = asr_pre_score_entry_gates(_base(), cfg, False, np.full(4, 100.))
-    assert result["reason"].tolist() == ["", "SENTIMENT_TOP_N", "WT_MTF_VELOCITY", "WT_EXHAUST"]
+        R_G10_HTF_DIV_TFS="4h,D", R_S6_WT_MSTATE_GATE_MODE=3,
+        WT_COMPOSITE_DELTA_GATE_ENABLED=False)
+    values = _base()
+    values["0ranking_points"] = np.array([0.5, 5., 0., 0.])
+    result = asr_pre_score_entry_gates(values, cfg, False, np.full(4, 100.))
+    assert result["reason"].tolist() == ["", "WT_DIVERGENCE", "WT_MTF_VELOCITY", "WT_EXHAUST"]
     assert not result["masks"]["R_S6_MSTATE"].any()
 
-def test_master_boycott_precedes_basis_and_skip_boycott_only_skips_wtdc_basis():
-    cfg = SimpleNamespace(WT_DC_LONG_ENABLED=False, BASIS_CONDITION=True)
+def test_master_boycott_precedes_basis_and_skip_boycott_skips_wtdc_and_basis():
+    cfg = SimpleNamespace(WT_DC_LONG_ENABLED=False, BASIS_CONDITION=True,
+        WT_COMPOSITE_DELTA_GATE_ENABLED=False, WT_EXHAUST_ENTRY_GATE_ENABLED=False,
+        WT_PERCENTILE_ENTRY_GATE_ENABLED=False, WT_DIV_ENTRY_GATE_ENABLED=False)
     values = _base()
     values["dc_basis_15m"] = np.full(4, 100.)
     result = asr_pre_score_entry_gates(values, cfg, True, np.full(4, 90.))
     assert result["reason"].tolist() == ["WT_DC_LONG_DISABLED"] * 4
+    values.pop("wt_composite_delta")
     skip = asr_pre_score_entry_gates(values, cfg, True, np.full(4, 90.), skip_boycott=True)
-    assert skip["reason"].tolist() == ["BELOW_BASIS_ALL_TF"] * 4
+    assert skip["reason"].tolist() == [""] * 4
+
+
+def test_causal_staleness_gate_matches_90m_120s_and_winner_boundaries():
+    cfg = SimpleNamespace(WT_COMPOSITE_DELTA_GATE_ENABLED=False, WT_EXHAUST_ENTRY_GATE_ENABLED=False,
+        WT_PERCENTILE_ENTRY_GATE_ENABLED=False, WT_DIV_ENTRY_GATE_ENABLED=False)
+    values = {}
+    freshness = {"indicator_age_minutes": np.array([90.0, 90.001, 90.001, 90.001, np.nan]),
+        "tick_age_seconds": np.array([120.0, 120.0, 119.999, 120.0, 120.0]),
+        "gain": np.array([0., 0., 0., 3., 0.]), "position_amt": np.array([0., 0., 0., 1., 0.])}
+    result = asr_pre_score_entry_gates(values, cfg, True, np.full(5, 100.), freshness_state=freshness)
+    assert result["masks"]["STALE_INDICATORS"].tolist() == [False, True, False, False, False]
+
+def test_causal_staleness_requires_position_state_only_for_stale_candidate():
+    cfg = SimpleNamespace(WT_COMPOSITE_DELTA_GATE_ENABLED=False, WT_EXHAUST_ENTRY_GATE_ENABLED=False,
+        WT_PERCENTILE_ENTRY_GATE_ENABLED=False, WT_DIV_ENTRY_GATE_ENABLED=False)
+    asr_pre_score_entry_gates({}, cfg, True, [100.], freshness_state={"indicator_age_minutes": [90.0]})
+    try:
+        asr_pre_score_entry_gates({}, cfg, True, [100.], freshness_state={"indicator_age_minutes": [90.001]})
+    except ValueError as error:
+        assert "freshness_state.gain" in str(error)
+    else:
+        raise AssertionError("missing stale-gate lifecycle state was accepted")

@@ -26,6 +26,27 @@ def _number(values, key, n, default):
     return np.where(np.isfinite(array), array, default)
 
 
+def _optional_number(values, key, n):
+    raw = values.get(key)
+    if raw is None:
+        return np.zeros(n, dtype=float), np.zeros(n, dtype=bool)
+    array = np.asarray(raw, dtype=object)
+    if array.ndim == 0:
+        array = np.full(n, array.item(), dtype=object)
+    array = array.reshape(-1)
+    if array.size != n:
+        raise ValueError(f"{key} length {array.size} does not match n={n}")
+    result = np.zeros(n, dtype=float)
+    valid = np.zeros(n, dtype=bool)
+    for index, value in enumerate(array):
+        try:
+            result[index] = float(value)
+            valid[index] = np.isfinite(result[index])
+        except (TypeError, ValueError):
+            continue
+    return result, valid
+
+
 def _text(values, key, n, default=""):
     raw = values.get(key)
     if raw is None:
@@ -39,7 +60,7 @@ def _text(values, key, n, default=""):
     return np.asarray([str(value or "").upper() for value in array], dtype=object)
 
 
-def asr_pre_score_entry_gates(npz, cfg, is_long, current_price, skip_boycott=False, is_hedge=False):
+def asr_pre_score_entry_gates(npz, cfg, is_long, current_price, skip_boycott=False, is_hedge=False, freshness_state=None):
     """Return ordered first-veto masks for native's non-scalp entry gates.
 
     Missing fields use the exact scalar fallback at the corresponding native
@@ -69,6 +90,20 @@ def asr_pre_score_entry_gates(npz, cfg, is_long, current_price, skip_boycott=Fal
         masks[name] = chosen
         reasons[chosen] = reason
 
+    if freshness_state is not None:
+        if not isinstance(freshness_state, Mapping):
+            raise ValueError("freshness_state must be a mapping")
+        age_raw = freshness_state.get("indicator_age_minutes")
+        if age_raw is not None:
+            age = _number(freshness_state, "indicator_age_minutes", n, np.nan)
+            tick_age = _number(freshness_state, "tick_age_seconds", n, np.inf)
+            stale_candidate = np.isfinite(age) & (age > 90.0) & ~(tick_age < 120.0)
+            if np.any(stale_candidate) and not is_hedge:
+                for key in ("gain", "position_amt"):
+                    if key not in freshness_state:
+                        raise ValueError(f"stale-indicator gate requires freshness_state.{key}")
+                winner_bypass = (_number(freshness_state, "gain", n, 0.0) >= 3.0) & (_number(freshness_state, "position_amt", n, 0.0) > 0.0)
+                add("STALE_INDICATORS", stale_candidate & ~winner_bypass, "STALE_INDICATORS")
     if not skip_boycott:
         add("WT_DC_LONG_DISABLED", bool(is_long) and not bool(_get(cfg, "WT_DC_LONG_ENABLED", True)), "WT_DC_LONG_DISABLED")
         add("WT_DC_SHORT_DISABLED", (not bool(is_long)) and not bool(_get(cfg, "WT_DC_SHORT_ENABLED", True)), "WT_DC_SHORT_DISABLED")
@@ -109,21 +144,18 @@ def asr_pre_score_entry_gates(npz, cfg, is_long, current_price, skip_boycott=Fal
             high_count_tf = sum((count >= chop_max).astype(np.int8) for count in counts)
             add("WT_CHOP", high_count_tf >= 2, "WT_CHOP")
         if bool(_get(cfg, "WT_COMPOSITE_DELTA_GATE_ENABLED", True)):
-            if "wt_composite_delta" in arrays and arrays["wt_composite_delta"] is not None:
-                delta = _number(arrays, "wt_composite_delta", n, 0.0)
-                threshold = float(_get(cfg, "WT_COMPOSITE_DELTA_LONG_MIN", -100.0) if is_long else _get(cfg, "WT_COMPOSITE_DELTA_SHORT_MAX", 100.0))
-                add("WT_COMPOSITE_DELTA", (delta < threshold) if is_long else (delta > threshold), "WT_COMPOSITE_DELTA")
+            delta, delta_valid = _optional_number(arrays, "wt_composite_delta", n)
+            threshold = float(_get(cfg, "WT_COMPOSITE_DELTA_LONG_MIN", -100.0) if is_long else _get(cfg, "WT_COMPOSITE_DELTA_SHORT_MAX", 100.0))
+            add("WT_COMPOSITE_DELTA", delta_valid & ((delta < threshold) if is_long else (delta > threshold)), "WT_COMPOSITE_DELTA")
         if bool(_get(cfg, "WT_EXHAUST_ENTRY_GATE_ENABLED", True)):
             m3 = _text(arrays, "wt_momentum_state_3m", n)
             m15 = _text(arrays, "wt_momentum_state_15m", n)
             target = "EXHAUST_UP" if is_long else "EXHAUST_DOWN"
             add("WT_EXHAUST", (m3 == target) & (m15 == target), "WT_EXHAUST")
         if bool(_get(cfg, "WT_PERCENTILE_ENTRY_GATE_ENABLED", True)):
-            raw_pct = arrays.get("wt_percentile_D")
-            if raw_pct is not None:
-                pct = _number(arrays, "wt_percentile_D", n, 50.0)
-                threshold = float(_get(cfg, "WT_PERCENTILE_ENTRY_OB_D", 90.0) if is_long else _get(cfg, "WT_PERCENTILE_ENTRY_OS_D", 10.0))
-                add("WT_PERCENTILE_D", pct > threshold if is_long else pct < threshold, "WT_PERCENTILE_D")
+            pct, pct_valid = _optional_number(arrays, "wt_percentile_D", n)
+            threshold = float(_get(cfg, "WT_PERCENTILE_ENTRY_OB_D", 90.0) if is_long else _get(cfg, "WT_PERCENTILE_ENTRY_OS_D", 10.0))
+            add("WT_PERCENTILE_D", pct_valid & (pct > threshold if is_long else pct < threshold), "WT_PERCENTILE_D")
         if bool(_get(cfg, "WT_DIV_ENTRY_GATE_ENABLED", True)):
             key = "wt_any_bear_div" if is_long else "wt_any_bull_div"
             raw = arrays.get(key, False)

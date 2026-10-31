@@ -101,10 +101,15 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
                 masks[f"{name}:{key}"] = active & np.asarray(mask, dtype=bool)
         masks[f"{name}:active"] = active
 
+    if "is_hedge" not in context:
+        raise ValueError("ASR entry prefix requires explicit context.is_hedge")
+    _freshness_keys = ("indicator_age_minutes", "tick_age_seconds", "gain", "position_amt")
+    _freshness_state = {key: context[key] for key in _freshness_keys if key in context}
     pre_score_gates = asr_pre_score_entry_gates(
         arrays, cfg, is_long, current_price,
         skip_boycott=bool(context.get("skip_boycott", False)),
-        is_hedge=bool(context.get("is_hedge", False)),
+        is_hedge=bool(context["is_hedge"]),
+        freshness_state=_freshness_state if "indicator_age_minutes" in _freshness_state else None,
     )
     veto("ASR_PRE_SCORE", pre_score_gates["blocked"])
     masks.update({f"pre_score:{key}": value for key, value in pre_score_gates["masks"].items()})
@@ -375,12 +380,14 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
         "reentry_state_out": {"bounce_reentry_k_reset": reentry["bounce_reentry_k_reset"]},
         "masks": masks,
         "complete_rate": False,
-        "covered_native_spans": ("ez_positions_quick.py:4696-4954 selected gate/score blocks including chase/ATR vetoes", "ez_positions_quick.py:4955-5071 channel/K/DC-cross and directional scores", "ez_positions_quick.py:5072-5434 BC155 through HLR/candle-alignment and unreliable-indicator gates",
+        "covered_native_spans": ("ez_positions_quick.py:3670-3729 causal 15m staleness veto", "ez_positions_quick.py:3730-4034 WT_DC/BASIS/R-G pre-score entry vetoes", "ez_positions_quick.py:4696-4954 selected gate/score blocks including chase/ATR vetoes", "ez_positions_quick.py:4955-5071 channel/K/DC-cross and directional scores", "ez_positions_quick.py:5072-5434 BC155 through HLR/candle-alignment and unreliable-indicator gates",
             "ez_positions_quick.py:5485-5672 data-blind veto, KX score, and all-TF WT veto/penalties",
             "ez_positions_quick.py:5675-6052 stateful mandatory reentry, early entry moment, and score bonuses",
             "ez_positions_quick.py:6053-6264 RSI/MFI, DC/BOTA scoring, and second entry-moment gate"),
         "remaining": (
-            "pre_score_lifecycle_gates", "regime_input_producer",
+            "rate_initialization_and_lifecycle_state:ez_positions_quick.py:3616-3669",
+            "tradeability_account_permission_and_indicator_hydration:ez_positions_quick.py:4035-4695",
+            "regime_input_producer",
             "tracker_position_and_market_state:ez_positions_quick.py:5435-5484",
             "scalp_paths_excluded_by_user:ez_positions_quick.py:6265-7158",
             "non-scapl_exit_and_action_threshold_paths", "action_threshold_and_execution",

@@ -347,7 +347,7 @@
       "status": "Disclosed by agent; no retroactive backup claimed"
     }
   ],
-  "checkpoint_updated_at": "2026-10-31T07:53:42.363496+00:00",
+  "checkpoint_updated_at": "2026-10-31T07:59:15.016049+00:00",
   "replay_clock": {
     "signal_clock": "NPZ bar-open timestamp",
     "decision_clock": "bar-open +900seconds when V12_COMPLETED_BAR_SECONDS=900",
@@ -737,7 +737,14 @@
       "No authentic pre-run Redis values or complete command history",
       "Downstream consumers and real trading impact not established"
     ],
-    "prevention": "Pre-project-import network guard and dotenv disable; imported factory aliases and async service clients mocked; shared memory bridge disabled in replay. New guarded replay pending."
+    "prevention": "Pre-project-import network guard and dotenv disable; imported factory aliases and async service clients mocked; shared memory bridge disabled in replay. New guarded replay pending.",
+    "additional_environment_gap": "Subsequent guarded consumer loaded 41 variables through utils .env.gpg lookup from home cwd. No secret values reported; run invalid as acceptance.",
+    "prevention_tests": "17 environment/network/runtime tests passed; utils now honors EZ_SKIP_ENV_GPG before I/O and explicit EZ_ENVIRONMENT before discovery; guard sets and checks both GPG/dotenv flags.",
+    "prevention_hashes": {
+      "utils.py": "0a799178d14cb2f64349cd4b9079bf8c7ae7fbd959040da4bdfb086e4a855326",
+      "tools/replay_network_guard.py": "4e1b13f8e2ab6fbe964c13e87aeeeb0715ddf30269aca7762660bc268a15d9cf",
+      "tools/replay_runtime_guard.py": "e6cbfca82359f7561c61644d4726a1947d67a14382d3c91e904c1d3b0656ba54"
+    }
   },
   "source_capture_072413": {
     "manifest_sha256": "4e6ffeee1a818cd0a1388ec2a0476a7258d0a41dd1f719ca5ae460dc850d6aaa",
@@ -758,5 +765,25 @@
       "07:33:51 backed up test_asr_entry_prefix.py but edited test_asr_inline_score.py; later correct backup 07:34:10"
     ],
     "correction": "Agent instructed single Python backup(exact target) then write transaction for every edit; no fabricated earlier backups"
+  },
+  "gr_all_entries_votes": {
+    "status": "LOCAL_TESTED; FULL_ACTION_REPLAY_PENDING",
+    "cause": [
+      "Whole-array max changed earlier BB/DC votes depending on future bars",
+      "WT required both legs nonzero instead of native either nonzero",
+      "Whole-array K/D fallback differed from native per-bar fallback",
+      "Duplicate scorer omitted policy-selected micro inputs"
+    ],
+    "fix": "vec_paths/gr_filter_vec uses tested native-equivalent vec_decisions.mtf_gr_filter.tf_score per bar and paired inputs",
+    "tests": "36 passed; actual native scalar differentials both sides/modes/invert/LTF, prefix invariance, explicit zero threshold",
+    "old_reproduction": {
+      "first_bar_vote_with_future_BB": 1,
+      "same_bar_without_future": 0,
+      "fixed_vote": 0
+    },
+    "remaining": [
+      "Action/reason exemptions and late OR-source filter coverage require replay",
+      "Stock native GR config omitted LTF policy; tradier agent addressing"
+    ]
   }
 }

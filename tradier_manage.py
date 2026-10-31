@@ -26217,6 +26217,9 @@ async def queue_trade_action(
                             _gr_get("MTF_GR_MIN_IND", _gr_get("GOLDEN_RULE_MIN_IND", 5))
                         ),
                         MTF_GR_INVERT_DC_BB=bool(_gr_get("MTF_GR_INVERT_DC_BB", False)),
+                        LTF_SUB15M_TRADING_ENABLED=bool(
+                            _gr_get("LTF_SUB15M_TRADING_ENABLED", False)
+                        ),
                     )
                     if _tyf_gr(
                         _gr_ind or {},

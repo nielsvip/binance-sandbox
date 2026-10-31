@@ -8,6 +8,7 @@ out=Path(os.environ.get("REPLAY_OUTPUT_ROOT",root/"output")).resolve()
 db_path=Path(os.environ.get("REPLAY_DB_PATH",code/"data"/"hourly_reconfig"/"per_sym_store.db")).resolve()
 active_path=input_dir/"1000PEPEUSDC_LONG.json"
 npz_path=input_dir/"1000PEPEUSDC.npz"
+code_manifest_path=Path(os.environ.get("REPLAY_CODE_MANIFEST",input_dir/"code_tree_manifest_v4.json")).resolve()
 account=os.environ.get("PAIR_ACCOUNT","ang").lower()
 if account not in {"ang","inf"}: raise ValueError(f"unsupported account: {account}")
 
@@ -21,6 +22,13 @@ def load_helper(path,name):
  spec=importlib.util.spec_from_file_location(name,path)
  if spec is None or spec.loader is None: raise RuntimeError(f"cannot load replay helper: {path}")
  module=importlib.util.module_from_spec(spec); spec.loader.exec_module(module); return module
+
+def verify_code_manifest(code_root,manifest_path):
+ manifest=json.loads(manifest_path.read_text())
+ for row in manifest["files"]:
+  path=code_root/row["path"]
+  if not path.is_file() or path.stat().st_size!=int(row["size"]) or sha(path)!=row["sha256"]: raise RuntimeError(f"candidate source manifest mismatch: {row['path']}")
+ return {"path":str(manifest_path),"sha256":sha(manifest_path),"verified_files":len(manifest["files"]),"tree_sha256":manifest.get("source_content_sha256") or manifest.get("content_manifest_sha256")}
 
 os.environ["BASE_PATH"]=str(code)
 os.environ["V12_BASE_PATH"]=str(code)
@@ -36,7 +44,16 @@ os.environ["V12_REPLAY_OVERRIDE_CHECK_CADENCE"]="per_bar"
 os.environ["V8_RATE_GUARD_DISABLED"]="1"
 os.environ["V12_SIM_ACCOUNT"]=account
 os.environ["PYTHONDONTWRITEBYTECODE"]="1"
+os.environ["PYTHON_DOTENV_DISABLED"]="1"
+os.environ["EZ_SKIP_ENV_GPG"]="1"
+os.environ["EZ_ENVIRONMENT"]="server"
 if not code.is_dir() or not active_path.is_file() or not npz_path.is_file(): raise RuntimeError("isolated runtime inputs are incomplete")
+code_manifest_status=verify_code_manifest(code,code_manifest_path)
+out.mkdir(parents=True,exist_ok=True)
+os.chdir(out)
+network_guard=load_helper(code/"tools"/"replay_network_guard.py","replay_network_guard")
+network_guard.install(out/"network_attempts.jsonl",root)
+network_status=network_guard.require_installed()
 sys.path.insert(0,str(code))
 redirect=load_helper(code/"tools"/"replay_log_redirect.py","replay_log_redirect")
 redirect_result=redirect.install_replay_log_redirect(out/"logs")
@@ -60,6 +77,8 @@ from tools import mac_positions_push_executors as mac_positions_module
 if Path(per_sym_store_module.DB_PATH).resolve()!=Path(os.environ["PER_SYM_STORE_DB"]).resolve(): raise RuntimeError("per_sym_store resolved outside run-owned frozen DB")
 state_modules={"per_trade_logger":per_trade_logger,"config":config_module,"ez_manage":ez_manage_module}
 runtime=guard.assert_native_runtime(code,root,active_path,{"config":config_module,"ez_manage":ez_manage_module,"ez_positions_quick":ez_positions_module,"backtest_v12_engine":engine_module,"per_sym_store":per_sym_store_module,"stale_set_halt":stale_set_halt_module,"live_twins.vec_exact":vec_exact_module,"per_trade_logger":per_trade_logger})
+network_status=network_guard.require_installed()
+if network_status["blocked_attempts"]: raise RuntimeError(f"network isolation preflight found {network_status['blocked_attempts']} blocked attempts")
 from tools.replay_ownership import configure_replay_ownership,replay_ownership_scope
 import asyncio
 ownership_probe={}
@@ -92,8 +111,8 @@ if not Path(mac_positions_module.ROOT).resolve().is_relative_to(root): raise Run
 active=json.loads(active_path.read_text())
 sym_side=str(active["sym_side"]).upper()
 if f"{account}:{sym_side}".upper() not in {str(value).upper() for value in active.get("account_admission_keys",[])}: raise RuntimeError("account is not in frozen active-set admission")
-if sha(code/"data"/"published_selection.json")!=sha(root/"runtime"/"code"/"data"/"published_selection.json"): raise RuntimeError("published board file changed during runtime setup")
-pre={"record":"native_diagnostic_manifest","account":account,"sym_side":sym_side,"source_code_manifest_sha256":"4e6ffeee1a818cd0a1388ec2a0476a7258d0a41dd1f719ca5ae460dc850d6aaa","mac_positions_publisher_root":str(mac_positions_module.ROOT),"ownership_scope_probe":ownership_probe,"npz_sha256":sha(npz_path),"active_set_sha256":sha(active_path),"database_sha256":sha(os.environ["PER_SYM_STORE_DB"]),"published_selection_sha256":sha(code/"data"/"published_selection.json"),"market_mode_sha256":sha(config_module.Config.MARKET_MODE_FILE),"board_check":{"ok":board_ok,"detail":board_detail},"runtime_guard":runtime,"runtime_paths":prepaths,"logger_redirect":redirect_result,"real_execute":"run_one actual execute_now path with backtest-owned broker stub; no external broker client","ownership_mode":"V12_REPLAY_NATIVE_OWNERSHIP=1 scoped override","rate_guard_disabled":"V8_RATE_GUARD_DISABLED=1"}
+if sha(code/"data"/"published_selection.json")!=sha(input_dir/"frozen_data"/"published_selection.json"): raise RuntimeError("published board differs from frozen authentic input")
+pre={"record":"native_diagnostic_manifest","account":account,"sym_side":sym_side,"source_code_manifest_sha256":code_manifest_status["sha256"],"source_code_manifest_path":code_manifest_status["path"],"source_code_manifest_verified_files":code_manifest_status["verified_files"],"mac_positions_publisher_root":str(mac_positions_module.ROOT),"ownership_scope_probe":ownership_probe,"npz_sha256":sha(npz_path),"active_set_sha256":sha(active_path),"database_sha256":sha(os.environ["PER_SYM_STORE_DB"]),"published_selection_sha256":sha(code/"data"/"published_selection.json"),"market_mode_sha256":sha(config_module.Config.MARKET_MODE_FILE),"board_check":{"ok":board_ok,"detail":board_detail},"runtime_guard":runtime,"runtime_paths":prepaths,"logger_redirect":redirect_result,"network_guard_before_run":network_status,"real_execute":"run_one actual execute_now path with backtest-owned broker stub; no external broker client","ownership_mode":"V12_REPLAY_NATIVE_OWNERSHIP=1 scoped override","rate_guard_disabled":"V8_RATE_GUARD_DISABLED=1"}
 out.mkdir(parents=True,exist_ok=True)
 pre["preflight_completed_epoch"]=time.time()
 (out/"manifest.json").write_text(json.dumps(pre,sort_keys=True,default=str)+"\n")
@@ -109,6 +128,10 @@ except BaseException as error:
  selected={"valid":False,"invalid_reason":f"runner {type(error).__name__}: {error}","trace":traceback.format_exc()}
 finally:
  pre["ended_epoch"]=time.time(); pre["elapsed_seconds"]=pre["ended_epoch"]-start
+ pre["network_guard_after_run"]=network_guard.require_installed()
+ if pre["network_guard_after_run"]["blocked_attempts"]:
+  selected["valid"]=False
+  selected["invalid_reason"]=f"network guard blocked {pre['network_guard_after_run']['blocked_attempts']} attempts"
  pre["runtime_db_sha256_after"]=sha(os.environ["PER_SYM_STORE_DB"])
  tmp=out/"result.json.tmp"; tmp.write_text(json.dumps(selected,sort_keys=True,default=str)+"\n"); tmp.replace(out/"result.json")
  pre["result_file_sha256"]=sha(out/"result.json")

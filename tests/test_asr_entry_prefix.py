@@ -69,13 +69,15 @@ def test_entry_prefix_preserves_native_score_order_and_explicit_context():
     npz = _arrays()
     context = {"current_price": np.array([100.0, 100.0, 100.0]), "portfolio_ratio_active": False, "mover_registry_available": False, "last_reduction_price": np.zeros(3), "minutes_since_reduction": np.full(3, 10.0), "gain": np.zeros(3), "prev_gain": np.zeros(3), "true_lag": np.full(3, 9.0), "position_amt": np.ones(3), "prev_cross_price": np.zeros(3),
                "vol_ok": np.ones(3, dtype=bool), "vol_strong": np.zeros(3, dtype=bool), "rel_vol_3m": np.ones(3),
-               "pnl_pct": np.zeros(3), "trend_is_bullish": np.ones(3, dtype=bool), "trend_is_bearish": np.zeros(3, dtype=bool), "bounce_reentry_k_reset": True}
+               "pnl_pct": np.zeros(3), "trend_is_bullish": np.ones(3, dtype=bool), "trend_is_bearish": np.zeros(3, dtype=bool), "bounce_reentry_k_reset": True, "is_hedge": False}
     result = score_asr_entry_prefix_array(npz, 3, True, _cfg(), context)
     assert result["entry_allowed"].tolist() == [True, False, True]
     assert result["masks"]["SHIT_IDEA"].tolist() == [False, True, False]
     assert result["score"].shape == (3,)
     assert result["complete_rate"] is False
     assert result["covered_native_spans"] == (
+        "ez_positions_quick.py:3670-3729 causal 15m staleness veto",
+        "ez_positions_quick.py:3730-4034 WT_DC/BASIS/R-G pre-score entry vetoes",
         "ez_positions_quick.py:4696-4954 selected gate/score blocks including chase/ATR vetoes",
         "ez_positions_quick.py:4955-5071 channel/K/DC-cross and directional scores",
         "ez_positions_quick.py:5072-5434 BC155 through HLR/candle-alignment and unreliable-indicator gates",
@@ -91,11 +93,11 @@ def test_entry_prefix_requires_external_state_and_active_ratio_inputs():
     with pytest.raises(ValueError, match="current_price"):
         score_asr_entry_prefix_array(npz, 1, True, _cfg(), {"portfolio_ratio_active": False})
     with pytest.raises(ValueError, match="portfolio_ratio_active"):
-        score_asr_entry_prefix_array(npz, 1, True, _cfg(), {"current_price": [100.0]})
+        score_asr_entry_prefix_array(npz, 1, True, _cfg(), {"current_price": [100.0], "is_hedge": False})
     with pytest.raises(ValueError, match="portfolio_ratio"):
         score_asr_entry_prefix_array(
             npz, 1, True, _cfg(),
-            {"current_price": [100.0], "portfolio_ratio_active": True},
+            {"current_price": [100.0], "portfolio_ratio_active": True, "is_hedge": False},
         )
 
 
@@ -105,7 +107,7 @@ def test_entry_prefix_fails_closed_when_regime_state_is_enabled_but_absent():
     with pytest.raises(ValueError, match="regime_delta"):
         score_asr_entry_prefix_array(
             npz, 1, True, cfg,
-            {"current_price": [100.0], "portfolio_ratio_active": False, "mover_registry_available": False},
+            {"current_price": [100.0], "portfolio_ratio_active": False, "mover_registry_available": False, "is_hedge": False},
         )
 
 
@@ -121,7 +123,7 @@ def test_entry_prefix_chase_and_atr_gates_use_effective_settings():
                "prev_gain": np.zeros(3), "true_lag": np.full(3, 9.0), "position_amt": np.ones(3),
                "prev_cross_price": np.zeros(3), "vol_ok": np.ones(3, dtype=bool), "vol_strong": np.zeros(3, dtype=bool),
                "rel_vol_3m": np.ones(3), "pnl_pct": np.zeros(3), "trend_is_bullish": np.ones(3, dtype=bool), "trend_is_bearish": np.zeros(3, dtype=bool), "bounce_reentry_k_reset": True,
-               "long_stoch_chase_block": True, "entry_atr_pct_min": 0.5}
+               "long_stoch_chase_block": True, "entry_atr_pct_min": 0.5, "is_hedge": False}
     result = score_asr_entry_prefix_array(values, 3, True, _cfg(), context)
     assert result["masks"]["LONG_CHASE_BLOCK"].tolist() == [True, False, False]
     assert result["masks"]["ATR_TOO_LOW"].tolist() == [False, True, False]
@@ -207,3 +209,25 @@ def test_asr_reentry_stage_short_side_good_entry_and_signal_score_order():
     result = apply_asr_reentry_entry_stage(values, context, False, _cfg(), np.array([10.0]))
     assert result["entry_allowed"].tolist() == [True]
     assert result["score"].tolist() == [10.0]
+
+
+def test_entry_prefix_applies_causal_staleness_with_exact_winner_bypass():
+    values = _arrays(3)
+    context = {"current_price": np.full(3, 100.0), "portfolio_ratio_active": False,
+        "mover_registry_available": False, "last_reduction_price": np.zeros(3),
+        "minutes_since_reduction": np.full(3, 10.0), "gain": np.array([0., 3., 0.]),
+        "prev_gain": np.zeros(3), "true_lag": np.full(3, 9.0),
+        "position_amt": np.array([0., 1., 0.]), "prev_cross_price": np.zeros(3),
+        "vol_ok": np.ones(3, dtype=bool), "vol_strong": np.zeros(3, dtype=bool),
+        "rel_vol_3m": np.ones(3), "pnl_pct": np.zeros(3),
+        "trend_is_bullish": np.ones(3, dtype=bool), "trend_is_bearish": np.zeros(3, dtype=bool),
+        "bounce_reentry_k_reset": True, "is_hedge": False, "indicator_age_minutes": np.array([90.001, 90.001, 90.0]),
+        "tick_age_seconds": np.array([120., 120., 120.])}
+    result = score_asr_entry_prefix_array(values, 3, True, _cfg(), context)
+    assert result["masks"]["ASR_PRE_SCORE"].tolist() == [True, False, False]
+    assert result["masks"]["pre_score:first_reason"].tolist() == ["STALE_INDICATORS", "", ""]
+
+def test_entry_prefix_requires_explicit_hedge_scope():
+    with pytest.raises(ValueError, match="context.is_hedge"):
+        score_asr_entry_prefix_array(_arrays(1), 1, True, _cfg(),
+            {"current_price": [100.0], "portfolio_ratio_active": False})

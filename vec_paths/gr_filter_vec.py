@@ -71,7 +71,8 @@ def build_gr_filter_mask(npz, n, is_long, mode, config):
         return np.ones(n, dtype=bool)
     from vec_decisions.asr_input_adapter import paired_npz_view
     min_tfs = int(getattr(config, "MTF_GR_MIN_TFS", getattr(config, "GOLDEN_RULE_HTF_MIN_TFS", 3)))
-    min_ind = int(getattr(config, "MTF_GR_MIN_IND", getattr(config, "GOLDEN_RULE_MIN_IND", 5)))
+    raw_min_ind = getattr(config, "MTF_GR_MIN_IND", 7)
+    min_ind = int(raw_min_ind if mode == "crypto" else (raw_min_ind or 7))
     invert = bool(getattr(config, "MTF_GR_INVERT_DC_BB", False))
     use_ltf = bool(getattr(config, "USE_1M_3M_SIGNALS_ENABLED" if mode == "crypto" else "LTF_SUB15M_TRADING_ENABLED", False))
     npz = paired_npz_view(npz, use_ltf)

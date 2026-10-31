@@ -57,3 +57,13 @@ def test_actual_entry_mask_matches_native_each_bar(mode, is_long, use_ltf, inver
 def test_disabled_filter_and_explicit_zero_threshold():
     assert build_gr_filter_mask({}, 3, True, "crypto", SimpleNamespace(MTF_GR_FILTER_ENABLED=False)).all()
     assert build_gr_filter_mask({}, 3, True, "crypto", SimpleNamespace(MTF_GR_MIN_IND=0, MTF_GR_MIN_TFS=0)).all()
+
+
+def test_stock_zero_minimum_preserves_actual_native_gate_semantics():
+    from vec_decisions.twin_yellow_filters import gr_all_entries_blocks
+    cfg = SimpleNamespace(GR_FILTER_ALL_ENTRIES=True, MTF_GR_MIN_IND=0, MTF_GR_MIN_TFS=1)
+    row = {"close": 100., "rsi_15m": 60.}
+    blocked = gr_all_entries_blocks(row, "LONG", lambda key, default=None: getattr(cfg, key, default), 100., gr_filter_pass, cfg)
+    assert blocked
+    assert not build_gr_filter_mask({key: np.array([value]) for key, value in row.items()}, 1, True, "tradier", cfg)[0]
+    assert build_gr_filter_mask({key: np.array([value]) for key, value in row.items()}, 1, True, "crypto", cfg)[0]

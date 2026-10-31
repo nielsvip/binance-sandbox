@@ -1,0 +1,157 @@
+{
+  "generated_utc": "2026-10-31T08:00:35.031502+00:00",
+  "implemented_and_tested": [
+    {
+      "module": "vec_decisions/asr_pre_score_gates.py",
+      "native_span": "3670-3729",
+      "path": "causal 15m staleness veto; uses explicit indicator_age_minutes/tick_age_seconds and gain/position_amt; exact 90m/120s and >=3% winner bypass",
+      "prefix_consumer": "vec_decisions/asr_entry_prefix.py",
+      "status": "isolated ordered prefix helper; not wired to v12",
+      "tests": "tests/test_asr_pre_score_gates.py, tests/test_asr_entry_prefix.py"
+    },
+    {
+      "module": "vec_decisions/asr_pre_score_gates.py",
+      "native_span": "3730-4034",
+      "path": "WT_DC master boycotts, BASIS_CONDITION, R-G1/R-G2/R-G3/R-G4/R-G5/R-G6/R-G7/R-G10/R-S6 gates; source-order first veto",
+      "prefix_consumer": "vec_decisions/asr_entry_prefix.py",
+      "status": "isolated ordered prefix helper; not wired to v12",
+      "tests": "tests/test_asr_pre_score_gates.py"
+    },
+    {
+      "module": "vec_decisions/asr_entry_prefix.py, vec_decisions/asr_inline_score.py, vec_decisions/asr_score_core.py",
+      "native_span": "4696-5434",
+      "path": "selected pre-score/gate/score blocks including prefix, momentum, structure, rank, MTS/MI, channel K-cross, BC155/K-zone, mover/fade/Satoshit, HLR and candle alignment",
+      "status": "selected spans only; tracker/history and market state below are explicit input dependencies"
+    },
+    {
+      "module": "vec_decisions/asr_entry_prefix.py, vec_decisions/asr_inline_score.py",
+      "native_span": "5485-5672",
+      "path": "DATA_BLIND gate, KX score, WT direction/structure/divergence/velocity gate and penalties",
+      "status": "prefix helper only; causal producer context required"
+    },
+    {
+      "module": "vec_decisions/asr_reentry_stage.py",
+      "native_span": "5675-6052",
+      "path": "bounce-reset lifecycle, obligatory reentry shared scorer, native branch order, first good-entry gate and bonuses",
+      "prefix_consumer": "vec_decisions/asr_entry_prefix.py",
+      "status": "causal state is explicit; scalar shared obligatory predicate invoked row-wise",
+      "tests": "tests/test_asr_entry_prefix.py"
+    },
+    {
+      "module": "vec_decisions/asr_entry_prefix.py, vec_decisions/asr_inline_score.py",
+      "native_span": "6053-6264",
+      "path": "RSI/MFI, DC momentum/BOTA score, excluded scalp-reduce action gate, second entry-moment gate and bonuses",
+      "status": "entry score stage; scalp action excluded by user",
+      "tests": "tests/test_asr_entry_prefix.py, tests/test_asr_inline_score.py"
+    },
+    {
+      "native_span": "7169-7649",
+      "numpy_modules": "vec_decisions/asr_pre_dc_entry_score.py, vec_decisions/asr_ordered_composer.py and component modules",
+      "path": "pre-DC state, DC structure, breakout PA, directional, WT intelligence, volume/setup, tracker history, channel, rank/sentiment, post-rank, DC sufficiency, late/research and final score tail",
+      "scalar_sources": [
+        "ez_positions_quick.py:7410",
+        "ez_positions_quick.py:7426",
+        "ez_positions_quick.py:7445",
+        "ez_positions_quick.py:7453",
+        "ez_positions_quick.py:7468",
+        "ez_positions_quick.py:7481",
+        "ez_positions_quick.py:7487",
+        "ez_positions_quick.py:7503",
+        "ez_positions_quick.py:7517",
+        "ez_positions_quick.py:7555",
+        "ez_positions_quick.py:7640"
+      ],
+      "status": "callable component chain; explicit causal late-stage input contract",
+      "tests": "tests/test_asr_pre_dc_entry_score.py, tests/test_asr_ordered_composer.py"
+    },
+    {
+      "module": "vec_decisions/asr_ordered_composer.py",
+      "native_span": "entry-prefix-to-late-score seam",
+      "path": "compose_asr_entry_candidate_array injects prefix score, honors prefix/upstream vetoes, returns WAIT/0 for rejected rows",
+      "status": "composition seam only; does not construct all source inputs or count as full rate",
+      "tests": "tests/test_asr_entry_candidate_route.py"
+    }
+  ],
+  "native_source": {
+    "file": "ez_positions_quick.py",
+    "rate_start_line": 3616
+  },
+  "scope": "AdvancedSignalRater vectorization status; implementation and wiring evidence only; no action-bar parity claim",
+  "sha256": {
+    "tests/test_asr_entry_candidate_route.py": "5d507b6a9b1dc64dddaf376d82e800ac831d94b8606fd810d9e6891f800ff509",
+    "tests/test_asr_entry_prefix.py": "f0f369bd78e9cda2e42419c8733577d3b66d0f6e593971f8e21eca1b97139823",
+    "tests/test_asr_pre_score_gates.py": "95259d29e520589e401bc45ad6a5c4526ec6014ba9d09d9fc039b2f7531512fc",
+    "vec_decisions/asr_entry_prefix.py": "a9cd53ac4e0510a0b8e7a265a81d9d1ccf83ae6c46a768e4e8f68c88b0b2d7fe",
+    "vec_decisions/asr_inline_score.py": "09be907dbdaad80749455ce6f352cf431a71e7357fcc39aa766b07134af05d40",
+    "vec_decisions/asr_ordered_composer.py": "925cd4305435aea96d33cf76cb59251b14e53be71e40966d7048f93cd75c2352",
+    "vec_decisions/asr_pre_score_gates.py": "259df1a23099de135431af7abd4bda968652cdea06df85e5c31314114bde0eb9",
+    "vec_decisions/asr_reentry_stage.py": "32c25a9e4aa69b3d3352a503e4c07a177d4278cc30e3e570b0be55f4aba2d234"
+  },
+  "tests": {
+    "broad_before_last_pre_score_additions": "104 passed in tests/test_asr_*.py; later additions covered by focused current suite",
+    "focused_current": "24 passed: tests/test_asr_pre_score_gates.py, tests/test_asr_entry_prefix.py, tests/test_asr_ordered_composer.py, tests/test_asr_pre_dc_entry_score.py, tests/test_asr_entry_candidate_route.py"
+  },
+  "unresolved_native_spans_and_inputs": [
+    {
+      "gap": "rate initialization, account/symbol/side position lookup, mode-specific source selection",
+      "required": [
+        "exact config/account context",
+        "position snapshot",
+        "tracker candidate state"
+      ],
+      "span": "3616-3669"
+    },
+    {
+      "gap": "tradeable membership/temp-key and BTC dedicated account permission, allowed-entry decision, current price, indicator/local metric hydration and derived indicator fields",
+      "required": [
+        "account-specific frozen tradeable source and temp-key state",
+        "is_allowed and position state",
+        "canonical indicator hydration with causal history",
+        "exact HTF/regime policy outputs"
+      ],
+      "span": "4035-4695"
+    },
+    {
+      "gap": "regime/trading-policy producer plus delta-tracker signal and capture state preceding score gates",
+      "required": [
+        "causal DeltaTracker state/updates",
+        "regime/trading-policy result",
+        "sentiment/rank source selected at evaluation time"
+      ],
+      "span": "4540-4695"
+    },
+    {
+      "gap": "tracker position/gain/reduction/augmentation/entry and timing state; current context consumes values but does not produce them",
+      "required": [
+        "accepted lifecycle event stream and current position fields",
+        "last_exit and last_reduction timestamps/prices",
+        "gain/prev_gain"
+      ],
+      "span": "5435-5484"
+    },
+    {
+      "gap": "scalp-only entry/exit branch",
+      "span": "6265-6419",
+      "status": "excluded by user"
+    },
+    {
+      "gap": "exit-mode scorer and exit/action branches, including non-scalp lifecycle/structural exits",
+      "required": [
+        "real position lifecycle state, time-in-trade, gain, tracker history and ordered exit controls"
+      ],
+      "span": "6420-7168"
+    },
+    {
+      "gap": "post-tail rec/action thresholds, dynamic account settings and final returned action",
+      "required": [
+        "remaining AdvancedSignalRater tail source and exact config/account settings"
+      ],
+      "span": "7650-end-of-rate"
+    },
+    {
+      "gap": "no import/call to asr_entry_prefix or ordered ASR composer; no complete producer binding or action-stage consumer",
+      "span": "v12_quick_engine.py simulate_one entry consumer",
+      "status": "not wired; no vector action-bar parity established"
+    }
+  ]
+}

@@ -87,7 +87,32 @@ def test_five_tf_numpy_agreement_scores_match_native_scalar():
             np.testing.assert_array_equal(vector, scalar)
 
 
-def test_stock_force_open_vector_route_emits_actual_open_ledger_event():
+
+def test_sub15m_master_off_blocks_stock_force_open():
+    n = 1
+    data = {
+        "ema_200_15m": np.asarray([90.0]),
+        "wt1_5m": np.asarray([2.0]),
+        "wt2_5m": np.asarray([1.0]),
+    }
+    cfg = _cfg(LTF_SUB15M_TRADING_ENABLED=False, WT_3M_FORCE_OPEN_ENABLED=True)
+    assert not force_open_mask(data, n, True, cfg, np.asarray([102.0])).any()
+
+
+def test_tradier_entry_masks_calls_stock_force_open_provider():
+    from vec_decisions.tradeable_mandatory_entry import entry_masks
+
+    data = {
+        "ema_200_15m": np.asarray([90.0, 200.0]),
+        "wt1_5m": np.asarray([2.0, 2.0]),
+        "wt2_5m": np.asarray([1.0, 1.0]),
+    }
+    cfg = _cfg(WT_3M_FORCE_OPEN_GR_GATE_ENABLED=False, WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS=False)
+    _, force = entry_masks(data, 2, True, cfg, np.asarray([102.0, 102.0]))
+    np.testing.assert_array_equal(force, [True, False])
+
+
+def test_stock_force_open_simulate_one_open_matches_selected_bar():
     import v12_quick_engine as engine
     from tests.test_quick_srs_paired_15m import _cfg as quick_cfg, _npz
     from vec_decisions.generic_filter_tf import FILTER_TF_MAP
@@ -103,6 +128,7 @@ def test_stock_force_open_vector_route_emits_actual_open_ledger_event():
     cfg.WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS = False
     cfg.WT_3M_FORCE_OPEN_BUILD_TO_TARGET = False
     cfg.WT_3M_FORCE_OPEN_BYPASS_GATES = True
+    cfg.GR_FILTER_ALL_ENTRIES = False
     cfg.STOCKS_LIVE_ENTRY_STACK_ENABLED = False
     cfg.ABLATION_DISABLE_QUICK_ENTRY = True
     cfg.STRUCTURAL_RANGE_SHIFT_EXIT = False
