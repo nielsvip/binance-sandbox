@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T10:18:46Z",
+ "ts": "2026-10-31T10:24:01Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,8 +29,8 @@
   "fin": {
    "fills_6h": 2,
    "open_positions": 1,
-   "unrealised_usd": -0.07,
-   "pos_mismatch": 0,
+   "unrealised_usd": -0.08,
+   "pos_mismatch": 1,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -45,8 +45,8 @@
   "men": {
    "fills_6h": 46,
    "open_positions": 28,
-   "unrealised_usd": -0.46,
-   "pos_mismatch": 0,
+   "unrealised_usd": -0.2,
+   "pos_mismatch": 9,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -61,8 +61,8 @@
   "ang": {
    "fills_6h": 59,
    "open_positions": 14,
-   "unrealised_usd": 0.21,
-   "pos_mismatch": 0,
+   "unrealised_usd": 0.28,
+   "pos_mismatch": 4,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -93,8 +93,8 @@
   "flz": {
    "fills_6h": 14,
    "open_positions": 6,
-   "unrealised_usd": -0.21,
-   "pos_mismatch": 0,
+   "unrealised_usd": -0.3,
+   "pos_mismatch": 1,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -127,66 +127,180 @@
     "43587"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 4.0
   },
   "men": {
    "pids": [
     "20386"
    ],
    "starts_30m": 1,
-   "log_age_s": 70.0
+   "log_age_s": 9.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 38.0
+   "log_age_s": 2.0
   },
   "inf": {
    "pids": [
     "34297"
    ],
    "starts_30m": 1,
-   "log_age_s": 11.0
+   "log_age_s": 2.0
   },
   "flz": {
    "pids": [
     "78263"
    ],
    "starts_30m": 1,
-   "log_age_s": 21.0
+   "log_age_s": 18.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 20188.0
+   "log_age_s": 20505.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 20504.0
+   "log_age_s": 20820.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T10:18:46Z",
+   "ts": "2026-10-31T10:24:01Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "fin:FLUXUSDT_LONG",
+   "evidence": "positions file amt 249 vs fill-ledger amt 435"
+  },
+  {
+   "ts": "2026-10-31T10:24:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:ARBUSDC_LONG",
+   "evidence": "positions file amt 93.1 vs fill-ledger amt 184.9"
+  },
+  {
+   "ts": "2026-10-31T10:24:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:ZECUSDC_LONG",
+   "evidence": "positions file amt 0.011 vs fill-ledger amt 0.022"
+  },
+  {
+   "ts": "2026-10-31T10:24:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:1000XECUSDT_SHORT",
+   "evidence": "positions file amt 3063 vs fill-ledger amt 5424"
+  },
+  {
+   "ts": "2026-10-31T10:24:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:INXUSDT_SHORT",
+   "evidence": "positions file amt 4263 vs fill-ledger amt 7775"
+  },
+  {
+   "ts": "2026-10-31T10:24:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:IMXUSDT_SHORT",
+   "evidence": "positions file amt 122 vs fill-ledger amt 242"
+  },
+  {
+   "ts": "2026-10-31T10:24:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:COTIUSDT_SHORT",
+   "evidence": "positions file amt 1549 vs fill-ledger amt 12114"
+  },
+  {
+   "ts": "2026-10-31T10:24:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:AXSUSDT_SHORT",
+   "evidence": "positions file amt 17 vs fill-ledger amt 62"
+  },
+  {
+   "ts": "2026-10-31T10:24:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:GASUSDT_SHORT",
+   "evidence": "positions file amt 10.7 vs fill-ledger amt 23.5"
+  },
+  {
+   "ts": "2026-10-31T10:24:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:1MBABYDOGEUSDT_SHORT",
+   "evidence": "positions file amt 25164 vs fill-ledger amt 71091"
+  },
+  {
+   "ts": "2026-10-31T10:24:02Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "men:FIDAUSDT_SHORT",
    "evidence": "31 10:17:22 - WARNING - [men] [REENTRY_GRANDFATHERED] men:FIDAUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $11 on bounce (prior max 966.0000)"
   },
   {
-   "ts": "2026-10-31T10:18:47Z",
+   "ts": "2026-10-31T10:24:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:RSRUSDT_SHORT",
+   "evidence": "positions file amt 10366 vs fill-ledger amt 21259"
+  },
+  {
+   "ts": "2026-10-31T10:24:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:EGLDUSDT_SHORT",
+   "evidence": "positions file amt 4.5 vs fill-ledger amt 0"
+  },
+  {
+   "ts": "2026-10-31T10:24:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:GRAMUSDT_SHORT",
+   "evidence": "positions file amt 12.8 vs fill-ledger amt 0"
+  },
+  {
+   "ts": "2026-10-31T10:24:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:SKYUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 224"
+  },
+  {
+   "ts": "2026-10-31T10:24:03Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:HYPEUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T06:26:14Z bar=2026-10-31T04:30:00Z: no fill in 1800s and no refusal logged"
+  },
+  {
+   "ts": "2026-10-31T10:24:04Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "flz:GRAMUSDT_SHORT",
+   "evidence": "positions file amt 12.8 vs fill-ledger amt 0"
+  },
+  {
+   "ts": "2026-10-31T10:24:04Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "ang:EGLDUSDT_SHORT",
+   "evidence": "39 execute_now attempts in 5 min (pre-gate)"
   }
  ],
  "alert_counts": {
+  "POSITION_STATE_MISMATCH": 15,
   "CAP_BYPASS": 1,
-  "VEC_DECISION_NOT_FILLED": 1
+  "VEC_DECISION_NOT_FILLED": 1,
+  "ATTEMPT_STORM_KEY": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -239,5 +353,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.92
+ "sweep_s": 3.1
 }
