@@ -8003,98 +8003,19 @@ class AdvancedSignalRater:
                 "dc_high_4h": dc_high_4h, "dc_low_4h": dc_low_4h,
             }
             score = apply_channel_confluence_scalar(score, _asr_channel_values, is_long)
-            # 2026-05-08: REMOVED final_ai_score (0final_score_norm) bonus block — final_score is the GATE
-            # (drives symbols_<acc>_long/short list); double-counting it as a score bonus is forbidden.
-            # Bonuses now come from RANKINGS (0ranking_points, different params) and MARKET data (alpha) only.
-            if is_long:
-                if top_sent:
-                    score += 2.0
-                elif bot_sent:
-                    score -= 5.0
-            else:
-                if bot_sent:
-                    score += 2.0
-                elif top_sent:
-                    score -= 5.0
-            # 2026-05-08: tiered ranking bonus — 0ranking_points uses DIFFERENT parameters than final_score
-            # (final_score is the GATE; rank_points is bonus on top). Top/bottom-of-rank get extra.
-            rank_points = safe_fetch_float(ind.get("0ranking_points"), 0.0)
-            if is_long:
-                if rank_points >= 95:
-                    score += 4.0  # top 5%
-                elif rank_points >= 90:
-                    score += 2.5  # top 10%
-                elif rank_points >= 80:
-                    score += 1.5  # top 20%
-                elif rank_points >= 50:
-                    score += 0.5  # above-median
-            else:
-                if rank_points <= 5:
-                    score += 4.0  # bottom 5%
-                elif rank_points <= 10:
-                    score += 2.5  # bottom 10%
-                elif rank_points <= 20:
-                    score += 1.5  # bottom 20%
-                elif rank_points <= 50:
-                    score += 0.5  # below-median
-            score += history_score_mod
-            if ind:
-                alpha = local_sent - global_sent
-                if is_long:
-                    if sentc == "EXTREME_BULLISH":
-                        score += 2
-                    if sentc == "NEUTRAL":
-                        score -= 1
-                    if "BEARISH" in sentc:
-                        score -= 2
-                    if local_sent > 50:
-                        score += 1.5
-                    elif local_sent > 25:
-                        score += 0.5
-                    if global_sent < -20:
-                        score -= 3
-                    elif global_sent > 50:
-                        score += 3
-                    elif global_sent > 30:
-                        score += 1
-                else:
-                    if sentc == "EXTREME_BEARISH":
-                        score += 2
-                    if sentc == "NEUTRAL":
-                        score -= 1
-                    if "BULLISH" in sentc:
-                        score -= 2
-                    if local_sent < -50:
-                        score += 1.5
-                    elif local_sent < -25:
-                        score += 0.5
-                    if global_sent > 20:
-                        score -= 3
-                    elif global_sent < -50:
-                        score += 3
-                    elif global_sent < -30:
-                        score += 1
-                # 2026-05-08: extreme alpha (bucks-trend) bonus added at >50/<-50
-                if is_long:
-                    if alpha > 50:
-                        score += (
-                            6.0  # extreme bucks-trend LONG (local 50+ above global)
-                        )
-                    elif alpha > 40:
-                        score += 3.5
-                    elif alpha > 20:
-                        score += 1.5
-                    elif alpha < -20:
-                        score -= 2.0
-                else:
-                    if alpha < -50:
-                        score += 6.0  # extreme bucks-trend SHORT
-                    elif alpha < -40:
-                        score += 3.5
-                    elif alpha < -20:
-                        score += 1.5
-                    elif alpha > 20:
-                        score -= 2.0
+            from vec_decisions.asr_rank_sentiment_score import apply_rank_sentiment_scalar
+            score = apply_rank_sentiment_scalar(
+                score,
+                is_long,
+                top_sent,
+                bot_sent,
+                safe_fetch_float(ind.get("0ranking_points"), 0.0),
+                history_score_mod,
+                bool(ind),
+                local_sent,
+                global_sent,
+                sentc,
+            )
             logger.info(f" in rate4 {symbol} {score} ")
             c1_long = k_1m > d_1m
             c1_short = k_1m < d_1m and true_lag < 10.0

@@ -21,6 +21,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import math
 import os
 import re
 import shutil
@@ -99,7 +100,10 @@ GATED_PREFIX = ("tools/v15_", "tools/v17_", "tools/v18_")
 # 2026-10-20: V18 brain code + its data (trained models, digests) are bench inputs too; the bench tree is a full copy of the champion
 # tree, so data files copied here are visible to the candidate pilot. Deploy is the same generic path: a destination whose parent dir
 # does not exist is skipped (not failed), exactly as the local branch already did.
-GATED_DATA_RE = re.compile(r"^data/(brain/v18_brain_[A-Za-z0-9_]+|learn/digest_[A-Za-z0-9_]+)\.json$")
+GATED_DATA_RE = re.compile(r"^data/(brain/v18_brain_[A-Za-z0-9_]+|learn/(?:digest|needed_filters|switch_profile|positives_all|binding_map|linknet_proposals|must_pos)_[A-Za-z0-9_]+)\.json(?:\.gz)?$")
+MODEL_BUNDLE_PATH = "tools/v18_model_bundle.json"
+MODEL_CATEGORIES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
+MODEL_ARTIFACT_NAMES = {f"{kind}_{category}.json{'.gz' if kind == 'positives_all' else ''}" for category in MODEL_CATEGORIES for kind in ("v18_brain", "digest", "needed_filters", "switch_profile", "positives_all", "binding_map", "linknet_proposals", "must_pos")}
 CODE_EXCLUDE = ["data", "backtest_v8", "backtest_v7", "SPREADSHEETS", "klines_*", "archive", "backups", ".venv", "backtest_framework", ".git", "logs", "*.log", "*.db", "*.sqlite", "*.npz", "*.xlsx", "__pycache__", ".history", ".elastic"]
 
 
@@ -109,6 +113,65 @@ def md5(p):
         for b in iter(lambda: fh.read(1 << 20), b""):
             h.update(b)
     return h.hexdigest()
+
+
+def sha256(p):
+    h = hashlib.sha256()
+    with open(p, "rb") as fh:
+        for block in iter(lambda: fh.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def model_bundle_pin(root):
+    root = Path(root)
+    manifest_path = root / MODEL_BUNDLE_PATH
+    if manifest_path.is_symlink() or not manifest_path.is_file():
+        raise ValueError(f"model bundle declaration missing or symlinked: {manifest_path}")
+    manifest_bytes = manifest_path.read_bytes()
+    declaration = json.loads(manifest_bytes)
+    expected = declaration.get("expected_sha256_by_filename")
+    if not isinstance(expected, dict) or set(expected) != MODEL_ARTIFACT_NAMES:
+        raise ValueError("model bundle must declare exactly 32 artifacts")
+    artifacts = {}
+    for name, digest in expected.items():
+        relative = f"data/brain/{name}" if name.startswith("v18_brain_") else f"data/learn/{name}"
+        source = root / relative
+        if not GATED_DATA_RE.fullmatch(relative) or not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ValueError(f"invalid gated model artifact declaration: {name}")
+        if source.is_symlink() or not source.is_file() or sha256(source) != digest:
+            raise ValueError(f"model artifact missing or fails its declared SHA256: {relative}")
+        artifacts[relative] = digest
+    return {"bundle_id": declaration.get("bundle_id"), "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(), "artifact_sha256": artifacts}
+
+
+def model_snapshot_pin():
+    snapshot = BENCH / f"snap_{SNAP}"
+    raw = (snapshot / "manifest.json").read_bytes()
+    manifest = json.loads(raw)
+    sides = manifest.get("sides")
+    if not isinstance(sides, list) or len(sides) != 8 or len(set(sides)) != 8:
+        raise ValueError("model comparison requires a snapshot manifest with exactly eight unique sides")
+    if set(gate_sides()) != set(sides):
+        raise ValueError("model comparison gate side selection must equal the complete pinned snapshot side set")
+    return {"snapshot_id": SNAP, "manifest_sha256": hashlib.sha256(raw).hexdigest(), "sides": sides}
+
+
+def stage_model_bundle(source, destination):
+    source, destination = Path(source), Path(destination)
+    pin = model_bundle_pin(source)
+    destination.mkdir(parents=True)
+    manifest = source / MODEL_BUNDLE_PATH
+    target_manifest = destination / MODEL_BUNDLE_PATH
+    target_manifest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(manifest, target_manifest)
+    for relative in pin["artifact_sha256"]:
+        target = destination / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source / relative, target)
+    if model_bundle_pin(destination) != pin:
+        raise ValueError("staged baseline model bundle differs from its validated source")
+    return pin
 
 
 def now():
@@ -203,6 +266,26 @@ def cmd_submit(a):
         (cd / "tree" / rel).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(src, cd / "tree" / rel)
         files[rel] = md5(cd / "tree" / rel)
+    has_model_assets = MODEL_BUNDLE_PATH in files or any(GATED_DATA_RE.fullmatch(rel) for rel in files)
+    model_overlay = None
+    if has_model_assets:
+        if MODEL_BUNDLE_PATH not in files or not a.nn_baseline_bundle:
+            print("[gate] model submission requires tools/v18_model_bundle.json plus --nn-baseline-bundle with an independently pinned 32-artifact reference", file=sys.stderr)
+            shutil.rmtree(cd)
+            return 2
+        try:
+            candidate_pin = model_bundle_pin(cd / "tree")
+            baseline_pin = stage_model_bundle(a.nn_baseline_bundle, cd / "nn_baseline_bundle")
+            snapshot_pin = model_snapshot_pin()
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            print(f"[gate] invalid model bundle: {exc}", file=sys.stderr)
+            shutil.rmtree(cd)
+            return 2
+        model_overlay = {"candidate": candidate_pin, "baseline": baseline_pin, "baseline_bundle_path": str(cd / "nn_baseline_bundle"), "snapshot": snapshot_pin}
+    elif a.nn_baseline_bundle:
+        print("[gate] --nn-baseline-bundle requires candidate model bundle assets", file=sys.stderr)
+        shutil.rmtree(cd)
+        return 2
     flags = dict(champ.get("flags") or {})
     for kv in a.set or []:
         k, _, v = kv.partition("=")
@@ -223,7 +306,10 @@ def cmd_submit(a):
         else:
             env[k] = v
     env = result_env(env)
-    meta = {"id": cid, "submitted": now(), "note": a.note or "", "priority": int(a.priority or 0), "files": files, "flags": flags, "env": env, "env_changes": env_diff(champ_env(champ), env), "champion_pilot_md5": champ.get("pilot_md5"), "state": "pending"}
+    if model_overlay:
+        model_overlay["common_flags"] = flags
+        model_overlay["common_env_sha256"] = hashlib.sha256(json.dumps(env, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    meta = {"id": cid, "submitted": now(), "note": a.note or "", "priority": int(a.priority or 0), "files": files, "flags": flags, "env": env, "env_changes": env_diff(champ_env(champ), env), "champion_pilot_md5": champ.get("pilot_md5"), "model_overlay": model_overlay, "state": "pending"}
     if not files and not a.set and not meta["env_changes"] and not a.allow_identical:
         print("[gate] nothing to bench: no files, no --set, launch env identical to the champion's — refused", file=sys.stderr)
         shutil.rmtree(cd)
@@ -244,10 +330,12 @@ def bench_env(env):
     return out
 
 
-def bench(label, code, flags, env):
+def bench(label, code, flags, env, model_bundle=None):
     env_file = GATE / f"env_{label}.json"
     write_json_atomic(env_file, bench_env(env))
     args = [sys.executable, str(BENCH / "tools" / "v15_npz_bench.py"), "run", "--snap", SNAP, "--label", label, "--code", str(code), "--only", ",".join(gate_sides()), "--env-file", str(env_file), "--parallel", "1", "--workers", "2", "--nice", "10", "--min-free-mb", "7000", "--force", "--set", "V15_HOLDOUT_DAYS=7"]
+    if model_bundle:
+        args += ["--model-bundle", str(model_bundle)]
     for k, v in flags.items():
         args += ["--set", f"{k}={v}"]
     for k in ("V15_BRAIN", "V15_BRAIN_NAKED"):
@@ -534,19 +622,135 @@ def cmd_run(a):
         return 0
     cd = pend[0]
     meta = read_meta(cd) or {}
+    model_overlay = meta.get("model_overlay")
+    if model_overlay:
+        try:
+            candidate_pin = model_bundle_pin(cd / "tree")
+            baseline_path = Path(model_overlay["baseline_bundle_path"])
+            baseline_pin = model_bundle_pin(baseline_path)
+            current_snapshot = model_snapshot_pin()
+            common_env = result_env(meta["env"]) if meta.get("env") is not None else champ_env(champ)
+            common_env_sha = hashlib.sha256(json.dumps(common_env, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+            print(f"[gate] REFUSED model overlay candidate {meta.get('id')}: {exc}", file=sys.stderr)
+            return 2
+        if candidate_pin != model_overlay.get("candidate") or baseline_pin != model_overlay.get("baseline") or current_snapshot != model_overlay.get("snapshot"):
+            print(f"[gate] REFUSED model overlay candidate {meta.get('id')}: pinned bundle changed after submit", file=sys.stderr)
+            return 2
+        if (meta.get("flags") or {}) != model_overlay.get("common_flags") or common_env_sha != model_overlay.get("common_env_sha256"):
+            print(f"[gate] REFUSED model overlay candidate {meta.get('id')}: common runtime settings changed after submit", file=sys.stderr)
+            return 2
     meta["state"] = "running"
     meta["started"] = now()
     write_json_atomic(cd / "meta.json", meta)
     lc, la = f"gate_{meta['id']}_champ", f"gate_{meta['id']}_cand"
-    p1 = bench(lc, CHAMP / "tree", champ.get("flags") or {}, champ_env(champ))
-    p2 = bench(la, cd / "tree", meta.get("flags") or {}, result_env(meta["env"]) if meta.get("env") is not None else champ_env(champ))
+    if model_overlay:
+        common_flags = meta.get("flags") or {}
+        common_env = result_env(meta["env"]) if meta.get("env") is not None else champ_env(champ)
+        p1 = bench(lc, CHAMP / "tree", common_flags, common_env, Path(model_overlay["baseline_bundle_path"]))
+        p2 = bench(la, cd / "tree", common_flags, common_env, cd / "tree")
+    else:
+        p1 = bench(lc, CHAMP / "tree", champ.get("flags") or {}, champ_env(champ))
+        p2 = bench(la, cd / "tree", meta.get("flags") or {}, result_env(meta["env"]) if meta.get("env") is not None else champ_env(champ))
     p1.wait()
     p2.wait()
-    return finalize(cd, meta, decide(*truth_rescore(lc, la, results(lc), results(la))))
+    decision = decide(*truth_rescore(lc, la, results(lc), results(la)))
+    return finalize(cd, meta, decision)
+
+
+def apply_model_overlay_acceptance(cd, meta, decision):
+    overlay = meta.get("model_overlay")
+    if not overlay:
+        return decision
+    reasons = []
+    expected_sides = set((overlay.get("snapshot") or {}).get("sides") or [])
+    try:
+        if model_snapshot_pin() != overlay.get("snapshot"):
+            reasons.append("pinned eight-side snapshot identity changed")
+    except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        reasons.append(f"pinned snapshot could not be verified: {exc}")
+    for label, arm in ((f"gate_{meta['id']}_champ", "baseline"), (f"gate_{meta['id']}_cand", "candidate")):
+        expected = overlay.get(arm) or {}
+        run_dir = BENCH / "runs" / f"{SNAP}__{label}"
+        try:
+            actual = model_bundle_pin(run_dir / "root")
+            if actual != expected:
+                reasons.append(f"{arm} actual run-root model declaration or artifact hashes differ from the pinned bundle")
+            receipt = json.loads((run_dir / "model_bundle_receipt.json").read_text())
+            if receipt.get("manifest_sha256") != expected.get("manifest_sha256") or receipt.get("artifact_sha256") != expected.get("artifact_sha256"):
+                reasons.append(f"{arm} build_root receipt differs from the pinned bundle")
+        except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+            reasons.append(f"{arm} actual run-root model verification failed: {exc}")
+    rows = decision.get("rows") or []
+    row_by_side = {row.get("side"): row for row in rows if isinstance(row, dict)}
+    scored = set(decision.get("scored") or [])
+    coverage_complete = len(expected_sides) == 8 and set(row_by_side) == expected_sides and scored == expected_sides
+    truth_complete = coverage_complete and decision.get("truth_sides") == 8 and all(bool(row_by_side[side].get("truth")) for side in expected_sides)
+    if not coverage_complete:
+        reasons.append("canonical gate results do not cover all eight pinned sides")
+    if not truth_complete:
+        reasons.append("all eight sides lack common chart-truth OOS scores")
+    try:
+        baseline_scores = [float(row_by_side[side]["oos_champ"]) for side in sorted(expected_sides)]
+        candidate_scores = [float(row_by_side[side]["oos_cand"]) for side in sorted(expected_sides)]
+        baseline_walls = [float(row_by_side[side]["wall_champ"]) for side in sorted(expected_sides)]
+        candidate_walls = [float(row_by_side[side]["wall_cand"]) for side in sorted(expected_sides)]
+        if not all(math.isfinite(value) for value in baseline_scores + candidate_scores + baseline_walls + candidate_walls):
+            raise ValueError("non-finite OOS score or wall measurement")
+        if not all(value > 0 for value in baseline_walls + candidate_walls):
+            raise ValueError("whole-board wall measurements must be positive")
+        baseline_sum, candidate_sum = sum(baseline_scores), sum(candidate_scores)
+        if baseline_sum == 0:
+            quality_change = None
+            quality_pass = False
+            reasons.append("aggregate baseline OOS score is zero; relative 20% quality change is undefined")
+        else:
+            quality_change = 100.0 * (candidate_sum - baseline_sum) / abs(baseline_sum)
+            quality_pass = quality_change >= 20.0
+            if not quality_pass:
+                reasons.append("aggregate OOS quality change is below 20%")
+        baseline_wall, candidate_wall = sum(baseline_walls), sum(candidate_walls)
+        time_reduction = 100.0 * (baseline_wall - candidate_wall) / baseline_wall
+        speed_pass = time_reduction > 90.0
+        if not speed_pass:
+            reasons.append("aggregate whole-board wall reduction is not greater than 90%")
+        quality_label = "aggregate_loss_reduction_pct" if baseline_sum < 0 and candidate_sum < 0 else "aggregate_oos_gain_change_pct"
+        side_regressions = sorted(side for side in expected_sides if row_by_side[side]["oos_cand"] < row_by_side[side]["oos_champ"])
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
+        baseline_sum = candidate_sum = baseline_wall = candidate_wall = None
+        quality_change = time_reduction = None
+        quality_pass = speed_pass = False
+        quality_label = "undefined"
+        side_regressions = []
+        reasons.append(f"aggregate OOS/wall calculation failed: {exc}")
+    decision["model_overlay_acceptance"] = {
+        "baseline_model_bundle_id": (overlay.get("baseline") or {}).get("bundle_id"),
+        "candidate_model_bundle_id": (overlay.get("candidate") or {}).get("bundle_id"),
+        "snapshot": overlay.get("snapshot"),
+        "coverage_complete_8": coverage_complete,
+        "chart_truth_oos_complete_8": truth_complete,
+        "aggregate_baseline_oos_gain_pct": baseline_sum,
+        "aggregate_candidate_oos_gain_pct": candidate_sum,
+        "aggregate_oos_quality_change_pct": quality_change,
+        "quality_change_label": quality_label,
+        "quality_pass": quality_pass,
+        "side_regressions": side_regressions,
+        "baseline_whole_board_wall_seconds": baseline_wall,
+        "candidate_whole_board_wall_seconds": candidate_wall,
+        "whole_board_time_reduction_pct": time_reduction,
+        "speed_pass": speed_pass,
+        "run_root_model_hashes_verified": not any("run-root" in reason or "build_root" in reason for reason in reasons),
+        "automatic_promotion_requires_canonical_gate_pass": True,
+    }
+    if reasons:
+        decision["PASS"] = False
+        decision.setdefault("reasons", []).extend(f"MODEL_OVERLAY: {reason}" for reason in reasons)
+    return decision
 
 
 def finalize(cd, meta, d):
     """The single PASS/deploy/record path, shared by run and redecide so the criterion can never diverge."""
+    d = apply_model_overlay_acceptance(cd, meta, d)
     meta["decision"] = d
     meta["finished"] = now()
     meta["state"] = "PASS" if d["PASS"] else "FAIL"
@@ -599,6 +803,7 @@ def cmd_redecide(a):
             return 3
     d = decide(*truth_rescore(lc, la, results(lc), results(la)))
     if a.dry_run:
+        d = apply_model_overlay_acceptance(cd, meta, d)
         print(json.dumps({"id": a.id, "would_be": "PASS" if d["PASS"] else "FAIL", "dry_run": True, **{k: v for k, v in d.items() if k != "rows"}}, indent=1))
         return 0
     return finalize(cd, meta, d)
@@ -684,6 +889,7 @@ def main(argv=None):
     s.add_argument("--env", action="append", help="launch-env change K=V benched against the champion env (K= removes K)")
     s.add_argument("--env-from-production", metavar="HOST", help="candidate env = the env a running production pilot on HOST (local or 10.0.0.3) really has")
     s.add_argument("--allow-identical", action="store_true", help="champion-vs-champion run (noise calibration)")
+    s.add_argument("--nn-baseline-bundle", help="independently pinned 32-artifact bundle to use for the champion arm of a model comparison")
     s.add_argument("--priority", type=int, default=0, help="higher benches first (user-ordered comparisons)")
     sub.add_parser("run")
     rd = sub.add_parser("redecide")

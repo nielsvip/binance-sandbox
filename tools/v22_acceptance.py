@@ -1,4 +1,4 @@
-"""Read-only aggregate acceptance check for a pinned v21/v22 NN comparison."""
+"""Structural threshold calculator for self-reported v21/v22 NN comparison data."""
 
 import argparse
 import hashlib
@@ -215,8 +215,9 @@ def evaluate(payload):
         "snapshot_id": EXPECTED_SNAPSHOT,
         "coverage": {"expected": len(sides), "measured": len(rows), "complete": True},
         "score_kind": payload["score_kind"],
-        "evidence_self_reported": False,
-        "s2_gate_receipt_sha256_verified": True,
+        "evidence_self_reported": True,
+        "gate_input_file_sha256_verified": True,
+        "canonical_s2_gate_decision_verified": False,
         "aggregate_baseline_oos_gain_pct": baseline_sum,
         "aggregate_candidate_oos_gain_pct": candidate_sum,
         "aggregate_oos_quality_change_pct": quality_change,
@@ -227,9 +228,11 @@ def evaluate(payload):
         "candidate_whole_board_wall_seconds": candidate_wall,
         "whole_board_time_reduction_pct": time_reduction,
         "speed_pass": speed_pass,
-        "s2_gate_pass": gate_pass,
-        "accepted": gate_pass and quality_pass and speed_pass,
-        "reasons": reasons,
+        "reported_gate_status_pass": gate_pass,
+        "thresholds_met": gate_pass and quality_pass and speed_pass,
+        "accepted": False,
+        "authority": "Structural calculation only; the gate status and measurements are supplied inputs, not authenticated native S2 artifacts.",
+        "reasons": reasons + ["No canonical S2 gate decision or native benchmark receipts were authenticated; this result cannot establish acceptance."],
         "sides": rows,
     }
 

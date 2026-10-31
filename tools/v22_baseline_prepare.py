@@ -208,23 +208,41 @@ def verify_side_inputs(snapshot, snapshot_manifest, admission, live_manifest, sy
 
 
 def copy_tree_by_hardlink(
-    source, runtime_root, target, expected_files, runtime_files, verified_sources
+    source,
+    runtime_root,
+    target,
+    expected_files,
+    runtime_files,
+    verified_sources,
+    routing_files=None,
 ):
     source, runtime_root, target = map(Path, (source, runtime_root, target))
+    routing_files = routing_files or {}
     target.mkdir(parents=True, exist_ok=False)
     for relative, metadata in expected_files.items():
-        source_path = (
-            runtime_root / relative if relative in runtime_files else source / relative
-        )
+        route = routing_files.get(relative)
+        if route is not None:
+            if (
+                runtime_files.get(relative) != route.get("source_sha256")
+                or metadata.get("sha256") != route.get("source_sha256")
+            ):
+                raise ValueError(f"routing overlay preimage differs: {relative}")
+            source_path = source / relative
+            expected_hash = route.get("candidate_sha256")
+        else:
+            source_path = (
+                runtime_root / relative
+                if relative in runtime_files
+                else source / relative
+            )
+            expected_hash = runtime_files.get(relative, metadata["sha256"])
         if source_path.is_symlink() or not source_path.is_file():
             raise ValueError(f"source fixture file missing or unsafe: {source_path}")
-        expected_hash = runtime_files.get(relative, metadata["sha256"])
         if expected_hash != metadata["sha256"]:
-            raise ValueError(
-                f"source file differs from immutable runtime/materialization pins: {source_path}"
-            )
+            if route is None or expected_hash != route.get("candidate_sha256"):
+                raise ValueError(f"source file differs from immutable pins: {source_path}")
         stat = source_path.stat()
-        if relative not in runtime_files and (
+        if route is None and relative not in runtime_files and (
             stat.st_size,
             stat.st_ino,
             stat.st_mtime_ns,
@@ -237,9 +255,8 @@ def copy_tree_by_hardlink(
         cache_key = str(source_path.resolve())
         if verified_sources.get(cache_key) != expected_hash:
             if sha(source_path) != expected_hash:
-                raise ValueError(
-                    f"source file differs from immutable runtime/materialization pins: {source_path}"
-                )
+                label = "routing overlay" if route is not None else "immutable source"
+                raise ValueError(f"{label} differs from pinned SHA256: {source_path}")
             verified_sources[cache_key] = expected_hash
         target_path = target / relative
         target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -311,6 +328,28 @@ def materialize_side(
         )
     runtime = load_json(runtime_path)
     runtime_root = Path(runtime["code_root"])
+    routing = load_json(routing_path)
+    routing_files = {
+        relative: {
+            "source_sha256": routing["source_sha256"][relative],
+            "candidate_sha256": routing["candidate_sha256"][relative],
+        }
+        for relative in routing.get("source_sha256", {})
+    }
+    if set(routing_files) != set(routing.get("candidate_sha256", {})):
+        raise ValueError("routing source/candidate file sets differ")
+    for relative, route in routing_files.items():
+        if (
+            runtime["files"].get(relative) != route["source_sha256"]
+            or source_receipt["files"].get(relative, {}).get("sha256")
+            != route["source_sha256"]
+        ):
+            raise ValueError(f"routing overlay preimage differs from prior runtime: {relative}")
+        overlay = source_root / relative
+        if overlay.is_symlink() or not overlay.is_file() or sha(overlay) != route[
+            "candidate_sha256"
+        ]:
+            raise ValueError(f"routing overlay differs from its declared candidate: {relative}")
     copy_tree_by_hardlink(
         source_root,
         runtime_root,
@@ -318,6 +357,7 @@ def materialize_side(
         source_receipt["files"],
         runtime["files"],
         verified_sources,
+        routing_files,
     )
     side.mkdir(parents=True)
     destination_npz = reference / relative_npz
@@ -336,6 +376,16 @@ def materialize_side(
         stat = path.stat()
         if relative == relative_npz:
             digest = sha(path)
+        elif relative in routing_files:
+            digest = sha(path)
+            source_path = source_root / relative
+            route = routing_files[relative]
+            if (
+                digest != route["candidate_sha256"]
+                or path.stat().st_ino != source_path.stat().st_ino
+                or verified_sources.get(str(source_path.resolve())) != digest
+            ):
+                raise ValueError(f"routed source changed while materializing: {path}")
         else:
             digest = metadata["sha256"]
             source_path = (

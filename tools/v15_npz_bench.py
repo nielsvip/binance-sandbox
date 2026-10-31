@@ -19,6 +19,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -37,6 +38,9 @@ ALLOWED_WINDOWS = (1, 7, 30, 365)  # evaluate_v12._exact_30d_slice accepts these
 MIN_WINDOW_COVERAGE = 0.80  # tools/opt/metrics.py: a board whose NPZ covers less of the window is INVALID
 ENV_DROP = {"V15_PROGRESS_DIR", "V15_OUT_DIR", "V15_START_OVERRIDES", "V15_ISOLATED_PROOF", "V15_EVAL_CACHE_DB", "V15_FILL_SLICE_S", "V15_V17_CARRY_DIR"}
 CRYPTO_SUFFIX = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
+MODEL_ARTIFACT_RE = re.compile(r"(?:v18_brain_[A-Za-z0-9_]+|(?:digest|needed_filters|switch_profile|positives_all|binding_map|linknet_proposals|must_pos)_[A-Za-z0-9_]+)\.json(?:\.gz)?$")
+MODEL_CATEGORIES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
+MODEL_ARTIFACT_NAMES = {f"{kind}_{category}.json{'.gz' if kind == 'positives_all' else ''}" for category in MODEL_CATEGORIES for kind in ("v18_brain", "digest", "needed_filters", "switch_profile", "positives_all", "binding_map", "linknet_proposals", "must_pos")}
 
 
 def md5(path, chunk=1 << 20):
@@ -44,6 +48,14 @@ def md5(path, chunk=1 << 20):
     with open(path, "rb") as fh:
         for b in iter(lambda: fh.read(chunk), b""):
             h.update(b)
+    return h.hexdigest()
+
+
+def sha256_file(path, chunk=1 << 20):
+    h = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for block in iter(lambda: fh.read(chunk), b""):
+            h.update(block)
     return h.hexdigest()
 
 
@@ -224,7 +236,48 @@ def freeze_live_baseline(snap):
     return True
 
 
-def build_root(snap, run_dir, code):
+def model_bundle_artifacts(bundle_root):
+    bundle_root = Path(bundle_root)
+    manifest_path = bundle_root / "tools" / "v18_model_bundle.json"
+    if manifest_path.is_symlink() or not manifest_path.is_file():
+        raise ValueError(f"model bundle declaration missing or symlinked: {manifest_path}")
+    manifest_bytes = manifest_path.read_bytes()
+    declaration = json.loads(manifest_bytes)
+    expected = declaration.get("expected_sha256_by_filename")
+    if not isinstance(expected, dict) or set(expected) != MODEL_ARTIFACT_NAMES:
+        raise ValueError("model bundle must declare exactly 32 artifacts")
+    artifacts = {}
+    for name, digest in expected.items():
+        if not MODEL_ARTIFACT_RE.fullmatch(name) or not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ValueError(f"invalid model artifact declaration: {name}")
+        relative = Path("data/brain" if name.startswith("v18_brain_") else "data/learn") / name
+        source = bundle_root / relative
+        if source.is_symlink() or not source.is_file() or sha256_file(source) != digest:
+            raise ValueError(f"model artifact is missing or fails its declared SHA256: {relative}")
+        artifacts[relative] = (source, digest)
+    return manifest_path, hashlib.sha256(manifest_bytes).hexdigest(), declaration, artifacts
+
+
+def apply_model_bundle(root, bundle_root):
+    manifest_path, manifest_sha, declaration, artifacts = model_bundle_artifacts(bundle_root)
+    target_manifest = Path(root) / "tools" / "v18_model_bundle.json"
+    target_manifest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(manifest_path, target_manifest)
+    if sha256_file(target_manifest) != manifest_sha:
+        raise ValueError("copied model bundle declaration differs from its pinned source")
+    consumed = {}
+    for relative, (source, expected) in artifacts.items():
+        target = Path(root) / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, target)
+        actual = sha256_file(target)
+        if actual != expected:
+            raise ValueError(f"built-root model artifact SHA256 mismatch: {relative}")
+        consumed[relative.as_posix()] = actual
+    return {"bundle_id": declaration.get("bundle_id"), "manifest_sha256": manifest_sha, "artifact_sha256": consumed}
+
+
+def build_root(snap, run_dir, code, model_bundle=None):
     root = run_dir / "root"
     if root.exists():
         shutil.rmtree(root)
@@ -239,6 +292,9 @@ def build_root(snap, run_dir, code):
         os.rename(str(snap / "data"), str(root / "data"))
     else:
         subprocess.run(["cp", "-a", str(snap / "data"), str(root / "data")], check=True)
+    if model_bundle:
+        receipt = apply_model_bundle(root, model_bundle)
+        (run_dir / "model_bundle_receipt.json").write_text(json.dumps(receipt, sort_keys=True, indent=2) + "\n")
     ind = root / "backtest_v8" / "indicators"
     ind.mkdir(parents=True)
     now = time.time()
@@ -541,7 +597,7 @@ def cleanup_aborted_run(run_dir, running, pre_existing, grace_s=60.0):
 
 def _cmd_run_body(args, snap, man, run_dir):
     code = Path(args.code or SRC)
-    root = build_root(snap, run_dir, code)
+    root = build_root(snap, run_dir, code, args.model_bundle)
     pmd5 = md5(root / "v15_pilot.py")
     env_base = {k: v for k, v in os.environ.items() if not k.startswith(ENV_KEEP_PREFIX)}
     # 2026-10-16 USER "test every version side by side against the previous version so corner cutting is exposed": the
@@ -723,6 +779,7 @@ def main(argv=None):
     r.add_argument("--snap", required=True)
     r.add_argument("--label", required=True)
     r.add_argument("--code", help="code tree to bench (default ~/binance-sandbox)")
+    r.add_argument("--model-bundle", help="validated 32-artifact model bundle overlaid after the frozen snapshot data")
     r.add_argument("--set", action="append", help="extra env K=V for this version (e.g. V15_BRAIN=1)")
     r.add_argument("--env-file", help="JSON launch env replacing the snapshot's frozen env (the gate passes the champion/candidate env)")
     r.add_argument("--only")

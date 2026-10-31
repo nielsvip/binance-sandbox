@@ -48,3 +48,20 @@ def test_frozen_db_must_contain_exact_full_set_not_empty_fallback(tmp_path):
     with sqlite3.connect(db) as connection:
         connection.execute("UPDATE per_sym_active SET full_config_json=?", (json.dumps(overrides),))
     assert assert_frozen_active_row(db, active)["full_config_sha256"] == _config_hash(overrides)
+
+
+def test_derived_per_trade_paths_cannot_escape_even_with_correct_base(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from tools.replay_runtime_guard import assert_state_module_paths
+    code = tmp_path / "run" / "code"
+    code.mkdir(parents=True)
+    for key in ("BASE_PATH", "V12_BASE_PATH"):
+        monkeypatch.setenv(key, str(code))
+    writer = SimpleNamespace(_BASE=code, _OUT_DIR=code / "data" / "per_trade_returns", _ATTEMPT_DIR=code / "data" / "per_trade_attempts", _IDEM_DIR=code / "data" / "per_trade_returns" / "_idem")
+    modules = {"per_trade_logger": writer}
+    assert len(assert_state_module_paths(code, code.parent, modules)) == 4
+    writer._OUT_DIR = tmp_path / "production" / "data"
+    with pytest.raises(RuntimeError, match="escapes"):
+        assert_state_module_paths(code, code.parent, modules)
+    with pytest.raises(RuntimeError, match="must import per_trade_logger"):
+        assert_state_module_paths(code, code.parent, {})

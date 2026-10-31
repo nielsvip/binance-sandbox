@@ -124,6 +124,81 @@ class V22BaselinePrepareTests(unittest.TestCase):
                     root, manifest, admission, live_manifest, side
                 )
 
+    def test_copy_tree_uses_only_the_declared_routing_overlay(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source"
+            runtime = root / "runtime"
+            source.mkdir()
+            runtime.mkdir()
+            old = b"immutable prior runtime"
+            overlay = b"declared scratch-routing overlay"
+            (source / "v15_pilot.py").write_bytes(overlay)
+            runtime_file = runtime / "v15_pilot.py"
+            runtime_file.write_bytes(old)
+            metadata = {
+                "sha256": hashlib.sha256(old).hexdigest(),
+                "bytes": len(old),
+                "inode": runtime_file.stat().st_ino,
+                "mtime_ns": runtime_file.stat().st_mtime_ns,
+            }
+            route = {
+                "v15_pilot.py": {
+                    "source_sha256": hashlib.sha256(old).hexdigest(),
+                    "candidate_sha256": hashlib.sha256(overlay).hexdigest(),
+                }
+            }
+            target = root / "materialized"
+            prepare.copy_tree_by_hardlink(
+                source,
+                runtime,
+                target,
+                {"v15_pilot.py": metadata},
+                {"v15_pilot.py": hashlib.sha256(old).hexdigest()},
+                {},
+                route,
+            )
+            self.assertEqual(prepare.sha(target / "v15_pilot.py"), route["v15_pilot.py"]["candidate_sha256"])
+            self.assertEqual(
+                (target / "v15_pilot.py").stat().st_ino,
+                (source / "v15_pilot.py").stat().st_ino,
+            )
+
+    def test_copy_tree_rejects_a_wrong_routing_overlay_hash(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            source = root / "source"
+            runtime = root / "runtime"
+            source.mkdir()
+            runtime.mkdir()
+            old = b"immutable prior runtime"
+            overlay = b"declared scratch-routing overlay"
+            (source / "v15_pilot.py").write_bytes(overlay)
+            runtime_file = runtime / "v15_pilot.py"
+            runtime_file.write_bytes(old)
+            metadata = {
+                "sha256": hashlib.sha256(old).hexdigest(),
+                "bytes": len(old),
+                "inode": runtime_file.stat().st_ino,
+                "mtime_ns": runtime_file.stat().st_mtime_ns,
+            }
+            wrong_route = {
+                "v15_pilot.py": {
+                    "source_sha256": hashlib.sha256(old).hexdigest(),
+                    "candidate_sha256": hashlib.sha256(b"different overlay").hexdigest(),
+                }
+            }
+            with self.assertRaisesRegex(ValueError, "routing overlay differs"):
+                prepare.copy_tree_by_hardlink(
+                    source,
+                    runtime,
+                    root / "materialized",
+                    {"v15_pilot.py": metadata},
+                    {"v15_pilot.py": hashlib.sha256(old).hexdigest()},
+                    {},
+                    wrong_route,
+                )
+
 
 if __name__ == "__main__":
     unittest.main()

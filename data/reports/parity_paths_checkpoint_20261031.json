@@ -347,7 +347,7 @@
       "status": "Disclosed by agent; no retroactive backup claimed"
     }
   ],
-  "checkpoint_updated_at": "2026-10-31T05:40:28.745764+00:00",
+  "checkpoint_updated_at": "2026-10-31T06:13:37.920192+00:00",
   "replay_clock": {
     "signal_clock": "NPZ bar-open timestamp",
     "decision_clock": "bar-open +900seconds when V12_COMPLETED_BAR_SECONDS=900",
@@ -509,12 +509,21 @@
     "start_exclusive": 1790822700,
     "score_start_exclusive": 1792205100,
     "end_inclusive": 1793414700,
-    "status": "RUNNING_FULL_2880_CAUSAL_PREFIXES_4_WORKERS",
-    "stocks": "1515 actual canonicalRTHrows:1255warmup+260scored; contiguouscalendar assumption being corrected",
+    "status": "COMPLETED_VALID_VECTOR_STATE_STREAM_NOT_NATIVE_PARITY",
+    "stocks": "Original AAPL NPZ invalid coverage; canonical producer rebuilding isolated replacement",
     "pid": 3842369,
     "output": "/home/niels/parity_runs/pepe_rolling_14d_20261031T0528Z/output/rolling_state_30d_warmup_14d_scored.jsonl",
     "harness_sha256": "aead20761c751bb4d5763f797ee3db4200f1691ab48d04928591ebe377ef2fd0",
-    "completed_provenance_observation": "360 records at root audit; shard results buffered until completion; not a coverage verdict"
+    "completed_at": "2026-10-31T06:05:50.034Z",
+    "invalid": {},
+    "coverage_ok": true,
+    "states": 2880,
+    "raw_model_events": {
+      "OPEN": 85,
+      "AUGMENT": 13,
+      "REDUCE": 41,
+      "CLOSE": 79
+    }
   },
   "adx_regime_exception": {
     "status": "LOCAL_PREDICATE_TESTED_FULL_REPLAY_PENDING",
@@ -558,6 +567,52 @@
     "status": "INCOMPLETE",
     "source_inventory": "data/reports/asr_scoreflow_inventory_20261031.json",
     "corrected_count": "422 score mutations includinginitialization; 105returns; earlier434figureunsupported",
-    "implementation": "AgentextractingorderedsharedscalarandNumPycomponents, initialprefixnativewired, fullvectoraggregate notyetwired"
+    "implementation": "Shared scalar/NumPy ordered sections and micro-input policy native-wired; full vector scorer and engine action consumer still incomplete",
+    "latest_source_census": 267,
+    "scope": "AST score mutation count is not coverage proof; causal portfolio/tracker/cross-symbol inputs being classified"
+  },
+  "native_replay_basepath_incident": {
+    "status": "INVALID_RUNS_STOPPED; VERIFIED_PERFORMANCE_ROWS_QUARANTINED; QTY_STREAK_UNKNOWN_UNRESOLVED",
+    "cause": "Native harness omitted BASE_PATH; config resolved /home/niels/binance-sandbox. VEC_DRIVEN ownership flag was also not released. Mock client used; no real exchange orders from replay.",
+    "archive": "/home/niels/parity_runs/incident_native_basepath_20261031T055346Z",
+    "repair_plan_sha256": "bff4899d7e45efece3e1ceb9a7df5e7f337655e4623e5f0b31b58a78ec2ce40b",
+    "repair_receipt": "data/reports/native_replay_incident_repair_20261031.json",
+    "repair_actual_utc": "2026-10-31T06:11:47.577943+00:00",
+    "quarantined_rows": {
+      "per_trade_returns": 4,
+      "stale_set_halt_closes": 4
+    },
+    "preserved": "172 genuine ANG Oct2 return rows and first31 stale closes; original bytes archived; diagnostic logs not edited",
+    "unresolved": "qty_streak previous authentic state unavailable; never guessed/reset; authentic history reconstruction pending",
+    "prevention": "Explicit BASE_PATH and V12_BASE_PATH, derived output path checks, exact frozen active DB row, frozen board, scoped native ownership flags; 10 focused tests pass"
+  },
+  "vector_consumer_diagnostic": {
+    "reported_by": "ez_paths",
+    "bars_per_account": 2880,
+    "accounts": [
+      "ang",
+      "inf"
+    ],
+    "proposals_per_account": 563,
+    "mock_fills_per_account": 50,
+    "fill_counts_per_account": {
+      "OPEN": 19,
+      "AUGMENT": 8,
+      "REDUCE": 5,
+      "CLOSE": 18
+    },
+    "refusals_per_account": {
+      "REFUSED_NONSTOP_LOSS_CLOSE": 489,
+      "REFUSED_NONPROFIT_REDUCE": 24
+    },
+    "account_sequence_equal": true,
+    "acceptance": false,
+    "limitations": [
+      "break_even=entry ignores actual fee/funding",
+      "standing algo stops not triggered by OHLC; no verified broker lifecycle",
+      "frozen current settings retrospective, not as-traded",
+      "snapshot predates current fixes"
+    ],
+    "first_exit_refusal_signal_bar": 1790848800
   }
 }

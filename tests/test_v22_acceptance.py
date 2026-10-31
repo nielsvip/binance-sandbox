@@ -86,10 +86,13 @@ class V22AcceptanceTests(unittest.TestCase):
     def test_aggregate_negative_baseline_is_loss_reduction_not_profit(self):
         with tempfile.TemporaryDirectory() as directory:
             result = evaluate(make_payload(directory))
-        self.assertTrue(result["accepted"])
+        self.assertFalse(result["accepted"])
+        self.assertTrue(result["thresholds_met"])
         self.assertEqual(result["aggregate_oos_quality_change_pct"], 20.0)
         self.assertEqual(result["quality_change_label"], "aggregate_loss_reduction_pct")
         self.assertFalse(result["aggregate_candidate_is_profitable"])
+        self.assertTrue(result["evidence_self_reported"])
+        self.assertFalse(result["canonical_s2_gate_decision_verified"])
 
     def test_aggregate_thresholds_and_per_side_regression_diagnostics(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -130,7 +133,7 @@ class V22AcceptanceTests(unittest.TestCase):
             rewrite_gate(payload, status="FAIL")
             result = evaluate(payload)
         self.assertFalse(result["accepted"])
-        self.assertFalse(result["s2_gate_pass"])
+        self.assertFalse(result["reported_gate_status_pass"])
 
     def test_zero_aggregate_baseline_has_undefined_relative_metric(self):
         with tempfile.TemporaryDirectory() as directory:

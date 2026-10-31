@@ -35,6 +35,35 @@ def assert_frozen_active_row(db_path, active_file):
         raise RuntimeError(f"Frozen active DB row missing or different for {side}")
     return {"sym_side": side, "full_config_sha256": expected}
 
+def assert_state_module_paths(code_root, run_root, modules):
+    paths = {}
+    logger_module = modules.get("per_trade_logger")
+    if logger_module is None:
+        raise RuntimeError("Replay must import per_trade_logger before state-path preflight")
+    for name in ("_BASE", "_OUT_DIR", "_ATTEMPT_DIR", "_IDEM_DIR"):
+        value = getattr(logger_module, name, None)
+        if value is None:
+            raise RuntimeError(f"Replay per_trade_logger has no {name}")
+        paths[f"per_trade_logger.{name}"] = value
+    for name in ("config", "config_tradier"):
+        module = modules.get(name)
+        if module is None:
+            continue
+        for owner in (module, getattr(module, "Config", None)):
+            if owner is None:
+                continue
+            for attribute in ("BASE_PATH", "DATA_DIR", "MARKET_MODE_FILE"):
+                value = getattr(owner, attribute, None)
+                if value is not None:
+                    paths[f"{name}.{getattr(owner, '__name__', 'Config')}.{attribute}"] = value
+    stale = modules.get("stale_set_halt")
+    if stale is not None:
+        paths["stale_set_halt.ROOT"] = stale.ROOT
+        paths["stale_set_halt.base_path"] = stale.base_path(modules["ez_manage"]._ezm_base_config)
+    if os.environ.get("PER_SYM_STORE_DB"):
+        paths["PER_SYM_STORE_DB"] = os.environ["PER_SYM_STORE_DB"]
+    return assert_runtime_paths(code_root, run_root, paths)
+
 def assert_native_runtime(code_root, run_root, active_file, modules):
     code = Path(code_root).resolve()
     paths = {"code_root": code, "active_file": active_file}
@@ -62,5 +91,6 @@ def assert_native_runtime(code_root, run_root, active_file, modules):
             if getattr(handler, "baseFilename", None):
                 paths[f"logger:{name}:{index}"] = handler.baseFilename
     resolved = assert_runtime_paths(code, run_root, paths)
+    resolved.update(assert_state_module_paths(code, run_root, modules))
     active = assert_frozen_active_row(paths["per_sym_store.DB_PATH"], active_file)
     return {"status": "PREFLIGHT_PATHS_AND_ACTIVE_ROW_VERIFIED", "paths": resolved, "active": active, "note": "Does not prove trading parity or future file writes"}

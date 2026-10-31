@@ -28,11 +28,13 @@ _MI_TFS = ("15m", "1h", "4h", "D")
 
 
 def oi_confirm_entry_gate(npz, n, is_long, config, close, safe):
-    if not bool(getattr(config, "OI_CONFIRM_ENABLED", False)):
+    if not bool(getattr(config, "OI_CONFIRM_ENABLED", False)) or not bool(
+        getattr(config, "HTF_DIRECTION_GATE_ENABLED", False)
+    ):
         return None
-    # The live OI gate is independent of HTF_DIRECTION_GATE_ENABLED. Missing
-    # values pass per bar, so mask activity must not depend on a suffix-wide
-    # availability check (which made earlier bars depend on later data).
+    # Live nests OI_CONFIRM under HTF_DIRECTION_GATE_ENABLED. HTF_GATE_APPLY_TO_OPEN
+    # controls the HTF alignment check only; the OI child still applies when enabled.
+    # Missing values pass per bar, without a suffix-wide availability check.
     oi = safe(npz, "oi_change_1h_pct", n, np.nan)
     p1h = safe(npz, "close_1h_prev", n, 0.0)
     min_oi = float(getattr(config, "OI_CONFIRM_MIN_CHANGE_PCT", 0.5))

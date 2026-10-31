@@ -1,0 +1,37 @@
+{
+  "created_utc": "2026-10-31T06:11:47.577943+00:00",
+  "plan_sha256": "bff4899d7e45efece3e1ceb9a7df5e7f337655e4623e5f0b31b58a78ec2ce40b",
+  "applied": true,
+  "files": [
+    {
+      "path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20261002.jsonl",
+      "removed_confirmed_simulation_rows": 1,
+      "before_sha256": "1d07758fabccd9be53fd8f37f8a6f52072c32c7f1890f802c447edde32df1403",
+      "after_sha256": "068e1eaa5f8c19ce2bfdd758d53cb829920890be3b3d1f45f773f79aa8bc92e6"
+    },
+    {
+      "path": "/home/niels/binance-sandbox/data/per_trade_returns/inf_20261002.jsonl",
+      "removed_confirmed_simulation_rows": 1,
+      "before_sha256": "2fb50399ae01266f08976d947aebbb13581740e80e0ec2ee878ec098c2c0dcb9",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20261006.jsonl",
+      "removed_confirmed_simulation_rows": 1,
+      "before_sha256": "bb601cdffd7208126cd8c50bb70fdef25e56f24bde543ac4367bd7d845a91d81",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/home/niels/binance-sandbox/data/per_trade_returns/inf_20261006.jsonl",
+      "removed_confirmed_simulation_rows": 1,
+      "before_sha256": "6115f1afb718e099acc795acc02d430b9aa1963f56a1949be05ff028d02fcda1",
+      "after_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/home/niels/binance-sandbox/data/stale_set_halt/closes_ez.jsonl",
+      "removed_confirmed_simulation_rows": 4,
+      "before_sha256": "2414dcb33bb21b6c2fc4a8be831a0ea7d30fd6d5136409a5e0469f3c6e474bc2",
+      "after_sha256": "8c57ed7a7384925b7293b69ba81773a899a648ad47c524dd420a36aaf8142a51"
+    }
+  ]
+}
