@@ -135,3 +135,41 @@ def test_empty_receipt_keeps_snapshot_without_synthetic_action(tmp_path):
     assert db.query("SELECT COUNT(*) FROM forward_receipts WHERE run_id='actual-run-1'")[0][0] == 2
     assert db.query("SELECT COUNT(*) FROM decisions WHERE run_id='actual-run-1'")[0][0] == 0
     db.close()
+
+
+def test_paired_readiness_reports_shared_inputs_without_claiming_outcomes(tmp_path):
+    import sqlite3
+
+    db, journal_path, candidate_manifest = _fixture(tmp_path)
+    ingest(db, journal_path, candidate_manifest)
+    baseline_id = "baseline-scenario"
+    base = {"BOOL_SWITCH": False, "START_POSITION_SIZE": 25}
+    parent_hash = candidate_manifest["parent_settings_sha256"]
+    db.add_scenario(scenario_id=baseline_id, path_id="p", side="LONG", parameters={"overrides": {}}, created_at=candidate_manifest["started_at"])
+    epoch = candidate_manifest["epoch_id"]
+    db.add_run(run_id="planned-" + _digest([baseline_id, epoch]), scenario_id=baseline_id, sym_side=candidate_manifest["sym_side"], host=candidate_manifest["host"], settings_hash=parent_hash, code_hash="c" * 64, evidence_kind="catalog_only", status="PENDING", started_at=candidate_manifest["started_at"], ended_at=None)
+    baseline = dict(candidate_manifest, run_id="actual-baseline", scenario_id=baseline_id, settings_sha256=parent_hash, candidate_overrides={}, effective_settings=base, finished=False)
+    identity = {"scenario_id": baseline_id, "run_id": baseline["run_id"], "epoch_id": epoch, "sym_side": baseline["sym_side"], "settings_sha256": parent_hash, "code_sha256": baseline["code_sha256"]}
+    baseline_journal = tmp_path / "baseline.sqlite"
+    from tools.paper_frame_stream import FrameJournal
+
+    journal = FrameJournal(baseline_journal, identity)
+    source_frames = sqlite3.connect(journal_path)
+    for sequence, ts, payload in source_frames.execute("SELECT sequence,closed_ts,payload FROM frames ORDER BY sequence"):
+        journal.append_frame(ts, json.loads(payload))
+        journal.record_receipt(ts, {"events": [], "positions": {"inf:BTCUSDC_LONG": {"positionAmt": 0}}})
+    source_frames.close()
+    journal.close()
+    ingest(db, baseline_journal, baseline)
+    rows = db.query("SELECT * FROM paper_paired_readiness")
+    pair = next(row for row in rows if {row["run_a"], row["run_b"]} == {"actual-run-1", "actual-baseline"})
+    assert pair["candidate_config_differs"] == 1
+    assert pair["shared_context_matches"] == 1
+    assert (pair["frames_a"], pair["frames_b"], pair["identical_input_frames"]) == (2, 2, 2)
+    assert pair["identical_inputs_ready"] == 1
+    lifecycles = {pair["run_a"]: pair["lifecycles_a"], pair["run_b"]: pair["lifecycles_b"]}
+    assert lifecycles == {"actual-run-1": 1, "actual-baseline": 0}
+    assert pair["known_return_lifecycles_a"] == pair["known_return_lifecycles_b"] == 0
+    assert pair["known_fee_lifecycles_a"] == pair["known_fee_lifecycles_b"] == 0
+    assert pair["outcomes_computable"] == 0
+    db.close()

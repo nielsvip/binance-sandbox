@@ -22,6 +22,8 @@ def _spec(root, sym_side, scenario_id, venue="crypto"):
     engine_root = root / "runtime"
     engine_root.mkdir(exist_ok=True)
     (engine_root / "backtest_v12_engine.py").write_text("# isolated fixture\n", encoding="utf-8")
+    (engine_root / "tools").mkdir(exist_ok=True)
+    (engine_root / "tools" / "paper_forward_worker.py").write_text("# isolated worker fixture\n", encoding="utf-8")
     symbol = sym_side.rsplit("_", 1)[0]
     host = stable_host(venue, symbol, sym_side.rsplit("_", 1)[1])
     return {
@@ -178,6 +180,11 @@ def test_once_persists_all_jobs_and_launches_only_bounded_worker(tmp_path):
     assert "--follow" in launched[0]
     assert "--manifest" in launched[0]
     assert "--engine-root" in launched[0]
+    assert launched[0][0] == __import__("sys").executable
+    assert launched[0][1] == str((root / "runtime" / "tools" / "paper_forward_worker.py").resolve())
+    assert "--workspace-root" in launched[0]
+    workspace_index = launched[0].index("--workspace-root") + 1
+    assert launched[0][workspace_index] == str(root.resolve())
     engine_index = launched[0].index("--engine-root") + 1
     assert launched[0][engine_index] == str((root / "runtime").resolve())
     assert all_count == 3
@@ -186,6 +193,30 @@ def test_once_persists_all_jobs_and_launches_only_bounded_worker(tmp_path):
     assert event_count >= 4
     assert result["status_counts"]["STARTING"] == 1
     assert dict(rows_in_db)["WAITING_FOR_CAPACITY"] == 2
+
+
+def test_baseline_is_scheduled_before_candidates_even_when_registered_later(tmp_path):
+    specs = tmp_path / "specs"
+    symbol = _symbol_for_host("s1")
+    candidate = _spec(tmp_path, f"{symbol}_LONG", "a-candidate")
+    baseline = _spec(tmp_path, f"{symbol}_LONG", "z-baseline")
+    baseline["is_baseline"] = True
+    _write_specs(specs, {"a-candidate.json": candidate, "z-baseline.json": baseline})
+    root = tmp_path
+    (root / "data").mkdir()
+    observed = {"mem_available_bytes": 16 * 1024**3, "disk_free_bytes": 16 * 1024**3, "load1": 1.0, "ncpu": 16, "cpu_psi_avg10": 0.0}
+    launched = []
+
+    class Process:
+        pid = 123456
+
+    reconcile(specs, tmp_path / "fleet.sqlite3", root, "s1", max_workers=1, observed=observed,
+              launcher=lambda command, **kwargs: (launched.append(command) or Process()))
+
+    with sqlite3.connect(tmp_path / "fleet.sqlite3") as connection:
+        selected = connection.execute("SELECT scenario_id,is_baseline FROM jobs WHERE status='STARTING'").fetchone()
+    assert selected == ("z-baseline", 1)
+    assert len(launched) == 1
 
 
 def test_worker_death_is_recorded_and_not_automatically_restarted(tmp_path, monkeypatch):

@@ -61,6 +61,8 @@ def build(root):
 def export(plan, destination, remote_root, engine_root):
     destination = Path(destination)
     remote_root = Path(remote_root)
+    for group in plan["groups"]:
+        group["epoch_id"] = digest({"sym_side": group["sym_side"], "settings": group["settings_sha256"], "sources": plan["catalog"]["file_sha256"], "runtime": str(engine_root), "experiment": "isolated_all_blanket_paths_blocked_except_candidate_v1"})
     code_hash = digest(plan["catalog"]["file_sha256"])
     batch_id = digest({"groups": plan["groups"], "code": code_hash})[:20]
     batch = destination / batch_id
@@ -85,7 +87,7 @@ def export(plan, destination, remote_root, engine_root):
                     native = sorted({entry for entry in ("1m", "3m", "5m") if ("_" + entry + "_") in ("_" + str(parameters["catalog"].get("switch") or "").lower() + "_")})
                     timeframe = "1m"
                     launchable = row["status"] != "PENDING_PARAMETERS"
-                    spec = {"schema_version": 1, "run_id": run_id, "epoch_id": group["epoch_id"], "scenario_id": row["scenario_id"], "planned_run_id": row["run_id"], "sym_side": group["sym_side"], "venue": group["venue"], "host": host, "plan_code_hash": code_hash, "parent_settings_sha256": base_hash, "full_settings": str(remote_batch / host / "inputs/settings" / (base_hash + ".json")), "candidate_overrides": str(remote_batch / host / "inputs/overrides" / (override_hash + ".json")), "registered_candidate_overrides": overrides, "paper_mask_release": sorted(overrides), "experiment_context": {"name": "isolated_all_blanket_paths_blocked_except_candidate_v1", "release_nonvectorizable": True, "release_sub15m": True}, "engine_root": str(engine_root), "frame_timeframe": timeframe, "required_timeframes": sorted(set([timeframe] + native)), "poll_seconds": 10, "max_age_seconds": 120, "launchable": launchable, "pending_reason": None if launchable else "PENDING_PARAMETER_VALUES", "snapshot": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".json")), "receipt": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".receipt.json"))}
+                    spec = {"schema_version": 1, "is_baseline": parameters["catalog"]["kind"] == "baseline", "source_journal": str(remote_root / "data/paper_forward_lab" / ("native_journal_" + group["venue"] + ".sqlite3")), "run_id": run_id, "epoch_id": group["epoch_id"], "scenario_id": row["scenario_id"], "planned_run_id": row["run_id"], "sym_side": group["sym_side"], "venue": group["venue"], "host": host, "plan_code_hash": code_hash, "parent_settings_sha256": base_hash, "full_settings": str(remote_batch / host / "inputs/settings" / (base_hash + ".json")), "candidate_overrides": str(remote_batch / host / "inputs/overrides" / (override_hash + ".json")), "registered_candidate_overrides": overrides, "paper_mask_release": sorted(overrides), "experiment_context": {"name": "isolated_all_blanket_paths_blocked_except_candidate_v1", "release_nonvectorizable": True, "release_sub15m": True}, "engine_root": str(engine_root), "frame_timeframe": timeframe, "required_timeframes": sorted(set([timeframe] + native)), "poll_seconds": 10, "max_age_seconds": 120, "launchable": launchable, "pending_reason": None if launchable else "PENDING_PARAMETER_VALUES", "snapshot": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".json")), "receipt": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".receipt.json"))}
                     filename = run_id + ".json"
                     write_once(batch / host / "specs" / filename, spec)
                     jobs[host].append({"spec_file": filename, **{key: spec[key] for key in ("run_id", "epoch_id", "scenario_id", "sym_side", "venue", "host")}})
@@ -93,6 +95,10 @@ def export(plan, destination, remote_root, engine_root):
                     counts[host]["launchable" if launchable else "pending_parameters"] += 1
             for host in counts:
                 write_once(batch / host / "specs/manifest.json", {"schema_version": 1, "jobs": jobs[host]})
+    for host in counts:
+        host_root = batch / host
+        file_hashes = {str(path.relative_to(host_root)): hashlib.sha256(path.read_bytes()).hexdigest() for path in sorted(host_root.rglob("*.json")) if path.name != "bundle_manifest.json"}
+        write_once(host_root / "bundle_manifest.json", {"file_sha256": file_hashes})
     report = {"batch_id": batch_id, "directory": str(batch), "remote_directory": str(remote_batch), "counts": counts, "uncovered": plan["uncovered"], "running_workers": 0}
     write_once(batch / "export.json", report)
     return report

@@ -177,6 +177,8 @@ def _validate_spec(spec):
     _validate_identity(spec)
     if "launchable" in spec and not isinstance(spec["launchable"], bool):
         raise ValueError("launchable must be boolean")
+    if "is_baseline" in spec and not isinstance(spec["is_baseline"], bool):
+        raise ValueError("is_baseline must be boolean")
     if not spec.get("launchable", True):
         if not isinstance(spec.get("pending_reason", "PENDING_PARAMETER_VALUES"), str):
             raise ValueError("pending_reason must be a string")
@@ -225,8 +227,11 @@ def worker_command(spec_row, root):
     engine_root = _resolve_input(specs_dir, spec["engine_root"])
     if not engine_root.is_dir() or not (engine_root / "backtest_v12_engine.py").is_file() or not engine_root.is_relative_to(Path(root).resolve()):
         raise ValueError("engine_root must be a private workspace directory containing backtest_v12_engine.py")
+    worker_script = engine_root / "tools" / "paper_forward_worker.py"
+    if not worker_script.is_file():
+        raise ValueError("engine_root must contain tools/paper_forward_worker.py")
     run_dir = Path(root) / "data" / "paper_forward_lab" / "runs" / spec_row["spec_id"]
-    command = [sys.executable, str(Path(root) / "tools" / "paper_forward_worker.py"), "--follow", "--sym-side", spec["sym_side"], "--venue", venue,
+    command = [sys.executable, str(worker_script), "--workspace-root", str(Path(root).resolve()), "--follow", "--sym-side", spec["sym_side"], "--venue", venue,
                "--snapshot", str(snapshot), "--receipt", str(receipt), "--manifest", spec_row["spec_path"], "--full-settings", str(full_settings),
                "--candidate-overrides", str(candidate), "--run-dir", str(run_dir)]
     command.extend(("--engine-root", str(engine_root)))
@@ -248,8 +253,11 @@ def _connect(db_path):
         run_id TEXT, epoch_id TEXT, scenario_id TEXT, sym_side TEXT, venue TEXT,
         assigned_host TEXT, status TEXT NOT NULL, detail TEXT, pid INTEGER,
         registered_at TEXT NOT NULL, updated_at TEXT NOT NULL, heartbeat_at TEXT,
-        exit_code INTEGER, run_dir TEXT, command_json TEXT
+        exit_code INTEGER, run_dir TEXT, command_json TEXT, is_baseline INTEGER NOT NULL DEFAULT 0
     )""")
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(jobs)")}
+    if "is_baseline" not in columns:
+        connection.execute("ALTER TABLE jobs ADD COLUMN is_baseline INTEGER NOT NULL DEFAULT 0")
     connection.execute("CREATE INDEX IF NOT EXISTS jobs_status_host ON jobs(status, assigned_host)")
     connection.execute("""CREATE TABLE IF NOT EXISTS events (
         event_id INTEGER PRIMARY KEY AUTOINCREMENT, spec_id TEXT NOT NULL,
@@ -379,14 +387,14 @@ def _upsert_discovered(connection, rows, host, now):
         if not spec.get("launchable", True):
             detail["pending_reason"] = spec.get("pending_reason", "PENDING_PARAMETER_VALUES")
         connection.execute("""INSERT INTO jobs(spec_id,spec_path,spec_sha256,run_id,epoch_id,scenario_id,sym_side,venue,
-            assigned_host,status,detail,registered_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+            assigned_host,status,detail,registered_at,updated_at,is_baseline) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(spec_id) DO UPDATE SET spec_path=excluded.spec_path,spec_sha256=excluded.spec_sha256,
             run_id=excluded.run_id,epoch_id=excluded.epoch_id,scenario_id=excluded.scenario_id,
             sym_side=excluded.sym_side,venue=excluded.venue,assigned_host=excluded.assigned_host,
             status=CASE WHEN jobs.status IN ('RUNNING','WAITING_FRESH_INPUT','COMPLETED','FAILED','INTERRUPTED') THEN jobs.status ELSE excluded.status END,
-            detail=excluded.detail,updated_at=excluded.updated_at""",
+            detail=excluded.detail,updated_at=excluded.updated_at,is_baseline=excluded.is_baseline""",
             (row["spec_id"], row["spec_path"], row.get("spec_sha256"), spec.get("run_id"), spec.get("epoch_id"), spec.get("scenario_id"), spec.get("sym_side"), venue,
-             assigned, status, json.dumps(detail, sort_keys=True), registered_at, now))
+             assigned, status, json.dumps(detail, sort_keys=True), registered_at, now, int(spec.get("is_baseline", False) is True)))
         if not old or old[0] != status:
             connection.execute("INSERT INTO events(spec_id,at_utc,status,detail) VALUES(?,?,?,?)",
                                (row["spec_id"], now, status, json.dumps(detail, sort_keys=True)))
@@ -534,7 +542,7 @@ def reconcile(specs_dir, db_path, root=ROOT, host=None, once=True, dry_run=False
     max_slots = capacity
     free_slots = max(0, max_slots - active_count)
     if free_slots:
-        pending = connection.execute("SELECT spec_id FROM jobs WHERE assigned_host=? AND status IN ('REGISTERED','WAITING_FOR_CAPACITY','RESOURCE_BLOCKED') ORDER BY registered_at,scenario_id,sym_side,spec_id", (host,)).fetchall()
+        pending = connection.execute("SELECT spec_id FROM jobs WHERE assigned_host=? AND status IN ('REGISTERED','WAITING_FOR_CAPACITY','RESOURCE_BLOCKED') ORDER BY is_baseline DESC,registered_at,scenario_id,sym_side,spec_id", (host,)).fetchall()
         for (spec_id,) in pending[:free_slots]:
             row = row_by_id.get(spec_id)
             if row is None or row.get("spec") is None:

@@ -92,6 +92,69 @@ def _settings_payload(manifest: Mapping[str, Any], key: str, run_dir: str | Path
     return value
 
 
+def _store_pair_metadata(db: ScenarioDB, manifest: Mapping[str, Any], settings_hash: str, code_hash: str) -> None:
+    db.connection.execute("""CREATE TABLE IF NOT EXISTS paper_forward_run_metadata (
+        run_id TEXT PRIMARY KEY REFERENCES runs(run_id), epoch_id TEXT NOT NULL,
+        parent_settings_sha256 TEXT NOT NULL, settings_sha256 TEXT NOT NULL, code_snapshot_sha256 TEXT NOT NULL,
+        candidate_overrides_json TEXT NOT NULL, isolation_overrides_json TEXT NOT NULL,
+        paper_mask_release_json TEXT NOT NULL, context_json TEXT NOT NULL
+    )""")
+    db.connection.execute("""CREATE TABLE IF NOT EXISTS paper_run_input_frames (
+        run_id TEXT NOT NULL REFERENCES runs(run_id), sequence INTEGER NOT NULL,
+        source_ts TEXT NOT NULL, input_hash TEXT NOT NULL,
+        PRIMARY KEY(run_id,sequence)
+    )""")
+    db.connection.execute("""CREATE VIEW IF NOT EXISTS paper_paired_readiness AS
+        SELECT a.run_id AS run_a,b.run_id AS run_b,a.sym_side,
+               ma.epoch_id,ma.parent_settings_sha256 AS parent_settings_hash,
+               CASE WHEN ma.candidate_overrides_json<>mb.candidate_overrides_json THEN 1 ELSE 0 END AS candidate_config_differs,
+               CASE WHEN ma.parent_settings_sha256=mb.parent_settings_sha256
+                       AND ma.isolation_overrides_json=mb.isolation_overrides_json
+                       AND ma.paper_mask_release_json=mb.paper_mask_release_json
+                       AND ma.context_json=mb.context_json THEN 1 ELSE 0 END AS shared_context_matches,
+               (SELECT COUNT(*) FROM paper_run_input_frames fa WHERE fa.run_id=a.run_id) AS frames_a,
+               (SELECT COUNT(*) FROM paper_run_input_frames fb WHERE fb.run_id=b.run_id) AS frames_b,
+               (SELECT COUNT(*) FROM paper_run_input_frames fa JOIN paper_run_input_frames fb
+                    ON fb.run_id=b.run_id AND fb.sequence=fa.sequence AND fb.source_ts=fa.source_ts AND fb.input_hash=fa.input_hash
+                    WHERE fa.run_id=a.run_id) AS identical_input_frames,
+               CASE WHEN (SELECT COUNT(*) FROM paper_run_input_frames fa WHERE fa.run_id=a.run_id)>0
+                       AND (SELECT COUNT(*) FROM paper_run_input_frames fa WHERE fa.run_id=a.run_id)=(SELECT COUNT(*) FROM paper_run_input_frames fb WHERE fb.run_id=b.run_id)
+                       AND (SELECT COUNT(*) FROM paper_run_input_frames fa WHERE fa.run_id=a.run_id)=(SELECT COUNT(*) FROM paper_run_input_frames fa JOIN paper_run_input_frames fb
+                           ON fb.run_id=b.run_id AND fb.sequence=fa.sequence AND fb.source_ts=fa.source_ts AND fb.input_hash=fa.input_hash WHERE fa.run_id=a.run_id)
+                    THEN 1 ELSE 0 END AS identical_inputs_ready,
+               (SELECT status FROM run_current_status WHERE run_id=a.run_id) AS status_a,
+               (SELECT status FROM run_current_status WHERE run_id=b.run_id) AS status_b,
+               (SELECT COUNT(*) FROM trades WHERE run_id=a.run_id) AS lifecycles_a,
+               (SELECT COUNT(*) FROM trades WHERE run_id=b.run_id) AS lifecycles_b,
+               (SELECT COUNT(*) FROM trades WHERE run_id=a.run_id AND net_return IS NOT NULL) AS known_return_lifecycles_a,
+               (SELECT COUNT(*) FROM trades WHERE run_id=b.run_id AND net_return IS NOT NULL) AS known_return_lifecycles_b,
+               (SELECT COUNT(*) FROM trades WHERE run_id=a.run_id AND fees IS NOT NULL) AS known_fee_lifecycles_a,
+               (SELECT COUNT(*) FROM trades WHERE run_id=b.run_id AND fees IS NOT NULL) AS known_fee_lifecycles_b,
+               CASE WHEN (SELECT COUNT(*) FROM trades WHERE run_id=a.run_id)>0
+                       AND (SELECT COUNT(*) FROM trades WHERE run_id=b.run_id)>0
+                       AND (SELECT COUNT(*) FROM trades WHERE run_id=a.run_id AND net_return IS NOT NULL AND fees IS NOT NULL)=(SELECT COUNT(*) FROM trades WHERE run_id=a.run_id)
+                       AND (SELECT COUNT(*) FROM trades WHERE run_id=b.run_id AND net_return IS NOT NULL AND fees IS NOT NULL)=(SELECT COUNT(*) FROM trades WHERE run_id=b.run_id)
+                    THEN 1 ELSE 0 END AS outcomes_computable
+        FROM runs a JOIN runs b ON b.sym_side=a.sym_side AND b.run_id>a.run_id
+        JOIN paper_forward_run_metadata ma ON ma.run_id=a.run_id
+        JOIN paper_forward_run_metadata mb ON mb.run_id=b.run_id AND mb.epoch_id=ma.epoch_id
+        WHERE a.evidence_kind='independent_forward' AND b.evidence_kind='independent_forward';
+    """)
+    row = {
+        "run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"],
+        "parent_settings_sha256": manifest["parent_settings_sha256"], "settings_sha256": settings_hash,
+        "code_snapshot_sha256": code_hash,
+        "candidate_overrides_json": _canonical(manifest["candidate_overrides"]),
+        "isolation_overrides_json": _canonical(manifest.get("isolation_overrides", {})),
+        "paper_mask_release_json": _canonical(manifest.get("paper_mask_release", {})),
+        "context_json": _canonical(manifest.get("context", {})),
+    }
+    db.connection.execute("INSERT OR IGNORE INTO paper_forward_run_metadata VALUES(:run_id,:epoch_id,:parent_settings_sha256,:settings_sha256,:code_snapshot_sha256,:candidate_overrides_json,:isolation_overrides_json,:paper_mask_release_json,:context_json)", row)
+    existing = db.connection.execute("SELECT * FROM paper_forward_run_metadata WHERE run_id=?", (manifest["run_id"],)).fetchone()
+    if existing is None or tuple(existing) != tuple(row.values()):
+        raise ValueError("immutable paired-readiness run metadata conflict")
+
+
 def _ensure_run(db: ScenarioDB, manifest: Mapping[str, Any], identity: Mapping[str, Any], run_dir: str | Path | None = None) -> dict:
     required = ("run_id", "epoch_id", "scenario_id", "sym_side", "host", "settings_sha256", "parent_settings_sha256", "code_sha256", "code_file_hashes", "started_at", "candidate_overrides")
     if any(not str(manifest.get(key, "")).strip() for key in required):
@@ -149,10 +212,12 @@ def _ensure_run(db: ScenarioDB, manifest: Mapping[str, Any], identity: Mapping[s
         actual = tuple(row[k] for k in ("scenario_id", "sym_side", "host", "settings_hash", "code_hash", "evidence_kind", "started_at"))
         if actual != expected:
             raise ValueError("immutable independent-forward run identity conflict")
+        _store_pair_metadata(db, manifest, effective_hash, code_snapshot_hash)
         return
     db.add_settings_snapshot(settings_hash=effective_hash, settings=effective_settings)
     db.add_source_code_snapshot(code_hash=code_snapshot_hash, file_hashes=code_file_hashes)
     db.add_run(run_id=manifest["run_id"], scenario_id=manifest["scenario_id"], sym_side=manifest["sym_side"], host=manifest["host"], settings_hash=manifest["settings_sha256"], code_hash=code_snapshot_hash, evidence_kind="independent_forward", status="RUNNING", started_at=manifest["started_at"], ended_at=None)
+    _store_pair_metadata(db, manifest, effective_hash, code_snapshot_hash)
     context_id = "paper-context-" + _digest([manifest["run_id"], manifest["epoch_id"], manifest["settings_sha256"]])
     db.add_run_status(event_id=context_id, run_id=manifest["run_id"], recorded_at=manifest["started_at"], status="RUNNING", detail={"epoch_id": manifest["epoch_id"], "parent_settings_sha256": manifest["parent_settings_sha256"], "settings_sha256": manifest["settings_sha256"], "candidate_overrides": manifest["candidate_overrides"], "isolation_overrides": isolation_overrides, "paper_mask_release": paper_mask_release, "context": manifest.get("context", {})})
     return {"base_settings": base_settings, "effective_settings": effective_settings}
@@ -226,6 +291,10 @@ def ingest(db: ScenarioDB, journal_path: str | Path, manifest: Mapping[str, Any]
         decision_rows = 0
         raw_events = 0
         for row in receipts:
+            db.connection.execute("INSERT OR IGNORE INTO paper_run_input_frames VALUES(?,?,?,?)", (manifest["run_id"], row["sequence"], _utc(row["ts"]), row["input_hash"]))
+            saved_input = db.connection.execute("SELECT source_ts,input_hash FROM paper_run_input_frames WHERE run_id=? AND sequence=?", (manifest["run_id"], row["sequence"])).fetchone()
+            if saved_input is None or tuple(saved_input) != (_utc(row["ts"]), row["input_hash"]):
+                raise ValueError("immutable run input frame conflict")
             source_ts = _utc(row["ts"])
             if row["receipt"]["events"]:
                 ids = sink.record_step(source_ts, row["receipt"])

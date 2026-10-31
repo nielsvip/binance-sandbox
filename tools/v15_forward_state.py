@@ -102,10 +102,19 @@ def _load_overrides(symside):
         row = con.execute("SELECT updated_at,full_config_json,template_md5,defaults_round FROM per_sym_active WHERE sym_side=?", (symside,)).fetchone()
     finally:
         con.close()
+    # The best-existing-settings fallback is a 30D LAW ("all still traded on their best existing settings"). A 7D arm
+    # (fin, trc) has the opposite law: it may ONLY trade a 7D set. Measured 2026-10-31: the fin 7D producer built 33
+    # states from `fallback:per_sym_full_sets.json` / `fallback:cat_side_defaults` — 30D-derived sets in a 7D state dir,
+    # several open=True — so a side published the instant it was staged could be planned from the stale 30D state
+    # before its 7D one landed. A non-30D producer therefore gets NO settings for a side its store does not hold.
     if not row or not row[1]:
+        if EXPECTED_WINDOW_DAYS != 30:
+            return {}, f"no_{EXPECTED_WINDOW_DAYS}d_set_staged", {}
         return _best_existing_settings(symside, db)
     full = json.loads(row[1])
     if not isinstance(full, dict) or not full:
+        if EXPECTED_WINDOW_DAYS != 30:
+            return {}, f"no_{EXPECTED_WINDOW_DAYS}d_set_staged", {}
         return _best_existing_settings(symside, db)
     raw = json.dumps(full, sort_keys=True, separators=(",", ":"), default=str).encode()
     effective = per_sym_live_set._apply_caps(symside, full)

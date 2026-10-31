@@ -14,6 +14,7 @@ import subprocess
 import sys
 import time
 import uuid
+import zlib
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -109,7 +110,7 @@ def build_effective_settings(settings, candidate, nonvec_keys, sub15m_blocked, e
 class ContinuousJournalForwardSession(JournalForwardSession):
     """Replay the durable journal, then append distinct fresh source frames."""
 
-    def __init__(self, *args, snapshot_path, receipt_path, symbol, expected_host, frame_timeframe, required_timeframes, poll_seconds, max_age_seconds, run_root, max_frames=MAX_FRAMES, **kwargs):
+    def __init__(self, *args, snapshot_path, receipt_path, symbol, expected_host, frame_timeframe, required_timeframes, poll_seconds, max_age_seconds, run_root, source_journal_path=None, experiment_window=None, max_frames=MAX_FRAMES, **kwargs):
         super().__init__(*args, **kwargs)
         self.snapshot_path = Path(snapshot_path)
         self.receipt_path = Path(receipt_path)
@@ -120,12 +121,24 @@ class ContinuousJournalForwardSession(JournalForwardSession):
         self.poll_seconds = float(poll_seconds)
         self.max_age_seconds = float(max_age_seconds)
         self.run_root = Path(run_root)
+        self.source_journal_path = Path(source_journal_path).resolve(strict=True) if source_journal_path else None
+        self._source_db = None
+        self._source_cursor = 0
+        self.experiment_window = dict(experiment_window) if experiment_window else None
+        self._window_complete = False
         self.max_frames = int(max_frames)
         self.stop_requested = False
         self.wait_reason = "STARTING"
         self.observed_at_utc = None
         self.last_source_ts = None
         self._source_frame_count = 0
+        last_payload = self.journal._db.execute("SELECT payload FROM frames ORDER BY sequence DESC LIMIT 1").fetchone()
+        if last_payload:
+            try:
+                last = json.loads(last_payload[0])
+                self._source_cursor = int(last.get(self.symbol, {}).get("observation", {}).get("source_sequence", 0))
+            except (TypeError, ValueError, AttributeError, json.JSONDecodeError):
+                self._source_cursor = 0
 
     def _status(self, status, reason=None):
         payload = {
@@ -142,6 +155,7 @@ class ContinuousJournalForwardSession(JournalForwardSession):
             "last_source_timestamp_epoch_s": self.last_source_ts,
             "source_time_semantics": "native timeframe source timestamp; observed_at_utc is a separate local observation clock; no closed-bar claim",
             "journal_frames": self.journal._db.execute("SELECT COUNT(*) FROM frames").fetchone()[0],
+            "source_journal_cursor": self._source_cursor,
         }
         _atomic_json(self.run_root / "worker.status.json", payload)
 
@@ -214,19 +228,110 @@ class ContinuousJournalForwardSession(JournalForwardSession):
         except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
             return None, "FEED_UNAVAILABLE_OR_INVALID"
 
+    def _open_source_journal(self):
+        if self._source_db is None:
+            if self.source_journal_path is None:
+                return None
+            self._source_db = sqlite3.connect(self.source_journal_path.as_uri() + "?mode=ro", uri=True, timeout=5)
+            self._source_db.execute("PRAGMA query_only=ON")
+        return self._source_db
+
+    def _read_source_journal_frame(self, cursor=None):
+        database = self._open_source_journal()
+        if database is None:
+            return None, "SOURCE_JOURNAL_DISABLED"
+        metadata = dict(database.execute("SELECT key,value FROM journal_meta"))
+        if int(metadata.get("retention_floor_sequence", "0")) > 0:
+            raise RuntimeError("ARCHIVE_GAP: native source journal retention floor has advanced")
+        status = metadata.get("status", "READY")
+        if status == "ARCHIVE_GAP":
+            raise RuntimeError("ARCHIVE_GAP: native source journal reports a gap")
+        sequence_after = self._source_cursor if cursor is None else int(cursor)
+        row = database.execute(
+            "SELECT sequence,observed_ts,source_ts,source_sha256,input_hash,payload_encoding,payload_blob FROM frames WHERE sequence>? AND host=? AND venue=? AND symbol=? AND timeframe=? AND (? IS NULL OR source_ts>=?) AND (? IS NULL OR source_ts<=?) ORDER BY sequence LIMIT 1",
+            (sequence_after, self.expected_host, "crypto" if self.mode == "crypto" else "stocks", self.symbol, self.frame_timeframe,
+             self.experiment_window.get("start_source_ts") if self.experiment_window else None,
+             self.experiment_window.get("start_source_ts") if self.experiment_window else None,
+             self.experiment_window.get("end_source_ts") if self.experiment_window else None,
+             self.experiment_window.get("end_source_ts") if self.experiment_window else None),
+        ).fetchone()
+        if row is None:
+            if self.experiment_window:
+                latest = database.execute("SELECT MAX(source_ts) FROM frames WHERE host=? AND venue=? AND symbol=? AND timeframe=?",
+                    (self.expected_host, "crypto" if self.mode == "crypto" else "stocks", self.symbol, self.frame_timeframe)).fetchone()[0]
+                if latest is not None and float(latest) >= float(self.experiment_window["end_source_ts"]):
+                    self._window_complete = True
+                    return None, "SOURCE_WINDOW_COMPLETE"
+            return None, "WAITING_FOR_ARCHIVE_TAIL" if status not in {"ARCHIVE_FULL", "DISK_RESERVE_BLOCKED"} else status
+        sequence, observed_ts, source_ts, source_hash, input_hash, encoding, blob = row
+        if self.experiment_window and self._source_cursor == 0 and abs(float(source_ts) - float(self.experiment_window["start_source_ts"])) > 0.001:
+            raise RuntimeError("ARCHIVE_GAP: experiment window start source timestamp is missing")
+        if sequence <= int(metadata.get("retention_floor_sequence", "0")):
+            raise RuntimeError("ARCHIVE_GAP: required native source sequence was pruned")
+        if encoding != "zlib":
+            raise RuntimeError("SOURCE_JOURNAL_ENCODING_UNSUPPORTED")
+        try:
+            raw = zlib.decompress(blob, max_length=MAX_SYMBOL_BYTES + 1)
+        except TypeError:
+            decompressor = zlib.decompressobj()
+            raw = decompressor.decompress(blob, MAX_SYMBOL_BYTES + 1)
+            if decompressor.unconsumed_tail or not decompressor.eof:
+                raise RuntimeError("SOURCE_JOURNAL_PAYLOAD_TOO_LARGE_OR_TRUNCATED")
+        except zlib.error as exc:
+            raise RuntimeError("SOURCE_JOURNAL_PAYLOAD_CORRUPT") from exc
+        if len(raw) > MAX_SYMBOL_BYTES or hashlib.sha256(raw).hexdigest() != input_hash:
+            raise RuntimeError("SOURCE_JOURNAL_INPUT_HASH_MISMATCH")
+        indicators = json.loads(raw, parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))
+        if not isinstance(indicators, dict):
+            raise RuntimeError("SOURCE_JOURNAL_INDICATORS_MALFORMED")
+        observed_ts = float(observed_ts)
+        source_ts = float(source_ts)
+        if source_ts > observed_ts + 5 or time.time() < observed_ts - 5:
+            raise RuntimeError("SOURCE_JOURNAL_TIMESTAMP_INVALID")
+        try:
+            indicator_source_ts = _utc_epoch(indicators.get(f"timestamp_{self.frame_timeframe}"))
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise RuntimeError("SOURCE_JOURNAL_FRAME_TIMESTAMP_MISSING") from exc
+        if abs(indicator_source_ts - source_ts) > 0.001:
+            raise RuntimeError("SOURCE_JOURNAL_FRAME_TIMESTAMP_MISMATCH")
+        for timeframe in self.required_timeframes:
+            try:
+                timeframe_ts = _utc_epoch(indicators.get(f"timestamp_{timeframe}"))
+            except (TypeError, ValueError, OverflowError):
+                return None, f"WAITING_MISSING_TF_{timeframe}"
+            if timeframe_ts > observed_ts + 5 or observed_ts - timeframe_ts > max(self.max_age_seconds, 2 * TIMEFRAME_SECONDS[timeframe]):
+                return None, f"WAITING_STALE_TF_{timeframe}"
+        frame = {
+            "ts": source_ts,
+            "indicators": indicators,
+            "source_sequence": int(sequence),
+            "observation": {
+                "observed_at_utc": datetime.fromtimestamp(observed_ts, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                "source_sha256": source_hash,
+                "input_hash": input_hash,
+                "source_sequence": int(sequence),
+                "frame_timeframe": self.frame_timeframe,
+                "source_timestamp": indicators.get(f"timestamp_{self.frame_timeframe}"),
+                "source_time_semantics": "native source timestamp; closed-bar status unverified",
+            },
+        }
+        return frame, None
     async def prime_first_frame(self):
         """Wait for one fresh input before engine initialization/assert_ready."""
         while True:
             if self.stop_requested:
                 raise RuntimeError("stop requested before a fresh first source frame")
-            frame, reason = self._read_source_frame()
+            frame, reason = self._read_source_journal_frame() if self.source_journal_path else self._read_source_frame()
             if frame is not None:
                 self.journal.append_frame(frame["ts"], {self.symbol: {"indicators": frame["indicators"], "observation": frame["observation"]}})
+                self._source_cursor = int(frame.get("source_sequence", 0))
                 self.last_source_ts = frame["ts"]
                 self._source_frame_count += 1
                 self._status("RUNNING", "FIRST_FRESH_SOURCE_FRAME")
                 return frame
             self.wait_reason = reason
+            if reason == "SOURCE_WINDOW_COMPLETE":
+                raise RuntimeError("experiment source window contains no frames")
             self._status("WAITING_FRESH_INPUT", reason)
             await asyncio.sleep(self.poll_seconds)
 
@@ -249,8 +354,12 @@ class ContinuousJournalForwardSession(JournalForwardSession):
                 self.wait_reason = "RESOURCE_LIMIT_MAX_FRAMES"
                 self._status("RESOURCE_LIMIT_STOPPING", self.wait_reason)
                 break
-            frame, reason = self._read_source_frame()
+            frame, reason = self._read_source_journal_frame() if self.source_journal_path else self._read_source_frame()
             if frame is None:
+                if reason == "SOURCE_WINDOW_COMPLETE":
+                    self.wait_reason = reason
+                    self._status("WINDOW_COMPLETE", reason)
+                    break
                 self.wait_reason = reason
                 self._status("WAITING_FRESH_INPUT", reason)
                 await asyncio.sleep(self.poll_seconds)
@@ -262,6 +371,7 @@ class ContinuousJournalForwardSession(JournalForwardSession):
                 existing_payload = json.loads(self.journal._db.execute("SELECT payload FROM frames WHERE closed_ts=?", (source_ts,)).fetchone()[0])
                 if existing_payload.get(self.symbol, {}).get("indicators") != frame["indicators"]:
                     raise RuntimeError(f"conflicting native source frame changed at {source_ts}")
+                self._source_cursor = max(self._source_cursor, int(frame.get("source_sequence", 0)))
                 await asyncio.sleep(self.poll_seconds)
                 continue
             if self._last_ts is not None and source_ts <= self._last_ts:
@@ -269,6 +379,8 @@ class ContinuousJournalForwardSession(JournalForwardSession):
                 await asyncio.sleep(self.poll_seconds)
                 continue
             self.journal.append_frame(source_ts, payload)
+            if frame.get("source_sequence") is not None:
+                self._source_cursor = int(frame["source_sequence"])
             row = {"sequence": self._source_frame_count + 1, "ts": source_ts, "payload": payload}
             self._current = row
             self._last_ts = source_ts
@@ -309,6 +421,8 @@ class ContinuousJournalForwardSession(JournalForwardSession):
 
     async def finish(self):
         await super().finish()
+        if self._source_db is not None:
+            self._source_db.close()
         status = "STOPPED_BY_REQUEST" if self.stop_requested else ("STOPPED_RESOURCE_LIMIT" if self.wait_reason == "RESOURCE_LIMIT_MAX_FRAMES" else "COMPLETED")
         self._status(status, self.wait_reason)
 
@@ -323,8 +437,9 @@ from tools.paper_frame_stream import FrameJournal
 from tools.paper_snapshot_store import PaperSnapshotStore
 
 root = Path(sys.argv[1]).resolve()
-install(root)
 request = json.loads((root / "request.json").read_text(encoding="utf-8"))
+source_journal = request.get("source_journal") or None
+install(root, readonly_sqlite_paths=[source_journal] if source_journal else [])
 symbol = request["symbol"]
 mode = request["mode"]
 manifest = request["manifest"]
@@ -407,7 +522,9 @@ result_manifest = {
     "candidate_getter_resolution": {}, "worker_isolation": require_installed(root),
     "engine_root": str(engine_root),
     "promotion_eligible": False,
+    "execution_mode": "V12_REAL_EXECUTE=1; real manager execute_now path with process-local broker/network I/O denial",
     "source_time_semantics": "native source timeframe timestamp; observed_at_utc is separate; closed-bar status unverified",
+    "experiment_window": manifest.get("experiment_window"),
     "effective_settings_file": effective_settings_path.name,
     "base_settings_file": base_settings_path.name,
     "finished": False, "status": "RUNNING",
@@ -436,12 +553,12 @@ if precedence_state.get("error"):
 getter = ez_manage._psym_get if mode == "crypto" else tradier_manage._cfg
 getter_receipts = {}
 for key, requested_value in candidate.items():
-    default = requested_value
+    default = object()
     if mode == "crypto":
         resolved_value = getter(symbol, request["side"], key, default)
     else:
         resolved_value = getter(key, default, request.get("account", "trb"), symbol, request["side"])
-    if resolved_value != requested_value:
+    if resolved_value is default or resolved_value != requested_value:
         raise RuntimeError(f"effective per-symbol getter mismatch for {key}: requested={requested_value!r} resolved={resolved_value!r}")
     getter_receipts[key] = {"requested": requested_value, "resolved": resolved_value, "matches": True, "resolver": "ez_manage._psym_get" if mode == "crypto" else "tradier_manage._cfg"}
 result_manifest["candidate_getter_resolution"] = getter_receipts
@@ -465,6 +582,8 @@ async def apply_frame(payload, stores):
 session = ContinuousJournalForwardSession(
     journal, stores, apply_frame, code_path=code_path, mode=mode,
     snapshot_path=request["snapshot"], receipt_path=request["receipt"],
+    source_journal_path=request.get("source_journal") or None,
+    experiment_window=manifest.get("experiment_window"),
     symbol=symbol, expected_host=manifest["host"], frame_timeframe=manifest.get("frame_timeframe", "1m" if mode == "crypto" else "5m"),
     required_timeframes=manifest.get("required_timeframes", [manifest.get("frame_timeframe", "1m" if mode == "crypto" else "5m")]),
     poll_seconds=request["poll_seconds"], max_age_seconds=request["max_age_seconds"],
@@ -542,6 +661,7 @@ def main(argv=None):
     parser.add_argument("--workspace-root", type=Path, default=ROOT)
     parser.add_argument("--snapshot", type=Path)
     parser.add_argument("--receipt", type=Path)
+    parser.add_argument("--source-journal", type=Path)
     parser.add_argument("--full-settings", type=Path)
     parser.add_argument("--candidate-overrides", type=Path)
     parser.add_argument("--run-dir", type=Path)
@@ -572,10 +692,18 @@ def main(argv=None):
             parser.error(f"manifest {key} does not match CLI")
     snapshot = args.snapshot or Path(manifest.get("snapshot", ""))
     receipt = args.receipt or Path(manifest.get("receipt", ""))
+    source_journal = args.source_journal or Path(manifest.get("source_journal", ""))
     full_settings_path = args.full_settings or Path(manifest.get("full_settings", ""))
     candidate_path = args.candidate_overrides or Path(manifest.get("candidate_overrides", ""))
-    if not all(path and str(path) != "." for path in (snapshot, receipt, full_settings_path, candidate_path)):
-        parser.error("snapshot, receipt, full_settings, and candidate_overrides paths are required")
+    if not all(path and str(path) != "." for path in (full_settings_path, candidate_path)):
+        parser.error("full_settings and candidate_overrides paths are required")
+    if not source_journal and not all(path and str(path) != "." for path in (snapshot, receipt)):
+        parser.error("snapshot and receipt are required unless --source-journal is supplied")
+    source_journal_path = None
+    if source_journal and str(source_journal) != ".":
+        source_journal_path = source_journal.resolve() if source_journal.is_absolute() else (args.manifest.resolve().parent / source_journal).resolve()
+        if source_journal_path.is_symlink() or not source_journal_path.is_file() or not source_journal_path.is_relative_to(workspace_root):
+            parser.error("source journal must be a real file inside the workspace")
     engine_root_value = args.engine_root or Path(manifest.get("engine_root", ""))
     if not engine_root_value or str(engine_root_value) == ".":
         parser.error("--engine-root or manifest engine_root is required")
@@ -597,6 +725,20 @@ def main(argv=None):
     required_tfs = manifest.get("required_timeframes", [timeframe])
     if timeframe not in TIMEFRAME_SECONDS or not isinstance(required_tfs, list) or not required_tfs or any(tf not in TIMEFRAME_SECONDS for tf in required_tfs):
         parser.error("manifest has invalid frame_timeframe/required_timeframes")
+    experiment_window = manifest.get("experiment_window")
+    if experiment_window is not None:
+        if not isinstance(experiment_window, dict) or experiment_window.get("source_timeframe") != timeframe or not str(experiment_window.get("window_id", "")).strip():
+            parser.error("experiment_window requires window_id and matching source_timeframe")
+        try:
+            start_source_ts = float(experiment_window["start_source_ts"])
+            end_source_ts = float(experiment_window["end_source_ts"])
+        except (KeyError, TypeError, ValueError):
+            parser.error("experiment_window requires numeric start_source_ts and end_source_ts")
+        if not (start_source_ts > 0 and end_source_ts >= start_source_ts and end_source_ts < float("inf")):
+            parser.error("experiment_window bounds must be finite, positive, and increasing")
+        if not source_journal_path:
+            parser.error("experiment_window requires --source-journal")
+        experiment_window = {**experiment_window, "start_source_ts": start_source_ts, "end_source_ts": end_source_ts}
     poll_seconds = float(args.poll_seconds if args.poll_seconds is not None else manifest.get("poll_seconds", 5))
     max_age_seconds = float(args.max_age_seconds if args.max_age_seconds is not None else manifest.get("max_age_seconds", 2 * TIMEFRAME_SECONDS[timeframe]))
     max_frames = int(manifest.get("max_frames", MAX_FRAMES))
@@ -631,8 +773,9 @@ def main(argv=None):
         **manifest,
         "sym_side": args.sym_side,
         "venue": args.venue,
-        "snapshot": str(Path(snapshot).resolve()),
-        "receipt": str(Path(receipt).resolve()),
+        "snapshot": str(Path(snapshot).resolve()) if snapshot and str(snapshot) != "." else "",
+        "receipt": str(Path(receipt).resolve()) if receipt and str(receipt) != "." else "",
+        "source_journal": str(source_journal_path) if source_journal_path else "",
         "full_settings": str(Path(full_settings_path).resolve()),
         "candidate_overrides": str(Path(candidate_path).resolve()),
         "engine_root": str(engine_root),
@@ -648,7 +791,7 @@ def main(argv=None):
     if not spec_path.exists():
         with spec_path.open("x", encoding="utf-8") as handle:
             handle.write(spec_bytes)
-    request = {"manifest": spec, "sym_side": args.sym_side, "symbol": symbol, "side": side, "mode": "crypto" if args.venue == "crypto" else "tradier", "full_settings": full_settings, "candidate_overrides": candidate, "engine_root": str(engine_root), "repo_root": str(workspace_root), "snapshot": str(Path(snapshot).resolve()), "receipt": str(Path(receipt).resolve()), "poll_seconds": poll_seconds, "max_age_seconds": max_age_seconds, "account": args.account or manifest.get("account", "ang" if args.venue == "crypto" else "trb"), "capital": args.capital}
+    request = {"manifest": spec, "sym_side": args.sym_side, "symbol": symbol, "side": side, "mode": "crypto" if args.venue == "crypto" else "tradier", "full_settings": full_settings, "candidate_overrides": candidate, "engine_root": str(engine_root), "repo_root": str(workspace_root), "snapshot": str(Path(snapshot).resolve()) if snapshot and str(snapshot) != "." else "", "receipt": str(Path(receipt).resolve()) if receipt and str(receipt) != "." else "", "source_journal": str(source_journal_path) if source_journal_path else "", "poll_seconds": poll_seconds, "max_age_seconds": max_age_seconds, "account": args.account or manifest.get("account", "ang" if args.venue == "crypto" else "trb"), "capital": args.capital}
     request_path = run_dir / "request.json"
     request_bytes = json.dumps(request, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
     if request_path.exists() and request_path.read_text(encoding="utf-8") != request_bytes:
@@ -657,6 +800,8 @@ def main(argv=None):
         with request_path.open("x", encoding="utf-8") as handle:
             handle.write(request_bytes)
     env = {key: value for key, value in os.environ.items() if not key.startswith(("V8_", "V12_", "PAPER_"))}
+    env["V12_REAL_EXECUTE"] = "1"
+    env["V8_RESEARCH_ALLOW_SIDE_KEYS"] = args.sym_side
     env.update({"PYTHONHASHSEED": "0", "V8_HASHSEED_LOCKED": "1", "PYTHONDONTWRITEBYTECODE": "1", "V12_BASE_PATH": str(run_dir), "BASE_PATH": str(run_dir), "EZ_LOG_DIR": str(run_dir), "TRADIER_API_LOG_DIR": str(run_dir), "TMPDIR": str(run_dir), "PAPER_FORWARD_ISOLATED": "1", "V8_FORCE_REAL": "1", "V12_LIVE_ONLY_PRODUCERS": "1", "V8_RATE_GUARD_DISABLED": "1", "V8_MAX_WALL_SECS": "0", "V8_ISOLATE_SIDE": side, "V8_LADDER_ONLY_SIDE": side, "V8_SWEEP_MODE": "1", "V12_PARITY_REPORT_EVERY": "1000000", "FORWARD_AUTO_PROMOTE": "0", "PER_SYM_STORE_SQLITE_DISABLED": "0", "V12_RUN_ONE_SET_PRECEDENCE": "1"})
     with (run_dir / "worker.stdout.log").open("ab") as stdout_handle, (run_dir / "worker.stderr.log").open("ab") as stderr_handle:
         process = subprocess.Popen([sys.executable, "-c", CHILD, str(run_dir)], cwd=workspace_root, env=env, stdout=stdout_handle, stderr=stderr_handle, close_fds=True)

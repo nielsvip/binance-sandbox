@@ -36,3 +36,21 @@ def test_failure_restores_inherited_configuration_without_shadowing(monkeypatch)
         asyncio.run(simulate())
     assert config.VEC_DICTATE_ONLY_ENABLED is True
     assert "VEC_DICTATE_ONLY_ENABLED" not in vars(config)
+
+
+def test_explicit_native_mode_overrides_only_ownership_key_in_per_symbol_resolver(monkeypatch):
+    monkeypatch.setenv("V12_REPLAY_NATIVE_OWNERSHIP", "1")
+    config = SimpleNamespace(VEC_DICTATE_ONLY_ENABLED=True)
+    original = lambda key, default=None: {"VEC_DICTATE_ONLY_ENABLED": True, "MIN_GAIN": 3.0}.get(key, default)
+    owner = SimpleNamespace(_cfg_auto=original)
+    @replay_ownership_scope
+    async def simulate():
+        configure_replay_ownership(config, "tradier", owner, "_cfg_auto")
+        assert owner._cfg_auto("VEC_DICTATE_ONLY_ENABLED", True) is False
+        assert owner._cfg_auto("MIN_GAIN", 0) == 3.0
+        assert owner._cfg_auto("OTHER", 17) == 17
+        raise RuntimeError("preserve failure")
+    with pytest.raises(RuntimeError, match="preserve failure"):
+        asyncio.run(simulate())
+    assert owner._cfg_auto is original
+    assert owner._cfg_auto("VEC_DICTATE_ONLY_ENABLED") is True

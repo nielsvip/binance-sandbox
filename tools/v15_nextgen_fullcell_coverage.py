@@ -32,7 +32,10 @@ def sha(path):
 def catalog(template_sources, output):
     import openpyxl
     counts={}
-    with gzip.open(output,'wt',compresslevel=1) as sink:
+    factored={}
+    compact=str(output).endswith('.json')
+    import contextlib
+    with (contextlib.nullcontext(None) if compact else gzip.open(output,'wt',compresslevel=1)) as sink:
         for category,source in template_sources.items():
             path=Path(source['path'])
             if path.is_symlink() or sha(path)!=source['sha256']:
@@ -52,7 +55,8 @@ def catalog(template_sources, output):
                             rows.append(dict(tab=sheet.title,row=number,switch=str(values[0]).strip(),cand=values[1] if len(values)>1 else None))
             finally:
                 workbook.close()
-            for row in rows:
+            factored[category]=dict(source=source,rows=rows,headers=headers)
+            for row in ([] if compact else rows):
                 for header,columns in sorted(headers.items()):
                     field,option=header.split('=',1)
                     record=dict(cat_side=category,template_sha256=source['sha256'],**row,filter=field,opt=option,header=header,filter_column_refs=columns,physical_cell_present=any(item['tab']==row['tab'] for item in columns))
@@ -61,7 +65,25 @@ def catalog(template_sources, output):
             counts[category]=dict(rows=len(rows),filter_option_columns=len(headers),requested_cells=len(rows)*len(headers))
             if sha(path)!=source['sha256']:
                 raise ValueError('template changed during exhaustive catalog construction')
+    if compact:
+        Path(output).write_text(json.dumps(dict(schema='factored_every_row_every_filter/1',categories=factored),separators=(',',':')))
     return dict(schema='every_row_every_filter_catalog/1',sources=template_sources,counts=counts,catalog=dict(path=str(output),sha256=sha(output)),yellow_restriction=False,unwired_or_grey_exclusion=False,promotion_min_distinct_proven_results=101,all_cells_measured=False)
+
+
+def iter_cells(catalog_path):
+    if str(catalog_path).endswith('.gz'):
+        with gzip.open(catalog_path,'rt') as stream:
+            for line in stream:
+                yield json.loads(line)
+        return
+    document=json.loads(Path(catalog_path).read_text())
+    for category,part in document['categories'].items():
+        for row in part['rows']:
+            for header,columns in sorted(part['headers'].items()):
+                field,option=header.split('=',1)
+                record=dict(cat_side=category,template_sha256=part['source']['sha256'],**row,filter=field,opt=option,header=header,filter_column_refs=columns,physical_cell_present=any(item['tab']==row['tab'] for item in columns))
+                record['catalog_cell_id']=guard.fingerprint(record)
+                yield record
 
 
 def work(cell):
@@ -139,17 +161,15 @@ def run(prepared,settings,config,pilot,context,capture,catalog_path,output,worke
     tasks_staged=0
     def tasks():
         index=0
-        with gzip.open(catalog_path,'rt') as stream:
-            for line in stream:
-                cell=json.loads(line)
-                if cell['cat_side']!=context['cat_side']:
-                    continue
-                if int(cell['catalog_cell_id'][:16],16)%shard[1]!=shard[0]:
-                    continue
-                if limit and index>=limit:
-                    break
-                index+=1
-                yield cell
+        for cell in iter_cells(catalog_path):
+            if cell['cat_side']!=context['cat_side']:
+                continue
+            if int(cell['catalog_cell_id'][:16],16)%shard[1]!=shard[0]:
+                continue
+            if limit and index>=limit:
+                break
+            index+=1
+            yield cell
     with multiprocessing.get_context('fork').Pool(workers) as pool, (output/'cell_attempts.jsonl').open('x') as sink:
         for result in pool.imap_unordered(work,tasks(),chunksize=1):
             counts['attempted_cells']+=1

@@ -88,10 +88,23 @@ def _collector_db(path):
     return db
 
 
+def _coordinator_snapshot(path, host, status):
+    connection = sqlite3.connect(path)
+    connection.execute("CREATE TABLE jobs(spec_id TEXT PRIMARY KEY,spec_path TEXT NOT NULL,spec_sha256 TEXT,run_id TEXT,epoch_id TEXT,scenario_id TEXT,sym_side TEXT,venue TEXT,assigned_host TEXT,status TEXT NOT NULL,detail TEXT,pid INTEGER,registered_at TEXT NOT NULL,updated_at TEXT NOT NULL,heartbeat_at TEXT,exit_code INTEGER,run_dir TEXT,command_json TEXT)")
+    connection.execute("CREATE TABLE events(event_id INTEGER PRIMARY KEY,spec_id TEXT NOT NULL,at_utc TEXT NOT NULL,status TEXT NOT NULL,detail TEXT,pid INTEGER)")
+    connection.execute("CREATE TABLE coordinator_heartbeat(host TEXT PRIMARY KEY,at_utc TEXT NOT NULL,status TEXT NOT NULL,detail TEXT)")
+    connection.execute("INSERT INTO jobs(spec_id,spec_path,run_id,epoch_id,scenario_id,sym_side,venue,assigned_host,status,registered_at,updated_at) VALUES('j1','specs/j1.json','paper-run-1','epoch-1','scenario-1','BTCUSDC_LONG','crypto',?,?,?,?)", (host, status, "2026-10-31T00:00:01Z", "2026-10-31T00:00:02Z"))
+    connection.execute("INSERT INTO events(spec_id,at_utc,status,detail) VALUES('j1','2026-10-31T00:00:02Z',?,'{}')", (status,))
+    connection.execute("INSERT INTO coordinator_heartbeat VALUES(?,?,?,?)", (host, "2026-10-31T00:00:03Z", "RUNNING", "{}"))
+    connection.commit()
+    connection.close()
+
+
 def test_local_collect_registers_plan_then_imports_receipts_and_coordinator_separately(tmp_path):
     plan, run_dir = _plan_and_worker(tmp_path)
-    coordinator_path = tmp_path / "data" / "paper_forward_lab" / "coordinator_snapshot.json"
-    coordinator_path.write_text(_canon({"observed_at_utc": "2026-10-31T00:00:04Z", "jobs": [{"job_id": "j1", "run_id": "paper-run-1", "scenario_id": "scenario-1", "sym_side": "BTCUSDC_LONG", "host": "s1", "status": "DONE"}], "coverage": {"planned": 1, "done": 1}}))
+    coordinator_path = tmp_path / "data" / "paper_forward_lab" / "fleet_s1.snapshot.sqlite3"
+    coordinator_path.parent.mkdir(parents=True, exist_ok=True)
+    _coordinator_snapshot(coordinator_path, "s1", "DONE")
     with _collector_db(tmp_path / "data" / "paper_forward_lab" / "central.sqlite") as db:
         collector = PaperForwardCollector(tmp_path, db, hosts=("s1",))
         first = collector.collect_once(plan)
@@ -104,7 +117,8 @@ def test_local_collect_registers_plan_then_imports_receipts_and_coordinator_sepa
         assert db.query("SELECT COUNT(*) FROM decisions WHERE run_id='paper-run-1'")[0][0] == 0
         assert db.query("SELECT COUNT(*) FROM results WHERE run_id='paper-run-1'")[0][0] == 0
         assert db.query("SELECT COUNT(*) FROM paper_coordinator_jobs")[0][0] == 1
-        assert db.query("SELECT coverage_json FROM paper_coordinator_coverage_reports")[0][0] == '{"done":1,"planned":1}'
+        assert db.query("SELECT COUNT(*) FROM paper_coordinator_events")[0][0] == 1
+        assert db.query("SELECT coverage_json FROM paper_coordinator_coverage_reports")[0][0] == '{"s1":{"DONE":1}}'
         assert db.query("SELECT evidence_kind FROM paper_coordinator_snapshots")[0][0] == "coordinator_only"
         assert len(list((tmp_path / "data" / "paper_forward_lab" / "collector" / "collected").rglob("receipts.snapshot.db"))) == 1
         assert second["collected_artifacts"][0]["run_id"] == "paper-run-1"
@@ -116,8 +130,8 @@ def test_remote_bundle_pull_stages_files_and_rejects_manifest_identity_race(tmp_
     remote_run = remote_root / source.name
     remote_run.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(source, remote_run)
-    remote_coordinator = tmp_path / "fake_s2" / "coordinator.json"
-    remote_coordinator.write_text(_canon({"jobs": [{"job_id": "j2", "host": "s2", "status": "RUNNING"}]}))
+    remote_coordinator = tmp_path / "fake_s2" / "fleet_s2.snapshot.sqlite3"
+    _coordinator_snapshot(remote_coordinator, "s2", "RUNNING")
     copy_manifest_count = {"n": 0}
 
     def fake_runner(args, capture_output, text, timeout, check):
@@ -147,4 +161,34 @@ def test_remote_bundle_pull_stages_files_and_rejects_manifest_identity_race(tmp_
         assert "identity/settings changed" in failures[0]["error"]
         assert db.query("SELECT COUNT(*) FROM runs WHERE evidence_kind='independent_forward'")[0][0] == 0
         assert list(collector.incoming_root.glob(".*.pending")) == []
+        assert db.query("SELECT COUNT(*) FROM paper_coordinator_jobs")[0][0] == 1
+
+
+def test_remote_bundle_pull_imports_versioned_artifacts(tmp_path):
+    plan, source = _plan_and_worker(tmp_path / "remote", host="s5")
+    remote_root = tmp_path / "fake_s5" / "runs"
+    remote_run = remote_root / source.name
+    remote_run.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source, remote_run)
+    remote_coordinator = tmp_path / "fake_s5" / "fleet_s5.snapshot.sqlite3"
+    _coordinator_snapshot(remote_coordinator, "s5", "RUNNING")
+
+    def fake_runner(args, capture_output, text, timeout, check):
+        if args[0] == "ssh":
+            return subprocess.CompletedProcess(args, 0, stdout=(str(remote_run / "worker.result_manifest.json") + "\n").encode(), stderr=b"")
+        if args[0] == "rsync":
+            source_path = Path(args[-2].split(":", 1)[1])
+            destination = Path(args[-1])
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source_path, destination)
+            return subprocess.CompletedProcess(args, 0, stdout=b"", stderr=b"")
+        raise AssertionError(args)
+
+    with _collector_db(tmp_path / "remote" / "central.sqlite") as db:
+        collector = PaperForwardCollector(tmp_path / "remote", db, hosts=("s5",), remote_root=str(remote_root), remote_coordinator=str(remote_coordinator), runner=fake_runner)
+        result = collector.collect_once(plan)
+        imported = next(row for row in result["collected_artifacts"] if row.get("run_id") == "paper-run-1")
+        assert imported["status"] == "COMPLETED"
+        assert Path(imported["bundle_path"]).is_dir()
+        assert db.query("SELECT COUNT(*) FROM forward_receipts WHERE run_id='paper-run-1'")[0][0] == 1
         assert db.query("SELECT COUNT(*) FROM paper_coordinator_jobs")[0][0] == 1

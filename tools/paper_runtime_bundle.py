@@ -15,6 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGE_ROOTS = ("tools", "vec_paths", "vec_decisions", "live_twins", "v15_decisions")
+RUNTIME_ASSETS = ("data/reports/ALL_PATHS_ALLOWLIST.csv",)
 EXCLUDED_DIRS = {".git", ".venv", "venv", "env", "__pycache__", "node_modules", "data", "backups", "tests", "test", "output", "outputs", "logs", "plots", "artifacts", "reports", "archive", "scratch", "tmp"}
 
 
@@ -41,12 +42,17 @@ def _source_paths(source_root):
                     path = current_path / name
                     if not path.is_symlink():
                         paths.add(path)
+    for relative in RUNTIME_ASSETS:
+        asset = source_root / relative
+        if asset.is_file() and not asset.is_symlink():
+            paths.add(asset)
     valid = []
+    allowed_assets = set(RUNTIME_ASSETS)
     for path in paths:
         if path.is_symlink() or not path.is_file():
             continue
         relative = path.relative_to(source_root)
-        if any(part in EXCLUDED_DIRS or part.startswith(".") for part in relative.parts[:-1]):
+        if relative.as_posix() not in allowed_assets and any(part in EXCLUDED_DIRS or part.startswith(".") for part in relative.parts[:-1]):
             continue
         valid.append((relative.as_posix(), path))
     if "backtest_v12_engine.py" not in {relative for relative, _ in valid}:

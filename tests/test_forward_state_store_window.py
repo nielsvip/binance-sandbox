@@ -61,3 +61,35 @@ def test_an_unstamped_store_still_resolves_so_no_lane_is_cut_off(tmp_path, monke
     p = store(tmp_path, "per_sym_store.db", None)
     monkeypatch.setenv("PER_SYM_STORE_DB", str(p))
     assert load(monkeypatch).store_db() == str(p)
+
+
+def _store_with_row(tmp_path, name, window, rows):
+    p = store(tmp_path, name, window)
+    con = sqlite3.connect(str(p))
+    con.execute("DROP TABLE per_sym_active")
+    con.execute("CREATE TABLE per_sym_active (sym_side TEXT, updated_at TEXT, full_config_json TEXT, template_md5 TEXT, defaults_round TEXT)")
+    con.execute("CREATE TABLE per_sym_history (id INTEGER PRIMARY KEY, sym_side TEXT, updated_at TEXT, full_config_json TEXT, template_md5 TEXT, defaults_round TEXT, epoch REAL)")
+    for ss, full in rows:
+        con.execute("INSERT INTO per_sym_active VALUES (?,?,?,?,?)", (ss, "t", json.dumps(full), "m", "r"))
+    con.commit()
+    con.close()
+    return p
+
+
+def test_a_7d_producer_never_falls_back_to_30d_derived_settings(tmp_path, monkeypatch):
+    p7 = _store_with_row(tmp_path, "per_sym_store_7d.db", 7, [])
+    monkeypatch.setenv("PER_SYM_STORE_DB", str(p7))
+    m = load(monkeypatch, 7)
+    called = []
+    monkeypatch.setattr(m, "_best_existing_settings", lambda ss, db: called.append(ss) or ({"X": 1}, "fallback:per_sym_full_sets.json", {}))
+    settings, src, meta = m._load_overrides("UNSTAGED_LONG")
+    assert settings == {} and src == "no_7d_set_staged" and called == [], "a 7D arm may only trade a staged 7D set"
+
+
+def test_a_30d_producer_still_falls_back_as_the_30d_law_requires(tmp_path, monkeypatch):
+    p30 = _store_with_row(tmp_path, "per_sym_store.db", 30, [])
+    monkeypatch.setenv("PER_SYM_STORE_DB", str(p30))
+    m = load(monkeypatch)
+    monkeypatch.setattr(m, "_best_existing_settings", lambda ss, db: ({"X": 1}, "fallback:per_sym_full_sets.json", {}))
+    settings, src, meta = m._load_overrides("NOBOARD_LONG")
+    assert src == "fallback:per_sym_full_sets.json", "every 30D side still trades on its best existing settings"

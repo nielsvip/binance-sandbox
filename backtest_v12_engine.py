@@ -11201,7 +11201,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     if os.environ.get("V12_REAL_EXECUTE") == "1":
         # parity lane A H3 (stocks): keep the REAL tradier execute_now; broker I/O = manager.place_order stub (_place).
         v8_logger.warning("[V12_REAL_EXECUTE] tradier: real execute_now (broker I/O stubbed only)")
-        _ownership_report = configure_replay_ownership(tm_mod.config, "tradier")
+        _ownership_report = configure_replay_ownership(tm_mod.config, "tradier", tm_mod, "_cfg_auto")
         v8_logger.warning(f"[REPLAY_OWNERSHIP_MODE] {_ownership_report}")
     else:
         manager.execute_now = _v8_execute_now
