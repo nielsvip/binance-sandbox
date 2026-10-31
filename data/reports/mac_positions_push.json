@@ -1,10 +1,10 @@
 {
- "epoch": 1793457218.944818,
- "written_at": "2026-10-31T14:33:38.944818Z",
+ "epoch": 1793457532.401807,
+ "written_at": "2026-10-31T14:38:52.401817Z",
  "venues": {
   "crypto": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_crypto.json",
-   "sha256": "22c272c7816f72a12fb81916f7f44ff6d8e1a310a98d74a675d121a32f968c24",
+   "sha256": "83bd2222b0130ae02526d0af0dbe9176dbc324b124297c265f137b8a82353fc6",
    "held_total": 32,
    "sides": [
     "1000XECUSDT_SHORT",
@@ -41,95 +41,95 @@
      "acct": "ang",
      "side": "long",
      "records": 201,
-     "file_epoch": 1793457217.178,
-     "file_age_s": 1.8
+     "file_epoch": 1793457523.575,
+     "file_age_s": 5.0
     },
     {
      "acct": "ang",
      "side": "short",
      "records": 201,
-     "file_epoch": 1793457217.181,
-     "file_age_s": 1.8
+     "file_epoch": 1793457523.578,
+     "file_age_s": 5.0
     },
     {
      "acct": "inf",
      "side": "long",
      "records": 201,
-     "file_epoch": 1793457212.799,
-     "file_age_s": 6.2
+     "file_epoch": 1793457525.064,
+     "file_age_s": 3.5
     },
     {
      "acct": "inf",
      "side": "short",
      "records": 201,
-     "file_epoch": 1793457212.802,
-     "file_age_s": 6.1
+     "file_epoch": 1793457525.068,
+     "file_age_s": 3.5
     },
     {
      "acct": "flz",
      "side": "long",
      "records": 201,
-     "file_epoch": 1793457212.824,
-     "file_age_s": 6.1
+     "file_epoch": 1793457525.628,
+     "file_age_s": 3.0
     },
     {
      "acct": "flz",
      "side": "short",
      "records": 201,
-     "file_epoch": 1793457212.827,
-     "file_age_s": 6.1
+     "file_epoch": 1793457525.63,
+     "file_age_s": 3.0
     },
     {
      "acct": "men",
      "side": "long",
      "records": 201,
-     "file_epoch": 1793457213.124,
-     "file_age_s": 5.8
+     "file_epoch": 1793457527.94,
+     "file_age_s": 0.7
     },
     {
      "acct": "men",
      "side": "short",
      "records": 201,
-     "file_epoch": 1793457213.128,
-     "file_age_s": 5.8
+     "file_epoch": 1793457527.942,
+     "file_age_s": 0.7
     },
     {
      "acct": "fin",
      "side": "long",
      "records": 201,
-     "file_epoch": 1793457216.686,
-     "file_age_s": 2.3
+     "file_epoch": 1793457528.557,
+     "file_age_s": 0.0
     },
     {
      "acct": "fin",
      "side": "short",
      "records": 201,
-     "file_epoch": 1793457216.688,
-     "file_age_s": 2.3
+     "file_epoch": 1793457528.56,
+     "file_age_s": 0.0
     }
    ],
-   "snapshot_epoch": 1793457218.965844,
+   "snapshot_epoch": 1793457528.604789,
    "unreadable": [],
    "routes": [
     {
      "host": "s1-int",
      "tree": "binance",
      "ok": false,
-     "error": "CalledProcessError: rsync: [receiver] mkstemp \"/home/niels/binance/data/vector_direct/.mac_positions_crypto.json.zjEoI1\" failed: No space left on device (28)\n",
+     "error": "CalledProcessError: rsync: [receiver] mkstemp \"/home/niels/binance/data/vector_direct/.mac_positions_crypto.json.lVlINW\" failed: No space left on device (28)\n",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     },
     {
      "host": "s1-pub",
      "tree": "binance",
      "ok": false,
-     "error": "CalledProcessError: rsync: [receiver] write failed on \"/home/niels/binance/data/vector_direct/mac_positions_crypto.json\": No space left on device (28)\nrsync error: error in file IO",
+     "error": "CalledProcessError: rsync: [receiver] mkstemp \"/home/niels/binance/data/vector_direct/.mac_positions_crypto.json.xQzYR3\" failed: No space left on device (28)\n",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     },
     {
      "host": "s1",
      "tree": "binance",
      "ok": false,
-     "error": "CalledProcessError: rsync: [receiver] write failed on \"/home/niels/binance/data/vector_direct/mac_positions_crypto.json\": No space left on device (28)\nrsync error: error in file IO",
+     "error": "CalledProcessError: rsync: [receiver] mkstemp \"/home/niels/binance/data/vector_direct/.mac_positions_crypto.json.nMr38O\" failed: No space left on device (28)\n",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     },
     {
@@ -142,11 +142,11 @@
    ],
    "delivered": [],
    "ok": false,
-   "completed_epoch": 1793457225.4003048
+   "completed_epoch": 1793457535.5461419
   },
   "stocks": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_stocks.json",
-   "sha256": "a0625263d7ec6cc9f63cce15eb04683d811519c1ba0587ffa8dbb58bd083d93f",
+   "sha256": "8156758f483abd5411755ae91c04f77bd9cfa37abca44b90240b13f680f27818",
    "held_total": 3,
    "sides": [
     "GILD_LONG",
@@ -159,59 +159,59 @@
      "side": "long",
      "records": 223,
      "file_epoch": 1793390432.302,
-     "file_age_s": 66788.9
+     "file_age_s": 67100.1
     },
     {
      "acct": "tra",
      "side": "short",
      "records": 223,
      "file_epoch": 1793390433.581,
-     "file_age_s": 66787.7
+     "file_age_s": 67098.8
     },
     {
      "acct": "trb",
      "side": "long",
      "records": 223,
-     "file_epoch": 1793457188.387,
-     "file_age_s": 32.9
+     "file_epoch": 1793457488.751,
+     "file_age_s": 43.7
     },
     {
      "acct": "trb",
      "side": "short",
      "records": 223,
-     "file_epoch": 1793457188.392,
-     "file_age_s": 32.8
+     "file_epoch": 1793457488.757,
+     "file_age_s": 43.7
     },
     {
      "acct": "trc",
      "side": "long",
      "records": 223,
      "file_epoch": 1793390454.655,
-     "file_age_s": 66766.6
+     "file_age_s": 67077.8
     },
     {
      "acct": "trc",
      "side": "short",
      "records": 223,
      "file_epoch": 1793390456.247,
-     "file_age_s": 66765.0
+     "file_age_s": 67076.2
     }
    ],
-   "snapshot_epoch": 1793457221.245119,
+   "snapshot_epoch": 1793457532.41729,
    "unreadable": [],
    "routes": [
     {
      "host": "niels@10.0.0.5",
      "tree": "binance",
      "ok": true,
-     "sha256": "a0625263d7ec6cc9f63cce15eb04683d811519c1ba0587ffa8dbb58bd083d93f",
+     "sha256": "8156758f483abd5411755ae91c04f77bd9cfa37abca44b90240b13f680f27818",
      "remote": "~/binance/data/vector_direct/mac_positions_stocks.json"
     },
     {
      "host": "niels@10.0.0.5",
      "tree": "trc7d_root",
      "ok": true,
-     "sha256": "a0625263d7ec6cc9f63cce15eb04683d811519c1ba0587ffa8dbb58bd083d93f",
+     "sha256": "8156758f483abd5411755ae91c04f77bd9cfa37abca44b90240b13f680f27818",
      "remote": "~/trc7d_root/data/vector_direct/mac_positions_stocks.json"
     }
    ],
@@ -220,7 +220,7 @@
     "trc7d_root"
    ],
    "ok": true,
-   "completed_epoch": 1793457224.676254
+   "completed_epoch": 1793457536.17096
   }
  }
 }

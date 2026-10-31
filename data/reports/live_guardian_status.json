@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T14:33:25Z",
+ "ts": "2026-10-31T14:38:53Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 13,
    "open_positions": 22,
-   "unrealised_usd": 0.41,
+   "unrealised_usd": 0.74,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 12,
    "open_positions": 5,
-   "unrealised_usd": -0.49,
+   "unrealised_usd": -0.46,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 1,
    "open_positions": 5,
-   "unrealised_usd": -0.6,
+   "unrealised_usd": -0.68,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,7 +127,7 @@
     "43587"
    ],
    "starts_30m": 1,
-   "log_age_s": 28.0
+   "log_age_s": 5.0
   },
   "men": {
    "pids": [
@@ -141,47 +141,47 @@
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 15.0
+   "log_age_s": 18.0
   },
   "inf": {
    "pids": [
     "11994"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 18.0
   },
   "flz": {
    "pids": [
     "73791"
    ],
    "starts_30m": 1,
-   "log_age_s": 175.0
+   "log_age_s": 504.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 35467.0
+   "log_age_s": 35796.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 35782.0
+   "log_age_s": 36111.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T14:33:25Z",
+   "ts": "2026-10-31T14:38:53Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:FLUXUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T11:14:33Z bar=2026-10-31T10:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T14:33:26Z",
+   "ts": "2026-10-31T14:38:55Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 175s"
+   "evidence": "ez_manage_flz.log not written for 504s"
   }
  ],
  "alert_counts": {
@@ -246,5 +246,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.29
+ "sweep_s": 1.71
 }
