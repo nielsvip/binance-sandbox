@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-31T10:50:05.822112+00:00",
+  "ts": "2026-10-31T10:55:08.135664+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 0,
@@ -12,9 +12,9 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 26774,
+      "mem_avail_mb": 27060,
       "disk_free_gb": 0,
-      "load1": 12.3,
+      "load1": 10.7,
       "dispatch_idle_why": "disk 0MB < 3000",
       "published_ss": []
     },
@@ -25,9 +25,9 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 19083,
+      "mem_avail_mb": 19200,
       "disk_free_gb": 22,
-      "load1": 5.4,
+      "load1": 4.6,
       "dispatch_idle_why": "HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": []
     },
@@ -35,14 +35,14 @@
       "published_last_60m": 0,
       "published_last_3h": 0,
       "boards": {
-        "PTBUSDT_SHORT": 0
+        "PTBUSDT_SHORT": 7
       },
       "boards_running": 1,
-      "workers": 0,
-      "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 27852,
+      "workers": 7,
+      "workers_vs_law_28": "7/28",
+      "mem_avail_mb": 26309,
       "disk_free_gb": 53,
-      "load1": 1.6,
+      "load1": 7.3,
       "dispatch_idle_why": "HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": []
     },
@@ -53,9 +53,9 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 28379,
+      "mem_avail_mb": 28384,
       "disk_free_gb": 47,
-      "load1": 2.6,
+      "load1": 0.8,
       "dispatch_idle_why": "HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": []
     }
