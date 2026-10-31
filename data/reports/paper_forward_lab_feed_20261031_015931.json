@@ -1,0 +1,78 @@
+{
+  "source": "/Users/niels/Documents/binance/data/market_data_20261031_015727_s1.json",
+  "source_sha256": "a130188270c3cfa805f6e42965f786859f11dbefcdf805bf33caec0d818a0552",
+  "observed_at": "2026-10-31T01:59:31.940329Z",
+  "status": "OBSERVATION_ONLY",
+  "causal_inputs_verified": false,
+  "note": "Recent field timestamps do not prove closed-bar causality or complete indicators. File mtime is not used as market-data time.",
+  "counts": {
+    "STALE": 6,
+    "MISSING_OR_INVALID_TIMESTAMP": 2
+  },
+  "rows": [
+    {
+      "symbol": "BTCUSDC",
+      "timeframe": "1m",
+      "field": "timestamp_1m",
+      "source_timestamp": "2026-10-31T01:51:00.000000Z",
+      "age_seconds": 511.9403290748596,
+      "status": "STALE"
+    },
+    {
+      "symbol": "BTCUSDC",
+      "timeframe": "3m",
+      "field": "timestamp_3m",
+      "source_timestamp": "2026-10-31T01:51:00.000000Z",
+      "age_seconds": 511.9403290748596,
+      "status": "STALE"
+    },
+    {
+      "symbol": "BTCUSDC",
+      "timeframe": "5m",
+      "field": "timestamp_5m",
+      "source_timestamp": null,
+      "age_seconds": null,
+      "status": "MISSING_OR_INVALID_TIMESTAMP"
+    },
+    {
+      "symbol": "BTCUSDC",
+      "timeframe": "15m",
+      "field": "timestamp_15m",
+      "source_timestamp": "2026-10-31T00:30:00.000000Z",
+      "age_seconds": 5371.94032907486,
+      "status": "STALE"
+    },
+    {
+      "symbol": "ETHUSDC",
+      "timeframe": "1m",
+      "field": "timestamp_1m",
+      "source_timestamp": "2026-10-31T01:51:00.000000Z",
+      "age_seconds": 511.9403290748596,
+      "status": "STALE"
+    },
+    {
+      "symbol": "ETHUSDC",
+      "timeframe": "3m",
+      "field": "timestamp_3m",
+      "source_timestamp": "2026-10-31T01:51:00.000000Z",
+      "age_seconds": 511.9403290748596,
+      "status": "STALE"
+    },
+    {
+      "symbol": "ETHUSDC",
+      "timeframe": "5m",
+      "field": "timestamp_5m",
+      "source_timestamp": null,
+      "age_seconds": null,
+      "status": "MISSING_OR_INVALID_TIMESTAMP"
+    },
+    {
+      "symbol": "ETHUSDC",
+      "timeframe": "15m",
+      "field": "timestamp_15m",
+      "source_timestamp": "2026-10-31T00:30:00.000000Z",
+      "age_seconds": 5371.94032907486,
+      "status": "STALE"
+    }
+  ]
+}

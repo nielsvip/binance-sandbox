@@ -21,7 +21,8 @@ def test_multiple_orders_refresh_actual_broker_quantity(tmp_path):
     def size(order, held, price):
         held_seen.append(held)
         return min(order["qty"], held), "ok"
-    obj.broker = SimpleNamespace(positions=lambda acct: {"TESTUSDT_LONG": {"qty": 7, "price": 10}}, size=size, send=lambda *args: {"status": "FILLED"})
+    quantities = iter((10, 7))
+    obj.broker = SimpleNamespace(positions=lambda acct: {"TESTUSDT_LONG": {"qty": next(quantities), "price": 10, "entry": 9}}, price=lambda symbol: 10, size=size, send=lambda *args: {"status": "FILLED"})
     orders = [{"ss": "TESTUSDT_LONG", "act": "REDUCE", "qty": 3, "key": str(i), "why": "test"} for i in range(2)]
     obj.send_orders("ang", orders, {"TESTUSDT_LONG": {"qty": 10, "price": 10}}, False)
     assert held_seen == [10, 7]

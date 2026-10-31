@@ -275,6 +275,18 @@ def persist_decision_state(directory, state):
     return {"state_sha256": digest, "state_file": str(relative), "npz_tail": state.get("npz_tail"), "state_ts": state.get("ts"), "settings_sha256": state.get("settings_sha256"), "engine_ast_sha256": state.get("engine_ast_sha256"), "settings_updated_at": state.get("settings_updated_at")}
 
 
+def actual_reduction_is_profitable(symbol_side, position, price):
+    held = float(position.get("qty") or 0.0)
+    entry = float(position.get("entry") or (float(position.get("cost") or 0.0) / held if held > 0 else 0.0))
+    break_even = float(position.get("break_even") or entry)
+    if held <= 0 or not all(math.isfinite(value) and value > 0 for value in (entry, break_even, price)):
+        return False, {"entry": entry, "break_even": break_even, "price": price, "reason": "missing valid broker cost or quote"}
+    is_long = split_ss(symbol_side)[1] == "LONG"
+    floor = max(entry, break_even) if is_long else min(entry, break_even)
+    gain = (price - floor) if is_long else (floor - price)
+    return gain > 0.0, {"entry": entry, "break_even": break_even, "price": price, "profit_floor": floor, "gain_per_unit_before_exit_fee": gain}
+
+
 def load_env_files(paths) -> dict:
     """KEY = VALUE lines (spaces and quotes tolerated). Values never printed."""
     env = {}
@@ -793,7 +805,7 @@ class Binance:
                 continue
             ps = str(r.get("positionSide") or "BOTH").upper()
             side = ps if ps in ("LONG", "SHORT") else ("LONG" if amt > 0 else "SHORT")
-            out[f"{r['symbol']}_{side}"] = {"qty": abs(amt), "price": float(r.get("markPrice") or 0.0), "entry": float(r.get("entryPrice") or 0.0)}
+            out[f"{r['symbol']}_{side}"] = {"qty": abs(amt), "price": float(r.get("markPrice") or 0.0), "entry": float(r.get("entryPrice") or 0.0), "break_even": float(r.get("breakEvenPrice") or r.get("entryPrice") or 0.0)}
         return out
 
     def price(self, symbol):
@@ -1922,7 +1934,7 @@ class Trader:
         for o in orders:
             orders_n += 1
             symbol, side = split_ss(o["ss"])
-            if self.venue == "crypto" and o["ss"] in submitted_sides:
+            if o["act"] == "REDUCE" or (self.venue == "crypto" and o["ss"] in submitted_sides):
                 try:
                     pos = self.broker.positions(acct)
                 except Exception as exc:
@@ -1968,7 +1980,7 @@ class Trader:
                         log(f"{acct} {o['ss']} {o['act']} REFUSED_NOT_FRESH_7D: {why_7d}")
                     continue
             try:
-                price = float((pos.get(o["ss"]) or {}).get("price") or 0.0) or self.broker.price(symbol)
+                price = self.broker.price(symbol) if o["act"] == "REDUCE" else (float((pos.get(o["ss"]) or {}).get("price") or 0.0) or self.broker.price(symbol))
                 qty, why = self.broker.size(o, held, price)
             except RestBlocked as exc:
                 log(f"{acct} {o['ss']}: {exc}")
@@ -1976,6 +1988,16 @@ class Trader:
             except Exception as exc:
                 qty, why, price = 0.0, f"sizing failed: {str(exc)[:120]}", 0.0
             row.update({"price": price, "qty": qty, "notional": round(qty * price, 4) if price else None})
+            if o["act"] == "REDUCE":
+                profitable, profit_check = actual_reduction_is_profitable(o["ss"], pos.get(o["ss"]) or {}, price)
+                row["actual_profit_check"] = profit_check
+                if not profitable:
+                    row.update({"status": "REFUSED_NONPROFIT_REDUCE", "final": False})
+                    if o["key"] not in self.quiet:
+                        self.quiet.add(o["key"])
+                        self._ledger(row)
+                        self.alert("NONPROFIT_REDUCE_REFUSED", account=acct, sym_side=o["ss"], profit_check=profit_check, severity="CRITICAL")
+                    continue
             if qty <= 0:
                 row.update({"status": "SKIP_SIZE", "detail": why, "final": True})
                 self.done.add(o["key"])

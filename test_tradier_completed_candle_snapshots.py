@@ -56,7 +56,7 @@ def test_every_required_timeframe_uses_only_the_latest_completed_candle_and_full
     required = {
         "timeframe", "source_ts", "previous_source_ts", "open", "high", "low", "close", "high_prev", "low_prev",
         "stoch_k", "stoch_d", "stoch_k_prev", "stoch_d_prev", "wt1", "wt2", "wt1_prev", "wt2_prev",
-        "wt_cross", "dc_high", "dc_low", "dc_high_prev", "dc_low_prev", "bb_upper", "bb_lower", "atr",
+        "wt_cross", "dc_high", "dc_low", "dc_high_prev", "dc_low_prev", "bb_upper", "bb_lower", "bb_pct_b", "bb_pct_b_prev", "atr",
     }
     for tf in ("5m", "15m", "1h", "4h", "D"):
         frame = _frame(tf)
@@ -73,7 +73,7 @@ def test_every_required_timeframe_uses_only_the_latest_completed_candle_and_full
         assert snapshot.high == frame["high"].iloc[-2]
         assert snapshot.close != 999.0
         assert snapshot.wt_cross in {"BULL", "BEAR", "NONE"}
-        for field in ("stoch_k", "stoch_d", "wt1", "wt2", "dc_high", "dc_low", "dc_high_prev", "dc_low_prev", "bb_upper", "bb_lower", "atr"):
+        for field in ("stoch_k", "stoch_d", "wt1", "wt2", "dc_high", "dc_low", "dc_high_prev", "dc_low_prev", "bb_upper", "bb_lower", "bb_pct_b", "bb_pct_b_prev", "atr"):
             assert math.isfinite(getattr(snapshot, field)), (tf, field, getattr(snapshot, field))
 
 

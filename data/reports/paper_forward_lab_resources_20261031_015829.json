@@ -1,0 +1,101 @@
+{
+  "observed_at": "2026-10-31T01:58:29.155617Z",
+  "kind": "READ_ONLY_RESOURCE_PROBE",
+  "hosts": {
+    "s1": {
+      "observed": {
+        "mem_available_bytes": 7650664448,
+        "disk_free_bytes": 5115334656,
+        "load1": 7.5,
+        "ncpu": 16,
+        "cpu_psi_avg10": 0.28
+      },
+      "sampled_at_epoch": 1793411906.6685853,
+      "admission": {
+        "admit": false,
+        "reasons": [
+          "mem_available_below_reserve",
+          "disk_free_below_reserve"
+        ],
+        "observed": {
+          "mem_available_bytes": 7650664448,
+          "disk_free_bytes": 5115334656,
+          "load1": 7.5,
+          "ncpu": 16,
+          "cpu_psi_avg10": 0.28
+        }
+      }
+    },
+    "s2": {
+      "observed": {
+        "mem_available_bytes": 7399727104,
+        "disk_free_bytes": 16555409408,
+        "load1": 12.8,
+        "ncpu": 16,
+        "cpu_psi_avg10": 0.88
+      },
+      "sampled_at_epoch": 1793411909.0662444,
+      "admission": {
+        "admit": false,
+        "reasons": [
+          "mem_available_below_reserve"
+        ],
+        "observed": {
+          "mem_available_bytes": 7399727104,
+          "disk_free_bytes": 16555409408,
+          "load1": 12.8,
+          "ncpu": 16,
+          "cpu_psi_avg10": 0.88
+        }
+      }
+    },
+    "s5": {
+      "observed": {
+        "mem_available_bytes": 17226137600,
+        "disk_free_bytes": 34752999424,
+        "load1": 16.84,
+        "ncpu": 16,
+        "cpu_psi_avg10": 4.13
+      },
+      "sampled_at_epoch": 1793411908.1656806,
+      "admission": {
+        "admit": false,
+        "reasons": [
+          "load1_above_limit"
+        ],
+        "observed": {
+          "mem_available_bytes": 17226137600,
+          "disk_free_bytes": 34752999424,
+          "load1": 16.84,
+          "ncpu": 16,
+          "cpu_psi_avg10": 4.13
+        }
+      }
+    },
+    "s6": {
+      "observed": {
+        "mem_available_bytes": 13033402368,
+        "disk_free_bytes": 51109806080,
+        "load1": 20.2,
+        "ncpu": 16,
+        "cpu_psi_avg10": 17.11
+      },
+      "sampled_at_epoch": 1793411907.3794315,
+      "admission": {
+        "admit": false,
+        "reasons": [
+          "load1_above_limit",
+          "cpu_psi_avg10_above_limit"
+        ],
+        "observed": {
+          "mem_available_bytes": 13033402368,
+          "disk_free_bytes": 51109806080,
+          "load1": 20.2,
+          "ncpu": 16,
+          "cpu_psi_avg10": 17.11
+        }
+      }
+    }
+  },
+  "workloads_started": 0
+}

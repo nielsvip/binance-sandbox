@@ -19124,6 +19124,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _hsc = vec_decisions.htf_signal_consume.build_ctx(cfg, npz, n, is_long, ts, entry_sig, _hsc_core, _entry_or_srcs, _safe)  # 2026-10-13 V17 TF law: HTF-only fires need a fresh LTF confirmation, attempts tighten (None = inert)
     if _hsc is not None:
         entry_sig = np.array(entry_sig, dtype=bool, copy=True)  # a gated bar's entry_sig[i] is cleared in-loop (reentry pathways stay evaluable)
+    from vec_decisions.ema20_hard_open import hard_open_mask
+    _kg_all_against = hard_open_mask(npz, n, is_long, close, _safe)
     _ang_timing_failed = None
     _ang_account = str(getattr(cfg, "ANG_TIMING_VECTOR_ACCOUNT_KEY", "") or "").strip().lower()
     _ang_accounts = {str(a).strip().lower() for a in (getattr(cfg, "ANG_TIMING_ACCOUNTS", ("ang",)) or ())}
@@ -20106,7 +20108,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                     )
                                     if _ema > 0:
                                         _kg_vals.append(px < _ema)
-                                if len(_kg_vals) >= 2 and all(_kg_vals):
+                                if bool(_kg_all_against[i]):
                                     fire = False
                             except Exception:
                                 pass
@@ -20160,7 +20162,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                     )
                                     if _ema > 0:
                                         _kg_vals.append(px > _ema)
-                                if len(_kg_vals) >= 2 and all(_kg_vals):
+                                if bool(_kg_all_against[i]):
                                     fire = False
                             except Exception:
                                 pass
@@ -20822,6 +20824,75 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             cd = cooldown_bars
             has_closed_before = True
             continue
+        # EPQ evaluates BB_RECOVERY before PARABOLIC/SRS. Consume its positive,
+        # switch-backed crypto event before the shared hard-exit chain so a same-bar
+        # BB_RECOVERY+SRS collision keeps native precedence and cannot double-reduce.
+        _bbr_info_early = getattr(cfg, "BB_RECOVERY_EXIT_INFO", None)
+        _bbr_mask_early = (
+            _bbr_info_early.get("mask") if isinstance(_bbr_info_early, dict) else None
+        )
+        if (
+            not is_tradier
+            and not _lec_quick_ablated
+            and _bbr_mask_early is not None
+            and i < len(_bbr_mask_early)
+            and bool(_bbr_mask_early[i])
+        ):
+            from vec_decisions.bb_recovery_exit import positive_after_estimated_fees
+
+            _bbr_fee_early = max(
+                0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0)
+            )
+            if positive_after_estimated_fees(live_pnl_pct, _bbr_fee_early):
+                from vec_decisions.quick_missing_bb_recovery_sizing import (
+                    bb_recovery_qty_limits,
+                    bb_recovery_reduce_qty_scalar,
+                )
+
+                _bbr_pos_min_early, _bbr_order_min_early = bb_recovery_qty_limits(
+                    sym, px, cfg
+                )
+                _bbr_qty_early = bb_recovery_reduce_qty_scalar(
+                    pos["qty"],
+                    _bbr_pos_min_early,
+                    live_pnl_pct,
+                    getattr(cfg, "NOLOSS_MIN_PROFIT_PCT", 0.5),
+                    getattr(cfg, "WT_REDUCE_FRAC_LOW", 0.15),
+                    getattr(cfg, "WT_REDUCE_FRAC_MED", 0.25),
+                    getattr(cfg, "WT_REDUCE_FRAC_HIGH", 0.50),
+                )
+                if (
+                    not np.isfinite(_bbr_qty_early)
+                    or _bbr_qty_early <= 0.0
+                    or _bbr_qty_early >= pos["qty"]
+                    or _bbr_qty_early < _bbr_order_min_early
+                ):
+                    continue
+                _bbr_reason_early = (
+                    "BB_RECOVERY_EXIT_TRADIER_LONG"
+                    if is_long
+                    else "BB_RECOVERY_EXIT_TRADIER_SHORT"
+                )
+                pos["realized"] += (
+                    (px - pos["avg_price"]) * _bbr_qty_early
+                    if is_long
+                    else (pos["avg_price"] - px) * _bbr_qty_early
+                )
+                pos["fees"] += abs(_bbr_qty_early * px) * half_fee
+                pos["qty"] -= _bbr_qty_early
+                events.append(
+                    {
+                        "type": "REDUCE",
+                        "ts": float(ts[i]) if i < len(ts) else 0.0,
+                        "price": float(px),
+                        "qty": float(_bbr_qty_early),
+                        "pos_deployed": float(pos["deployed"]),
+                        "bar": int(i),
+                        "reason": _bbr_reason_early,
+                    }
+                )
+                pos["last_reduce_bar"] = int(i)
+                continue
         # 2026-10-01 b2c LIVE CRYPTO EXIT CHAIN hook (live_exit_chain.step): hit -> full close (STOP/CLOSE/KILL reasons) or partial REDUCE by live gain bands
         if _lec_P is not None:
             # lane-D: live EPQ check_exit_candidates returns at line 1 when ABLATION_DISABLE_QUICK_EXIT (ez_positions_quick:13807); step_pp below stays

@@ -1,0 +1,68 @@
+{
+  "captured_at_utc": "2026-10-31T01:54:29Z",
+  "device": "/dev/disk5s1",
+  "filesystem": "ExFAT",
+  "free_bytes": 2813460480,
+  "inventory_limitations": [
+    "Did not enumerate full drive or recursively scan large trees.",
+    "Did not hash multi-GB data or verify SQLite integrity.",
+    "E3T remains mounted read-write by OS; no claim of read-only mount.",
+    "Drive is 99.4% used; avoid large writes/transfers."
+  ],
+  "mount_point": "/Volumes/E3T",
+  "mounted": true,
+  "os_mount_read_only": false,
+  "safety": "No mount/unmount/repair or writes performed. lsof showed another find process (PID 44845) scanning /Volumes/E3T/binance_archive/script_vault; did not unmount/remount while it was active. All reads performed were metadata/manifest reads.",
+  "schema": "external_source_inventory/1",
+  "targeted_registry_facts": [
+    {
+      "current_stat_bytes": 7864320,
+      "documented_lineage": "SELF_LEARNING_DATA.md says merged into TOSHIBA_EXT eval_cache master; this audit did not verify row identity or bytes.",
+      "documented_rows": 657,
+      "path": "/Volumes/E3T/mac_backup_20261014/data/eval_cache_v1.db",
+      "role": "legacy source",
+      "source": "tools/data_locations.py:eval_cache/ext"
+    },
+    {
+      "path": "/Volumes/E3T/binance_archive/eval_cache",
+      "source": "tools/data_locations.py:eval_cache/ext",
+      "state": "absent at targeted path"
+    },
+    {
+      "path": "/Volumes/E3T/binance_archive/experience",
+      "source": "tools/data_locations.py:experience_store/ext",
+      "state": "absent at targeted path"
+    },
+    {
+      "immediate_roots": [
+        "history",
+        "klines_archive",
+        "per_sym_store_complete.db",
+        "script_vault",
+        "shadow_archive",
+        "vision_3m"
+      ],
+      "path": "/Volumes/E3T/binance_archive",
+      "per_sym_store_complete_db_bytes": 1902317568
+    },
+    {
+      "bytes": 830255,
+      "mtime_utc": "2026-10-29T09:23Z",
+      "path": "/Volumes/E3T/binance_archive/klines_archive/_manifest.json",
+      "provenance": "manifest contents identify source paths and date ranges; no full data hash verification performed",
+      "top_level_entries": 3349
+    },
+    {
+      "bytes": 617,
+      "mtime_utc": "2026-10-22T03:52Z",
+      "path": "/Volumes/E3T/binance_archive/vision_3m/_manifest.json",
+      "provenance": "manifest present; no payload verification performed",
+      "top_level_entries": 1
+    }
+  ],
+  "total_bytes": 500104200704,
+  "used_bytes": 497274060800,
+  "volume_name": "E3T",
+  "volume_uuid": "3F62E875-B8EE-34B7-A4C0-2EB157231BFA",
+  "whole_device": "/dev/disk5"
+}

@@ -24,3 +24,23 @@ def test_missing_parent_token_resets_without_fabricating_predecessor():
     tokens = [10, 10, None, 20]
     previous = previous_completed_parent_values(current, tokens)
     assert np.isnan(previous).all()
+
+
+def test_fixed_daily_bb_previous_matches_live_previous_row_contract():
+    import pandas as pd
+
+    from tradier_indicators import bb_features
+    from vec_decisions.live_indicator_arrays import bb_fixed_arrays
+
+    closes = np.asarray([80.0 + i * 0.37 + (i % 4) * 0.8 for i in range(32)])
+    vector_current = bb_fixed_arrays(closes, "D")["bb_pct_b_D"]
+    live_previous = np.asarray(
+        [
+            np.nan
+            if index < 20
+            else bb_features(pd.Series(closes[:index]), length=20, std_mult=2.0)[2]
+            for index in range(len(closes))
+        ],
+        dtype=float,
+    )
+    np.testing.assert_allclose(vector_current[19:-1], live_previous[20:], equal_nan=True)

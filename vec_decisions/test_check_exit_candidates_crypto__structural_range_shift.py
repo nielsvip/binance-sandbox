@@ -35,7 +35,7 @@ def _run(seed, n, is_long, cfg):
     def w(): return rng.uniform(-60, 60, n)
     a1, b1, a15, b15, a3, b3 = w(), w(), w(), w(), w(), w()
     vec = check_structural_range_shift_vec(cfg, price, sh, sl, k1h, k1hp, k15, k15p,
-                                           a1, b1, a15, b15, a3, b3, is_long, ep)
+                                           a1, b1, a15, b15, a15, b15, is_long, ep)
     mism = 0
     for i in range(n):
         ind = {hi_key: sh[i], lo_key: sl[i], "stoch_k_1h": k1h[i], "stoch_k_1h_prev": k1hp[i],
@@ -60,6 +60,15 @@ def main():
     z = rng.uniform(50, 150, 5000)
     assert not check_structural_range_shift_vec(off, z, z, z, z, z, z, z, z, z, z, z, z, z, True, z).any()
     tn += 5000
+    # The paired low-timeframe confirmation reads the live 15m WT pair. An opposite
+    # synthetic 3m pair cannot override that policy mapping.
+    ind = {"dc_high_4h": 100.0, "dc_low_4h": 80.0, "stoch_k_1h": 80.0,
+           "stoch_k_1h_prev": 81.0, "stoch_k_15m": 80.0,
+           "stoch_k_15m_prev": 81.0, "wt1_1h": -1.0, "wt2_1h": 0.0,
+           "wt1_15m": -1.0, "wt2_15m": 0.0, "wt1_3m": 1.0, "wt2_3m": 0.0}
+    assert check_structural_range_shift(cfg, ind, 100.5, True, 101.0)[0]
+    ind["wt1_15m"], ind["wt2_15m"] = 1.0, 0.0
+    assert not check_structural_range_shift(cfg, ind, 100.5, True, 101.0)[0]
     print(f"samples={tn} vec_fires={tf} mismatches={tm}")
     print("PARITY_PASS" if tm == 0 else "PARITY_FAIL")
     if tm: sys.exit(1)

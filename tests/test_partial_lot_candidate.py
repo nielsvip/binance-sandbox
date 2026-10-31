@@ -147,7 +147,7 @@ def test_engine_runner_calls_real_evaluator_builder_and_real_simulate_one(monkey
     from tools.opt import evaluate_v12
     from tools.research import v12_quick_engine_partial_candidate as engine
 
-    cfg = types.SimpleNamespace(START_POSITION_SIZE=15.0)
+    cfg = types.SimpleNamespace(START_POSITION_SIZE=999.0, MODE="crypto")
     npz = {"timestamps": [1]}
     calls = {}
 
@@ -176,7 +176,10 @@ def test_engine_runner_calls_real_evaluator_builder_and_real_simulate_one(monkey
     assert cfg._PARTIAL_LOT_CONTEXT["venue_market_mode_sizing"]["market_mode"] == "LIGHT_MODE"
     assert cfg._PARTIAL_LOT_CONTEXT["engine_start_position_size"] == cfg.START_POSITION_SIZE
     assert out["result"]["execution_ledger"][0]["qty"] == 0.025
-    assert out["engine_start_position_size"] == 15.0
+    assert out["mode"] == "crypto"
+    assert out["market_mode_sizing"]["start_position_size"] == pytest.approx(cfg.START_POSITION_SIZE)
+    assert out["engine_start_position_size"] == pytest.approx(cfg.START_POSITION_SIZE)
+    assert cfg.START_POSITION_SIZE != 999.0  # MARKET_MODE is reapplied after builder overrides
 
 
 def test_real_engine_cycle_tp_output_is_quantized_against_live_inventory():
@@ -377,3 +380,37 @@ def test_research_engine_refuses_unexecutable_ppl_partial_without_state_or_pnl_m
     assert cfg._PARTIAL_LOT_CONTEXT["rejected_partial_count"] > 1
     assert final["qty"] == pytest.approx(0.1)
     assert cfg._PARTIAL_LOT_CONTEXT["last_rejected_partial"]["reason"] == "PARTIAL_BELOW_MIN_QTY"
+
+
+def test_rejected_partial_paths_do_not_bar_continue_or_leave_ppl_reaugment_unscaled():
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "tools/research/v12_quick_engine_partial_candidate.py").read_text()
+    cs_start = source.index("_cs_partial_rejected = not _account_partial_ok")
+    cs_end = source.index("_cs_snap = _cash_settle.snapshot", cs_start)
+    assert "if not _cs_partial_rejected:\n                        continue" in source[cs_start:cs_end]
+    assert "_cs_book.owed = _cs_ow" in source[cs_start:cs_end]
+    assert '"owed_executed"' in source[cs_start:cs_end]
+    lec_start = source.index("if _lec_hit and not _lec_hit[1]:\n                _lec_preview_frac")
+    lec_end = source.index("if _lec_hit:\n                _lec_reason", lec_start)
+    assert "_lec_hit = None" in source[lec_start:lec_end]
+    assert "continue" not in source[lec_start:lec_end]
+    sfk_start = source.index("_sfk_rejected = False")
+    sfk_end = source.index("# 2026-09-30 STATEFUL PORTED EXITS", sfk_start)
+    assert "if not _sfk_rejected:\n                        continue" in source[sfk_start:sfk_end]
+    dd_start = source.index("_dd_exec_ok = _account_partial_ok")
+    dd_end = source.index("_ty_fire, _ty_reason = False", dd_start)
+    assert "if _dd_exec_ok:" in source[dd_start:dd_end]
+    assert "if not _dd_exec_ok" not in source[dd_start:dd_end]
+    sat_start = source.index("if _account_partial_ok(pos, reduce_qty, px):", source.index("reduce_qty = pos[\"qty\"] * satoshit_partial"))
+    sat_end = source.index("pnl_preview = pos[\"realized\"] + (", sat_start)
+    sat_flow = source[sat_start:sat_end]
+    assert "if _account_partial_ok(pos, reduce_qty, px):" in sat_flow
+    assert "if not _account_partial_ok" not in sat_flow
+    assert all(line.startswith("                    continue") for line in sat_flow.splitlines() if line.lstrip() == "continue")
+    bb_start = source.index("if _account_partial_ok(pos, _bbr_reduce_qty, px):")
+    bb_end = source.index("_exit_fee = abs(pos[\"qty\"] * px) * half_fee", bb_start)
+    assert "if not _account_partial_ok" not in source[bb_start:bb_end]
+    assert "_ctp_fired.add(int(_ctp_idx))" in source
+    assert source.index("events.append(_ctp_event)") < source.index("_ctp_fired.add(int(_ctp_idx))")
+    assert '_actual_reaug = (_partial_ctx.get("augment_qty_by_bar") or {}).get(int(i))' in source
+    assert 'pos["_account_exec_qty"] = None' in source[source.index("_actual_reaug"):source.index("_actual_reaug") + 400]

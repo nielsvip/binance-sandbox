@@ -26660,49 +26660,38 @@ async def check_exit_candidates_for_account(
                     _srs_wt2_1h = safe_fetch_float(indicators.get("wt2_1h", 0), 0)
                     _srs_wt1_15m = safe_fetch_float(indicators.get("wt1_15m", 0), 0)
                     _srs_wt2_15m = safe_fetch_float(indicators.get("wt2_15m", 0), 0)
-                    _srs_wt1_3m = safe_fetch_float(indicators.get("wt1_3m", 0), 0)
-                    _srs_wt2_3m = safe_fetch_float(indicators.get("wt2_3m", 0), 0)
-                    if _srs_entry > 0 and _srs_high > 0 and _srs_low > 0:
-                        if is_long and _srs_entry > _srs_high:
-                            _srs_prox = (
-                                abs(current_price - _srs_high) / _srs_high <= _srs_band
-                            )
-                            _srs_1h = (
-                                (_srs_k1h >= _srs_k_hi)
-                                and (_srs_k1h < _srs_k1h_prev)
-                                and (_srs_wt1_1h < _srs_wt2_1h)
-                            )
-                            _srs_15m = (
-                                (_srs_k15m >= _srs_k_hi)
-                                and (_srs_k15m < _srs_k15m_prev)
-                                and (_srs_wt1_15m < _srs_wt2_15m)
-                            )
-                            _srs_3m = _srs_wt1_3m < _srs_wt2_3m
-                            if _srs_prox and _srs_1h and _srs_15m and _srs_3m:
-                                hard_exit_reason = f"STRUCTURAL_RANGE_SHIFT_LONG_CASCADE_{_srs_tf}_entry={_srs_entry:.6f}>{_srs_high_key}={_srs_high:.6f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}"
-                                logger.critical(
-                                    f"🏗️ [STRUCTURAL_RANGE_SHIFT] {position_key}: {hard_exit_reason}"
-                                )
-                        elif (not is_long) and _srs_entry > _srs_low:
-                            _srs_prox = (
-                                abs(current_price - _srs_low) / _srs_low <= _srs_band
-                            )
-                            _srs_1h = (
-                                (_srs_k1h <= _srs_k_lo)
-                                and (_srs_k1h > _srs_k1h_prev)
-                                and (_srs_wt1_1h > _srs_wt2_1h)
-                            )
-                            _srs_15m = (
-                                (_srs_k15m <= _srs_k_lo)
-                                and (_srs_k15m > _srs_k15m_prev)
-                                and (_srs_wt1_15m > _srs_wt2_15m)
-                            )
-                            _srs_3m = _srs_wt1_3m > _srs_wt2_3m
-                            if _srs_prox and _srs_1h and _srs_15m and _srs_3m:
-                                hard_exit_reason = f"STRUCTURAL_RANGE_SHIFT_SHORT_CASCADE_{_srs_tf}_entry={_srs_entry:.6f}>{_srs_low_key}={_srs_low:.6f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}"
-                                logger.critical(
-                                    f"🏗️ [STRUCTURAL_RANGE_SHIFT] {position_key}: {hard_exit_reason}"
-                                )
+                    # LTF-off policy pairs the source's 3m WT confirm to the actual 15m
+                    # WT pair; both live and v12 use the shared SRS predicate.
+                    from vec_decisions.check_exit_candidates_crypto__structural_range_shift import _srs_fires
+
+                    _srs_fires_now = _srs_fires(
+                        _srs_entry,
+                        current_price,
+                        _srs_high,
+                        _srs_low,
+                        _srs_k1h,
+                        _srs_k1h_prev,
+                        _srs_k15m,
+                        _srs_k15m_prev,
+                        _srs_wt1_1h,
+                        _srs_wt2_1h,
+                        _srs_wt1_15m,
+                        _srs_wt2_15m,
+                        _srs_wt1_15m,
+                        _srs_wt2_15m,
+                        is_long,
+                        _srs_k_hi,
+                        _srs_k_lo,
+                        _srs_band,
+                    )
+                    if _srs_fires_now:
+                        _srs_side = "LONG" if is_long else "SHORT"
+                        _srs_level = _srs_high if is_long else _srs_low
+                        _srs_key = _srs_high_key if is_long else _srs_low_key
+                        hard_exit_reason = f"STRUCTURAL_RANGE_SHIFT_{_srs_side}_CASCADE_{_srs_tf}_entry={_srs_entry:.6f}>{_srs_key}={_srs_level:.6f}_k1h={_srs_k1h:.0f}_k15m={_srs_k15m:.0f}"
+                        logger.critical(
+                            f"🏗️ [STRUCTURAL_RANGE_SHIFT] {position_key}: {hard_exit_reason}"
+                        )
                 # ═══ D-LOW BOUNCE AUGMENT (2026-04-11) — DCA deep losers at daily support ═══
                 # When position at huge loss + price bouncing off dc_low_D + k_D oversold crossing up:
                 # augment to lower avg entry → reach 0% faster on recovery.
@@ -30175,8 +30164,10 @@ async def check_entry_candidates_for_account(
                         _rt_exit_ts = _reentry_epoch(getattr(position, "last_reduction_time", None)) or _reentry_epoch(_rt_saved.get("timestamp")) or _reentry_epoch((tracker_manager.last_exit_times or {}).get(position_key)) or 0.0
                         _rt_cfg = lambda key, default: _sw_get(symbol, position_side, key, default)
                         import vec_decisions.stop_reclaim as _rt_reclaim
+                        from vec_decisions.ema20_hard_open import hard_open_live as _rt_ema_blocked
+                        _rt_ema_hold = _rt_ema_blocked(indicators, current_price, is_long)
                         _rt_reclaim_hold = _rt_exit_ts > 0 and _rt_reclaim.exclusive_blocks(_rt_cfg, _rt_saved.get("reason", ""), int(max(0.0, now - _rt_exit_ts) // 900))
-                        if _rt_exit_ts > 0 and not _rt_reclaim_hold and _reentry_triggers.any_enabled(_rt_cfg):
+                        if _rt_exit_ts > 0 and not _rt_reclaim_hold and not _rt_ema_hold and _reentry_triggers.any_enabled(_rt_cfg):
                             _rt_path = Path(getattr(config, "BASE_PATH", ".")) / "klines_cache" / f"{symbol}_15m.json"
                             _rt_name = _reentry_triggers.fire_live(_rt_cfg, is_long, current_price, indicators, _rt_exit_px, _rt_exit_ts, _rt_path, asof_ts=now)
                             if _rt_name:
@@ -30187,7 +30178,7 @@ async def check_entry_candidates_for_account(
                                 reason = _rt_name
                                 rec = "STRONG_BUY" if is_long else "STRONG_SELL"
                                 logger.warning(f"[{_rt_name}] {position_key}: flat re-entry trigger fired at {current_price:.6f}")
-                        if _rt_exit_ts > 0 and not should_trade and not _rt_reclaim_hold and bool(_sw_get(symbol, position_side, "REENTRY_TIER_MODEL_ENABLED", False)):
+                        if _rt_exit_ts > 0 and not should_trade and not _rt_reclaim_hold and not _rt_ema_hold and bool(_sw_get(symbol, position_side, "REENTRY_TIER_MODEL_ENABLED", False)):
                             from types import SimpleNamespace as _ReentryConfig
                             import vec_decisions.reentry_tiers as _reentry_tiers
                             _tier_cfg = _ReentryConfig(**{key: _sw_get(symbol, position_side, key, getattr(config, key, default)) for key, default in (("REENTRY_MIN_GAP_MINUTES", 0.0), ("REENTRY_EXHAUSTED_PARTIAL_ENABLED", True), ("REENTRY_TIER2_PRICE_PCT", 0.003), ("REENTRY_TIER2_MIN_MINUTES", 10.0))})

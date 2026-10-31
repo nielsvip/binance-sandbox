@@ -1271,6 +1271,7 @@ COMPLETED_SNAPSHOT_DEMAND_SWITCHES = (
     "LONG_WAIT_DIRECT_ENABLED",
     "BOTTOM_B_DELAYED_LOWER_TOP_ENABLED",
     "MTF_ATR_MULTITF_DIRECT_ENABLED",
+    "STDEV_REJECT_EXIT_ENABLED",
 )
 
 
@@ -1309,6 +1310,8 @@ class CompletedCandleSnapshot:
     dc_low_prev: Optional[float]
     bb_upper: Optional[float]
     bb_lower: Optional[float]
+    bb_pct_b: Optional[float]
+    bb_pct_b_prev: Optional[float]
     atr: Optional[float]
 
     def as_indicator_fields(self) -> Dict[str, Any]:
@@ -1338,6 +1341,8 @@ class CompletedCandleSnapshot:
             f"_completed_dc_low_{tf}_prev": self.dc_low_prev,
             f"_completed_bb_upper_{tf}": self.bb_upper,
             f"_completed_bb_lower_{tf}": self.bb_lower,
+            f"_completed_bb_pct_b_{tf}": self.bb_pct_b,
+            f"_completed_bb_pct_b_{tf}_prev": self.bb_pct_b_prev,
             f"_completed_atr_{tf}": self.atr,
         }
 
@@ -1422,7 +1427,8 @@ def produce_completed_candle_snapshot(
     dc_high_prev, dc_low_prev, _ = donchian_prev(
         high, low, TIMEFRAMES[tf]["dc_window"]
     )
-    bb_upper, bb_lower, _ = bb_features(close)
+    bb_upper, bb_lower, bb_pct_b = bb_features(close, length=20, std_mult=2.0)
+    bb_pct_b_prev = bb_features(close.iloc[:-1], length=20, std_mult=2.0)[2]
     atr, _, _ = atr_values(completed, TIMEFRAMES[tf]["atr"], ATR_LONG_LENGTH)
     return CompletedCandleSnapshot(
         timeframe=tf,
@@ -1449,6 +1455,8 @@ def produce_completed_candle_snapshot(
         dc_low_prev=dc_low_prev,
         bb_upper=bb_upper,
         bb_lower=bb_lower,
+        bb_pct_b=bb_pct_b,
+        bb_pct_b_prev=bb_pct_b_prev,
         atr=atr,
     )
 

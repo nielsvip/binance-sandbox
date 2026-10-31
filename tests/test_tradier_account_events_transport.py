@@ -57,6 +57,27 @@ def _read_journal_fanout(root, account_id, result_queue):
         journal.release_consumer(fd)
 
 
+def _consume_account_events(root, account_id, base_path, result_queue):
+    async def run():
+        import asyncio
+        from tradier_account_events import DurableAccountEventJournal, _run_journal_consumer
+
+        manager = FakePositionManager(account_id, __import__("pathlib").Path(base_path))
+        manager._api_sync_lock = asyncio.Lock()
+        journal = DurableAccountEventJournal(root, manager.api_client)
+        stop = asyncio.Event()
+        task = asyncio.create_task(_run_journal_consumer(manager, journal, stop, poll_interval=0.02))
+        deadline = asyncio.get_running_loop().time() + 5
+        while manager.saved < 1 and asyncio.get_running_loop().time() < deadline:
+            await asyncio.sleep(0.02)
+        stop.set()
+        task.cancel()
+        await asyncio.gather(task, return_exceptions=True)
+        result_queue.put((manager.position_reads, manager.saved, len(manager.processed)))
+
+    asyncio.run(run())
+
+
 class FakeAPI:
     def __init__(self, response):
         self.response = response
@@ -265,4 +286,29 @@ def test_multiprocess_fanout_gives_each_account_its_own_durable_cursor(tmp_path)
     assert [row[0]["id"] for row in records] == ["10", "10"]
     assert len({row[1] for row in records}) == 2
     assert all(row[1].endswith(".json") for row in records)
+
+
+def test_multiprocess_fanout_rest_reconciles_only_the_matching_account(tmp_path):
+    import multiprocessing
+
+    ctx = multiprocessing.get_context("spawn")
+    journal = DurableAccountEventJournal(tmp_path, StreamAPI())
+    for account_id in ("live-a", "live-b"):
+        journal.write_cursor(account_id, {"seq": 0, "offset": 0, "executions": {}})
+    owner_fd = journal.try_acquire_owner()
+    assert owner_fd is not None
+    for index, account_id in enumerate(("live-a", "live-b"), start=1):
+        journal.publish({"received_at": 1.0, "body": {"event": "order", "account": account_id,
+                                                        "id": str(index), "executed_quantity": 1}}, owner_fd)
+    journal.release_owner(owner_fd)
+    results = ctx.Queue()
+    workers = [ctx.Process(target=_consume_account_events, args=(str(tmp_path), account, str(tmp_path / account), results))
+               for account in ("live-a", "live-b")]
+    for worker in workers:
+        worker.start()
+    reconciles = [results.get(timeout=10) for _ in workers]
+    for worker in workers:
+        worker.join(timeout=10)
+        assert worker.exitcode == 0
+    assert reconciles == [(1, 1, 1), (1, 1, 1)]
 

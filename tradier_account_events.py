@@ -66,7 +66,7 @@ def group_managers_by_stream_identity(managers):
     groups = []
     for manager in managers:
         api = manager.api_client
-        url = str(api._current_url)
+        url = str(api._current_url or "").rstrip("/").lower()
         key = str(api._current_key or "")
         group = next((item for item in groups if item[0] == url and hmac.compare_digest(item[1], key)), None)
         if group is None:
@@ -188,7 +188,11 @@ class DurableAccountEventJournal:
             os.close(fd)
             return None
         self.owner_fds.add(fd)
-        self.repair_incomplete_tail()
+        try:
+            self.repair_incomplete_tail()
+        except Exception:
+            self.release_owner(fd)
+            raise
         return fd
 
     def release_owner(self, fd):
@@ -353,7 +357,12 @@ class DurableAccountEventJournal:
 
 async def _run_journal_owner(api, journal, stop_event, connect=websockets.connect, sleep=asyncio.sleep):
     while not stop_event.is_set():
-        fd = journal.try_acquire_owner()
+        try:
+            fd = journal.try_acquire_owner()
+        except Exception as exc:
+            logger.warning(f"[ACCOUNT_WS] owner lease unavailable: {type(exc).__name__}")
+            await sleep(0.5)
+            continue
         if fd is None:
             await sleep(0.25)
             continue
@@ -390,11 +399,17 @@ async def _run_journal_consumer(manager, journal, stop_event, poll_interval=0.25
         if state is None:
             bootstrap_position = journal.current_position()
             while not stop_event.is_set():
-                async with getattr(manager, "_api_sync_lock", asyncio.Lock()):
-                    positions = await manager.fetch_positions_from_api()
-                    if positions is not None:
-                        await manager.process_account_update(data=positions)
-                        await manager.save_all()
+                try:
+                    async with getattr(manager, "_api_sync_lock", asyncio.Lock()):
+                        positions = await manager.fetch_positions_from_api()
+                        if positions is not None:
+                            await manager.process_account_update(data=positions)
+                            await manager.save_all()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    logger.warning(f"[ACCOUNT_WS] consumer bootstrap deferred: {type(exc).__name__}")
+                    positions = None
                 if positions is not None:
                     break
                 await asyncio.sleep(poll_interval)

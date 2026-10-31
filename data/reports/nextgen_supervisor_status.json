@@ -438,7 +438,7 @@
     "next_baseline_step": "Minimal accepted reader-input projection plus explicit neutral new keys, then assert full effective config/ledger/result against independent prior oracle; canonical local pilot still unchanged."
   },
   "latest_verified_progress": {
-    "updated_at": "2026-10-31T01:47:20.037432+00:00",
+    "updated_at": "2026-10-31T01:59:24.594883+00:00",
     "candidate_baseline": {
       "status": "ONE_SIDE_ACTUAL_BASELINE_PARITY_PASS_NO_OPTIMIZER",
       "sym_side": "1INCHUSDT_SHORT",
@@ -447,20 +447,14 @@
       "qualification": "Pair wrapper unnecessarily prepared LONG and swallowed string SystemExit; LONG had no engine baseline. Fix pending. SHORT parity independently matches previous oracle."
     },
     "expanded_training": {
-      "status": "RUN05_RUNNING_ORIGINAL_PIPELINE",
+      "status": "ALL_EIGHT_PHASES_COMPLETE_WORKER_RC0_NOT_DEPLOYED",
       "host": "s6",
       "directory": "/home/niels/v20_candidate_review_20261030/run_population03_05",
-      "process_group": 438680,
-      "last_observed_supervisor_at": "2026-10-31T01:33:12.767770Z",
-      "last_observed_output_bytes": 1060307328,
-      "prior_run04": "preserved terminal disk-reserve stop",
-      "qualification": "No complete trained model yet",
-      "phases_observed": {
-        "features": "complete",
-        "graph": "complete",
-        "dataset": "complete",
-        "train2": "running"
-      }
+      "supervisor_terminal_at": "2026-10-31T01:50:58.908362Z",
+      "observed_process_group_absent": 438680,
+      "output_bytes": 516972751,
+      "peak_output_bytes": 1970503535,
+      "qualification": "Expanded 248-source/202 emitting-side corpus only; not all collected data, not new profit-protection objective or promotion evidence"
     },
     "quartets": {
       "status": "PRECHECK_FAILED_RESOURCE_FLOOR_BEFORE_WORKER",
@@ -512,10 +506,13 @@
       "data/reports/nextgen_profit_protection_replay_review_20261031.json"
     ],
     "actual_engine_trace": {
-      "helper": "tools/v15_nextgen_protection_trace.py",
-      "status": "PREPARED_NOT_EXECUTED",
-      "root_unit_tests": "3 passed in 1.43s",
-      "runtime_change": "none; diagnostic observes actual frozen engine and requires baseline parity"
-    }
+      "status": "ACTUAL_BASELINE_PARITY_WITH_OBSERVATION",
+      "source": "data/reports/nextgen_protection_trace_20261031T015149Z",
+      "events": 12427,
+      "evaluated_at": "2026-10-31T01:51:49.689705Z",
+      "scope": "one frozen previous baseline; all four config/ledger/result/cutoff hashes equal; no candidate gain proof"
+    },
+    "activation_conflicts": "data/reports/nextgen_protection_activation_conflicts_20261031.json",
+    "next": "legal template protection/recovery combinations and native refusal trace for fifth reclaim signal before S2 comparison"
   }
 }

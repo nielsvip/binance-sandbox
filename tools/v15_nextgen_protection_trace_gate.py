@@ -19,6 +19,7 @@ class ProtectionTrace:
         self.engine, self.limit, self.events, self.originals = engine, limit, [], []
         self.source = Path(engine.__file__).resolve()
         lines = self.source.read_text().splitlines()
+        self.source_lines, self.previous_line = lines, {}
         markers = {'bar_close': 'px = close[i]', 'fixed_stop': '_fx_fire = ""', 'breakeven_phase': 'if _bge_on and pos is not None:', 'peak_phase': 'if _bel_on and pos is not None:', 'reentry_final_gates': 'if fire and _iso_on and has_closed_before'}
         self.lines = {}
         for phase, marker in markers.items():
@@ -65,8 +66,24 @@ class ProtectionTrace:
     def trace(self, frame, event, arg):
         if frame.f_code is not self.engine.simulate_one.__code__:
             return None
-        if event == 'line' and frame.f_lineno in self.lines:
-            self.snapshot(frame, self.lines[frame.f_lineno])
+        if event == 'line':
+            local = frame.f_locals
+            current = {key: local[key] for key in ('i', 'px', 'cd', 'fire', '_sr_fired', '_ordinary_lr_flat_claim') if key in local}
+            statement = self.source_lines[frame.f_lineno - 1]
+            if current.get('fire') is True and local.get('pos') is None and statement.strip().split('#', 1)[0].strip() == 'continue':
+                scalars = {key: normalized(value) for key, value in local.items() if value is None or isinstance(value, (bool, str, int, float)) or type(value).__module__.startswith('numpy') and getattr(value, 'ndim', 1) == 0}
+                neighborhood = [{'line': index + 1, 'source': self.source_lines[index]} for index in range(max(0, frame.f_lineno - 5), min(len(self.source_lines), frame.f_lineno + 1))]
+                self.snapshot(frame, 'native_flat_fire_continue', inputs={'executed_line': frame.f_lineno, 'executed_source': statement, 'source_neighborhood': neighborhood, 'native_scalar_locals': scalars, 'semantics': 'actual continue visited with native fireTrue and posNone; no inferred refusal reason'})
+            previous = self.previous_line.get(id(frame))
+            if previous is not None and previous['state'].get('i') == current.get('i') and previous['state'].get('fire') is True and current.get('fire') is False:
+                line = previous['line']
+                transition = {'executed_line': line, 'executed_source': self.source_lines[line - 1], 'before': normalized(previous['state']), 'after': normalized(current), 'semantics': 'native observed transition across executed line; no reconstructed refusal reason'}
+                self.snapshot(frame, 'native_fire_true_to_false', inputs=transition)
+            self.previous_line[id(frame)] = {'line': frame.f_lineno, 'state': current}
+            if frame.f_lineno in self.lines:
+                self.snapshot(frame, self.lines[frame.f_lineno])
+        elif event == 'return':
+            self.previous_line.pop(id(frame), None)
         return self.trace
 
     def __enter__(self):

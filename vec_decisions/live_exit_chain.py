@@ -26,6 +26,7 @@ If an NPZ ever carries the real *_3m arrays they are preferred automatically (ke
 Prior-bar convention: NPZ dc_* arrays INCLUDE the current bar, so close < dc_low[i] is impossible (measured 0.0000 on ZENUSDT, 0.7% for <=); breach tests therefore use the previous bar's channel
 (same as live, where the indicator is a cached snapshot and the tick price moves below it)."""
 import numpy as np
+from vec_decisions.check_exit_candidates_crypto__structural_range_shift import _srs_fires
 
 _BAND_TF = {"dc_1h": ("dc_high_1h", "dc_low_1h"), "dc_4h": ("dc_high_4h", "dc_low_4h"), "dc_D": ("dc_high_D", "dc_low_D"),
             "bb_1h": ("bb_upper_1h", "bb_lower_1h"), "bb_4h": ("bb_upper_4h", "bb_lower_4h"), "bb_D": ("bb_upper_D", "bb_lower_D")}
@@ -115,23 +116,21 @@ def step(P, cfg, i, px, st):
             reason = f"PARABOLIC_EXIT_LONG_k15={k15:.0f}"
         elif (not is_long) and k15 < 10 and lvl > 0 and px < lvl and P["crack"][i]:
             reason = f"PARABOLIC_EXIT_SHORT_k15={k15:.0f}"
-    # 2. STRUCTURAL_RANGE_SHIFT_EXIT
-    if False and reason is None and not in_grace and _b(cfg, "STRUCTURAL_RANGE_SHIFT_EXIT", False):   # needs the 3m WT cross -> ignored
-        entry, hi, lo = float(st.get("entry_price", 0.0)), P["srs_hi"][i], P["srs_lo"][i]
-        if entry > 0 and hi > 0 and lo > 0:
-            band = _f(cfg, "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS", 100.0) / 10000.0
-            khi, klo = _f(cfg, "STRUCTURAL_RANGE_SHIFT_K_HIGH", 75.0), _f(cfg, "STRUCTURAL_RANGE_SHIFT_K_LOW", 25.0)
-            w1h, w15 = P["w"]["1h"], P["w"]["15m"]
-            if is_long and entry > hi:
-                ok = abs(px - hi) / hi <= band and P["k1h"][i] >= khi and P["k1h"][i] < P["k1hp"][i] and w1h[0][i] < w1h[1][i] \
-                    and P["k15"][i] >= khi and P["k15"][i] < P["k15p"][i] and w15[0][i] < w15[1][i] and P["wt3_1"][i] < P["wt3_2"][i]
-                if ok:
-                    reason = f"STRUCTURAL_RANGE_SHIFT_LONG_CASCADE_{P['srs_tf']}"
-            elif (not is_long) and entry > lo:
-                ok = abs(px - lo) / lo <= band and P["k1h"][i] <= klo and P["k1h"][i] > P["k1hp"][i] and w1h[0][i] > w1h[1][i] \
-                    and P["k15"][i] <= klo and P["k15"][i] > P["k15p"][i] and w15[0][i] > w15[1][i] and P["wt3_1"][i] > P["wt3_2"][i]
-                if ok:
-                    reason = f"STRUCTURAL_RANGE_SHIFT_SHORT_CASCADE_{P['srs_tf']}"
+    # 2. STRUCTURAL_RANGE_SHIFT_EXIT. 3m WT is paired to the available 15m WT per
+    # SWITCH_WIRING_GUIDE §4; the shared predicate preserves the source thresholds.
+    if reason is None and not in_grace and _b(cfg, "STRUCTURAL_RANGE_SHIFT_EXIT", False):
+        entry = float(st.get("entry_price", 0.0))
+        w1h, w15 = P["w"]["1h"], P["w"]["15m"]
+        if _srs_fires(
+            entry, px, P["srs_hi"][i], P["srs_lo"][i], P["k1h"][i], P["k1hp"][i],
+            P["k15"][i], P["k15p"][i], w1h[0][i], w1h[1][i], w15[0][i], w15[1][i],
+            w15[0][i], w15[1][i], is_long,
+            _f(cfg, "STRUCTURAL_RANGE_SHIFT_K_HIGH", 75.0),
+            _f(cfg, "STRUCTURAL_RANGE_SHIFT_K_LOW", 25.0),
+            _f(cfg, "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS", 100.0) / 10000.0,
+        ):
+            side = "LONG" if is_long else "SHORT"
+            reason = f"STRUCTURAL_RANGE_SHIFT_{side}_CASCADE_{P['srs_tf']}"
     # 3. KEY_LEVEL_CRASH (severity >= 3 -> close/reduce; severity 2 = hedge, not modeled). STRICT_NO_LOSS_ACCOUNTS is empty in config.
     if reason is None and _b(cfg, "KEY_LEVEL_CRASH_ENABLED", True) and P["keylevel_sev"][i] >= 3:
         reason = f"KEY_LEVEL_{'CRASH' if is_long else 'BREAKOUT'}_S{int(P['keylevel_sev'][i])}_DC_{'LOW' if is_long else 'HIGH'}_BROKEN"
