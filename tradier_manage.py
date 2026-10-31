@@ -7961,6 +7961,9 @@ def _cfg(
 _TR_PSYM_CTX: ContextVar = ContextVar("_TR_PSYM_CTX", default=None)
 _TR_SCORE_CFG_CTX: ContextVar = ContextVar("_TR_SCORE_CFG_CTX", default=None)
 _TR_SCORE_TS_CTX: ContextVar = ContextVar("_TR_SCORE_TS_CTX", default=None)
+_TR_SCORE_MQ_CTX: ContextVar = ContextVar("_TR_SCORE_MQ_CTX", default=None)
+_TR_SCORE_GA_CTX: ContextVar = ContextVar("_TR_SCORE_GA_CTX", default=None)
+_TR_SCORE_ST_CTX: ContextVar = ContextVar("_TR_SCORE_ST_CTX", default=None)
 _TR_PROXY_GUARD = threading.local()
 
 
@@ -33367,143 +33370,155 @@ class StockStrategy:
                 score -= 15
                 reasons.append(f"DIV_AGAINST_SHORT({_div_bull_t}TF,-15)")
 
-        # --- GOLDEN ANGLES SCORING (backtest-validated: 30 stocks, 69K combos) ---
-        # LONG: WT score > 5 + 4h bullish = Sharpe 1.68, WR 65.5%, +0.86% avg
-        # SHORT: DC pos > 0.6 + 15m confirms = Sharpe 5.13, WR 89.9%
-        if not is_exit:
-            _wt1_4h = g("wt1_4h", 0)
-            _wt2_4h = g("wt2_4h", 0)
-            _wt1_1h = g("wt1_1h", 0)
-            _wt2_1h = g("wt2_1h", 0)
-            _wt1_15m = g("wt1_15m", 0)
-            _wt2_15m = g("wt2_15m", 0)
-            _wt_score_4h = _wt1_4h - _wt2_4h
-            _wt_score_1h = _wt1_1h - _wt2_1h
-            _wt_score_15m = _wt1_15m - _wt2_15m
-            _dc_pos_1h = g("dc_position_1h", 0.5)
-            _dc_pos_4h = g("dc_position_4h", 0.5)
-            _dc_w_1h = g("dc_width_1h", 5)
-            _wt_vel_1h = g("wt_velocity_1h", 0)
-            _wt_cross_val_1h = g("wt_cross_value_1h", 0)
-            _wt_cross_rising_1h = i.get("wt_cross_rising_1h")
-            if is_long:
-                # LONG golden: 4h WT bullish + WT score > 5 + DC position < 0.4
-                if _wt_score_4h > 5:
-                    score += 6
-                    reasons.append(f"GA_WT4H_BULL({_wt_score_4h:.0f},+6)")
-                elif _wt_score_4h > 0:
-                    score += 2
-                    reasons.append(f"GA_WT4H_OK({_wt_score_4h:.0f},+2)")
-                if _dc_pos_1h < 0.25:
-                    score += 5
-                    reasons.append(f"GA_DC_BOT({_dc_pos_1h:.2f},+5)")
-                elif _dc_pos_1h < 0.40:
-                    score += 2
-                    reasons.append(f"GA_DC_LOW({_dc_pos_1h:.2f},+2)")
-                if _wt_cross_rising_1h is True:
-                    score += 3
-                    reasons.append("GA_WT_RISING(+3)")
-                if _wt_vel_1h > 2:
-                    score += 2
-                    reasons.append(f"GA_VEL_UP({_wt_vel_1h:.1f},+2)")
-            else:
-                # SHORT golden: DC pos > 0.6 + 15m WT confirms bearish
-                if _wt_score_15m < -5:
-                    score += 6
-                    reasons.append(f"GA_WT15M_BEAR({_wt_score_15m:.0f},+6)")
-                elif _wt_score_15m < 0:
-                    score += 2
-                    reasons.append(f"GA_WT15M_OK({_wt_score_15m:.0f},+2)")
-                if _dc_pos_1h > 0.75:
-                    score += 5
-                    reasons.append(f"GA_DC_TOP({_dc_pos_1h:.2f},+5)")
-                elif _dc_pos_1h > 0.60:
-                    score += 2
-                    reasons.append(f"GA_DC_HIGH({_dc_pos_1h:.2f},+2)")
-                if _wt_cross_rising_1h is False:
-                    score += 3
-                    reasons.append("GA_WT_FALLING(+3)")
-                if _wt_vel_1h < -2:
-                    score += 2
-                    reasons.append(f"GA_VEL_DN({_wt_vel_1h:.1f},+2)")
+        _ga_vector = _TR_SCORE_GA_CTX.get()
+        if _ga_vector is None:
+            # --- GOLDEN ANGLES SCORING (backtest-validated: 30 stocks, 69K combos) ---
+            # LONG: WT score > 5 + 4h bullish = Sharpe 1.68, WR 65.5%, +0.86% avg
+            # SHORT: DC pos > 0.6 + 15m confirms = Sharpe 5.13, WR 89.9%
+            if not is_exit:
+                _wt1_4h = g("wt1_4h", 0)
+                _wt2_4h = g("wt2_4h", 0)
+                _wt1_1h = g("wt1_1h", 0)
+                _wt2_1h = g("wt2_1h", 0)
+                _wt1_15m = g("wt1_15m", 0)
+                _wt2_15m = g("wt2_15m", 0)
+                _wt_score_4h = _wt1_4h - _wt2_4h
+                _wt_score_1h = _wt1_1h - _wt2_1h
+                _wt_score_15m = _wt1_15m - _wt2_15m
+                _dc_pos_1h = g("dc_position_1h", 0.5)
+                _dc_pos_4h = g("dc_position_4h", 0.5)
+                _dc_w_1h = g("dc_width_1h", 5)
+                _wt_vel_1h = g("wt_velocity_1h", 0)
+                _wt_cross_val_1h = g("wt_cross_value_1h", 0)
+                _wt_cross_rising_1h = i.get("wt_cross_rising_1h")
+                if is_long:
+                    # LONG golden: 4h WT bullish + WT score > 5 + DC position < 0.4
+                    if _wt_score_4h > 5:
+                        score += 6
+                        reasons.append(f"GA_WT4H_BULL({_wt_score_4h:.0f},+6)")
+                    elif _wt_score_4h > 0:
+                        score += 2
+                        reasons.append(f"GA_WT4H_OK({_wt_score_4h:.0f},+2)")
+                    if _dc_pos_1h < 0.25:
+                        score += 5
+                        reasons.append(f"GA_DC_BOT({_dc_pos_1h:.2f},+5)")
+                    elif _dc_pos_1h < 0.40:
+                        score += 2
+                        reasons.append(f"GA_DC_LOW({_dc_pos_1h:.2f},+2)")
+                    if _wt_cross_rising_1h is True:
+                        score += 3
+                        reasons.append("GA_WT_RISING(+3)")
+                    if _wt_vel_1h > 2:
+                        score += 2
+                        reasons.append(f"GA_VEL_UP({_wt_vel_1h:.1f},+2)")
+                else:
+                    # SHORT golden: DC pos > 0.6 + 15m WT confirms bearish
+                    if _wt_score_15m < -5:
+                        score += 6
+                        reasons.append(f"GA_WT15M_BEAR({_wt_score_15m:.0f},+6)")
+                    elif _wt_score_15m < 0:
+                        score += 2
+                        reasons.append(f"GA_WT15M_OK({_wt_score_15m:.0f},+2)")
+                    if _dc_pos_1h > 0.75:
+                        score += 5
+                        reasons.append(f"GA_DC_TOP({_dc_pos_1h:.2f},+5)")
+                    elif _dc_pos_1h > 0.60:
+                        score += 2
+                        reasons.append(f"GA_DC_HIGH({_dc_pos_1h:.2f},+2)")
+                    if _wt_cross_rising_1h is False:
+                        score += 3
+                        reasons.append("GA_WT_FALLING(+3)")
+                    if _wt_vel_1h < -2:
+                        score += 2
+                        reasons.append(f"GA_VEL_DN({_wt_vel_1h:.1f},+2)")
 
-        sent_rank = g("0sentiment_rank", 999)
-        sent_score = g("0market_sentiment_score", 0)
-        sent_local = g("0market_sentiment_local", 0)
-        sent_class = i.get("0sentiment_classification", "NEUTRAL")
-        sent_points = 0
-        if is_long:
-            if sent_rank <= 20:
-                sent_points += 4
-                reasons.append("Rank_Top20")
-            elif sent_rank <= 50:
-                sent_points += 2
-            if sent_local > 20:
-                sent_points += 2
-            if sent_local > sent_score + 10:
-                sent_points += 2
-                reasons.append("Rel_Strength")
-            if "BULLISH" in sent_class:
-                sent_points += 2
         else:
-            if sent_rank >= 180:
-                sent_points += 4
-                reasons.append("Rank_Bot20")
-            elif sent_rank >= 150:
-                sent_points += 2
-            if sent_local < -20:
-                sent_points += 2
-            if sent_local < sent_score - 10:
-                sent_points += 2
-                reasons.append("Rel_Weakness")
-            if "BEARISH" in sent_class:
-                sent_points += 2
-        score += sent_points
-        trend_points = 0
+            _ga_bonus, _ga_reasons = _ga_vector
+            score += _ga_bonus
+            reasons.extend(_ga_reasons)
+        _st_vector = _TR_SCORE_ST_CTX.get()
+        if _st_vector is None:
+            sent_rank = g("0sentiment_rank", 999)
+            sent_score = g("0market_sentiment_score", 0)
+            sent_local = g("0market_sentiment_local", 0)
+            sent_class = i.get("0sentiment_classification", "NEUTRAL")
+            sent_points = 0
+            if is_long:
+                if sent_rank <= 20:
+                    sent_points += 4
+                    reasons.append("Rank_Top20")
+                elif sent_rank <= 50:
+                    sent_points += 2
+                if sent_local > 20:
+                    sent_points += 2
+                if sent_local > sent_score + 10:
+                    sent_points += 2
+                    reasons.append("Rel_Strength")
+                if "BULLISH" in sent_class:
+                    sent_points += 2
+            else:
+                if sent_rank >= 180:
+                    sent_points += 4
+                    reasons.append("Rank_Bot20")
+                elif sent_rank >= 150:
+                    sent_points += 2
+                if sent_local < -20:
+                    sent_points += 2
+                if sent_local < sent_score - 10:
+                    sent_points += 2
+                    reasons.append("Rel_Weakness")
+                if "BEARISH" in sent_class:
+                    sent_points += 2
+            score += sent_points
+            trend_points = 0
 
-        if is_long:
-            if dc_high_D >= dc_high_D_ant:
-                trend_points += 2
-            if dc_low_D > dc_low_D_ant:
-                trend_points += 3
-                reasons.append("D_Trend_Up")
+            if is_long:
+                if dc_high_D >= dc_high_D_ant:
+                    trend_points += 2
+                if dc_low_D > dc_low_D_ant:
+                    trend_points += 3
+                    reasons.append("D_Trend_Up")
 
-            # 4H: Immediate Trend Slope
-            if dc_high_4h > dc_high_4h_ant:
-                trend_points += 3
-                reasons.append("4h_Expanding")
-            elif dc_low_4h > dc_low_4h_ant:
-                trend_points += 2
+                # 4H: Immediate Trend Slope
+                if dc_high_4h > dc_high_4h_ant:
+                    trend_points += 3
+                    reasons.append("4h_Expanding")
+                elif dc_low_4h > dc_low_4h_ant:
+                    trend_points += 2
 
-            # 1H: Local Trend Support
-            if dc_low_1h >= dc_low_1h_ant:
-                trend_points += 2
-            if current_price > g("ema_200_1h", 0):
-                trend_points += 2
+                # 1H: Local Trend Support
+                if dc_low_1h >= dc_low_1h_ant:
+                    trend_points += 2
+                if current_price > g("ema_200_1h", 0):
+                    trend_points += 2
 
-        else:  # SHORT
-            # Daily: Lower Lows or Lower Highs
-            if dc_low_D <= dc_low_D_ant:
-                trend_points += 2
-            if dc_high_D < dc_high_D_ant:
-                trend_points += 3
-                reasons.append("D_Trend_Down")
+            else:  # SHORT
+                # Daily: Lower Lows or Lower Highs
+                if dc_low_D <= dc_low_D_ant:
+                    trend_points += 2
+                if dc_high_D < dc_high_D_ant:
+                    trend_points += 3
+                    reasons.append("D_Trend_Down")
 
-            # 4H: Immediate Trend Slope
-            if dc_low_4h < dc_low_4h_ant:
-                trend_points += 3
-                reasons.append("4h_Expanding_Down")
-            elif dc_high_4h < dc_high_4h_ant:
-                trend_points += 2
+                # 4H: Immediate Trend Slope
+                if dc_low_4h < dc_low_4h_ant:
+                    trend_points += 3
+                    reasons.append("4h_Expanding_Down")
+                elif dc_high_4h < dc_high_4h_ant:
+                    trend_points += 2
 
-            # 1H: Local Trend Resistance
-            if dc_high_1h <= dc_high_1h_ant:
-                trend_points += 2
-            if current_price < g("ema_200_1h", 999999):
-                trend_points += 2
+                # 1H: Local Trend Resistance
+                if dc_high_1h <= dc_high_1h_ant:
+                    trend_points += 2
+                if current_price < g("ema_200_1h", 999999):
+                    trend_points += 2
 
-        score += trend_points
+            score += trend_points
 
+        else:
+            _sentiment_vector, _trend_vector, _st_reasons = _st_vector
+            score += _sentiment_vector
+            reasons.extend(_st_reasons)
         # --- 3. PULLBACK/SETUP LAYER (The Wave) ---
         # "Buy Low, Sell High" within the trend.
         setup_points = 0
@@ -33764,14 +33779,18 @@ class StockStrategy:
                 reasons.append("BEAR_BONUS")
         # --- MARKET QUALITY SCORING (BACKTEST_CHANGE_146) --- 11K-trade validated across Finandy/Bitget/OKX
         if _cfg_auto("MARKET_QUALITY_SCORE_ENABLED_TRADIER", False) and not is_exit:
-            from vec_decisions.tradier_market_quality import market_quality_score_scalar
-            _mq_cfg = {
-                "TRADIER_RSI_SHORT_RVOL_1H": _cfg_auto("TRADIER_RSI_SHORT_RVOL_1H", 1.0),
-                "TRADIER_RSI_SHORT_15M": _cfg_auto("TRADIER_RSI_SHORT_15M", 65.0),
-                "TRADIER_RSI_SHORT_1H": _cfg_auto("TRADIER_RSI_SHORT_1H", 65.0),
-                "TRADIER_RSI_SHORT_RVOL_15M": _cfg_auto("TRADIER_RSI_SHORT_RVOL_15M", 1.0),
-            }
-            _mq_bonus, _mq_reason = market_quality_score_scalar(i, is_long, _mq_cfg.get)
+            _mq_vector = _TR_SCORE_MQ_CTX.get()
+            if _mq_vector is not None:
+                _mq_bonus, _mq_reason = _mq_vector
+            else:
+                from vec_decisions.tradier_market_quality import market_quality_score_scalar
+                _mq_cfg = {
+                    "TRADIER_RSI_SHORT_RVOL_1H": _cfg_auto("TRADIER_RSI_SHORT_RVOL_1H", 1.0),
+                    "TRADIER_RSI_SHORT_15M": _cfg_auto("TRADIER_RSI_SHORT_15M", 65.0),
+                    "TRADIER_RSI_SHORT_1H": _cfg_auto("TRADIER_RSI_SHORT_1H", 65.0),
+                    "TRADIER_RSI_SHORT_RVOL_15M": _cfg_auto("TRADIER_RSI_SHORT_RVOL_15M", 1.0),
+                }
+                _mq_bonus, _mq_reason = market_quality_score_scalar(i, is_long, _mq_cfg.get)
             score += _mq_bonus
             if _mq_reason:
                 reasons.append(_mq_reason)

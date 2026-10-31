@@ -1425,6 +1425,7 @@ if _override_file and Path(_override_file).exists():
     v8_logger.info(f"Re-applied {len(_overrides)} overrides to {_post_import_count} Config instances + module bindings post-import")
 
 # Import NPZ loader
+from vec_decisions.live_indicator_labels import decode_live_indicator_labels
 from backtest_v8_harness import (
     IndicatorStore,
     apply_tradier_backtest_capital_contract,
@@ -5476,7 +5477,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             p = store.price(idx)
             if p <= 0:
                 continue
-            indicators = store.build_indicator_dict(idx)
+            indicators = decode_live_indicator_labels(store.build_indicator_dict(idx))
             _paper_source_indicators = dict(indicators) if forward_session is not None else None
             _ha_map_c = {-1: 'red', 0: 'neutral', 1: 'green'}
             for _ha_tf_c in ['3m', '5m', '15m', '1h', '4h', 'D']:
@@ -12179,7 +12180,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             # SHARED_CLASSIC_FORMATION_V8_PARITY_V1: IndicatorStore supplies
             # causal formation fields to the unchanged real process_position /
             # evaluate_stop decision path.
-            ind = store.build_indicator_dict(idx)
+            ind = decode_live_indicator_labels(store.build_indicator_dict(idx))
             _paper_source_indicators_t = dict(ind) if forward_session is not None else None
             # Build the direct-route namespace from immutable NPZ arrays before
             # generic timestamps/mark fields are rewritten below.  The shared

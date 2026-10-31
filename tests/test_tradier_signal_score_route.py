@@ -6,7 +6,7 @@ sys.path.insert(0, "tests")
 
 import v12_quick_engine as V
 from test_tradier_reviewed_exit_ledgers import _base_npz, _cfg
-from vec_decisions.tradier_signal_score import entry_score_arrays, paired_lower_tf_indicators, possible_entry_setup_mask
+from vec_decisions.tradier_signal_score import _Tradeability, entry_score_arrays, paired_lower_tf_indicators, possible_entry_setup_mask
 
 
 def test_paired_lower_tf_stock_score_inputs_use_15m_only_when_ltf_is_off():
@@ -108,7 +108,8 @@ def test_native_setup_prefilter_has_no_false_negatives_at_threshold_boundaries()
 
 
 def test_native_setup_prefilter_matches_missing_and_future_m1_timestamp_semantics():
-    for timestamp_mode in ("missing", "future"):
+    timestamp_modes = (("missing", None, True), ("future", "future", True), ("positive_inf", np.inf, True), ("negative_inf", -np.inf, False), ("nan", np.nan, False))
+    for timestamp_mode, timestamp_value, expected_fresh in timestamp_modes:
         npz = _base_npz()
         n = len(npz["close"])
         for key in ("k_15m", "d_15m", "k_5m", "d_5m", "k_5m_prev", "k_4h", "d_4h", "mfi_4h"):
@@ -118,8 +119,10 @@ def test_native_setup_prefilter_matches_missing_and_future_m1_timestamp_semantic
         npz["k_1m_prev"] = np.full(n, 10.0)
         if timestamp_mode == "future":
             npz["timestamp_1m"] = np.asarray(npz["timestamps"], dtype=float) + 60.0
-        else:
+        elif timestamp_mode == "missing":
             npz.pop("timestamp_1m", None)
+        else:
+            npz["timestamp_1m"] = np.full(n, timestamp_value, dtype=float)
         cfg = _cfg()
         cfg.MODE = "tradier"
         cfg.LTF_SUB15M_TRADING_ENABLED = False
@@ -128,7 +131,7 @@ def test_native_setup_prefilter_matches_missing_and_future_m1_timestamp_semantic
         cfg.ENTRY_SCORE_THRESHOLD = 12.0
         cfg.BACKTEST_VALIDATED_GATES_TRADIER = False
         candidates = possible_entry_setup_mask(npz, n, True, cfg)
-        assert np.all(candidates)
+        assert bool(candidates[0]) is expected_fresh
         full = entry_score_arrays(npz, n, "SYNTH", True, cfg, np.ones(n, dtype=bool))
         filtered = entry_score_arrays(npz, n, "SYNTH", True, cfg)
         assert np.array_equal(full[0], filtered[0])
@@ -187,6 +190,86 @@ def _mq_crossing_fixture(enabled):
     ):
         setattr(cfg, key, False)
     return npz, cfg, fire_bar
+
+
+def test_vector_golden_angles_score_matches_native_scalar_oracle_both_sides():
+    import tradier_manage as tm
+
+    for is_long in (True, False):
+        npz = _base_npz()
+        n = len(npz["close"])
+        fire_bar = 201
+        for key in ("k_15m", "d_15m", "k_5m", "d_5m", "k_5m_prev", "k_4h", "d_4h", "mfi_4h"):
+            npz[key] = np.full(n, 50.0)
+        if is_long:
+            npz["k_15m"][fire_bar] = 20.0
+            npz["d_15m"][fire_bar] = 30.0
+            npz["mfi_4h"][fire_bar] = 20.0
+            npz.update({key: np.full(n, value) for key, value in (("wt1_4h", 0.0), ("wt2_4h", 0.0), ("wt1_15m", 0.0), ("wt2_15m", 0.0), ("dc_position_1h", 0.5), ("wt_velocity_1h", 0.0))})
+            npz["wt1_4h"][fire_bar] = 8.0
+            npz["dc_position_1h"][fire_bar] = 0.2
+            npz["wt_velocity_1h"][fire_bar] = 4.0
+            npz["wt_cross_rising_1h"] = np.zeros(n, dtype=bool)
+            npz["wt_cross_rising_1h"][fire_bar] = True
+        else:
+            npz["k_15m"][fire_bar] = 80.0
+            npz["d_15m"][fire_bar] = 85.0
+            npz["mfi_4h"][fire_bar] = 80.0
+            npz.update({key: np.full(n, value) for key, value in (("wt1_4h", 0.0), ("wt2_4h", 0.0), ("wt1_15m", 0.0), ("wt2_15m", 0.0), ("dc_position_1h", 0.5), ("wt_velocity_1h", 0.0))})
+            npz["wt1_15m"][fire_bar] = -8.0
+            npz["dc_position_1h"][fire_bar] = 0.8
+            npz["wt_velocity_1h"][fire_bar] = -4.0
+            npz["wt_cross_rising_1h"] = np.ones(n, dtype=bool)
+            npz["wt_cross_rising_1h"][fire_bar] = False
+        cfg = _cfg()
+        cfg.MODE = "tradier"
+        cfg.LTF_SUB15M_TRADING_ENABLED = False
+        cfg.MARKET_QUALITY_SCORE_ENABLED_TRADIER = False
+        cfg.K_ZONE_ENTRY_ENABLED_TRADIER = False
+        cfg.BB_BREAKOUT_ENTRY_TF = "OFF"
+        cfg.ENTRY_SCORE_THRESHOLD = 0.0
+        cfg.WT_COMPOSITE_SCORING_ENABLED_TRADIER = False
+        cfg.WT_COMPOSITE_SCORING_ENABLED = False
+        cfg.BACKTEST_VALIDATED_GATES_TRADIER = False
+        vector_score, _, vector_reasons = entry_score_arrays(npz, n, "SYNTH", is_long, cfg)
+        strategy = tm.StockStrategy.__new__(tm.StockStrategy)
+        strategy.config = cfg
+        strategy.trade_manager = _Tradeability("SYNTH", is_long)
+        indicators = {key: np.asarray(value)[fire_bar].item() for key, value in npz.items() if np.asarray(value).ndim == 1 and len(np.asarray(value)) == n}
+        cfg_token = tm._TR_SCORE_CFG_CTX.set(cfg)
+        ts_token = tm._TR_SCORE_TS_CTX.set(float(npz["timestamps"][fire_bar]))
+        try:
+            scalar_score, _, scalar_reason = strategy.calculate_signal_score(
+                "v12", "SYNTH", is_long, float(indicators["close"]), indicators, None, is_exit=False
+            )
+        finally:
+            tm._TR_SCORE_TS_CTX.reset(ts_token)
+            tm._TR_SCORE_CFG_CTX.reset(cfg_token)
+        assert vector_score[fire_bar] == scalar_score
+        assert "GA_" in scalar_reason
+        assert "GA_" in vector_reasons[fire_bar]
+
+
+def test_vector_market_quality_injection_matches_native_scalar_score():
+    npz, cfg, fire_bar = _mq_crossing_fixture(True)
+    vector_score = entry_score_arrays(npz, len(npz["close"]), "SYNTH", True, cfg)[0][fire_bar]
+    import tradier_manage as tm
+
+    strategy = tm.StockStrategy.__new__(tm.StockStrategy)
+    strategy.config = cfg
+    strategy.trade_manager = _Tradeability("SYNTH", True)
+    indicators = {key: np.asarray(value)[fire_bar].item() for key, value in npz.items() if np.asarray(value).ndim == 1 and len(np.asarray(value)) == len(npz["close"])}
+    cfg_token = tm._TR_SCORE_CFG_CTX.set(cfg)
+    ts_token = tm._TR_SCORE_TS_CTX.set(float(npz["timestamps"][fire_bar]))
+    try:
+        scalar_score, _, scalar_reason = strategy.calculate_signal_score(
+            "v12", "SYNTH", True, float(indicators["close"]), indicators, None, is_exit=False
+        )
+    finally:
+        tm._TR_SCORE_TS_CTX.reset(ts_token)
+        tm._TR_SCORE_CFG_CTX.reset(cfg_token)
+    assert vector_score == scalar_score
+    assert "MQ_GOOD" in scalar_reason
 
 
 def test_native_score_fallback_changes_simulate_one_open_bar_with_market_quality(monkeypatch):

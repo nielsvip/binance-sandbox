@@ -7,7 +7,8 @@ from vec_decisions.asr_dc_structure_score import dc_structure_votes_array
 from vec_decisions.asr_history_score import history_score_array
 from vec_decisions.asr_late_score import apply_asr_late_score_vec
 from vec_decisions.asr_score_tail import finish_array
-from vec_decisions.asr_ordered_composer import ASR_LATE_STAGE_ORDER, ASR_REMAINING_AFTER_COMPOSER, bind_asr_npz_arrays, compose_asr_late_score
+from vec_decisions.asr_ordered_composer import ASR_LATE_STAGE_ORDER, ASR_REMAINING_AFTER_COMPOSER, assemble_asr_composer_inputs, bind_asr_npz_arrays, compose_asr_late_score
+from vec_decisions.asr_pre_dc_entry_score import pre_dc_entry_score_array
 from vec_decisions.asr_post_rank_score import apply_asr_dc_sufficiency_vec, apply_asr_post_rank_vec
 from vec_decisions.asr_rank_sentiment_score import apply_rank_sentiment_vec
 from vec_decisions.asr_volume_setup_score import volume_setup_array
@@ -62,8 +63,18 @@ def _inputs(n=7):
             "lower_low15": x % 3 == 0, "higher_high15": x % 4 == 0, "gain": x * .5,
             "min_gain": .5, "trend_continuation": x % 3 == 1}
     cfg = SimpleNamespace(USE_1M_3M_SIGNALS_ENABLED=True, OVERBOUGHT_SCORE_GUT_BREAKOUT_BYPASS=True)
+    pre_dc = {"current_price": np.full(n, 100.0), "last_reduction_price": np.zeros(n), "minutes_since_reduction": np.full(n, 1300.0),
+              "k_1m": np.where(x % 2 == 0, 51.0, 49.0), "d_1m": np.full(n, 50.0), "k_1m_prev": np.full(n, 50.0),
+              "k_3m": np.full(n, 50.0), "d_3m": np.full(n, 50.0), "k_3m_prev": np.full(n, 50.0),
+              "k_15m": np.full(n, 50.0), "d_15m": np.full(n, 50.0), "k_1h": np.full(n, 50.0), "d_1h": np.full(n, 50.0),
+              "k_4h": np.full(n, 50.0), "true_lag": np.full(n, 10.0), "lower_low_15m": np.zeros(n, bool), "higher_high_15m": np.zeros(n, bool),
+              "position_last_reduction_price": np.zeros(n), "position_last_augmentation_price": np.zeros(n),
+              "dc_basis_15m": np.full(n, 100.0), "dc_basis_1h": np.full(n, 100.0),
+              "dc_high_4h": dc["dc_high_4h"], "dc_high_4h_ant": dc["dc_high_4h_ant"],
+              "dc_low_4h": dc["dc_low_4h"], "dc_low_4h_ant": dc["dc_low_4h_ant"], "recent_exit": np.zeros(n, bool),
+              "k_3m_cross_over": np.zeros(n, bool), "k_3m_cross_under": np.zeros(n, bool)}
     return {"n": n, "cfg": cfg, "score_before_dc": 12.0 + x, "stages": {
-        "dc_structure": dc, "breakout_pa": breakout, "directional": directional, "wt_intelligence": wt,
+        "pre_dc_entry_state": pre_dc, "dc_structure": dc, "breakout_pa": breakout, "directional": directional, "wt_intelligence": wt,
         "volume_setup": volume, "tracker_history_modifier": {"history_present": x % 2 == 0, "win_rate": 75 - x * 10,
         "total_trades": x + 2, "total_realized_pnl": x * 30 - 90},
         "channel_confluence": {"npz": npz, "current_price": 111 + x, "use_ltf": True},
@@ -85,7 +96,8 @@ def test_ordered_numpy_composer_matches_explicit_component_chain():
     inputs = _inputs()
     stages = inputs["stages"]
     n = inputs["n"]
-    score = np.asarray(inputs["score_before_dc"]).copy()
+    pre_dc_expected = pre_dc_entry_score_array({**stages["pre_dc_entry_state"], "score": inputs["score_before_dc"]}, True)
+    score = pre_dc_expected["score"].copy()
     delta, _ = dc_structure_votes_array(stages["dc_structure"], True)
     score += delta
     delta, _, pa = breakout_pa_score_array(stages["breakout_pa"], True)
@@ -139,24 +151,64 @@ def test_npz_enum_binding_decodes_measured_codes_and_rejects_unknowns():
            "ha_15m": np.array([1, -1, 0, 1, -1], dtype=np.int8),
            "wt_cross_rising_15m": np.array([1, 0, 0, 1, 0], dtype=np.int8)}
     bound = bind_asr_npz_arrays(npz, cfg)
-    assert bound["wt_divergence_3m"].tolist() == ["BULL", "HIDDEN_BULL", "BEAR", "HIDDEN_BEAR", ""]
-    assert bound["wt_momentum_state_3m"].tolist() == ["EXHAUST_DOWN", "IMPULSE_DOWN", "", "IMPULSE_UP", "EXHAUST_UP"]
-    assert bound["wt_peak_structure_3m"].tolist() == ["HH", "LH", "", "HH", "LH"]
-    assert bound["wt_trough_structure_3m"].tolist() == ["LL", "HL", "", "LL", "HL"]
-    assert bound["wt_cross_3m"].tolist() == ["BULL", "BEAR", "", "BULL", "BEAR"]
-    assert bound["ha_3m"].tolist() == ["green", "red", "", "green", "red"]
+    assert bound["wt_divergence_3m"].tolist() == ["BULL", "HIDDEN_BULL", "BEAR", "HIDDEN_BEAR", None]
+    assert bound["wt_momentum_state_3m"].tolist() == ["EXHAUST_DOWN", "IMPULSE_DOWN", "EXHAUST_DOWN", "IMPULSE_UP", "EXHAUST_UP"]
+    assert bound["wt_peak_structure_3m"].tolist() == ["HH", "LH", None, "HH", "LH"]
+    assert bound["wt_trough_structure_3m"].tolist() == ["LL", "HL", None, "LL", "HL"]
+    assert bound["wt_cross_3m"].tolist() == ["BULL", "BEAR", None, "BULL", "BEAR"]
+    assert bound["ha_3m"].tolist() == ["green", "red", "neutral", "green", "red"]
     assert bound["wt_cross_rising_3m"].tolist() == [True, False, False, True, False]
     npz["wt_cross_15m"] = np.array([9])
     try:
         bind_asr_npz_arrays(npz, cfg)
     except ValueError as error:
-        assert "unrecognized encoded ASR labels" in str(error)
+        assert "unsupported live indicator enum" in str(error)
     else:
         raise AssertionError("unknown encoded enum was accepted")
     npz["wt_cross_15m"] = np.array([1.5])
     try:
         bind_asr_npz_arrays(npz, cfg)
     except ValueError as error:
-        assert "unrecognized encoded ASR labels" in str(error)
+        assert "unrecognized encoded ASR label" in str(error)
     else:
         raise AssertionError("fractional encoded enum was accepted")
+
+
+def test_raw_npz_and_explicit_causal_state_assemble_into_composer_inputs():
+    fixture = _inputs(7)
+    stages = fixture["stages"]
+    raw = dict(stages["channel_confluence"]["npz"])
+    for key, value in stages["dc_structure"].items():
+        raw[key] = value
+    for key, value in stages["breakout_pa"].items():
+        if key not in ("current_price", "true_lag", "higher_high_15m", "lower_low_15m", "prev_cross_price", "lr_slope"):
+            raw[key] = value
+    raw.update(stages["directional"])
+    raw.update(stages["wt_intelligence"])
+    raw["k_15m_prev"] = stages["post_rank_transform"]["k15_prev"]
+    volume = stages["volume_setup"]
+    pre = stages["pre_dc_entry_state"]
+    history = stages["tracker_history_modifier"]
+    rank = stages["rank_sentiment"]
+    post = stages["post_rank_transform"]
+    causal = {"current_price": stages["breakout_pa"]["current_price"], "true_lag": stages["breakout_pa"]["true_lag"],
+              "prev_cross_price": stages["breakout_pa"]["prev_cross_price"], "lr_slope": stages["breakout_pa"]["lr_slope"],
+              "higher_high_15m": stages["breakout_pa"]["higher_high_15m"], "lower_low_15m": stages["breakout_pa"]["lower_low_15m"],
+              "score_before_dc": fixture["score_before_dc"], "last_reduction_price": pre["last_reduction_price"],
+              "minutes_since_reduction": pre["minutes_since_reduction"], "position_last_reduction_price": pre["position_last_reduction_price"],
+              "position_last_augmentation_price": pre["position_last_augmentation_price"], "recent_exit": pre["recent_exit"],
+              "k_3m_cross_over": pre["k_3m_cross_over"], "k_3m_cross_under": pre["k_3m_cross_under"],
+              "rel_vol": volume["rel_vol"], "z_conviction": volume["z_conviction"], "trend_ok": volume["trend_ok"],
+              "pr_confirm": volume["pr_confirm"], "history_present": history["history_present"],
+              "win_rate": history["win_rate"], "total_trades": history["total_trades"],
+              "total_realized_pnl": history["total_realized_pnl"], "top_sent": rank["top_sent"],
+              "bottom_sent": rank["bottom_sent"], "ranking_points": rank["ranking_points"],
+              "has_indicators": rank["has_indicators"], "local_sentiment": rank["local_sentiment"],
+              "global_sentiment": rank["global_sentiment"], "sentiment_classification": rank["sentiment_classification"],
+              "scalp_entry_detected": post["scalp_entry_detected"], "gain": post["gain"],
+              "trend_continuation": post["trend_continuation"]}
+    cfg = fixture["cfg"]
+    bound = assemble_asr_composer_inputs(raw, cfg, causal, fixture["n"], True)
+    result = compose_asr_late_score(bound, True)
+    assert result["complete_rate"] is False
+    assert result["final_score"].shape == (fixture["n"],)

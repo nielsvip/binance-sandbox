@@ -177,6 +177,53 @@ def gain_eligible(valid, delta):
 
 GAIN_ELIGIBILITY_POLICY = "valid_finite_gain_v1"
 GAIN_TARGET = "positive delta among eligible valid finite measurements; ambiguous invalids excluded; compare models only on a common eligible test population"
+SOURCE_NOOP_GAIN_POLICY = "explicit_progress_source_noops_historical_only_v1"
+
+
+def source_noop_gain_cells(ev, counters):
+    """Recover recorded historical marginals; source tags do not prove current-engine cell authority."""
+    noops = ev.get("nz") or []
+    if not noops:
+        return []
+    naked = ev.get("n")
+    proof = (ev.get("eval_provenance") or {}).get("naked") or {}
+    source_hash = ev.get("source_sha256")
+    source_ok = ev.get("src") == "progress" and ev.get("ts_source") == "explicit_progress_row_npz" and ev.get("nzk") == 1 and isinstance(source_hash, str) and re.fullmatch(r"[0-9a-f]{64}", source_hash) and all(ev.get(key) for key in ("source_file", "progress_key", "source_record_identity", "explicit_row_npz"))
+    naked_ok = isinstance(naked, (list, tuple)) and len(naked) >= 10 and naked[1] == 1 and naked[-1] == 1 and _f(naked[0]) is not None and proof.get("valid") is True and proof.get("cached") is False and not proof.get("err") and not proof.get("invalid_reason") and proof.get("evaluation_success") is not False
+    if not source_ok or not naked_ok or ev.get("is_running") or str(ev.get("reason") or "").startswith(("RUNNING_IDENTITY", "DEAD_VEC_PATH", "NOT_WIRED_VEC")):
+        counters["gain_noop_excluded_row_provenance"] += len(noops)
+        return []
+    if ev.get("npz") != ev.get("explicit_row_npz") or _f(ev.get("cb")) is None or _f(proof.get("cum_before")) != _f(ev.get("cb")):
+        counters["gain_noop_excluded_chain_provenance"] += len(noops)
+        return []
+    excluded = set()
+    for key in PROGRESS_SETTLED:
+        if key != "noop_yellows":
+            excluded.update(ev.get(key) or [])
+    excluded.update((ev.get("yellow_reasons") or {}).keys())
+    seen = {str(cell[0]).strip() for cell in ev.get("y") or [] if isinstance(cell, (list, tuple)) and cell}
+    cells = []
+    for noop in noops:
+        if not isinstance(noop, (list, tuple)) or len(noop) != 3:
+            counters["gain_noop_excluded_invalid"] += 1
+            continue
+        header, absolute, valid = noop
+        header = str(header).strip()
+        if header in seen:
+            counters["gain_noop_duplicate"] += 1
+            continue
+        seen.add(header)
+        value = _f(absolute)
+        if valid != 1 or value is None or not YELLOW_RE.fullmatch(header) or header in excluded:
+            counters["gain_noop_excluded_invalid"] += 1
+            continue
+        marginal = value - float(naked[0])
+        if abs(marginal) > EPS:
+            counters["gain_noop_excluded_not_noop"] += 1
+            continue
+        cells.append([header, marginal, 1, 0.0, None, None, None, None, None, 1.0, value])
+    counters["gain_noop_historical_source_only"] += len(cells)
+    return cells
 
 
 def _r(x, nd=5):
@@ -1921,7 +1968,8 @@ class CatBrain:
                 if v is not None and naked[1]:
                     H.learn(f"{m}:R", x_r, 1.0 if METRIC_SIGN[m] * v > EPS else 0.0, None, W_FIT * naked[8])
             self.c["evidence_naked"] += 1
-        cells = ev.get("y") or []
+        cells = list(ev.get("y") or [])
+        cells.extend(source_noop_gain_cells(ev, self.c))
         rs = self.run_set.setdefault(sym, {})
         rc = self.bi.row_context(sheet, sw, cand, rs) if self.bi is not None else None
         nvalid = bool(naked is not None and gain_eligible(naked[1], naked[0]))
@@ -2272,7 +2320,7 @@ def cmd_train(a):
     for b in brains.values():
         b.finish()
     del seen
-    meta = {"schema": SCHEMA, "gain_eligibility_policy": GAIN_ELIGIBILITY_POLICY, "gain_target": GAIN_TARGET, "at": utc_now(), "cut": a.cut, "spills": files, "events_read": n, "dedupe": dict(cnt), "sort_secs": round(t_sort, 1),
+    meta = {"schema": SCHEMA, "gain_eligibility_policy": GAIN_ELIGIBILITY_POLICY, "gain_target": GAIN_TARGET, "source_noop_gain_policy": SOURCE_NOOP_GAIN_POLICY, "at": utc_now(), "cut": a.cut, "spills": files, "events_read": n, "dedupe": dict(cnt), "sort_secs": round(t_sort, 1),
             "train_secs": round(time.time() - t0 - t_sort, 1), "m_shrink": M_SHRINK, "w_fit": W_FIT, "w_fwd": W_FWD, "nf": NF, "pos_floor_pp": POS_FLOOR,
             "regime_source": "board bh bucket (FLAT/UP/DOWN/STRONG_*); classify_regime needs NPZ bars the corpus does not hold",
             "extract_reports": [json.loads(Path(p).read_text()) for d in a.spill_dir for p in sorted(glob.glob(os.path.join(os.path.expanduser(d), "extract_*.json")))]}
@@ -2434,7 +2482,7 @@ def export_one(sb, tidx, floor, p_ref_r, p_ref_f, max_bytes=MAX_EXPORT_BYTES, mi
         lst.sort(key=lambda r: (-(r[0] > 0), -r[1]))
         sym_rows[ss] = [[nidx(a), round(float(E[C["wpos"]]), 3), round(float(E[C["wn"]]), 3)] for _p, _n, a, E in lst]
     coverage = coverage_of(sb, tidx, floor, p_ref_r, p_ref_f)
-    blob = {"_meta": {"schema": SCHEMA, "gain_eligibility_policy": GAIN_ELIGIBILITY_POLICY, "gain_target": GAIN_TARGET, "cat_side": sb["cs"], "at": utc_now(), "first_ts": sb["first_ts"], "last_ts": sb["last_ts"], "counters": sb["c"],
+    blob = {"_meta": {"schema": SCHEMA, "gain_eligibility_policy": GAIN_ELIGIBILITY_POLICY, "gain_target": GAIN_TARGET, "source_noop_gain": {"policy": SOURCE_NOOP_GAIN_POLICY, "restored": sb["c"].get("gain_noop_historical_source_only", 0), "current_engine_cell_authority": False, "timing_measured": False, "propensity_known": False}, "cat_side": sb["cs"], "at": utc_now(), "first_ts": sb["first_ts"], "last_ts": sb["last_ts"], "counters": sb["c"],
                       "heads_trained": sb["hn"], "nf": NF, "pos_floor_pp": POS_FLOOR, "floor_per_1000": max(HARD_MIN_FLOOR, floor), "p_ref": {"R": p_ref_r, "F": p_ref_f},
                       "m_shrink": M_SHRINK, "cs_cols": ["node", "wpos", "wn", "n", "pos", "neg", "inv", "sum_pos", "d_tim", "d_trades", "d_dd", "d_sharpe", "d_wr",
                                                         "n_sym", "fwd_n", "fwd_pos", "live_n", "live_pos", "n_ident", "mean_secs", "live_pnl_pp"],

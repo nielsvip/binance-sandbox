@@ -15851,7 +15851,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     from vec_decisions.tradeable_mandatory_entry import entry_mask as _mandatory_entry_mask
     _mandatory_entry = _mandatory_entry_mask(npz, n, is_long, cfg, close)
     if np.any(_mandatory_entry):
-        entry_sig = entry_sig | _mandatory_entry
         _entry_or_srcs.append(("TRADEABLE_KEYS_MANDATORY", _mandatory_entry))
     _tradier_score_mask = getattr(cfg, "_tradier_signal_score_mask", None)
     if _tradier_score_mask is not None:
@@ -17132,6 +17131,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         _wd_open = None
         _wd_tag = None
+    if np.any(_mandatory_entry):
+        entry_sig = entry_sig | _mandatory_entry
     try:
         _mi_arr = vec_decisions.wave4_families.mi_exit_signal(
             npz, n, is_long, cfg, _safe

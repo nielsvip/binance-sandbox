@@ -125,3 +125,28 @@ def market_quality_score_vec(npz, n, is_long, cfg, safe):
     total = quality + reversal
     bonuses = np.where(total >= 4.0, 4.0, np.where(total >= 2.5, 2.0, 0.0))
     return bonuses.astype(float), bonuses > 0.0
+
+
+def market_quality_score_vec_details(npz, n, is_long, cfg, safe):
+    """Return vector MQ bonuses with native-format per-row reasons."""
+    bonuses, _ = market_quality_score_vec(npz, n, is_long, cfg, safe)
+    reasons = [""] * n
+    if not bool(_config_value(cfg, "MARKET_QUALITY_SCORE_ENABLED_TRADIER", False)):
+        return bonuses, reasons
+    defaults = {
+        "bb_width_1h": 10.0, "bb_width_4h": 10.0, "adx_1h": 30.0, "adx_4h": 30.0,
+        "mfi_1h": 50.0, "mfi_4h": 50.0, "mfi_15m": 50.0, "rsi_1h": 50.0, "rsi_4h": 50.0,
+        "rsi_15m": 50.0, "relative_volume_1h": 1.0, "relative_volume_15m": 1.0,
+    }
+    from functools import partial
+    getter = partial(_config_value, cfg)
+    for index in np.flatnonzero(bonuses):
+        indicators = {}
+        for key, default in defaults.items():
+            raw = np.asarray(safe(npz, key, n, default), dtype=float).reshape(-1)
+            value = raw[index] if raw.size == n else default
+            indicators[key] = value
+        scalar_bonus, reasons[index] = market_quality_score_scalar(indicators, is_long, getter)
+        if scalar_bonus != bonuses[index]:
+            raise RuntimeError("Tradier MQ vector bonus differs from scalar reason oracle")
+    return bonuses, reasons

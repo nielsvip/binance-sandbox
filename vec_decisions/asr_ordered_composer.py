@@ -19,9 +19,11 @@ from vec_decisions.asr_directional_score import directional_score_array
 from vec_decisions.asr_input_adapter import paired_npz_view
 from vec_decisions.asr_late_score import apply_asr_late_score_vec
 from vec_decisions.asr_score_tail import finish_array
+from vec_decisions.asr_pre_dc_entry_score import pre_dc_entry_score_array
 
 
 ASR_LATE_STAGE_ORDER = (
+    "pre_dc_entry_state",
     "dc_structure",
     "breakout_pa",
     "directional",
@@ -40,43 +42,51 @@ ASR_REMAINING_AFTER_COMPOSER = ("pre_7410_native_score_mutations", "early_vetoes
 
 
 
-_ASR_LABELS = {
-    "wt_divergence": {-2: "HIDDEN_BEAR", -1: "BEAR", 0: "", 1: "BULL", 2: "HIDDEN_BULL"},
-    "wt_momentum_state": {-2: "EXHAUST_DOWN", -1: "IMPULSE_DOWN", 0: "", 1: "IMPULSE_UP", 2: "EXHAUST_UP"},
-    "wt_peak_structure": {-1: "LH", 0: "", 1: "HH"},
-    "wt_trough_structure": {-1: "LL", 0: "", 1: "HL"},
-    "wt_cross": {-1: "BEAR", 0: "", 1: "BULL"},
-    "ha": {-1: "red", 0: "", 1: "green"},
-}
+_ASR_ENUM_PREFIXES = ("wt_cross", "wt_divergence", "wt_momentum_state", "wt_peak_structure", "wt_trough_structure", "wt_wave_phase", "wt_signal", "ha")
+_ASR_TIMEFRAMES = {"1m", "3m", "5m", "15m", "1h", "4h", "D", "W", "M"}
 
 def bind_asr_npz_arrays(npz, cfg):
-    """Apply per-symbol TF policy and decode measured NPZ enum columns for ASR stages."""
+    """Apply per-symbol TF policy and the shared live-indicator label decoder."""
     use_ltf = bool(cfg.get("USE_1M_3M_SIGNALS_ENABLED", False) if isinstance(cfg, dict) else getattr(cfg, "USE_1M_3M_SIGNALS_ENABLED", False))
+    from vec_decisions.live_indicator_labels import decode_live_indicator_labels
     selected = paired_npz_view(npz, use_ltf)
     result = dict(selected)
     for key, raw in tuple(result.items()):
-        family = next((name for name in _ASR_LABELS if key.startswith(name + "_") and key[len(name) + 1:] in {"1m", "3m", "5m", "15m", "1h", "4h", "D", "W", "M"}), None)
+        if not isinstance(key, str):
+            continue
+        family = next((name for name in _ASR_ENUM_PREFIXES if key.startswith(name + "_") and key[len(name) + 1:] in _ASR_TIMEFRAMES), None)
         if family is None:
             continue
         array = np.asarray(raw)
         if array.dtype.kind not in "biuf":
             continue
-        mapping = _ASR_LABELS[family]
-        flat = array.reshape(-1)
-        invalid = [value.item() if isinstance(value, np.generic) else value for value in flat if not np.isfinite(value) or float(value) != float(int(value)) or int(value) not in mapping]
-        if invalid:
-            raise ValueError(f"{key}: unrecognized encoded ASR labels {invalid[:8]}")
-        decoded = np.asarray([mapping[int(value)] for value in flat], dtype=object).reshape(array.shape)
+        decoded = np.empty(array.shape, dtype=object)
+        for index, value in np.ndenumerate(array):
+            if not np.isfinite(value) or float(value) != float(int(value)):
+                raise ValueError(f"{key}: unrecognized encoded ASR label {value!r}")
+            decoded[index] = decode_live_indicator_labels({key: int(value)})[key]
         result[key] = decoded
     for key, raw in tuple(result.items()):
-        if key.startswith("wt_cross_rising_") and np.asarray(raw).dtype.kind in "biuf":
+        if not isinstance(key, str) or not key.startswith("wt_structure_") or key[len("wt_structure_"):] not in _ASR_TIMEFRAMES:
+            continue
+        array = np.asarray(raw)
+        if array.dtype.kind not in "biuf":
+            continue
+        tf = key[len("wt_structure_"):]
+        peak = np.asarray(result.get(f"wt_peak_structure_{tf}", np.zeros(array.shape)))
+        trough = np.asarray(result.get(f"wt_trough_structure_{tf}", np.zeros(array.shape)))
+        if peak.shape != array.shape or trough.shape != array.shape:
+            raise ValueError(f"{key}: structure companion shape mismatch")
+        decoded = np.empty(array.shape, dtype=object)
+        for index, value in np.ndenumerate(array):
+            if not np.isfinite(value) or float(value) != float(int(value)):
+                raise ValueError(f"{key}: unrecognized encoded ASR label {value!r}")
+            decoded[index] = decode_live_indicator_labels({key: int(value), f"wt_peak_structure_{tf}": peak[index], f"wt_trough_structure_{tf}": trough[index]})[key]
+        result[key] = decoded
+    for key, raw in tuple(result.items()):
+        if isinstance(key, str) and (key.startswith("wt_cross_rising_") or key.startswith("wt_extreme_")) and np.asarray(raw).dtype.kind in "biuf":
             arr = np.asarray(raw)
-            if np.any(~np.isin(arr, (0, 1))):
-                raise ValueError(f"{key}: expected encoded boolean values 0/1")
-            result[key] = arr.astype(bool)
-        elif key.startswith("wt_extreme_") and np.asarray(raw).dtype.kind in "biuf":
-            arr = np.asarray(raw)
-            if np.any(~np.isin(arr, (0, 1))):
+            if np.any(~np.isfinite(arr)) or np.any(~np.isin(arr, (0, 1))):
                 raise ValueError(f"{key}: expected encoded boolean values 0/1")
             result[key] = arr.astype(bool)
     return result
@@ -149,8 +159,21 @@ def assemble_asr_composer_inputs(npz, cfg, causal_state, n, is_long):
             "gain": state("gain"), "min_gain": float(getattr(cfg, "MIN_GAIN", 0.0)),
             "trend_continuation": state("trend_continuation", bool)}
     dc_sufficiency = {f"dc_{edge}_{tf}": dc[f"dc_{edge}_{tf}"] for tf in ("3m", "15m", "1h") for edge in ("low", "high")}
+    pre_dc = {"current_price": price, "last_reduction_price": state("last_reduction_price"),
+              "minutes_since_reduction": state("minutes_since_reduction"), "k_1m": breakout["k_1m"], "d_1m": breakout["d_1m"],
+              "k_1m_prev": breakout["k_1m_prev"], "k_3m": breakout["k_3m"], "d_3m": breakout["d_3m"],
+              "k_3m_prev": breakout["k_3m_prev"], "k_15m": breakout["k_15m"], "d_15m": breakout["d_15m"],
+              "k_1h": col("k_1h"), "d_1h": col("d_1h"), "k_4h": col("k_4h"), "true_lag": lag,
+              "lower_low_15m": breakout["lower_low_15m"], "higher_high_15m": breakout["higher_high_15m"],
+              "position_last_reduction_price": state("position_last_reduction_price"),
+              "position_last_augmentation_price": state("position_last_augmentation_price"),
+              "dc_basis_15m": col("dc_basis_15m"), "dc_basis_1h": col("dc_basis_1h"),
+              "dc_high_4h": dc["dc_high_4h"], "dc_high_4h_ant": dc["dc_high_4h_ant"],
+              "dc_low_4h": dc["dc_low_4h"], "dc_low_4h_ant": dc["dc_low_4h_ant"],
+              "recent_exit": state("recent_exit", bool), "k_3m_cross_over": state("k_3m_cross_over", bool),
+              "k_3m_cross_under": state("k_3m_cross_under", bool)}
     return {"n": n, "cfg": cfg, "score_before_dc": state("score_before_dc"), "stages": {
-        "dc_structure": dc, "breakout_pa": breakout, "directional": directional, "wt_intelligence": wt,
+        "pre_dc_entry_state": pre_dc, "dc_structure": dc, "breakout_pa": breakout, "directional": directional, "wt_intelligence": wt,
         "volume_setup": volume, "tracker_history_modifier": history,
         "channel_confluence": {"npz": selected, "current_price": price, "use_ltf": bool(getattr(cfg, "USE_1M_3M_SIGNALS_ENABLED", False))},
         "rank_sentiment": rank, "post_rank_transform": post, "dc_sufficiency": dc_sufficiency,
@@ -190,8 +213,12 @@ def compose_asr_late_score(inputs, is_long, is_exit=False):
     absent = [name for name in ASR_LATE_STAGE_ORDER if name not in stages]
     if absent:
         raise ValueError(f"missing ordered ASR stages: {','.join(absent)}")
-    score = _column(inputs["score_before_dc"], "score_before_dc", n).copy()
-    masks = {}
+    pre_dc = stages["pre_dc_entry_state"]
+    pre_dc_values = {key: value for key, value in pre_dc.items()}
+    pre_dc_values["score"] = _column(inputs["score_before_dc"], "score_before_dc", n)
+    pre_dc_result = pre_dc_entry_score_array(pre_dc_values, is_long)
+    score = pre_dc_result["score"].copy()
+    masks = {f"pre_dc:{key}": value for key, value in pre_dc_result["masks"].items()}
     dc_delta, dc_valid = dc_structure_votes_array(stages["dc_structure"], is_long)
     score += dc_delta
     masks["dc_valid_setup"] = dc_valid
@@ -244,7 +271,14 @@ def compose_asr_late_score(inputs, is_long, is_exit=False):
         tail["dc_high_3m"], tail["dc_low_1h"], tail["dc_low_3m"], tail["k_1m"],
         tail["k_3m"], tail["true_lag"], tail["recommendation_before_tail"],
     )
+    final_score = np.where(pre_dc_result["quick_reentry"], 12, final_score)
+    recommendation = np.where(pre_dc_result["quick_reentry"], "QUICK_REENTRY", recommendation)
     return {
+        "score_before_dc": pre_dc_result["score"],
+        "quick_reentry": pre_dc_result["quick_reentry"],
+        "quick_reentry_reason": pre_dc_result["quick_reentry_reason"],
+        "pr_confirm": pre_dc_result["pr_confirm"],
+        "valid_setup_before_dc": pre_dc_result["valid_setup"],
         "score_after_dc_sufficiency": score_after_dc_sufficiency,
         "score_after_late_score": score,
         "final_score": final_score,

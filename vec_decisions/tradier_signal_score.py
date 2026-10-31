@@ -81,7 +81,6 @@ def possible_entry_setup_mask(npz, n, is_long, cfg):
             raise ValueError("unaligned timestamp_1m")
         m1_lag = timestamps - m1_raw
         fresh = m1_lag < 60.0
-        fresh &= np.isfinite(m1_lag)
     except (KeyError, TypeError, ValueError):
         # The scalar scorer defaults a missing/unparseable 1m timestamp to now_ts.
         fresh = np.ones(n, dtype=bool)
@@ -119,6 +118,135 @@ def possible_entry_setup_mask(npz, n, is_long, cfg):
     return stoch | kzone | rsi | bb
 
 
+def golden_angles_score_vec(npz, n, is_long, safe):
+    """Vectorize the native Golden Angles additive scoring section."""
+    wt1_tf = "wt1_4h" if is_long else "wt1_15m"
+    wt2_tf = "wt2_4h" if is_long else "wt2_15m"
+    wt_score = _column(npz, wt1_tf, n, 0.0) - _column(npz, wt2_tf, n, 0.0)
+    dc_pos = _column(npz, "dc_position_1h", n, 0.5)
+    wt_vel = _column(npz, "wt_velocity_1h", n, 0.0)
+    cross = np.asarray([_value_at(npz, "wt_cross_rising_1h", index, n) for index in range(n)], dtype=object)
+    result = np.zeros(n, dtype=float)
+    if is_long:
+        result += np.where(wt_score > 5.0, 6.0, np.where(wt_score > 0.0, 2.0, 0.0))
+        result += np.where(dc_pos < 0.25, 5.0, np.where(dc_pos < 0.40, 2.0, 0.0))
+        result += np.fromiter((3.0 if value is True else 0.0 for value in cross), dtype=float, count=n)
+        result += np.where(wt_vel > 2.0, 2.0, 0.0)
+    else:
+        result += np.where(wt_score < -5.0, 6.0, np.where(wt_score < 0.0, 2.0, 0.0))
+        result += np.where(dc_pos > 0.75, 5.0, np.where(dc_pos > 0.60, 2.0, 0.0))
+        result += np.fromiter((3.0 if value is False else 0.0 for value in cross), dtype=float, count=n)
+        result += np.where(wt_vel < -2.0, 2.0, 0.0)
+    reason_rows = [[] for _ in range(n)]
+    for index in np.flatnonzero(result):
+        if is_long:
+            if wt_score[index] > 5.0:
+                reason_rows[index].append(f"GA_WT4H_BULL({wt_score[index]:.0f},+6)")
+            elif wt_score[index] > 0.0:
+                reason_rows[index].append(f"GA_WT4H_OK({wt_score[index]:.0f},+2)")
+            if dc_pos[index] < 0.25:
+                reason_rows[index].append(f"GA_DC_BOT({dc_pos[index]:.2f},+5)")
+            elif dc_pos[index] < 0.40:
+                reason_rows[index].append(f"GA_DC_LOW({dc_pos[index]:.2f},+2)")
+            if cross[index] is True:
+                reason_rows[index].append("GA_WT_RISING(+3)")
+            if wt_vel[index] > 2.0:
+                reason_rows[index].append(f"GA_VEL_UP({wt_vel[index]:.1f},+2)")
+        else:
+            if wt_score[index] < -5.0:
+                reason_rows[index].append(f"GA_WT15M_BEAR({wt_score[index]:.0f},+6)")
+            elif wt_score[index] < 0.0:
+                reason_rows[index].append(f"GA_WT15M_OK({wt_score[index]:.0f},+2)")
+            if dc_pos[index] > 0.75:
+                reason_rows[index].append(f"GA_DC_TOP({dc_pos[index]:.2f},+5)")
+            elif dc_pos[index] > 0.60:
+                reason_rows[index].append(f"GA_DC_HIGH({dc_pos[index]:.2f},+2)")
+            if cross[index] is False:
+                reason_rows[index].append("GA_WT_FALLING(+3)")
+            if wt_vel[index] < -2.0:
+                reason_rows[index].append(f"GA_VEL_DN({wt_vel[index]:.1f},+2)")
+    return result, reason_rows
+
+
+def sentiment_trend_score_vec(npz, n, is_long, safe):
+    """Vectorize native sentiment and multi-timeframe trend additive score layers."""
+    rank = _column(npz, "0sentiment_rank", n, 999.0)
+    sentiment = _column(npz, "0market_sentiment_score", n, 0.0)
+    local = _column(npz, "0market_sentiment_local", n, 0.0)
+    sent_points = np.zeros(n, dtype=float)
+    sent_reasons = [[] for _ in range(n)]
+    if is_long:
+        sent_points += np.where(rank <= 20.0, 4.0, np.where(rank <= 50.0, 2.0, 0.0))
+        sent_points += np.where(local > 20.0, 2.0, 0.0)
+        rel = local > sentiment + 10.0
+        sent_points += np.where(rel, 2.0, 0.0)
+        classes = [_value_at(npz, "0sentiment_classification", index, n) for index in range(n)]
+        sent_points += np.fromiter((2.0 if isinstance(value, str) and "BULLISH" in value else 0.0 for value in classes), dtype=float, count=n)
+        for index in np.flatnonzero((rank <= 20.0) | rel):
+            if rank[index] <= 20.0:
+                sent_reasons[index].append("Rank_Top20")
+            if rel[index]:
+                sent_reasons[index].append("Rel_Strength")
+    else:
+        sent_points += np.where(rank >= 180.0, 4.0, np.where(rank >= 150.0, 2.0, 0.0))
+        sent_points += np.where(local < -20.0, 2.0, 0.0)
+        rel = local < sentiment - 10.0
+        sent_points += np.where(rel, 2.0, 0.0)
+        classes = [_value_at(npz, "0sentiment_classification", index, n) for index in range(n)]
+        sent_points += np.fromiter((2.0 if isinstance(value, str) and "BEARISH" in value else 0.0 for value in classes), dtype=float, count=n)
+        for index in np.flatnonzero((rank >= 180.0) | rel):
+            if rank[index] >= 180.0:
+                sent_reasons[index].append("Rank_Bot20")
+            if rel[index]:
+                sent_reasons[index].append("Rel_Weakness")
+    high_1h = _column(npz, "dc_high_1h", n, 0.0)
+    low_1h = _column(npz, "dc_low_1h", n, 0.0)
+    high_4h = _column(npz, "dc_high_4h", n, 0.0)
+    low_4h = _column(npz, "dc_low_4h", n, 0.0)
+    high_d = _column(npz, "dc_high_D", n, 0.0)
+    low_d = _column(npz, "dc_low_D", n, 0.0)
+    high_1h_prev = _column(npz, "dc_high_1h_ant", n, 0.0) if "dc_high_1h_ant" in npz else high_1h
+    low_1h_prev = _column(npz, "dc_low_1h_ant", n, 0.0) if "dc_low_1h_ant" in npz else low_1h
+    high_4h_prev = _column(npz, "dc_high_4h_ant", n, 0.0) if "dc_high_4h_ant" in npz else high_4h
+    low_4h_prev = _column(npz, "dc_low_4h_ant", n, 0.0) if "dc_low_4h_ant" in npz else low_4h
+    high_d_prev = _column(npz, "dc_high_D_ant", n, 0.0) if "dc_high_D_ant" in npz else high_d
+    low_d_prev = _column(npz, "dc_low_D_ant", n, 0.0) if "dc_low_D_ant" in npz else low_d
+    price = _column(npz, "close", n, 0.0)
+    ema200 = _column(npz, "ema_200_1h", n, 0.0 if is_long else 999999.0)
+    trend_points = np.zeros(n, dtype=float)
+    trend_reasons = [[] for _ in range(n)]
+    if is_long:
+        trend_points += np.where(high_d >= high_d_prev, 2.0, 0.0)
+        d_trend = low_d > low_d_prev
+        trend_points += np.where(d_trend, 3.0, 0.0)
+        expand = high_4h > high_4h_prev
+        low_expand = (~expand) & (low_4h > low_4h_prev)
+        trend_points += np.where(expand, 3.0, np.where(low_expand, 2.0, 0.0))
+        trend_points += np.where(low_1h >= low_1h_prev, 2.0, 0.0)
+        trend_points += np.where(price > ema200, 2.0, 0.0)
+        for index in np.flatnonzero(d_trend | expand):
+            if d_trend[index]:
+                trend_reasons[index].append("D_Trend_Up")
+            if expand[index]:
+                trend_reasons[index].append("4h_Expanding")
+    else:
+        trend_points += np.where(low_d <= low_d_prev, 2.0, 0.0)
+        d_trend = high_d < high_d_prev
+        down_expand = low_4h < low_4h_prev
+        high_down_expand = (~down_expand) & (high_4h < high_4h_prev)
+        trend_points += np.where(d_trend, 3.0, 0.0)
+        trend_points += np.where(down_expand, 3.0, np.where(high_down_expand, 2.0, 0.0))
+        trend_points += np.where(high_1h <= high_1h_prev, 2.0, 0.0)
+        trend_points += np.where(price < ema200, 2.0, 0.0)
+        for index in np.flatnonzero(d_trend | down_expand):
+            if d_trend[index]:
+                trend_reasons[index].append("D_Trend_Down")
+            if down_expand[index]:
+                trend_reasons[index].append("4h_Expanding_Down")
+    reason_rows = [sent_reasons[index] + trend_reasons[index] for index in range(n)]
+    return sent_points, trend_points, reason_rows
+
+
 def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None):
     """Evaluate native StockStrategy score and final threshold in bar order.
 
@@ -137,10 +265,12 @@ def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None):
     strategy.config = cfg
     strategy.trade_manager = _Tradeability(symbol, is_long)
     side = "LONG" if is_long else "SHORT"
-    from vec_decisions.tradier_market_quality import market_quality_score_vec
+    from vec_decisions.tradier_market_quality import market_quality_score_vec_details
 
     mq_enabled = bool(getattr(cfg, "MARKET_QUALITY_SCORE_ENABLED_TRADIER", False))
-    mq_bonus, _ = market_quality_score_vec(npz, n, is_long, cfg, _column)
+    mq_bonus, mq_reasons = market_quality_score_vec_details(npz, n, is_long, cfg, _column)
+    ga_bonus, ga_reasons = golden_angles_score_vec(npz, n, is_long, _column)
+    sentiment_bonus, trend_bonus, st_reasons = sentiment_trend_score_vec(npz, n, is_long, _column)
     score_values = np.zeros(n, dtype=float)
     fires = np.zeros(n, dtype=bool)
     reasons = [""] * n
@@ -158,12 +288,18 @@ def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None):
                 if value is not None:
                     indicators[key] = value
             ts_token = tm._TR_SCORE_TS_CTX.set(float(timestamps[index]))
+            mq_token = tm._TR_SCORE_MQ_CTX.set((float(mq_bonus[index]), mq_reasons[index]) if mq_enabled else None)
+            ga_token = tm._TR_SCORE_GA_CTX.set((float(ga_bonus[index]), ga_reasons[index]))
+            st_token = tm._TR_SCORE_ST_CTX.set((float(sentiment_bonus[index]), float(trend_bonus[index]), st_reasons[index]))
             try:
                 score, recommendation, reason = strategy.calculate_signal_score(
                     "v12", symbol, is_long, float(indicators.get("close", 0.0) or 0.0), indicators, None, is_exit=False
                 )
                 threshold = float(tm._cfg("ENTRY_SCORE_THRESHOLD", 12.0, "v12", symbol, side) or 0.0)
             finally:
+                tm._TR_SCORE_ST_CTX.reset(st_token)
+                tm._TR_SCORE_GA_CTX.reset(ga_token)
+                tm._TR_SCORE_MQ_CTX.reset(mq_token)
                 tm._TR_SCORE_TS_CTX.reset(ts_token)
             score_values[index] = float(score)
             native_reason = str(reason or "")
