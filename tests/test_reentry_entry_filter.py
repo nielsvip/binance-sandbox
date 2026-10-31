@@ -1,4 +1,19 @@
-from vec_decisions.reentry_entry_filter import live_15m_masks, min_pass_result
+from types import SimpleNamespace
+
+import numpy as np
+
+from vec_decisions.generic_filter_tf import FILTER_TF_MAP, _cond
+from vec_decisions.reentry_entry_filter import (
+    compare_mask_coverage,
+    generic_filter_tf_live_masks,
+    live_15m_masks,
+    min_pass_allowed,
+    min_pass_result,
+    min_pass_required,
+    shared_simple_live_masks,
+    wave4_live_masks,
+)
+import vec_decisions.twin_yellow_filters as yellow_filters
 
 
 def test_min_pass_counts_only_available_masks_and_clamps_minimum():
@@ -10,6 +25,21 @@ def test_min_pass_counts_only_available_masks_and_clamps_minimum():
     )
     assert min_pass_result({"a": True}, 9) == (True, 1, 1, 1)
     assert min_pass_result({"a": None}, 1) == (True, 0, 0, 0)
+
+
+def test_coverage_comparison_reports_partial_provider_without_claiming_parity():
+    result = compare_mask_coverage(
+        ["MOM3_FILTER_TF", "HTF_DIRECTION_GATE_ENABLED"],
+        {"MOM3_FILTER_TF": True, "NATIVE_EXTRA": False},
+    )
+    assert result == {
+        "vector_active_count": 2,
+        "native_active_count": 2,
+        "counts_equal": True,
+        "producer_sets_equal": False,
+        "missing_native": ["HTF_DIRECTION_GATE_ENABLED"],
+        "native_only": ["NATIVE_EXTRA"],
+    }
 
 
 def test_live_15m_masks_match_native_long_contract_and_key_omission():
@@ -31,3 +61,133 @@ def test_live_15m_masks_match_native_short_contract_and_falsey_fallbacks():
 
 def test_empty_live_masks_do_not_block():
     assert min_pass_result(live_15m_masks({}, True), 1) == (True, 0, 0, 0)
+    assert min_pass_required(0, 2) == 0
+    assert min_pass_required(3, 2) == 2
+    assert min_pass_allowed(2, 3, 2)
+    assert not min_pass_allowed(1, 3, 2)
+
+
+def test_native_generic_filter_provider_uses_same_vector_predicate():
+    indicators = {
+        "bb_pct_b_15m": 0.1,
+        "wt1_1h": 2.0,
+        "wt2_1h": 1.0,
+        "dc_high_15m_prev": 99.0,
+        "low_15m": 98.0,
+        "high_15m": 101.0,
+    }
+    cfg = SimpleNamespace(
+        BB_BOUNCE_ENTRY_TF="OFF",
+        EMA_BLANKET_FILTER_FILTER_TF="OFF",
+        BAR_PATTERNS_FILTER_TF="OFF",
+        BREAKOUT_RETEST_FILTER_TF="15m",
+        BREAKOUT_RETEST_ARMED_ENABLED=True,
+        BB_RECOVERY_ENTRY_FILTER_TF="OFF",
+        BB_RECOVERY_FILTER_TF="OFF",
+        DC_BREAK_FILTER_TF="15m",
+        DELTA_ENGINE_FILTER_TF="1h",
+        DC_MOMENTUM_BOTA_SCORER_FILTER_TF="OFF",
+        CIRCUIT_SHARPE_GATES_FILTER_TF="OFF",
+        BT_WT_CROSS_LADDER_FILTER_TF="OFF",
+    )
+    actual = generic_filter_tf_live_masks(indicators, True, cfg, 100.0)
+    assert actual == {
+        "BREAKOUT_RETEST_FILTER_TF": True,
+        "DC_BREAK_FILTER_TF": True,
+        "DELTA_ENGINE_FILTER_TF": True,
+    }
+    npz = {key: np.asarray([value]) for key, value in indicators.items()}
+
+    def safe(data, key, n, default=0.0):
+        return data[key] if key in data else np.full(n, default)
+
+    for name, passed in actual.items():
+        kind = FILTER_TF_MAP[name][1]
+        tf = getattr(cfg, name)
+        reference = _cond(kind, npz, 1, tf, True, np.asarray([100.0]), safe)
+        assert bool(reference[0]) is passed
+
+
+def test_generic_filter_provider_respects_vector_master_switch():
+    cfg = SimpleNamespace(
+        MODE="crypto",
+        BREAKOUT_RETEST_FILTER_TF="15m",
+        BREAKOUT_RETEST_ARMED_ENABLED=False,
+    )
+    assert generic_filter_tf_live_masks(
+        {"dc_high_15m_prev": 99.0, "low_15m": 98.0}, True, cfg, 100.0
+    ) == {}
+
+
+def test_yellow_filter_names_stay_aligned_with_appended_masks(monkeypatch):
+    monkeypatch.setattr(yellow_filters, "mom3_entry_gate", lambda *args: np.asarray([True]))
+    monkeypatch.setattr(yellow_filters, "momentum_breakout_gate", lambda *args: None)
+    monkeypatch.setattr(yellow_filters, "dc_break_entry_gate", lambda *args: np.asarray([False]))
+    monkeypatch.setattr(yellow_filters, "ema_blanket_pass_vec", lambda *args: None)
+    masks, names = [], []
+    output = yellow_filters.apply_yellow_entry_masks(
+        {}, 1, True, object(), np.asarray([1.0]), np.asarray([True]), masks,
+        safe=lambda *args: np.asarray([0.0]), include_kg=False,
+        entry_filter_mask_names=names,
+    )
+    assert len(masks) == len(names) == 2
+    assert names == ["YELLOW_MOM3_FILTER_TF", "YELLOW_DC_BREAK_FILTER_TF"]
+    assert output.tolist() == [False]
+
+
+def test_shared_simple_native_provider_matches_shared_vector_gates():
+    cfg = SimpleNamespace(
+        OI_CONFIRM_ENABLED=False,
+        EMA_BLANKET_FILTER_ENABLED=False,
+        HTF_DIRECTION_GATE_ENABLED=False,
+        WT_PERCENTILE_ENTRY_GATE_ENABLED=False,
+        BB_PULLBACK_GATE_FILTER_TF="15m",
+        BB_PULLBACK_GATE_ENABLED=True,
+        BB_PULLBACK_GATE_TF="15m",
+        BB_PULLBACK_GATE_LONG_MAX=0.3,
+        BB_PULLBACK_GATE_SHORT_MIN=0.7,
+        EMA50_15M_ENTRY_FILTER_ENABLED=True,
+        EMA50_15M_ENTRY_FILTER_PCT=2.0,
+    )
+    indicators = {"bb_pct_b_15m": 0.4, "ema_50_15m": 100.0}
+    assert shared_simple_live_masks(indicators, True, cfg, 103.0) == {
+        "BB_PULLBACK_GATE_FILTER_TF": False,
+        "EMA50_15M_ENTRY_FILTER_ENABLED": True,
+    }
+    assert shared_simple_live_masks(indicators, False, cfg, 97.9) == {
+        "BB_PULLBACK_GATE_FILTER_TF": False,
+        "EMA50_15M_ENTRY_FILTER_ENABLED": True,
+    }
+
+
+def test_wave4_native_provider_reports_only_active_shared_gates():
+    cfg = SimpleNamespace(
+        OI_CONFIRM_ENABLED=True,
+        HTF_DIRECTION_GATE_ENABLED=True,
+        HTF_GATE_APPLY_TO_OPEN=True,
+        HTF_GATE_SIGNALS_SMA200D=False,
+        HTF_GATE_MIN_CONFIRMATIONS=3,
+        HTF_GATE_D_MANDATORY=True,
+        OI_CONFIRM_MIN_CHANGE_PCT=0.5,
+        OI_CONFIRM_MIN_PRICE_PCT=0.3,
+        EMA_BLANKET_FILTER_ENABLED=False,
+        WT_PERCENTILE_ENTRY_GATE_ENABLED=True,
+        WT_PERCENTILE_ENTRY_OB_D=90.0,
+        WT_PERCENTILE_ENTRY_OS_D=10.0,
+    )
+    indicators = {
+        "oi_change_1h_pct": 1.0,
+        "close_1h_prev": 100.0,
+        "wt1_D": 2.0,
+        "wt2_D": 1.0,
+        "wt1_4h": 2.0,
+        "wt2_4h": 1.0,
+        "wt1_1h": 2.0,
+        "wt2_1h": 1.0,
+        "wt_percentile_D": 50.0,
+    }
+    assert wave4_live_masks(indicators, True, cfg, 101.0) == {
+        "OI_CONFIRM_ENABLED": True,
+        "HTF_DIRECTION_GATE_ENABLED": True,
+        "WT_PERCENTILE_ENTRY_GATE_ENABLED": True,
+    }

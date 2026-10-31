@@ -53,6 +53,6 @@ def test_reapply_is_and_only():
 
 def test_single_masks_append_per_veto():
     joinsrc = "\n".join(SRC)
-    assert joinsrc.count("_entry_filter_masks.append(_lks_ok)") == 1
-    assert joinsrc.count("_entry_filter_masks.append(_kg2_ok)") == 1
-    assert joinsrc.count("_entry_filter_masks.append(np.asarray(_e921_ok, dtype=bool))") == 1
+    assert joinsrc.count('_record_entry_filter_mask("KG_STOCKS_HARD_VETO_ENABLED", _lks_ok)') == 1
+    assert joinsrc.count('_record_entry_filter_mask("KINDERGARTEN_EMA_GATE_ENABLED", _kg2_ok)') == 1
+    assert joinsrc.count('_record_entry_filter_mask("EMA_9_21_ENTRY_GATE", np.asarray(_e921_ok, dtype=bool))') == 1

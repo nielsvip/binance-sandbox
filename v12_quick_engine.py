@@ -85,6 +85,7 @@ import vec_decisions.high_gain_reopen as _hgr  # 2026-10-21 TR HIGH-GAIN REOPEN 
 import vec_decisions.uncond_dc_stop as _udcs  # 2026-10-22 USER UNCOND_DC_HARD_STOP_BUFFER_PCT (default 0.25 = the 0.9975/1.0025 literals)
 import vec_decisions.reentry_overdue as _rovd  # 2026-10-21 TRADIER OVERDUE reentry bypass (2h+ wait bypasses stoch+WT on dc_15m break or GR HL/HH; stocks only, default off)
 import vec_decisions.reentry_mask_arm as _rmarm  # USER 2026-10-23 v15_pending sweep pv3 C3 (default OFF = today's behaviour)
+import vec_decisions.reentry_entry_filter as _reentry_min_pass  # shared count core for named active entry masks
 import vec_decisions.breakeven_gain_erosion as _bgem  # 2026-10-17 BREAKEVEN_GAIN_EROSION + HTF_EXIT_VETO + HARD_BREAKEVEN_FLOOR (shared core with ez_positions_quick)
 import vec_decisions.breakeven_lock as _belm  # 2026-10-17 PEAK_GIVEBACK scope + LOSS_PRONE_ENTRY_FILTER (loss-prone entries need filters)
 import vec_decisions.scale_direction  # 2026-10-22 SCALE_DIRECTION law: a partial scale points the way price moves (augment up, reduce down)
@@ -15984,6 +15985,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     )  # AUGMENT / partial-REDUCE ledger events — merged into 'ledger' only, never into trade metrics
     _dc15_pre_bar = -1  # USER 2026-10-28 DC15M_FORCE_EXIT: bar index on which the armed floor break fires (-1 = none)
 
+    _crypto_final_htf_support = None
+    if not is_tradier and bool(getattr(cfg, "HTF_TREND_VETO_ON_REDUCE_ENABLED", False)):
+        from vec_decisions.stocks_live_session_gates import daily_wt_supports_mask
+        _crypto_final_htf_support = daily_wt_supports_mask(_safe(npz, "wt1_D", n, 0.0), _safe(npz, "wt2_D", n, 0.0), is_long)
+
     def _exit_event_accept(event, source):
         nonlocal _pending_exit_restore, _pending_exit_control_restore
         _acc = _exit_event_accept_core(event, source)
@@ -16006,6 +16012,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # Tradier has no fee-positive exit veto; its own close decision and mandatory stops are authoritative.
         if is_tradier:
             return True
+        if _crypto_final_htf_support is not None and str(event.get("type") or "").upper() in ("CLOSE", "REDUCE") and not event.get("unrealised"):
+            from vec_decisions.net_exit_gate import vector_exit_is_mandatory
+            _event_bar = event.get("bar_exit", event.get("bar"))
+            if _event_bar is None:
+                _event_bar = int(np.searchsorted(ts, float(event.get("ts") or 0.0), side="right") - 1)
+            if 0 <= int(_event_bar) < n and bool(_crypto_final_htf_support[int(_event_bar)]) and not vector_exit_is_mandatory(event):
+                _pending_exit_restore = copy.deepcopy(_bar_pos_snapshot)
+                _pending_exit_control_restore = _bar_control_snapshot
+                pos = copy.deepcopy(_bar_pos_snapshot)
+                return False
         # 2026-10-27 USER "refuse a discretionary CLOSE/REDUCE when age < MIN_HOLD_BARS".
         # THE single exit choke point (every event reaches here via _ExitGateLedger),
         # so the hold is enforced once, not scattered per leg. MEASURED why it had to
@@ -16643,6 +16659,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         entry_sig = np.ones(n, dtype=bool)
     # every active ENTRY filter mask, kept so reentries can be filtered leniently (REENTRY_ENTRY_FILTER_*)
     _entry_filter_masks = []
+    _entry_filter_mask_names = []
+
+    def _record_entry_filter_mask(name, mask):
+        _entry_filter_masks.append(mask)
+        _entry_filter_mask_names.append(str(name))
     # USER 2026-10-08: ENTRY_VET_COMBINED_STOCH_GATE_ENABLED (default OFF) — live check_entry_vetting / tradier k5m gate twin. The
     # extra_ok copy in compute_entry_signals never reached the opens (csg=0 left 303/303 trades); this one does. k = stoch_k_5m if the
     # NPZ has it, else the base-TF stoch k (= 15m; live substitutes 3m from 15m too).
@@ -16662,20 +16683,20 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _csg_twin.vec_stoch_gate_pass(_csg_k, cfg, is_long), dtype=bool
             )
             entry_sig = entry_sig & _csg_mask
-            _entry_filter_masks.append(_csg_mask)
+            _record_entry_filter_mask("ENTRY_VET_COMBINED_STOCH_GATE", _csg_mask)
     except Exception:
         pass
     # ═══ WAVE1 FILTER_TF real gates (2026-09-28) — replaces the deleted hash-proxy dispatcher;
     # per-family semantics + live refs in vec_decisions/filter_tf_gates.py. OFF (default) = inert.
     try:
-        for _ftg_fn in (
-            vec_decisions.filter_tf_gates.mom3_entry_gate,
-            vec_decisions.filter_tf_gates.momentum_breakout_gate,
+        for _ftg_name, _ftg_fn in (
+            ("MOM3_FILTER_TF", vec_decisions.filter_tf_gates.mom3_entry_gate),
+            ("MOMENTUM_BREAKOUT_FILTER_TF", vec_decisions.filter_tf_gates.momentum_breakout_gate),
         ):
             _ftg_mask = _ftg_fn(npz, n, is_long, cfg, close, _safe)
             if _ftg_mask is not None:
                 entry_sig = entry_sig & _ftg_mask
-                _entry_filter_masks.append(_ftg_mask)
+                _record_entry_filter_mask(_ftg_name, _ftg_mask)
     except Exception:
         pass
     # [N4 queue/2] DYN_STRUCT_TRAIL (stocks live tradier_manage.py:10779): dc_low_{TF} (LONG) / dc_high_{TF} (SHORT) of the configured TF
@@ -16819,16 +16840,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         except Exception:
             _be_veto = None
     try:
-        for _w4_fn in (
-            vec_decisions.wave4_families.oi_confirm_entry_gate,
-            vec_decisions.wave4_families.ema_blanket_entry_gate,
-            vec_decisions.wave4_families.htf_direction_gate,
-            vec_decisions.grey_wire_entries.wt_percentile_entry_gate,
+        for _w4_name, _w4_fn in (
+            ("OI_CONFIRM_ENABLED", vec_decisions.wave4_families.oi_confirm_entry_gate),
+            ("EMA_BLANKET_FILTER_ENABLED", vec_decisions.wave4_families.ema_blanket_entry_gate),
+            ("HTF_DIRECTION_GATE_ENABLED", vec_decisions.wave4_families.htf_direction_gate),
+            ("WT_PERCENTILE_ENTRY_GATE_ENABLED", vec_decisions.grey_wire_entries.wt_percentile_entry_gate),
         ):
             _w4_m = _w4_fn(npz, n, is_long, cfg, close, _safe)
             if _w4_m is not None:
                 entry_sig = entry_sig & _w4_m
-                _entry_filter_masks.append(_w4_m)
+                _record_entry_filter_mask(_w4_name, _w4_m)
     except Exception:
         pass
     # 2026-10-01 WIRING b1 (P0 KG/orange filters): live applies HTF_DIRECTION_GATE + OI_CONFIRM in execute_trade_wrapper (ez_positions_quick 12658-12700) to EVERY
@@ -17046,7 +17067,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _gkind, npz, n, _gtf, is_long, close, _safe
                     )
                     if _gm is not None:
-                        _entry_filter_masks.append(_gm)
+                        _record_entry_filter_mask(_gname, _gm)
     except Exception:
         _gftf = {"entry": None, "reduce_confirm": None, "erosion_confirm": None}
     try:
@@ -17071,7 +17092,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 npz, n, cfg, is_long
             )
             entry_sig = entry_sig & ~_bbp_block
-            _entry_filter_masks.append(~_bbp_block)
+            _record_entry_filter_mask("BB_PULLBACK_GATE_FILTER_TF", ~_bbp_block)
     except Exception:
         pass
     # 2026-09-30 USER port: EMA50 15m ENTRY FILTER — faithful vec twin of ez_manage.py:36213-36220
@@ -17096,7 +17117,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     close >= _ema50_15m * (1.0 - _ema_filter_pct)
                 )
             entry_sig = entry_sig & ~_ema_block
-            _entry_filter_masks.append(~_ema_block)
+            _record_entry_filter_mask("EMA50_15M_ENTRY_FILTER_ENABLED", ~_ema_block)
     except Exception:
         pass
     _atf_entry_block = None
@@ -17147,7 +17168,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _lks_ok = _lks.pass_mask(npz, n, is_long, cfg, close, _safe)
             if _lks_ok is not None:
                 entry_sig = entry_sig & _lks_ok
-                _entry_filter_masks.append(_lks_ok)
+                _record_entry_filter_mask("KG_STOCKS_HARD_VETO_ENABLED", _lks_ok)
                 _lks_ok_final = np.asarray(_lks_ok, dtype=bool)
         except Exception:
             pass
@@ -17161,7 +17182,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _stg_ok = _stg.pass_mask(npz, n, is_long, cfg, close, _safe)
             if _stg_ok is not None:
                 entry_sig = entry_sig & _stg_ok
-                _entry_filter_masks.append(_stg_ok)
+                _record_entry_filter_mask("STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED", _stg_ok)
         except Exception:
             pass
     # lane w2-entryveto (2026-10-04, staged): stocks queue zone+alignment
@@ -17176,7 +17197,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             )
             if _w2_fresh is not None:
                 entry_sig = entry_sig & ~_w2_fresh
-                _entry_filter_masks.append(~_w2_fresh)
+                _record_entry_filter_mask("STOCKS_FRESH_ENTRY_VET", ~_w2_fresh)
         except Exception:
             pass
     # b7 (crypto): AND-inside-OR fix for live chokepoint gates. COUNTER_TREND_ADD_BLOCK = ez_manage.execute_now 29868 (OPEN/ENTRY/BUY, reentries exempt by reason);
@@ -17190,7 +17211,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     npz, n, cfg, is_long
                 )
                 entry_sig = entry_sig & ~_ctb_blk
-                _entry_filter_masks.append(~_ctb_blk)
+                _record_entry_filter_mask("COUNTER_TREND_ADD_BLOCK_ENABLED", ~_ctb_blk)
             if bool(getattr(cfg, "BB_PULLBACK_GATE_ON_FINAL", True)) and bool(
                 getattr(cfg, "BB_PULLBACK_GATE_ENABLED", False)
             ):
@@ -17198,7 +17219,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     npz, n, cfg, is_long
                 )
                 entry_sig = entry_sig & ~_bbp_blk
-                _entry_filter_masks.append(~_bbp_blk)
+                _record_entry_filter_mask("BB_PULLBACK_GATE_ON_FINAL", ~_bbp_blk)
         except Exception:
             pass
     # b7 (crypto): live crypto KINDERGARTEN hard block (ez_manage._kindergarten_ema_gate via check_entry_alignment) must sit on the FINAL entry signal — the copy inside
@@ -17213,7 +17234,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
 
             _kg2_ok = ~_lkg2.kg_block_mask(npz, n, is_long, close, _safe, cfg)
             entry_sig = entry_sig & _kg2_ok
-            _entry_filter_masks.append(_kg2_ok)
+            _record_entry_filter_mask("KINDERGARTEN_EMA_GATE_ENABLED", _kg2_ok)
             _kg2_ok_final = np.asarray(_kg2_ok, dtype=bool)
         except Exception:
             pass
@@ -17225,7 +17246,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _e921_ok = _keg.ema921_pass_vec(npz, n, is_long, cfg, _safe)
             if _e921_ok is not None:
                 entry_sig = entry_sig & np.asarray(_e921_ok, dtype=bool)
-                _entry_filter_masks.append(np.asarray(_e921_ok, dtype=bool))
+                _record_entry_filter_mask("EMA_9_21_ENTRY_GATE", np.asarray(_e921_ok, dtype=bool))
                 _e921_ok_final = np.asarray(_e921_ok, dtype=bool)
         except Exception:
             pass
@@ -17352,12 +17373,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         if _ted_bbk is not None:
             _ted_bbk = np.asarray(_ted_bbk, dtype=bool)
             entry_sig = entry_sig & _ted_bbk
-            _entry_filter_masks.append(_ted_bbk)
+            _record_entry_filter_mask("BBKC_ENTRY_GATE", _ted_bbk)
         _ted_wk = _ted.wick_entry_pass_mask(npz, n, is_long, _ted_get, _safe)
         if _ted_wk is not None:
             _ted_wk = np.asarray(_ted_wk, dtype=bool)
             entry_sig = entry_sig & _ted_wk
-            _entry_filter_masks.append(_ted_wk)
+            _record_entry_filter_mask("WICK_ENTRY_GATE", _ted_wk)
         _ted_mr = _ted.mu_reentry_mask(npz, n, is_long, sym, _ted_get, _safe, close)
         if _ted_mr is not None:
             entry_sig = entry_sig | np.asarray(_ted_mr, dtype=bool)
@@ -17426,6 +17447,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _entry_filter_masks,
                 _safe,
                 include_kg=(not _ty_is_tradier),
+                entry_filter_mask_names=_entry_filter_mask_names,
             )
         except Exception:
             pass
@@ -17536,7 +17558,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         import vec_decisions.ported_entry as _pe
 
         entry_sig = _pe.apply(
-            npz, n, is_long, cfg, entry_sig, _safe, close, _entry_filter_masks
+            npz, n, is_long, cfg, entry_sig, _safe, close, _entry_filter_masks, _entry_filter_mask_names
         )
     except Exception:
         pass
@@ -17548,7 +17570,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _edc_ok = _edc.pass_mask(npz, n, is_long, cfg, close, _safe)
         if _edc_ok is not None:
             entry_sig = entry_sig & _edc_ok
-            _entry_filter_masks.append(_edc_ok)
+            _record_entry_filter_mask("ENTRY_DC_GATE", _edc_ok)
             if _wd_open is not None:
                 _wd_open = _wd_open & _edc_ok
     except Exception:
@@ -17650,13 +17672,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _reentry_filter_on = bool(
         getattr(cfg, "REENTRY_ENTRY_FILTER_ENABLED", False)
     ) and bool(_entry_filter_masks)
-    _reentry_filter_need = (
-        min(
-            max(1, int(getattr(cfg, "REENTRY_FILTER_MIN_PASS", 1) or 1)),
-            len(_entry_filter_masks),
-        )
-        if _entry_filter_masks
-        else 0
+    _reentry_filter_need = _reentry_min_pass.min_pass_required(
+        len(_entry_filter_masks), getattr(cfg, "REENTRY_FILTER_MIN_PASS", 1)
     )
     # 625 ablation wiring — distinct per param (causal, measured via ledger diff)
     # each ABLATION_DISABLE_* gates a distinct signal family mirror live decision path
@@ -18992,6 +19009,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _fx_probe["_dg_block"] = _dg_block
         _fx_probe["_rag_pass"] = _rag_pass
         _fx_probe["_entry_filter_masks"] = list(_entry_filter_masks)
+        _fx_probe["_entry_filter_mask_names"] = list(_entry_filter_mask_names)
         return None
     _fx_map = {}
     _fx_re_g = None
@@ -19123,6 +19141,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         for _x0, _x1 in zip(_fx_m0, _fx_m1)
                     )
                     _fx_re_g["_entry_filter_masks"] = _entry_filter_masks if _fx_same else list(_fx_m1)
+                    _fx_n0 = _fx_r0.get("_entry_filter_mask_names") or []
+                    _fx_n1 = _fx_r1.get("_entry_filter_mask_names") or []
+                    _fx_re_g["_entry_filter_mask_names"] = (
+                        list(_entry_filter_mask_names)
+                        if _fx_same and _fx_n0 == list(_entry_filter_mask_names)
+                        else list(_fx_n1)
+                    )
             except Exception:
                 _fx_re_g = None
     _fx_A = {
@@ -19136,6 +19161,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         "_dg_block": _dg_block,
         "_rag_pass": _rag_pass,
         "_entry_filter_masks": _entry_filter_masks,
+        "_entry_filter_mask_names": _entry_filter_mask_names,
     }
     _hsc = vec_decisions.htf_signal_consume.build_ctx(cfg, npz, n, is_long, ts, entry_sig, _hsc_core, _entry_or_srcs, _safe)  # 2026-10-13 V17 TF law: HTF-only fires need a fresh LTF confirmation, attempts tighten (None = inert)
     if _hsc is not None:
@@ -20034,9 +20060,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if fire and _rmarm_mask is not None and has_closed_before and not entry_sig[i] and not _ordinary_lr_flat_claim and not bool(_rmarm_mask[i]):
                 fire = False  # USER 2026-10-23 pv3 C3 REENTRY_MASK_ARM_<FAM>_ENABLED: the armed entry-mask family applies to reentry fires
             if fire and _reentry_filter_on and has_closed_before and not entry_sig[i] and not _ordinary_lr_flat_claim:
-                if (
-                    (sum(1 for _rm in _fx_G["_entry_filter_masks"] if bool(_rm[i])) + max(0, len(_entry_filter_masks) - len(_fx_G["_entry_filter_masks"])))
-                    < _reentry_filter_need
+                _reentry_pass_count = (
+                    sum(1 for _rm in _fx_G["_entry_filter_masks"] if bool(_rm[i]))
+                    + max(0, len(_entry_filter_masks) - len(_fx_G["_entry_filter_masks"]))
+                )
+                if not _reentry_min_pass.min_pass_allowed(
+                    _reentry_pass_count, len(_entry_filter_masks), _reentry_filter_need
                 ):
                     fire = False
             if fire and _iso_on and has_closed_before and not entry_sig[i] and not _ordinary_lr_flat_claim:

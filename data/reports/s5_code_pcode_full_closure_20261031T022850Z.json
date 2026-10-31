@@ -1,0 +1,296 @@
+{
+  "completeness": "complete bounded inventory of regular files/symlinks under code and pcode; directory symlink targets excluded",
+  "created_at_utc": "2026-10-31T02:29:09.713629+00:00",
+  "destination_volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+  "existing_prior_exact_hash_dedup_paths": [
+    "code/tools/manifest_u4.py",
+    "code/tools/must_build_u4.py",
+    "code/tools/must_union_u4.py",
+    "pcode/tools/bolds_current.json"
+  ],
+  "files": [
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1790095652607603860,
+      "path": "code/tools/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793141413370086943,
+      "path": "code/tools/auc_table.py",
+      "sha256": "9dd8e83798ce00f275ce38543c9f9ea1b25834c1d8d3ff8e550bc292565e54cc",
+      "size": 2711
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793163210946888297,
+      "path": "code/tools/before_after.py",
+      "sha256": "559b1888ed14bfcd839acb8dd94939dc8e55dc63c15537c08c1d908feb081b86",
+      "size": 2614
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793158609843415405,
+      "path": "code/tools/boards_rate.py",
+      "sha256": "0efc97a327b22c640f5f7647a53325a82befc4603a99a0e73fd0fc6a882897b2",
+      "size": 1104
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793142166755922424,
+      "path": "code/tools/c2_prequential.py",
+      "sha256": "47ae3ef6dc398a573a63e94b320e72a072ace2ee3bc0d16583de1ec84f6d4886",
+      "size": 6660
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793161588139208458,
+      "path": "code/tools/c3_phase_yield.py",
+      "sha256": "a41a0c9332d0b7c530287983cf5f0c66c7f3e89b951d7f3c9ca49e3de0fba057",
+      "size": 2482
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793156324105923770,
+      "path": "code/tools/d_forward_hold.py",
+      "sha256": "b90971bf44d8e4e139ecb461c20a2fe18b29d2f08f75837d290d0a47e86e49a9",
+      "size": 5051
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793141412234083974,
+      "path": "code/tools/manifest_u4.py",
+      "sha256": "2f8497957163c8acf0fa0cabc8783e85c2b4a7b577bd0953b2dc5be2e7c6e27f",
+      "size": 4757
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793136299854080656,
+      "path": "code/tools/must_build_u4.py",
+      "sha256": "e6bfd8138bb542bac12f02144a5b7af19f52521fdad63dba0c1b3e57ad4c366a",
+      "size": 2592
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793137747997944739,
+      "path": "code/tools/must_union_u4.py",
+      "sha256": "a98f9fb26a2268358ab8efd91741011478859ccf0407a1894d2353f7437e8e3f",
+      "size": 4944
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793138185385751808,
+      "path": "code/tools/v18_brain.py",
+      "sha256": "ea53b0d601066c6587105726db32c5fdbca0e1b896f175a78ab9046d743bdd23",
+      "size": 146777
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1792459022897355546,
+      "path": "code/tools/v18_exit_loss_rank.py",
+      "sha256": "1d59e3b58062f659be7d0ed7c0234803e424ead21ebe61445dd335ae4af83e18",
+      "size": 41280
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1792709692375961306,
+      "path": "code/tools/v18_features.py",
+      "sha256": "23e462726c0e1a533860097b731bc24e7b79217833b17b3fbbff3903802f2be2",
+      "size": 48202
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1792709692376901224,
+      "path": "code/tools/v18_learn_common.py",
+      "sha256": "414676be9bd1dbdcd20d03c9db97952a7e9796d8b97c16a44009480ba8849cd7",
+      "size": 16696
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793065175944335664,
+      "path": "code/tools/zreader.py",
+      "sha256": "6e920743b01e5aa910c041e9e81a8dd1ef05b4bc594db03ec01a2349a0827159",
+      "size": 3698
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793135315412612568,
+      "path": "code/tools/__pycache__/__init__.cpython-311.pyc",
+      "sha256": "41d99e5aec3b32acb5b451d227c4bd07d109da36b559ddea61ee1614249315eb",
+      "size": 150
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793135315288612437,
+      "path": "code/tools/__pycache__/v18_brain.cpython-311.pyc",
+      "sha256": "58289389d53f2be18564592aeab1c3b6c2b911cc78d464768413d83904db0e11",
+      "size": 307043
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793135315428612585,
+      "path": "code/tools/__pycache__/v18_features.cpython-311.pyc",
+      "sha256": "1aed04ca598400fed02e3cc3dd282b6dfb3981da8031f29c1e3382dab2809d24",
+      "size": 86651
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793135315308612458,
+      "path": "code/tools/__pycache__/zreader.cpython-311.pyc",
+      "sha256": "166d92a26f3243f10459d6fb5572764c89d8f91ba27fe757b7ad835d8c5c2c50",
+      "size": 7607
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1790095652607603860,
+      "path": "pcode/tools/__init__.py",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size": 0
+    },
+    {
+      "kind": "regular",
+      "mode": 436,
+      "mtime_ns": 1793146256993200765,
+      "path": "pcode/tools/bolds_current.json",
+      "sha256": "d0ddb1eb01d589bac1ceca4b8393d1ee599a9246ee7ac6de698fa0d8815297a7",
+      "size": 180204
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793065234231712736,
+      "path": "pcode/tools/v18_brain.py",
+      "sha256": "fe2d598ce63f3e5403739d05d6d807ee40a70cf8033619d0d6b4af2d5df91b87",
+      "size": 145558
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1792459022897355546,
+      "path": "pcode/tools/v18_exit_loss_rank.py",
+      "sha256": "1d59e3b58062f659be7d0ed7c0234803e424ead21ebe61445dd335ae4af83e18",
+      "size": 41280
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1792709692375961306,
+      "path": "pcode/tools/v18_features.py",
+      "sha256": "23e462726c0e1a533860097b731bc24e7b79217833b17b3fbbff3903802f2be2",
+      "size": 48202
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1792709692376901224,
+      "path": "pcode/tools/v18_learn_common.py",
+      "sha256": "414676be9bd1dbdcd20d03c9db97952a7e9796d8b97c16a44009480ba8849cd7",
+      "size": 16696
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793146242517186898,
+      "path": "pcode/tools/v18_precision_extract.py",
+      "sha256": "6fac31b4757e7c12cf7d66a3d945899fac46106019725fbb3f04c6f5b586730d",
+      "size": 18919
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793065175944335664,
+      "path": "pcode/tools/zreader.py",
+      "sha256": "6e920743b01e5aa910c041e9e81a8dd1ef05b4bc594db03ec01a2349a0827159",
+      "size": 3698
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793146355271592448,
+      "path": "pcode/tools/__pycache__/__init__.cpython-311.pyc",
+      "sha256": "fdfff09a78923bb3e37386204de62bf445352f3aa07ceacd4d9fc3a5b08186e0",
+      "size": 151
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793146355171592175,
+      "path": "pcode/tools/__pycache__/v18_brain.cpython-311.pyc",
+      "sha256": "85085928c8bed3cefebca23dd712221c640501137c0762f90393b9a917677cff",
+      "size": 306432
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793146355287592492,
+      "path": "pcode/tools/__pycache__/v18_features.cpython-311.pyc",
+      "sha256": "682afd2d50bd93ba744567af3b6d294ba9af8b64924d6221ee2c7e84488c1cb6",
+      "size": 86652
+    },
+    {
+      "kind": "regular",
+      "mode": 420,
+      "mtime_ns": 1793146355175592186,
+      "path": "pcode/tools/__pycache__/zreader.cpython-311.pyc",
+      "sha256": "9137e5fa6a7612da098307ad79739fcc2358a572b44f0a4aefe83bc95e36ca3b",
+      "size": 7608
+    }
+  ],
+  "regular_bytes": 1546419,
+  "regular_file_count": 31,
+  "scope": [
+    "code",
+    "pcode"
+  ],
+  "source_host": "s5",
+  "source_pre_post_manifest_equal": true,
+  "source_retained": true,
+  "source_root": "/home/niels/v20_u4",
+  "special_file_count": 0,
+  "symlink_count": 2,
+  "symlink_target_map": [
+    {
+      "kind": "symlink",
+      "mode": 511,
+      "mtime_ns": 1793134869776347107,
+      "path": "code/SPREADSHEETS",
+      "target": "/home/niels/binance-sandbox/SPREADSHEETS"
+    },
+    {
+      "kind": "symlink",
+      "mode": 511,
+      "mtime_ns": 1793134869776347107,
+      "path": "code/data/learn/_cache",
+      "target": "/home/niels/binance-sandbox/data/learn/_cache"
+    }
+  ],
+  "symlink_targets_not_followed": true,
+  "tar_archive": {
+    "member_content_and_link_validation": "all regular member hashes/lengths and literal symlink targets matched pre-capture manifest",
+    "path": "/Volumes/WD25/binance_archive/s5_code_pcode_full_20261031T022850Z/s5_code_pcode.tar.gz",
+    "sha256": "1e5d774605b3f3c5936d5d43b00269a9dfb531d75f46beff94001d0bf1a2161e",
+    "size_bytes": 562794
+  }
+}

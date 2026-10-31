@@ -45,20 +45,7 @@ def vector_exit_event_allowed(event, position, before_position, mandatory_dc4_bu
     if kind not in ("CLOSE", "REDUCE") or event.get("unrealised"):
         return True
     reason = event.get("exit_reason") or event.get("reason")
-    if event.get("mandatory_stop_kind") == "DC15_FROZEN_DEFAULT" and str(reason or "") == "FIXED_STOP":
-        return True
-    if mandatory_loss_stop_reason(reason, mandatory_dc4_buffer_pct):
-        return True
-    # USER 2026-10-27 "VIGILANCE_DC4_EXIT needs to be in switches and vectorized functions": a DC4 vigilance stop is a
-    # loss close BY DEFINITION, so it can only exist as a switch if it may close red. Only the armed producer sets this
-    # marker (VIGILANCE_DC4_STOP_ARMED, default False); a bare VIGILANCE_DC4 reason is still not a mandatory stop.
-    if event.get("mandatory_stop_kind") == "VIGILANCE_DC4_ARMED" and str(reason or "").upper().startswith("VIGILANCE_DC4_"):
-        return True
-    # USER 2026-10-28 "DELTA_EXIT_DC15M_FLOOR_BREAK ... needs to be wired correctly so it does move the needle in both vec
-    # and live identically": the floor-break close only fires red, so like the armed DC4 stop it can only exist as a
-    # switch if it may book red. Only the DC15M_FORCE_EXIT_ENABLED producer (vec_decisions/live_native_exit_twins) sets
-    # this marker; live passes the same allowance (dc15m_loss_close_allowed) to execute_now's net-gain floor.
-    if event.get("mandatory_stop_kind") == "DC15M_FORCE_EXIT_ARMED" and str(reason or "").upper().startswith("DELTA_EXIT_DC15M_FLOOR_BREAK"):
+    if vector_exit_is_mandatory(event, mandatory_dc4_buffer_pct):
         return True
     try:
         extra_fee = max(0.0, float(additional_fee_pct)) / 100.0
@@ -81,3 +68,23 @@ def vector_exit_event_allowed(event, position, before_position, mandatory_dc4_bu
     except (TypeError, ValueError):
         return False
     return False
+
+def vector_exit_is_mandatory(event, mandatory_dc4_buffer_pct=0.25):
+    reason = event.get("exit_reason") or event.get("reason")
+    if event.get("mandatory_stop_kind") == "DC15_FROZEN_DEFAULT" and str(reason or "") == "FIXED_STOP":
+        return True
+    if mandatory_loss_stop_reason(reason, mandatory_dc4_buffer_pct):
+        return True
+    # USER 2026-10-27 "VIGILANCE_DC4_EXIT needs to be in switches and vectorized functions": a DC4 vigilance stop is a
+    # loss close BY DEFINITION, so it can only exist as a switch if it may close red. Only the armed producer sets this
+    # marker (VIGILANCE_DC4_STOP_ARMED, default False); a bare VIGILANCE_DC4 reason is still not a mandatory stop.
+    if event.get("mandatory_stop_kind") == "VIGILANCE_DC4_ARMED" and str(reason or "").upper().startswith("VIGILANCE_DC4_"):
+        return True
+    # USER 2026-10-28 "DELTA_EXIT_DC15M_FLOOR_BREAK ... needs to be wired correctly so it does move the needle in both vec
+    # and live identically": the floor-break close only fires red, so like the armed DC4 stop it can only exist as a
+    # switch if it may book red. Only the DC15M_FORCE_EXIT_ENABLED producer (vec_decisions/live_native_exit_twins) sets
+    # this marker; live passes the same allowance (dc15m_loss_close_allowed) to execute_now's net-gain floor.
+    if event.get("mandatory_stop_kind") == "DC15M_FORCE_EXIT_ARMED" and str(reason or "").upper().startswith("DELTA_EXIT_DC15M_FLOOR_BREAK"):
+        return True
+    return False
+

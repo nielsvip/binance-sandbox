@@ -33875,7 +33875,8 @@ class MultiAccountTradeManager:
                 _hvr_final_w1 = safe_fetch_float(_hvr_final_ind.get("wt1_D"), 0.0)
                 _hvr_final_w2 = safe_fetch_float(_hvr_final_ind.get("wt2_D"), 0.0)
                 _hvr_final_long = str(position_side or "").upper() == "LONG"
-                if abs(_hvr_final_w1) > 1e-9 and abs(_hvr_final_w2) > 1e-9 and ((_hvr_final_long and _hvr_final_w1 > _hvr_final_w2) or (not _hvr_final_long and _hvr_final_w1 < _hvr_final_w2)):
+                from vec_decisions.stocks_live_session_gates import daily_wt_supports_mask as _daily_wt_supports
+                if bool(_daily_wt_supports(_hvr_final_w1, _hvr_final_w2, _hvr_final_long)):
                     logger.warning(f"[HTF_TREND_VETO_ON_REDUCE] {position_key}: BLOCKED action={action} wt1_D={_hvr_final_w1:.2f} wt2_D={_hvr_final_w2:.2f} reason={(reason or '')[:80]}")
                     return "BLOCKED_HTF_TREND_VETO_ON_REDUCE"
             except Exception as _hvr_final_error:

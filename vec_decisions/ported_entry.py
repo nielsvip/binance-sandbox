@@ -83,7 +83,7 @@ def _warn_once(switch, msg):
     print(f"[ported_entry-warn] {switch}: {msg[:200]}", flush=True)
 
 
-def apply(npz, n, is_long, cfg, sig, _safe, close, _entry_filter_masks=None):
+def apply(npz, n, is_long, cfg, sig, _safe, close, _entry_filter_masks=None, _entry_filter_mask_names=None):
     # === GR_FILTER_ALL_ENTRIES — ALL FOUR CAT_SIDES (USER 2026-10-16) ===========================
     # Live: every fresh OPEN/ENTRY must pass mtf_live_evaluator.gr_filter_pass (breakout min-ind,
     # min_ind relaxed to 4 when price is 5% beyond sma_200_15m, mirrored for shorts).
@@ -105,6 +105,8 @@ def apply(npz, n, is_long, cfg, sig, _safe, close, _entry_filter_masks=None):
                 sig = sig & _gr_pass
                 if _entry_filter_masks is not None:
                     _entry_filter_masks.append(_gr_pass)
+                    if _entry_filter_mask_names is not None:
+                        _entry_filter_mask_names.append('GR_FILTER_ALL_ENTRIES')
             else:
                 _warn_once('GR_FILTER_ALL_ENTRIES', f'mask shape {_gr_pass.shape} != signal {sig.shape} — entry filter NOT applied')
         except Exception as _gre:
@@ -130,6 +132,8 @@ def apply(npz, n, is_long, cfg, sig, _safe, close, _entry_filter_masks=None):
                 sig = sig & ~_lh_block
                 if _entry_filter_masks is not None:
                     _entry_filter_masks.append(~_lh_block)
+                    if _entry_filter_mask_names is not None:
+                        _entry_filter_mask_names.append('LH_HL_FILTER_ENABLED')
         except Exception:
             pass
     # === FUNDING_GATE (family: _ENABLED / _LONG_MAX / _SHORT_MIN / _MTF_REQUIRED / _MTF_*_TFS) ======
@@ -148,6 +152,8 @@ def apply(npz, n, is_long, cfg, sig, _safe, close, _entry_filter_masks=None):
                 sig = sig & ~_fg_block
                 if _entry_filter_masks is not None:
                     _entry_filter_masks.append(~_fg_block)
+                    if _entry_filter_mask_names is not None:
+                        _entry_filter_mask_names.append('FUNDING_GATE_ENABLED')
         except Exception:
             pass
     # NOTE 2026-10-02: REQUIRE-style entry gates (DIV_ENTRY_GATE et al) do NOT belong here:
@@ -168,6 +174,8 @@ def apply(npz, n, is_long, cfg, sig, _safe, close, _entry_filter_masks=None):
                     sig = sig & _ev_ok
                     if _entry_filter_masks is not None:
                         _entry_filter_masks.append(_ev_ok)
+                        if _entry_filter_mask_names is not None:
+                            _entry_filter_mask_names.append('ENTRY_VET')
         except Exception:
             pass
     # ENTRY_VET RSI-T55 twin REMOVED 2026-10-06 (USER: never approved; v12 choke site + RSI_ENTRY_VETO_ENABLED field already gone).
@@ -182,6 +190,8 @@ def apply(npz, n, is_long, cfg, sig, _safe, close, _entry_filter_masks=None):
                 sig = sig & ~_sm_blk
                 if _entry_filter_masks is not None:
                     _entry_filter_masks.append(~_sm_blk)
+                    if _entry_filter_mask_names is not None:
+                        _entry_filter_mask_names.append('STDEV_MACRO_ENTRY_VETO')
     except Exception:
         pass
     # --- WT_DIV R-G7 gate (rate() BOYCOTT twin; both venues share rate()) ---
@@ -194,6 +204,8 @@ def apply(npz, n, is_long, cfg, sig, _safe, close, _entry_filter_masks=None):
                 sig = sig & ~_dv_blk
                 if _entry_filter_masks is not None:
                     _entry_filter_masks.append(~_dv_blk)
+                    if _entry_filter_mask_names is not None:
+                        _entry_filter_mask_names.append('WT_DIV_ENTRY_GATE')
     except Exception:
         pass
     # --- LR_BAND_ENTRY source (ez_manage:40770; OR — live returns a Signal) ---

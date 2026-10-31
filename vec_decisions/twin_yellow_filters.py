@@ -1165,7 +1165,7 @@ def r2_bar_fires(is_long, gain, max_gain, legs, wt1_D, wt2_D, cfg, is_tradier=Fa
 
 # ── Batch appliers (called by the hook_spec insertions) ───────────────────────
 
-def apply_yellow_entry_masks(npz, n, is_long, cfg, close, entry_sig, entry_filter_masks=None, safe=None, include_kg=True):
+def apply_yellow_entry_masks(npz, n, is_long, cfg, close, entry_sig, entry_filter_masks=None, safe=None, include_kg=True, entry_filter_mask_names=None):
     """ANDs the WIRED entry-gate twins into entry_sig. Returns entry_sig.
 
     include_kg=False in tradier MODE: the KG hard block is the crypto-live
@@ -1173,7 +1173,7 @@ def apply_yellow_entry_masks(npz, n, is_long, cfg, close, entry_sig, entry_filte
     vec keeps its _kg_signal path, so the hard block must not run there (43).
     """
     s = safe or safe_get
-    for fn in (mom3_entry_gate, momentum_breakout_gate, dc_break_entry_gate):
+    for name, fn in (("YELLOW_MOM3_FILTER_TF", mom3_entry_gate), ("YELLOW_MOMENTUM_BREAKOUT_FILTER_TF", momentum_breakout_gate), ("YELLOW_DC_BREAK_FILTER_TF", dc_break_entry_gate)):
         try:
             m = fn(npz, n, is_long, cfg, close, s)
         except Exception:
@@ -1182,6 +1182,8 @@ def apply_yellow_entry_masks(npz, n, is_long, cfg, close, entry_sig, entry_filte
             entry_sig = entry_sig & np.asarray(m, dtype=bool)
             if entry_filter_masks is not None:
                 entry_filter_masks.append(np.asarray(m, dtype=bool))
+                if entry_filter_mask_names is not None:
+                    entry_filter_mask_names.append(name)
     kb = None
     if include_kg:
         try:
@@ -1193,6 +1195,8 @@ def apply_yellow_entry_masks(npz, n, is_long, cfg, close, entry_sig, entry_filte
         entry_sig = entry_sig & ~kb
         if entry_filter_masks is not None:
             entry_filter_masks.append(~kb)
+            if entry_filter_mask_names is not None:
+                entry_filter_mask_names.append("YELLOW_KINDERGARTEN_FILTER_TF")
     try:
         eb = ema_blanket_pass_vec(npz, n, is_long, cfg, s)
     except Exception:
@@ -1202,6 +1206,8 @@ def apply_yellow_entry_masks(npz, n, is_long, cfg, close, entry_sig, entry_filte
         entry_sig = entry_sig & eb
         if entry_filter_masks is not None:
             entry_filter_masks.append(eb)
+            if entry_filter_mask_names is not None:
+                entry_filter_mask_names.append("YELLOW_EMA_BLANKET_FILTER_TF")
     return entry_sig
 
 

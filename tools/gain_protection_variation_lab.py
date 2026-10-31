@@ -307,7 +307,7 @@ def main():
                 "frozen_npz_dir": str(npz_dir) if npz_dir else None,
                 "research_fee_overlay": {"market_taker_round_trip_pct_usdt": args.market_fee_usdt,
                                           "market_taker_round_trip_pct_usdc": args.market_fee_usdc,
-                                          "basis": "conservative rounded observed MARKET/taker fees; historical exact strategy fee-setting unknown"},
+                                          "basis": "rounded observed MARKET/taker fees; not a strict upper bound; historical exact strategy fee-setting unknown"},
                 "errors": errors, "sides": sides,
             }, indent=2))
             print(f"[gain-protection-lab] checkpoint sides={len(sides)} errors={len(errors)}", flush=True)
@@ -320,7 +320,7 @@ def main():
         "frozen_npz_dir": str(npz_dir) if npz_dir else None,
         "research_fee_overlay": {"market_taker_round_trip_pct_usdt": args.market_fee_usdt,
                                   "market_taker_round_trip_pct_usdc": args.market_fee_usdc,
-                                  "basis": "conservative rounded observed MARKET/taker fees; historical exact strategy fee-setting unknown"},
+                                  "basis": "rounded observed MARKET/taker fees; not a strict upper bound; historical exact strategy fee-setting unknown"},
         "errors": errors, "sides": sides,
     }, indent=2))
     print(f"[gain-protection-lab] COMPLETE sides={len(sides)}/{len(selected)} errors={len(errors)} out={out_path}", flush=True)
