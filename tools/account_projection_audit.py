@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
+import importlib.util
 import json
 import os
 import sqlite3
@@ -14,7 +16,9 @@ from pathlib import Path
 
 
 def _canonical_bytes(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), default=str).encode()
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), default=str
+    ).encode()
 
 
 def _sha256_bytes(value):
@@ -23,6 +27,12 @@ def _sha256_bytes(value):
 
 def _canonical_sha256(value):
     return _sha256_bytes(_canonical_bytes(value))
+
+
+def _engine_ast_sha256(path):
+    source = Path(path).read_text()
+    tree = ast.parse(source)
+    return _sha256_bytes(ast.dump(tree, include_attributes=False).encode())
 
 
 def _array_hash(value):
@@ -39,7 +49,11 @@ def _epoch(value):
 
 
 def _state_by_hash(root, state_sha256):
-    matches = list((root / "data" / "vector_direct" / "decision_states").glob(f"**/{state_sha256}.json"))
+    matches = list(
+        (root / "data" / "vector_direct" / "decision_states").glob(
+            f"**/{state_sha256}.json"
+        )
+    )
     if len(matches) != 1:
         raise ValueError(f"expected one immutable decision state, found {len(matches)}")
     path = matches[0]
@@ -50,11 +64,23 @@ def _state_by_hash(root, state_sha256):
 
 
 def _snapshot_for(root, account, sym_side):
-    base = root / "data" / "vector_direct" / "account_execution" / "snapshots" / account / sym_side
+    base = (
+        root
+        / "data"
+        / "vector_direct"
+        / "account_execution"
+        / "snapshots"
+        / account
+        / sym_side
+    )
     pointer_path = base / "latest.json"
     pointer = json.loads(pointer_path.read_text())
     relative = Path(pointer["snapshot_path"])
-    path = relative if relative.is_absolute() else (root / "data" / "vector_direct" / "account_execution" / relative)
+    path = (
+        relative
+        if relative.is_absolute()
+        else (root / "data" / "vector_direct" / "account_execution" / relative)
+    )
     snapshot = json.loads(path.read_text())
     copied = dict(snapshot)
     claimed = copied.pop("snapshot_sha256", None)
@@ -79,7 +105,9 @@ def _active_settings(root, sym_side):
     finally:
         connection.close()
     if not row or not row[1]:
-        raise ValueError("no active full settings row; historical/current fallback is forbidden")
+        raise ValueError(
+            "no active full settings row; historical/current fallback is forbidden"
+        )
     full = json.loads(row[1])
     if not isinstance(full, dict) or not full:
         raise ValueError("active full settings row is malformed")
@@ -102,20 +130,33 @@ def _filter_lot(root, symbol, expected_hash):
     if isinstance(symbols, dict):
         filters = symbols.get(symbol)
     else:
-        matches = [row for row in symbols or [] if isinstance(row, dict) and row.get("symbol") == symbol]
+        matches = [
+            row
+            for row in symbols or []
+            if isinstance(row, dict) and row.get("symbol") == symbol
+        ]
         filters = matches[0].get("filters") if len(matches) == 1 else None
     if not isinstance(filters, (dict, list)):
         raise ValueError("exchange filter row is absent or malformed")
-    source = {"venue": "crypto", "symbol": symbol, "filters": filters, "fetched_at": fetched}
+    source = {
+        "venue": "crypto",
+        "symbol": symbol,
+        "filters": filters,
+        "fetched_at": fetched,
+    }
     source_hash = _sha256_bytes(_canonical_bytes(source))
     if source_hash != expected_hash:
-        raise ValueError("current market-filter source does not match broker snapshot filter hash")
+        raise ValueError(
+            "current market-filter source does not match broker snapshot filter hash"
+        )
     if isinstance(filters, dict):
         step_size = filters.get("step")
         min_qty = filters.get("min_qty")
         filter_type = "cached_market_lot_size"
     else:
-        lot = next((f for f in filters if f.get("filterType") == "MARKET_LOT_SIZE"), None)
+        lot = next(
+            (f for f in filters if f.get("filterType") == "MARKET_LOT_SIZE"), None
+        )
         if lot is None:
             lot = next((f for f in filters if f.get("filterType") == "LOT_SIZE"), None)
         if lot is None:
@@ -155,14 +196,37 @@ def _safe_event(event, observation_bar_ts):
     projection = event.get("account_partial_projection")
     if not is_observation and projection is None:
         return None
-    keep = ("type", "bar", "bar_entry", "bar_exit", "ts", "qty", "price", "qty_before", "qty_after", "qty_frac", "seeded_prewindow", "unrealised", "account_partial_projection")
+    keep = (
+        "type",
+        "bar",
+        "bar_entry",
+        "bar_exit",
+        "ts",
+        "qty",
+        "price",
+        "qty_before",
+        "qty_after",
+        "qty_frac",
+        "seeded_prewindow",
+        "unrealised",
+        "account_partial_projection",
+    )
     safe = {key: event[key] for key in keep if key in event}
     if "pnl_is_lifecycle" in event:
         safe["lifecycle_terminal_marker"] = bool(event["pnl_is_lifecycle"])
     return safe
 
 
-def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=30, npz_dir=None):
+def _run_audit_with_engine(
+    root,
+    account,
+    sym_side,
+    *,
+    max_snapshot_age_s=30.0,
+    window_days=30,
+    npz_dir=None,
+    engine_module_path=None,
+):
     """Run only after every consumed source link and baseline ledger hash verifies."""
     root = Path(root).resolve()
     account = str(account).strip().lower()
@@ -175,12 +239,20 @@ def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=3
     state_path, state = _state_by_hash(root, snapshot.get("state_sha256", ""))
     state_pointer = snapshot.get("state_sha256")
     if state.get("sym_side") != sym_side or state.get("ok") is not True:
-        raise ValueError("consumed decision state is invalid or has a different identity")
+        raise ValueError(
+            "consumed decision state is invalid or has a different identity"
+        )
     settings = _active_settings(root, sym_side)
-    if settings["sha256"] != state.get("settings_sha256") or settings["updated_at"] != state.get("settings_updated_at"):
-        raise ValueError("active full settings generation does not match the consumed state")
+    if settings["sha256"] != state.get("settings_sha256") or settings[
+        "updated_at"
+    ] != state.get("settings_updated_at"):
+        raise ValueError(
+            "active full settings generation does not match the consumed state"
+        )
     if snapshot.get("settings_sha256") != state.get("settings_sha256"):
-        raise ValueError("snapshot settings hash does not match consumed decision state")
+        raise ValueError(
+            "snapshot settings hash does not match consumed decision state"
+        )
     if snapshot.get("state_sha256") != state_pointer:
         raise ValueError("snapshot does not point to the verified decision-state hash")
     snapshot_age = time.time() - _epoch(snapshot.get("observed_at"))
@@ -188,10 +260,15 @@ def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=3
         raise ValueError("broker snapshot is stale or future-dated")
     if float(snapshot.get("qty") or 0.0) <= 0:
         raise ValueError("flat snapshot cannot seed a held-position partial projection")
-    if snapshot.get("broker_source") not in ("Binance.positionRisk", "Tradier.account.positions"):
+    if snapshot.get("broker_source") not in (
+        "Binance.positionRisk",
+        "Tradier.account.positions",
+    ):
         raise ValueError("snapshot broker source is not recognized")
     if snapshot.get("broker_source") != "Binance.positionRisk":
-        raise ValueError("this audit currently accepts Binance crypto execution snapshots only")
+        raise ValueError(
+            "this audit currently accepts Binance crypto execution snapshots only"
+        )
     filter_info = _filter_lot(root, symbol, snapshot.get("filter_sha256"))
 
     sys.path.insert(0, str(root))
@@ -211,7 +288,11 @@ def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=3
         if not npz_path.is_file():
             raise ValueError(f"explicit frozen NPZ is absent: {npz_path}")
         npz_file_sha256 = _sha256_bytes(npz_path.read_bytes())
-        engine.load_npz = lambda mode, symbols, start_date, npz_dir_arg="": original_engine_load_npz(mode, symbols, start_date, npz_dir=str(npz_dir))
+        engine.load_npz = (
+            lambda mode, symbols, start_date, npz_dir_arg="": original_engine_load_npz(
+                mode, symbols, start_date, npz_dir=str(npz_dir)
+            )
+        )
         evaluate_v12.ROOT = npz_dir.parent.parent
     try:
         if npz_path:
@@ -233,14 +314,20 @@ def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=3
     if tail_values is None or len(tail_values) == 0:
         raise ValueError("prepared replay has no timestamp array")
     tail = int(tail_values[-1])
-    input_hashes = {key: _array_hash(npz[key]) for key in ("timestamps", "close") if key in npz}
+    input_hashes = {
+        key: _array_hash(npz[key]) for key in ("timestamps", "close") if key in npz
+    }
     if input_hashes != state.get("input_sha256"):
-        raise ValueError("prepared timestamps/close hashes differ from the consumed immutable state")
+        raise ValueError(
+            "prepared timestamps/close hashes differ from the consumed immutable state"
+        )
     if tail != int(state.get("npz_tail") or 0):
         raise ValueError("prepared NPZ tail differs from the consumed state")
     observation = int(_epoch(snapshot.get("bar_ts")))
     if observation != tail:
-        raise ValueError("broker observation is not the exact current/last prepared bar")
+        raise ValueError(
+            "broker observation is not the exact current/last prepared bar"
+        )
     if int(_epoch(snapshot.get("observed_at"))) < observation:
         raise ValueError("broker observation predates its recorded decision bar")
 
@@ -255,31 +342,69 @@ def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=3
             os.environ.pop("PER_SYM_STORE_DB", None)
         else:
             os.environ["PER_SYM_STORE_DB"] = settings_env
-    if source != "per_sym_store.active" or setting_meta.get("settings_sha256") != settings["sha256"] or setting_meta.get("settings_updated_at") != settings["updated_at"]:
-        raise ValueError("canonical evaluator settings loader did not resolve the exact consumed active generation")
+    if (
+        source != "per_sym_store.active"
+        or setting_meta.get("settings_sha256") != settings["sha256"]
+        or setting_meta.get("settings_updated_at") != settings["updated_at"]
+    ):
+        raise ValueError(
+            "canonical evaluator settings loader did not resolve the exact consumed active generation"
+        )
     _drop_retired(overrides)
     stale_anchor = _stale_anchor(sym_side)
     if stale_anchor:
-        overrides = {**overrides, "STALE_SET_RECALC_EPOCH": stale_anchor["STALE_SET_RECALC_EPOCH"], "STALE_SET_APPLY_EPOCH": stale_anchor["STALE_SET_APPLY_EPOCH"]}
+        overrides = {
+            **overrides,
+            "STALE_SET_RECALC_EPOCH": stale_anchor["STALE_SET_RECALC_EPOCH"],
+            "STALE_SET_APPLY_EPOCH": stale_anchor["STALE_SET_APPLY_EPOCH"],
+        }
 
     source_engine_ast = state.get("engine_ast_sha256")
-    candidate_engine_sha = _sha256_bytes((root / "v12_quick_engine.py").read_bytes())
-    baseline = evaluate_prepared_sanitized(prepared, dict(overrides), window_days, include_ledger=True)
+    engine_path = (
+        Path(engine_module_path).resolve()
+        if engine_module_path
+        else (root / "v12_quick_engine.py")
+    )
+    candidate_engine_sha = _sha256_bytes(engine_path.read_bytes())
+    candidate_engine_ast = _engine_ast_sha256(engine_path)
+    baseline = evaluate_prepared_sanitized(
+        prepared, dict(overrides), window_days, include_ledger=True
+    )
     baseline_ledger_sha, baseline_ledger = _ledger_hash(baseline)
     consumed_ledger_sha = state.get("ledger_sha256")
     if baseline_ledger_sha != consumed_ledger_sha:
-        consumed_ledger = state.get("ledger") if isinstance(state.get("ledger"), list) else []
+        consumed_ledger = (
+            state.get("ledger") if isinstance(state.get("ledger"), list) else []
+        )
         ledger_differences = []
         for index in range(max(len(consumed_ledger), len(baseline_ledger))):
-            consumed_row = _safe_event(consumed_ledger[index], None) if index < len(consumed_ledger) else None
-            candidate_row = _safe_event(baseline_ledger[index], None) if index < len(baseline_ledger) else None
+            consumed_row = (
+                _safe_event(consumed_ledger[index], None)
+                if index < len(consumed_ledger)
+                else None
+            )
+            candidate_row = (
+                _safe_event(baseline_ledger[index], None)
+                if index < len(baseline_ledger)
+                else None
+            )
             if consumed_row != candidate_row:
-                ledger_differences.append({"index": index, "consumed": consumed_row, "candidate": candidate_row})
+                ledger_differences.append(
+                    {
+                        "index": index,
+                        "consumed": consumed_row,
+                        "candidate": candidate_row,
+                    }
+                )
         return {
             "schema_version": 1,
             "audit_type": "read_only_current_bar_account_projection",
             "status": "REFUSED_BASELINE_LEDGER_MISMATCH",
-            "labels": ["projection_not_run", "not_realized_fill", "not_account_history_parity"],
+            "labels": [
+                "projection_not_run",
+                "not_realized_fill",
+                "not_account_history_parity",
+            ],
             "identity": {"account_key": account, "sym_side": sym_side},
             "source": {
                 "snapshot_pointer_path": str(pointer_path),
@@ -293,12 +418,19 @@ def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=3
                 "settings_updated_at": settings["updated_at"],
                 "engine_source_ast_sha256": source_engine_ast,
                 "candidate_engine_file_sha256": candidate_engine_sha,
+                "candidate_engine_ast_sha256": candidate_engine_ast,
+                "candidate_engine_source_path": str(engine_path),
                 "npz_input_sha256": input_hashes,
                 "npz_file_path": str(npz_path) if npz_path else None,
                 "npz_file_sha256": npz_file_sha256,
                 "market_lot": filter_info,
             },
-            "window": {"first_bar_ts": int(tail_values[0]), "last_bar_ts": tail, "observation_bar_ts": observation, "bar_count": len(tail_values)},
+            "window": {
+                "first_bar_ts": int(tail_values[0]),
+                "last_bar_ts": tail,
+                "observation_bar_ts": observation,
+                "bar_count": len(tail_values),
+            },
             "baseline_gate": {
                 "passed": False,
                 "consumed_ledger_sha256": consumed_ledger_sha,
@@ -307,10 +439,16 @@ def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=3
                 "candidate_event_count": len(baseline_ledger),
                 "full_structural_differences": ledger_differences,
             },
-            "projection": {"status": "NOT_RUN_BASELINE_MISMATCH", "snapshot_observed_at": snapshot["observed_at"], "snapshot_age_seconds_at_run": round(snapshot_age, 3)},
+            "projection": {
+                "status": "NOT_RUN_BASELINE_MISMATCH",
+                "snapshot_observed_at": snapshot["observed_at"],
+                "snapshot_age_seconds_at_run": round(snapshot_age, 3),
+            },
         }
     perf_reason = str(baseline.get("invalid_reason") or "")
-    baseline_completed = baseline.get("valid") is True or any(perf_reason.startswith(prefix) for prefix in ("trades ", "TIM ", "DD "))
+    baseline_completed = baseline.get("valid") is True or any(
+        perf_reason.startswith(prefix) for prefix in ("trades ", "TIM ", "DD ")
+    )
     if not baseline_completed:
         raise ValueError("canonical no-context baseline is invalid; projection refused")
 
@@ -327,37 +465,168 @@ def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=3
         "decision_generation": str(state["settings_updated_at"]),
         "config_sha256": str(state["settings_sha256"]),
     }
+
+
+def run_audit(
+    root,
+    account,
+    sym_side,
+    *,
+    max_snapshot_age_s=30.0,
+    window_days=30,
+    npz_dir=None,
+    engine_module_path=None,
+):
+    root = Path(root).resolve()
+    account = str(account).strip().lower()
+    sym_side = str(sym_side).strip().upper()
+    pointer_path, _, snapshot = _snapshot_for(root, account, sym_side)
+    _, state = _state_by_hash(root, snapshot.get("state_sha256", ""))
+    expected_ast = state.get("engine_ast_sha256")
+    engine_path = (
+        Path(engine_module_path).resolve()
+        if engine_module_path
+        else (root / "v12_quick_engine.py")
+    )
+    try:
+        actual_ast = _engine_ast_sha256(engine_path)
+        source_sha256 = _sha256_bytes(engine_path.read_bytes())
+    except (OSError, SyntaxError, UnicodeError) as exc:
+        return {
+            "schema_version": 1,
+            "audit_type": "read_only_current_bar_account_projection",
+            "status": "REFUSED_ENGINE_IDENTITY",
+            "labels": ["projection_not_run", "engine_identity_unverified"],
+            "identity": {"account_key": account, "sym_side": sym_side},
+            "engine_identity": {
+                "expected_ast_sha256": expected_ast,
+                "source_path": str(engine_path),
+                "error": f"{type(exc).__name__}: {exc}"[:200],
+            },
+        }
+    if not expected_ast or actual_ast != expected_ast:
+        return {
+            "schema_version": 1,
+            "audit_type": "read_only_current_bar_account_projection",
+            "status": "REFUSED_ENGINE_IDENTITY",
+            "labels": ["projection_not_run", "engine_identity_mismatch"],
+            "identity": {"account_key": account, "sym_side": sym_side},
+            "source": {
+                "snapshot_pointer_path": str(pointer_path),
+                "decision_state_sha256": snapshot.get("state_sha256"),
+            },
+            "engine_identity": {
+                "expected_ast_sha256": expected_ast,
+                "candidate_ast_sha256": actual_ast,
+                "candidate_source_sha256": source_sha256,
+                "candidate_source_path": str(engine_path),
+            },
+        }
+    previous = sys.modules.get("v12_quick_engine")
+    spec = importlib.util.spec_from_file_location("v12_quick_engine", engine_path)
+    if spec is None or spec.loader is None:
+        return {
+            "schema_version": 1,
+            "audit_type": "read_only_current_bar_account_projection",
+            "status": "REFUSED_ENGINE_IDENTITY",
+            "labels": ["projection_not_run", "engine_identity_unloadable"],
+            "identity": {"account_key": account, "sym_side": sym_side},
+            "engine_identity": {
+                "candidate_ast_sha256": actual_ast,
+                "candidate_source_path": str(engine_path),
+            },
+        }
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["v12_quick_engine"] = module
+    try:
+        spec.loader.exec_module(module)
+        if _engine_ast_sha256(module.__file__) != expected_ast:
+            return {
+                "schema_version": 1,
+                "audit_type": "read_only_current_bar_account_projection",
+                "status": "REFUSED_ENGINE_IDENTITY",
+                "labels": ["projection_not_run", "loaded_engine_identity_mismatch"],
+                "identity": {"account_key": account, "sym_side": sym_side},
+                "engine_identity": {
+                    "expected_ast_sha256": expected_ast,
+                    "candidate_ast_sha256": actual_ast,
+                    "candidate_source_path": str(engine_path),
+                },
+            }
+        return _run_audit_with_engine(
+            root,
+            account,
+            sym_side,
+            max_snapshot_age_s=max_snapshot_age_s,
+            window_days=window_days,
+            npz_dir=npz_dir,
+            engine_module_path=engine_path,
+        )
+    except Exception as exc:
+        return {
+            "schema_version": 1,
+            "audit_type": "read_only_current_bar_account_projection",
+            "status": "REFUSED",
+            "reason": f"{type(exc).__name__}: {exc}"[:300],
+            "projection": {"status": "NOT_RUN"},
+        }
+    finally:
+        if previous is None:
+            sys.modules.pop("v12_quick_engine", None)
+        else:
+            sys.modules["v12_quick_engine"] = previous
     original_simulate = engine.simulate_one
     simulation_results = []
 
-    def simulate_with_context(npz_arg, sym_arg, is_long_arg, cfg, force_initial_seed=False):
+    def simulate_with_context(
+        npz_arg, sym_arg, is_long_arg, cfg, force_initial_seed=False
+    ):
         import copy
 
         projected_cfg = copy.copy(cfg)
         object.__setattr__(projected_cfg, "_PARTIAL_EXECUTION_CONTEXT", context)
-        simulation_result = original_simulate(npz_arg, sym_arg, is_long_arg, projected_cfg, force_initial_seed=force_initial_seed)
+        simulation_result = original_simulate(
+            npz_arg,
+            sym_arg,
+            is_long_arg,
+            projected_cfg,
+            force_initial_seed=force_initial_seed,
+        )
         simulation_results.append(simulation_result)
         return simulation_result
 
     engine.simulate_one = simulate_with_context
     try:
-        projected = evaluate_prepared_sanitized(prepared, dict(overrides), window_days, include_ledger=True)
+        projected = evaluate_prepared_sanitized(
+            prepared, dict(overrides), window_days, include_ledger=True
+        )
     finally:
         engine.simulate_one = original_simulate
     projected_ledger_sha, projected_ledger = _ledger_hash(projected)
     raw_result = simulation_results[-1] if simulation_results else None
-    account_audit = raw_result.get("account_partial_audit") if isinstance(raw_result, dict) else None
+    account_audit = (
+        raw_result.get("account_partial_audit")
+        if isinstance(raw_result, dict)
+        else None
+    )
     if not isinstance(account_audit, dict):
         raise ValueError("engine did not return its account partial-projection audit")
     events = [_safe_event(row, observation) for row in projected_ledger]
     events = [row for row in events if row]
     projection_events = [row for row in events if "account_partial_projection" in row]
-    if any(row["account_partial_projection"].get("projection_only_not_a_fill") is not True for row in projection_events):
+    if any(
+        row["account_partial_projection"].get("projection_only_not_a_fill") is not True
+        for row in projection_events
+    ):
         raise ValueError("engine projection event lacks the not-a-fill marker")
     return {
         "schema_version": 1,
         "audit_type": "read_only_current_bar_account_projection",
-        "labels": ["projection_only_not_a_fill", "not_realized_fill", "not_account_history_parity"],
+        "labels": [
+            "projection_only_not_a_fill",
+            "not_realized_fill",
+            "not_account_history_parity",
+        ],
         "identity": {"account_key": account, "sym_side": sym_side},
         "source": {
             "snapshot_pointer_path": str(pointer_path),
@@ -371,13 +640,25 @@ def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=3
             "settings_updated_at": settings["updated_at"],
             "engine_source_ast_sha256": source_engine_ast,
             "candidate_engine_file_sha256": candidate_engine_sha,
+            "candidate_engine_ast_sha256": candidate_engine_ast,
+            "candidate_engine_source_path": str(engine_path),
             "npz_input_sha256": input_hashes,
             "npz_file_path": str(npz_path) if npz_path else None,
             "npz_file_sha256": npz_file_sha256,
             "market_lot": filter_info,
         },
-        "window": {"first_bar_ts": int(tail_values[0]), "last_bar_ts": tail, "observation_bar_ts": observation, "bar_count": len(tail_values)},
-        "baseline_gate": {"passed": True, "consumed_ledger_sha256": consumed_ledger_sha, "candidate_no_context_ledger_sha256": baseline_ledger_sha, "equal": baseline_ledger_sha == consumed_ledger_sha},
+        "window": {
+            "first_bar_ts": int(tail_values[0]),
+            "last_bar_ts": tail,
+            "observation_bar_ts": observation,
+            "bar_count": len(tail_values),
+        },
+        "baseline_gate": {
+            "passed": True,
+            "consumed_ledger_sha256": consumed_ledger_sha,
+            "candidate_no_context_ledger_sha256": baseline_ledger_sha,
+            "equal": baseline_ledger_sha == consumed_ledger_sha,
+        },
         "projection": {
             "snapshot_observed_at": snapshot["observed_at"],
             "snapshot_age_seconds_at_run": round(snapshot_age, 3),
@@ -392,18 +673,45 @@ def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=3
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--root", required=True, type=Path, help="Read-only trading repository root")
+    parser.add_argument(
+        "--root", required=True, type=Path, help="Read-only trading repository root"
+    )
     parser.add_argument("--account", required=True)
     parser.add_argument("--sym-side", required=True)
-    parser.add_argument("--output", type=Path, help="Write one JSON audit result; stdout if omitted")
+    parser.add_argument(
+        "--output", type=Path, help="Write one JSON audit result; stdout if omitted"
+    )
     parser.add_argument("--max-snapshot-age-s", type=float, default=30.0)
     parser.add_argument("--window-days", type=int, default=30)
-    parser.add_argument("--npz-dir", type=Path, help="Explicit frozen indicator directory when outside --root")
+    parser.add_argument(
+        "--npz-dir",
+        type=Path,
+        help="Explicit frozen indicator directory when outside --root",
+    )
+    parser.add_argument(
+        "--engine-module-path",
+        type=Path,
+        help="Exact engine source used by the consumed forward state",
+    )
     args = parser.parse_args()
     try:
-        result = run_audit(args.root, args.account, args.sym_side, max_snapshot_age_s=args.max_snapshot_age_s, window_days=args.window_days, npz_dir=args.npz_dir)
+        result = run_audit(
+            args.root,
+            args.account,
+            args.sym_side,
+            max_snapshot_age_s=args.max_snapshot_age_s,
+            window_days=args.window_days,
+            npz_dir=args.npz_dir,
+            engine_module_path=args.engine_module_path,
+        )
     except Exception as exc:
-        result = {"schema_version": 1, "audit_type": "read_only_current_bar_account_projection", "status": "REFUSED", "reason": f"{type(exc).__name__}: {exc}"[:300], "projection": {"status": "NOT_RUN"}}
+        result = {
+            "schema_version": 1,
+            "audit_type": "read_only_current_bar_account_projection",
+            "status": "REFUSED",
+            "reason": f"{type(exc).__name__}: {exc}"[:300],
+            "projection": {"status": "NOT_RUN"},
+        }
     encoded = json.dumps(result, sort_keys=True, indent=2, default=str) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

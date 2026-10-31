@@ -30865,13 +30865,17 @@ async def check_entry_candidates_for_account(
                 ):
                     _wr_sym_key = f"{account_key}:{symbol}"
                     if (time.time() - _wr_pullback_last.get(_wr_sym_key, 0.0)) >= 300.0:
-                        _wr_long = set(
-                            getattr(trade_manager, f"symbols_{account_key}_long", None)
-                            or []
+                        from vec_decisions.check_entry_candidates_crypto__wr_lr_pullback import (
+                            _wr_lr_pullback_fires as _wr_predicate,
+                            canonical_tradeable_sym_side as _wr_tradeable_side,
                         )
-                        _wr_short = set(
-                            getattr(trade_manager, f"symbols_{account_key}_short", None)
-                            or []
+                        _wr_tradeable_keys = (
+                            getattr(tracker_manager, "tradeable_keys", None)
+                            or getattr(trade_manager, "tradeable_keys", None)
+                            or set()
+                        )
+                        _wr_authorized = _wr_tradeable_side(
+                            symbol, is_long, account_key, _wr_tradeable_keys
                         )
                         _k4h_w = safe_fetch_float(indicators.get("k_4h", 50), 50)
                         _d4h_w = safe_fetch_float(indicators.get("d_4h", 50), 50)
@@ -30909,36 +30913,26 @@ async def check_entry_candidates_for_account(
                             if _wr_no3m
                             else metrics.get("wt_cross_1m") == "BULL"
                         )  # WT cross replaces stoch
-                        _wr_fire = False
-                        if is_long and symbol in _wr_long:
-                            # Symbol in WR list = HTF trend confirmed by ranking. ha_4h!=red = not in active 4h downtrend
-                            _htf_ok = _ha4h_w != "red"
-                            _all_low = _k1h_w < 45 and _k15m_w < 45 and _k3m_w < 40
-                            _1m_turning = _k1mco_w or (
-                                _k1m_w > _k1m_prev_w and _k1m_w < 30
-                            )
-                            if _htf_ok and _all_low and _1m_turning:
-                                _wr_fire = True
-                                score = max(score, 22)
-                                rec = "GOOD_BUY"
-                                reason = f"WR_PULLBACK_k4={_k4h_w:.0f}_k1h={_k1h_w:.0f}_k15={_k15m_w:.0f}_k3={_k3m_w:.0f}_k1m={_k1m_w:.0f}"
-                        elif not is_long and symbol in _wr_short:
-                            # Symbol in LR list = HTF downtrend confirmed by ranking. ha_4h!=green = not in active 4h uptrend
-                            _htf_ok = _ha4h_w != "green"
-                            _all_high = _k1h_w > 55 and _k15m_w > 55 and _k3m_w > 60
-                            _wtc1_w = (
-                                indicators.get("wt_cross_15m")
-                                if _wr_no3m
-                                else metrics.get("wt_cross_1m")
-                            )  # NO-1m/3m: 15m leg while off
-                            _1m_turning = (_wtc1_w == "BEAR") or (
-                                _k1m_w < _k1m_prev_w and _k1m_w > 70
-                            )  # WT cross replaces stoch
-                            if _htf_ok and _all_high and _1m_turning:
-                                _wr_fire = True
-                                score = max(score, 22)
-                                rec = "GOOD_SELL"
-                                reason = f"LR_SHORTTOP_k4={_k4h_w:.0f}_k1h={_k1h_w:.0f}_k15={_k15m_w:.0f}_k3={_k3m_w:.0f}_k1m={_k1m_w:.0f}"
+                        _wr_cross_w = (
+                            str(indicators.get("wt_cross_15m", ""))
+                            if _wr_no3m
+                            else str(metrics.get("wt_cross_1m", ""))
+                        )
+                        _wr_fire = _wr_predicate(
+                            _ha4h_w,
+                            _k1h_w,
+                            _k15m_w,
+                            _k3m_w,
+                            _k1m_w,
+                            _k1m_prev_w,
+                            _wr_cross_w,
+                            _wr_authorized,
+                            is_long,
+                        )
+                        if _wr_fire:
+                            score = max(score, 22)
+                            rec = "GOOD_BUY" if is_long else "GOOD_SELL"
+                            reason = f"{'WR_PULLBACK' if is_long else 'LR_SHORTTOP'}_k4={_k4h_w:.0f}_k1h={_k1h_w:.0f}_k15={_k15m_w:.0f}_k3={_k3m_w:.0f}_k1m={_k1m_w:.0f}"
                         if _wr_fire:
                             should_trade = True
                             _dc_breakout_entry = True

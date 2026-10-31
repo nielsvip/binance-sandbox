@@ -10,6 +10,7 @@ import hashlib
 import importlib
 import json
 import math
+import marshal
 import os
 import tempfile
 import threading
@@ -338,7 +339,7 @@ def npz_manifest(npz):
     return manifest
 
 
-def _capture_call(args, kwargs, module, decision_context=None):
+def _capture_call(args, kwargs, module, decision_context=None, loaded_callable=None):
     if args:
         npz = args[0]
         symbol = args[1] if len(args) > 1 else kwargs.get("sym")
@@ -361,9 +362,15 @@ def _capture_call(args, kwargs, module, decision_context=None):
     manifest = npz_manifest(npz)
     npz_ms = (time.perf_counter() - npz_started) * 1000.0
     engine_file = getattr(module, "__file__", None)
-    engine_hash = (
+    engine_disk_hash = (
         hashlib.sha256(Path(engine_file).read_bytes()).hexdigest()
         if engine_file and Path(engine_file).is_file()
+        else None
+    )
+    loaded_code = getattr(loaded_callable, "__code__", None)
+    loaded_entrypoint_hash = (
+        hashlib.sha256(marshal.dumps(loaded_code)).hexdigest()
+        if loaded_code is not None
         else None
     )
     timestamps = npz.get("timestamps") if isinstance(npz, dict) else None
@@ -380,7 +387,12 @@ def _capture_call(args, kwargs, module, decision_context=None):
         "npz_manifest": manifest,
         "npz_manifest_sha256": manifest["sha256"],
         "npz_manifest_path": _blob_reference("npz_manifests", manifest["sha256"]),
-        "engine_source_sha256": engine_hash,
+        "engine_disk_source_path": (
+            str(Path(engine_file).resolve()) if engine_file else None
+        ),
+        "engine_disk_source_sha256": engine_disk_hash,
+        "engine_loaded_entrypoint_sha256": loaded_entrypoint_hash,
+        "engine_loaded_entrypoint_scope": "simulate_one Python code object",
         "engine_module": getattr(module, "__name__", None),
         "invocation": {
             "symbol": symbol,
@@ -447,6 +459,7 @@ class EngineInvocationCapture:
                         call_kwargs,
                         owner.module,
                         owner.decision_context,
+                        owner._previous,
                     )
                     owner.invocations.append(capture)
                     owner.elapsed_ms += capture["capture_ms"]

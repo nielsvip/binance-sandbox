@@ -48,21 +48,21 @@ def pointers(name):
 
 def fingerprint(round_id):
     script = (f"cd ~/binance-sandbox && python3 -c \"import hashlib,json;m=lambda p:hashlib.md5(open(p,'rb').read()).hexdigest();"
-              f"e=json.load(open('data/engine_deploy/CURRENT.json')).get('engine_md5','unknown')[:8];"
+              f"e=m('v12_quick_engine.py')[:8];"
               f"print('{round_id}-json'+m('{SWEEP_DEF}')[:8]+'-tpl'+m('{TEMPLATES[0]}')[:12]+'-eng'+e)\"")
     rc, out, err = sh("s1", script)
     return out.strip() if rc == 0 else None
 
 
 def parity():
-    files = TEMPLATES + [SWEEP_DEF]
+    files = TEMPLATES + [SWEEP_DEF, "v12_quick_engine.py"]
     res = {}
     with cf.ThreadPoolExecutor(4) as pool:
         futs = {n: pool.submit(sh, n, "cd ~/binance-sandbox && md5sum " + " ".join(files)) for n in HOSTS}
         for n, f in futs.items():
             rc, out, _ = f.result()
-            res[n] = {l.split()[1]: l.split()[0] for l in out.splitlines() if len(l.split()) == 2}
-    bad = {f: {n: res[n].get(f, "MISSING")[:12] for n in HOSTS} for f in files if len({res[n].get(f) for n in HOSTS}) != 1}
+            res[n] = {l.split()[1]: l.split()[0] for l in out.splitlines() if len(l.split()) == 2 and len(l.split()[0]) == 32 and all(c in "0123456789abcdef" for c in l.split()[0])} if rc == 0 else {}
+    bad = {f: {n: res[n].get(f, "MISSING")[:12] for n in HOSTS} for f in files if any(f not in res[n] for n in HOSTS) or len({res[n].get(f) for n in HOSTS}) != 1}
     return res, bad
 
 
@@ -87,10 +87,10 @@ def cmd_flip(a):
     rdef = fingerprint(a.round)
     pdir = f"/home/niels/v15_{a.round}_{a.tag}/progress"
     res, bad = parity()
-    for f in TEMPLATES + [SWEEP_DEF]:
+    for f in TEMPLATES + [SWEEP_DEF, "v12_quick_engine.py"]:
         print(f"  md5 {pathlib.Path(f).name:28s} " + " ".join(f"{n}={res[n].get(f, 'MISSING')[:8]}" for n in HOSTS))
     print(f"NEW pdir={pdir}\nNEW defaults_round={rdef}")
-    print("template/per_sym_settings parity:", "OK (identical on all hosts)" if not bad else json.dumps(bad, indent=1))
+    print("template/per_sym_settings/engine parity:", "OK (identical on all hosts)" if not bad else json.dumps(bad, indent=1))
     expect = [x.strip() for x in (a.expect_tpl or "").split(",") if x.strip()]
     if expect:
         got = [res["s1"].get(f, "")[:len(e)] for f, e in zip(TEMPLATES, expect)]

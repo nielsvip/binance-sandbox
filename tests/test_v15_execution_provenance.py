@@ -2,6 +2,7 @@ import dataclasses
 import datetime
 import hashlib
 import json
+import marshal
 from pathlib import Path
 import threading
 from types import SimpleNamespace
@@ -217,12 +218,46 @@ def test_real_small_frozen_npz_uses_engine_boundary_capture():
     assert captured["invocation"]["symbol"] == "BTCUSDC"
     assert captured["npz_manifest"]["arrays"]
     assert (
-        captured["engine_source_sha256"]
+        captured["engine_disk_source_sha256"]
         == hashlib.sha256(
-            Path(evaluate_v12.__file__)
-            .resolve()
-            .parents[2]
-            .joinpath("v12_quick_engine.py")
-            .read_bytes()
+            Path(captured["engine_disk_source_path"]).read_bytes()
         ).hexdigest()
+    )
+    import v12_quick_engine
+
+    assert (
+        captured["engine_loaded_entrypoint_sha256"]
+        == hashlib.sha256(
+            marshal.dumps(v12_quick_engine.simulate_one.__code__)
+        ).hexdigest()
+    )
+    assert (
+        captured["engine_loaded_entrypoint_scope"] == "simulate_one Python code object"
+    )
+
+
+def test_disk_source_hash_is_distinct_from_loaded_entrypoint_hash(tmp_path):
+    import importlib.util
+
+    source = tmp_path / "engine.py"
+    source.write_text("def simulate_one(npz, symbol, is_long, cfg):\n    return 1\n")
+    spec = importlib.util.spec_from_file_location("loaded_test_engine", source)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    loaded_hash = hashlib.sha256(
+        marshal.dumps(module.simulate_one.__code__)
+    ).hexdigest()
+    source.write_text("def simulate_one(npz, symbol, is_long, cfg):\n    return 2\n")
+    npz = {"timestamps": np.asarray([3]), "close": np.asarray([1.0])}
+    with provenance.capture_engine_invocation(module) as capture:
+        module.simulate_one(npz, "TEST", True, _Config())
+    receipt = capture.result()
+    assert (
+        receipt["engine_disk_source_sha256"]
+        == hashlib.sha256(source.read_bytes()).hexdigest()
+    )
+    assert receipt["engine_loaded_entrypoint_sha256"] == loaded_hash
+    assert (
+        receipt["engine_disk_source_sha256"]
+        != receipt["engine_loaded_entrypoint_sha256"]
     )

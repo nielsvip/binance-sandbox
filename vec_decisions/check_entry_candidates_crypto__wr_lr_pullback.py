@@ -61,6 +61,17 @@ def _no3m(config) -> bool:
     return not bool(getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False))
 
 
+def canonical_tradeable_sym_side(symbol: str, is_long: bool, account: str, tradeable_keys) -> bool:
+    """Check the exact canonical account:symbol_side entry authority."""
+    if not tradeable_keys or not account:
+        return False
+    key = f"{str(account).strip().lower()}:{str(symbol).strip().upper()}_{'LONG' if is_long else 'SHORT'}"
+    try:
+        return key.lower() in {str(value).strip().lower() for value in tradeable_keys}
+    except TypeError:
+        return False
+
+
 def wr_in_list_live(sym: str, is_long: bool) -> bool:
     """Current WR/LR membership for the live process account (VEC_EXACT in-process).
 

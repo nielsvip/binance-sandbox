@@ -10614,7 +10614,20 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
             _wr_ha4s = np.where(
                 _wr_ha4 == -1, "red", np.where(_wr_ha4 == 1, "green", "neutral")
             )
-            _wr_k15prev = _safe(npz, "stoch_k_15m_prev", n, 50)
+            _wr_k15prev = _safe(npz, "stoch_k_15m_prev", n, np.nan)
+            _wr_no3m = not bool(getattr(cfg, "USE_1M_3M_SIGNALS_ENABLED", False))
+            if _wr_no3m:
+                _wr_k1 = k_15m
+                _wr_k1prev = _wr_k15prev
+                _wr_cross_bull = _safe(npz, "wt_cross_bull_15m", n, 0.0) > 0
+                _wr_cross_bear = _safe(npz, "wt_cross_bear_15m", n, 0.0) > 0
+                _wr_cross = np.where(_wr_cross_bull, "BULL", np.where(_wr_cross_bear, "BEAR", ""))
+            else:
+                _wr_k1 = _safe(npz, "stoch_k_1m", n, np.nan)
+                _wr_k1prev = _safe(npz, "stoch_k_1m_prev", n, np.nan)
+                _wr_cross_bull = _safe(npz, "wt_cross_bull_1m", n, 0.0) > 0
+                _wr_cross_bear = _safe(npz, "wt_cross_bear_1m", n, 0.0) > 0
+                _wr_cross = np.where(_wr_cross_bull, "BULL", np.where(_wr_cross_bear, "BEAR", ""))
             blocks["WR_PULLBACK"] = np.asarray(
                 _wr_twin.check_wr_lr_pullback_vec(
                     cfg,
@@ -10622,13 +10635,13 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
                     k_1h,
                     k_15m,
                     k_3m,
-                    np.full(n, 50.0),
-                    np.full(n, 50.0),
-                    np.full(n, "", dtype=str),
+                    _wr_k1,
+                    _wr_k1prev,
+                    _wr_cross,
                     True,
                     is_long,
                     _wr_k15prev,
-                    None,
+                    _wr_cross,
                 ),
                 dtype=bool,
             )
