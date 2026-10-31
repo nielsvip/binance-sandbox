@@ -20861,14 +20861,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         continue  # BOTTOM/TOP entry REQUIRE gates (all families ORed); 2026-10-20 stock REENTRY fires exempt unless REENTRY_APPLY_ENTRY_GATES_ENABLED
                     if _lp_on and _lpm.fn_family(entry_reason) in _lp_flags and not _belm.entry_filters_pass(cfg, is_long, float(px), float(_lp_w11[i]), float(_lp_w21[i]), float(_lp_w14[i]), float(_lp_w24[i]), float(_lp_e50[i])):
                         continue  # 2026-10-17 LOSS_PRONE_ENTRY_FILTER: a loss-prone function needs the extra filters
-                    pos = _open(qty0, px, i, entry_reason)
                     if (
                         is_tradier
                         and _wf_open_decision is not None
                         and "WT_3M_FORCE_OPEN" in str(entry_reason).upper()
                     ):
+                        # Native stamps pacing after queue_trade_action accepts the order,
+                        # before the broker confirms a fill. All modeled pre-queue gates
+                        # have passed here; commit the intent before simulating execution.
                         from vec_decisions.wt_force_open_stock import commit_state as _wf_commit_state
                         _wf_commit_state(_wt_force_state, _wf_open_decision, float(ts[i]))
+                    pos = _open(qty0, px, i, entry_reason)
                     vec_decisions.htf_signal_consume.commit(_hsc, i, bool(entry_sig[i]))
                     if _gm_rebuy:
                         _gap_pending = None  # WIRING LANE E: rebuy executed, pending resolved (live 9992-9993)

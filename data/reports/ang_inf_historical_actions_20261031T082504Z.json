@@ -1,0 +1,53 @@
+{
+  "files": [
+    "ledger_crypto_2026-10-27.jsonl",
+    "ledger_crypto_2026-10-28.jsonl",
+    "ledger_crypto_2026-10-29.jsonl",
+    "ledger_crypto_2026-10-30.jsonl",
+    "ledger_crypto_2026-10-31.jsonl"
+  ],
+  "counts": {
+    "same_provenance_admitted_bars": 36,
+    "bars_with_sent_orders": 1
+  },
+  "matched_fills": [
+    {
+      "sym_side": "1000PEPEUSDC_LONG",
+      "bar": 1793428200,
+      "actions": [
+        "OPEN"
+      ]
+    }
+  ],
+  "mismatches": [],
+  "scope": "Latest admitted valid decision per account/bar; SENT order acknowledgments, not exchange fill confirmation; provenance at order time needs investigation",
+  "observed_at": "2026-10-31T08:25:04.447824+00:00",
+  "fill_evidence_checked_at": "2026-10-31T08:28:04.787883+00:00",
+  "verified_exchange_responses": {
+    "source": "/home/niels/binance/data/vector_direct/ledger_crypto_2026-10-31.jsonl",
+    "sym_side": "1000PEPEUSDC_LONG",
+    "signal_bar_open": 1793428200,
+    "signal_bar_open_utc": "2026-10-31T06:30:00Z",
+    "orders": [
+      {
+        "account": "ang",
+        "sent_at": "2026-10-31T06:45:22Z",
+        "act": "OPEN",
+        "order_id": 8175844926,
+        "response_status": "FILLED",
+        "executed_qty": 3016,
+        "average_price": null
+      },
+      {
+        "account": "inf",
+        "sent_at": "2026-10-31T06:45:26Z",
+        "act": "OPEN",
+        "order_id": 8175845049,
+        "response_status": "FILLED",
+        "executed_qty": 3016,
+        "average_price": null
+      }
+    ],
+    "scope": "Stored broker FILLED responses confirm same-bar OPEN for this case only; not all-account/full-window proof"
+  }
+}

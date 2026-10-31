@@ -347,7 +347,7 @@
       "status": "Disclosed by agent; no retroactive backup claimed"
     }
   ],
-  "checkpoint_updated_at": "2026-10-31T07:59:15.016049+00:00",
+  "checkpoint_updated_at": "2026-10-31T08:26:59.086565+00:00",
   "replay_clock": {
     "signal_clock": "NPZ bar-open timestamp",
     "decision_clock": "bar-open +900seconds when V12_COMPLETED_BAR_SECONDS=900",
@@ -785,5 +785,52 @@
       "Action/reason exemptions and late OR-source filter coverage require replay",
       "Stock native GR config omitted LTF policy; tradier agent addressing"
     ]
+  },
+  "production_forward_dependency_repair": {
+    "status": "APPLIED_S1_S5_SANDBOX; S1_STATES_RECOVERED",
+    "cause": "Installed engine imported19missing helper modules and4existing helpers lacked required functions. Uploader/source of partial deployment not established.",
+    "engine_sha256": "2fe343a0c646fa209cfb8952ad169866a37bd6adf5b51787f4ee4473b4ce793c",
+    "changed_files": 23,
+    "engine_changed": false,
+    "S1_backup": "/home/niels/backups/before_forward_dependency_repair_20261031T081525Z",
+    "S1_receipt_sha256": "54e7b3848a68660ba0aeee8fad5fb6e79e630e59f7f29c563a2c18076cd141e7",
+    "S5_backup": "/home/niels/backups/before_forward_dependency_repair_20261031T082159Z",
+    "S5_receipt_sha256": "59acef7c6984709775b072f9c4e03bb443a27561948bcc1570d7c45c04baf477",
+    "smoke": "Eachhost current engine returned simulate_one on same2880 frozenPEPEbars/fullactiveconfig withzero networkattempts; hashes andcompiles verified",
+    "observed_recovery": "S1 ANG08:16:15 andINF08:16:26 PEPE decisions oktrue, notesempty. Notfillparityproof.",
+    "no_actions": "No native trader restart or admission reset; no pilot/default deployment."
+  },
+  "native_v6d": {
+    "status": "COMPLETE_DIAGNOSTIC; FRESHNESS_INVALID_FOR_ACCEPTANCE",
+    "bars": 2880,
+    "canonical_orders": 66,
+    "indicator_store_calls": 2880,
+    "override_producer_calls": 3801,
+    "network_attempts": 0,
+    "private_db_unchanged": true,
+    "active_config_sha256": "7f681c6fa59927bca7677987c95786516f64e5888209cdbcf7c00c4cbd6d428c",
+    "freshness_cause": "Decision clock=open+900 but receipt _tick_ts=open yielded900s HOT_MISS onall2880bars; localharnessfixpreserves sourceTFtimes andusesdecisionavailabilityclock",
+    "settings": "FAST_CUT -999, STOP999 andUNIVERSAL_NOLOSSfalse independentlymatch frozenfullactiveconfig; previousagent forced-risk characterization wasincorrect",
+    "next": "Boundedthenfullv6e withactualnativehotstate freshness tests"
+  },
+  "consumer_stop_layer_diagnostic": {
+    "software_buffer_pct": 0.25,
+    "exchange_backstop_buffer_pct": 0.4,
+    "scope": "Distinctauthoritativelayers, notsameformula. Keepboth.",
+    "remaining_cause": "Vector softwarestop onOct25 20:45 crossed withinbar butmark-only productionauthorization cannotseeintrabar low; brokerbackstopnotcrossed until21:00. Consumer-onlyOHLCwrapper isdiagnosticnotproductionparity."
+  },
+  "historical_ang_inf_action_audit": {
+    "report": "data/reports/ang_inf_historical_actions_20261031T082504Z.json",
+    "matched_provenance_admitted_bars": 36,
+    "bars_with_sent_orders": 1,
+    "mismatches": 0,
+    "matched_action": {
+      "sym_side": "1000PEPEUSDC_LONG",
+      "bar": 1793428200,
+      "actions": [
+        "OPEN"
+      ]
+    },
+    "limitations": "SENT acknowledgments notexchangefillconfirmation; latestdecisionperbar, partialjournal/provenancecoverage; notfullANGINFproof"
   }
 }

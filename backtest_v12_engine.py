@@ -4659,7 +4659,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     if hasattr(data_manager, 'shared_mem_watchdog'):
         async def _noop_watchdog(*a, **kw): return
         data_manager.shared_mem_watchdog = _noop_watchdog
-    v8_logger.info("V8 BACKTEST: shared_proxy disabled, ez_share_ind IPC bypassed (NPZ-only mode)")
+    v8_logger.info("V8 BACKTEST: shared_proxy uses local frozen receipt rows; shared-memory IPC is disabled")
     trade_manager.data_manager = data_manager
     tracker_manager.data_manager = data_manager
 

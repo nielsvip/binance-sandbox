@@ -18,6 +18,7 @@ from vec_decisions.asr_inline_score import (
     rsi_mfi_score_array, dc_momentum_bota_score_array, stochastic_alignment_score_array,
 )
 from vec_decisions.asr_mts_mi_score import mts_mi_score_array
+from vec_decisions.asr_mts_provider import analyze_mts_state_array
 from vec_decisions.asr_portfolio_ratio_score import portfolio_ratio_array
 from vec_decisions.asr_score_core import (
     apply_15m_momentum_vec,
@@ -180,10 +181,14 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
     masks["stoch_entry:long_ok"] = ~blocked & long_ok
     masks["stoch_entry:short_ok"] = ~blocked & short_ok
 
-    mts_source = dict(arrays)
-    mts_source.update({key: context[key] for key in ("mts_bottom", "mts_entry_quality") if key in context})
-    mts_bottom = _required_col(mts_source, "mts_bottom", n)
-    mts_quality = _required_col(mts_source, "mts_entry_quality", n)
+    mts_external = {key: context[key] for key in (
+        "0dc_htf_pos", "0dc_ltf_pos", "0dc_moment", "0dc_expansion", "0dc_width_composite"
+    ) if key in context}
+    mts_state = analyze_mts_state_array(
+        npz, cfg=cfg, is_long=is_long, n=n, external_context=mts_external
+    )
+    mts_bottom = mts_state["bottom_score"]
+    mts_quality = mts_state["entry_quality"]
     tradier_mts = bool(_cfg(cfg, "MTS_GATE_ENABLED_TRADIER", False))
     generic_mts = bool(_cfg(cfg, "MTS_GATE_ENABLED", False))
     mts_block, mts_masks = mts_entry_gate_array(mts_bottom, mts_quality, is_long, tradier_mts, generic_mts, cfg)
@@ -375,6 +380,7 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
     return {
         "score": result,
         "entry_allowed": ~blocked,
+        "mts_state": mts_state,
         "hlr_size_multiplier": hlr_size_multiplier,
         "hlr_bypass": hlr_bypass,
         "reentry_state_out": {"bounce_reentry_k_reset": reentry["bounce_reentry_k_reset"]},

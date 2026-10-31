@@ -112,6 +112,73 @@ def test_tradier_entry_masks_calls_stock_force_open_provider():
     np.testing.assert_array_equal(force, [True, False])
 
 
+def test_native_force_open_stateful_config_zero_and_identity_semantics():
+    from vec_decisions.wt_force_open_stock import stateful_fire
+
+    data = {
+        "timestamps": np.asarray([1699972200.0]),
+        "wt1_15m": np.asarray([1.0]),
+        "wt2_15m": np.asarray([0.0]),
+        "wt1_1h": np.asarray([1.0]),
+        "wt2_1h": np.asarray([0.0]),
+        "wt1_4h": np.asarray([0.0]),
+        "wt2_4h": np.asarray([0.0]),
+        "wt1_D": np.asarray([0.0]),
+        "wt2_D": np.asarray([0.0]),
+    }
+    state = {"last_ts": None, "day": None, "count": 0}
+    assert stateful_fire(
+        data, 0, True, _cfg(WT_3M_FORCE_OPEN_BUILD_TO_TARGET=True, WT_3M_FORCE_OPEN_TARGET_USD=0.0),
+        100.0, 0.0, state, float(data["timestamps"][0]),
+    ) is None
+    open_without_build_target = stateful_fire(
+        data, 0, True, _cfg(
+            WT_3M_FORCE_OPEN_BUILD_TO_TARGET=False,
+            WT_3M_FORCE_OPEN_TARGET_USD=0.0,
+            WT_3M_FORCE_OPEN_SIZE_USD=10.0,
+            WT_3M_FORCE_OPEN_TF_LADDER=False,
+        ),
+        100.0, 0.0, state, float(data["timestamps"][0]),
+    )
+    assert open_without_build_target["size_usd"] == 10.0
+    assert stateful_fire(
+        data, 0, True, _cfg(
+            WT_3M_FORCE_OPEN_BUILD_TO_TARGET=False,
+            WT_3M_FORCE_OPEN_SIZE_USD=0.0,
+            WT_3M_FORCE_OPEN_TF_LADDER=False,
+        ),
+        100.0, 0.0, state, float(data["timestamps"][0]),
+    ) is None
+    zero_ladder_mult = stateful_fire(
+        data, 0, True, _cfg(
+            WT_3M_FORCE_OPEN_BUILD_TO_TARGET=False,
+            WT_3M_FORCE_OPEN_SIZE_USD=10.0,
+            WT_3M_FORCE_OPEN_TF_LADDER=True,
+            WT_3M_FORCE_OPEN_TF_LADDER_MULT=0.0,
+        ),
+        100.0, 0.0, state, float(data["timestamps"][0]),
+    )
+    assert zero_ladder_mult["size_usd"] == 10.0
+    data["wt_cross_bars_ago_5m"] = np.asarray([1.0])
+    data["wt_cross_rising_5m"] = np.asarray([np.bool_(True)], dtype=object)
+    data["wt_cross_bull_5m"] = np.asarray([1.0])
+    data["ema_200_15m"] = np.asarray([90.0])
+    data["wt1_5m"] = np.asarray([2.0])
+    data["wt2_5m"] = np.asarray([1.0])
+    assert not force_open_mask(
+        data,
+        1,
+        True,
+        _cfg(
+            WT_FORCE_OPEN_FRESH_CROSS_ONLY=True,
+            WT_FORCE_OPEN_FRESH_MAX_BARS=2,
+            WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS=False,
+            WT_3M_FORCE_OPEN_TF_LADDER=False,
+        ),
+        np.asarray([100.0]),
+    )[0]
+
+
 def test_stock_force_open_simulate_one_open_matches_selected_bar():
     import v12_quick_engine as engine
     from tests.test_quick_srs_paired_15m import _cfg as quick_cfg, _npz
@@ -209,3 +276,29 @@ def test_stock_force_open_simulate_one_builds_position_with_paced_augment():
         ("OPEN", 2),
         ("AUGMENT", 97),
     ]
+
+
+def test_force_open_pacing_records_queue_acceptance_even_if_fill_fails_later():
+    from vec_decisions.wt_force_open_stock import commit_state, stateful_fire
+
+    timestamps = np.asarray([1699972200.0, 1699972201.0])
+    data = {"timestamps": timestamps}
+    cfg = _cfg(
+        WT_3M_FORCE_OPEN_BUILD_TO_TARGET=False,
+        WT_3M_FORCE_OPEN_SIZE_USD=10.0,
+        WT_3M_FORCE_OPEN_TF_LADDER=False,
+        WT_3M_FORCE_OPEN_COOLDOWN_SEC=900.0,
+    )
+    state = {"last_ts": None, "day": None, "count": 0}
+    decision = stateful_fire(data, 0, True, cfg, 100.0, 0.0, state, timestamps[0])
+    assert decision is not None
+
+    # queue_trade_action returned SUCCESS, so native pacing is committed before
+    # downstream broker execution; a later rejected/unfilled order does not undo it.
+    queue_success = True
+    execution_filled = False
+    if queue_success:
+        commit_state(state, decision, timestamps[0])
+    assert not execution_filled
+    assert state == {"last_ts": timestamps[0], "day": int(timestamps[0] // 86400), "count": 1}
+    assert stateful_fire(data, 1, True, cfg, 100.0, 0.0, state, timestamps[1]) is None

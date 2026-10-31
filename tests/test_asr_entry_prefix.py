@@ -47,7 +47,6 @@ def _arrays(n=3):
         "k_1m_prev": np.array([10.0, 50.0, 10.0][:n]), "k_3m_prev": np.full(n, 50.0),
         "wt_cross_bull_3m": np.zeros(n), "wt_cross_bear_3m": np.zeros(n),
         "wt_crossover_value_3m": np.zeros(n), "wt_crossover_value_3m_prev": np.zeros(n),
-        "mts_bottom": np.zeros(n), "mts_entry_quality": np.zeros(n),
         "wt_trough_structure_1h": np.full(n, "", object),
         "wt_trough_structure_4h": np.full(n, "", object),
         "wt_momentum_state_4h": np.full(n, "", object),
@@ -74,6 +73,7 @@ def test_entry_prefix_preserves_native_score_order_and_explicit_context():
     assert result["entry_allowed"].tolist() == [True, False, True]
     assert result["masks"]["SHIT_IDEA"].tolist() == [False, True, False]
     assert result["score"].shape == (3,)
+    assert result["mts_state"]["bottom_score"].shape == (3,)
     assert result["complete_rate"] is False
     assert result["covered_native_spans"] == (
         "ez_positions_quick.py:3670-3729 causal 15m staleness veto",

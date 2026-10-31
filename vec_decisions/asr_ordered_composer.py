@@ -411,6 +411,41 @@ def evaluate_asr_entry_candidate_array(npz,n,is_long,cfg,prefix_context,late_cau
     prefix=score_asr_entry_prefix_array(npz,n,is_long,cfg,candidate_prefix_context,score=score)
     late_inputs=assemble_asr_composer_inputs(npz,cfg,late_causal_state,n,is_long)
     post_late_state = late_causal_state.get("post_late_entry_state")
+    _delta_enabled = (cfg.get("DELTA_ENGINE_ENABLED", False) if isinstance(cfg, Mapping) else getattr(cfg, "DELTA_ENGINE_ENABLED", False))
+    if bool(_delta_enabled):
+        if "delta_tracker_available" not in late_causal_state:
+            raise ValueError("DELTA_ENGINE_ENABLED requires explicit delta_tracker_available")
+        available = np.broadcast_to(np.asarray(late_causal_state["delta_tracker_available"], dtype=bool), (n,))
+        if np.any(available) and not np.all(available):
+            raise ValueError("delta_tracker_available must be stable for this symbol replay")
+        if np.all(available):
+            replay = late_causal_state.get("delta_tracker_replay")
+            if not isinstance(replay, Mapping):
+                raise ValueError("active DeltaTracker requires delta_tracker_replay context")
+            for key in ("tracker_cfg", "timestamps", "position_states"):
+                if key not in replay:
+                    raise ValueError(f"active DeltaTracker requires replay.{key}")
+            if "symbol" not in replay:
+                raise ValueError("active DeltaTracker requires replay.symbol")
+            from vec_decisions.asr_delta_provider import replay_delta_tracker_arrays
+            tracker_output = replay_delta_tracker_arrays(
+                npz, symbol=replay["symbol"], cfg=replay["tracker_cfg"],
+                use_ltf=bool(cfg.get("USE_1M_3M_SIGNALS_ENABLED", False) if isinstance(cfg, Mapping) else getattr(cfg, "USE_1M_3M_SIGNALS_ENABLED", False)),
+                timestamps=replay["timestamps"], is_long=is_long,
+                position_states=replay["position_states"],
+                warmup_mask=replay.get("warmup_mask"),
+            )
+            post_late_state = dict(post_late_state or {})
+            post_late_state["delta_tracker_available"] = available
+            post_late_state["delta_signal_present"] = tracker_output["delta_signal_present"]
+            post_late_state["delta_entry_ok"] = tracker_output["delta_entry_ok"]
+            post_late_state["delta_active_tfs"] = tracker_output["delta_active_tfs"]
+            post_late_state["delta_tracker_state_scope"] = tracker_output["state_scope"]
+            post_late_state["delta_tracker_missing_inputs"] = tracker_output["missing_read_keys"]
+        elif post_late_state is not None:
+            post_late_state = dict(post_late_state)
+            post_late_state["delta_tracker_available"] = available
+            post_late_state["delta_signal_present"] = np.zeros(n, dtype=bool)
     lifecycle_state = late_causal_state.get("lifecycle_state")
     kwargs = {}
     if post_late_state is not None:
