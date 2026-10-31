@@ -7423,101 +7423,22 @@ class AdvancedSignalRater:
             reasons.extend(_dc_vote_reasons)
             if _dc_vote_valid:
                 valid_setup = True
+            from vec_decisions.asr_breakout_pa_score import breakout_pa_score_scalar as _asr_breakout_pa_score_scalar
+            _asr_breakout_pa_values = {
+                "current_price": current_price,
+                "dc_high_4h": dc_high_4h, "dc_high_1h": dc_high_1h, "dc_high_15m": dc_high_15m, "dc_high_3m": dc_high_3m,
+                "dc_low_4h": dc_low_4h, "dc_low_1h": dc_low_1h, "dc_low_15m": dc_low_15m, "dc_low_3m": dc_low_3m,
+                "k_1m": k_1m, "d_1m": d_1m, "k_1m_prev": k_1m_prev,
+                "k_3m": k_3m, "d_3m": d_3m, "k_3m_prev": k_3m_prev,
+                "k_15m": k_15m, "d_15m": d_15m, "true_lag": true_lag,
+                "higher_high_15m": higher_high_15m, "lower_low_15m": lower_low_15m,
+                "prev_cross_price": prev_cross_price, "lr_slope": lr_slope,
+            }
+            _asr_breakout_delta, _asr_breakout_reasons, pa_confirm = _asr_breakout_pa_score_scalar(_asr_breakout_pa_values, is_long)
+            score += _asr_breakout_delta
+            reasons.extend(_asr_breakout_reasons)
             if is_long:
-                if (
-                    current_price >= dc_high_4h
-                    and (k_1m > d_1m and true_lag < 10.0)
-                    and (k_15m > d_15m or higher_high_15m)
-                ):
-                    score += 5
-                    reasons.append(">dc4hhigh")
-                if (
-                    current_price >= dc_high_1h
-                    and (k_1m > d_1m and true_lag < 10.0)
-                    and (k_15m > d_15m or higher_high_15m)
-                ):
-                    score += 4
-                    reasons.append(">dc1hhigh")
-                if (
-                    current_price >= dc_high_15m
-                    and (k_1m > d_1m and true_lag < 10.0)
-                    and (k_15m > d_15m or higher_high_15m)
-                ):
-                    score += 3
-                    reasons.append(">dc15mhigh")
-                elif (
-                    current_price >= dc_high_3m
-                    and (k_1m > d_1m and true_lag < 10.0)
-                    and (k_15m > d_15m or higher_high_15m)
-                    and (k_3m < 40 or k_15m < 20)
-                ):
-                    score += 6
-                    reasons.append(">dc3mhigh")
-                elif (
-                    current_price >= dc_high_3m
-                    and (k_1m > d_1m and true_lag < 10.0)
-                    and (k_15m > d_15m or higher_high_15m)
-                ):
-                    score += 2
-                    reasons.append(">dc3mhigh")
                 logger.info(f" in rate1 {position_key} {score} {k_str}")
-            elif not is_long:
-                if (
-                    current_price <= dc_low_4h
-                    and (k_1m < d_1m and true_lag < 10.0)
-                    and (k_15m < d_15m or lower_low_15m)
-                ):
-                    score += 5
-                    reasons.append("<dc4hlow")
-                if (
-                    current_price <= dc_low_1h
-                    and k_3m < d_3m
-                    and (k_15m < d_15m or lower_low_15m)
-                ):
-                    score += 4
-                    reasons.append("<dc1hlow")
-                if (
-                    current_price <= dc_low_15m
-                    and (k_1m < d_1m and true_lag < 10.0)
-                    and (k_15m < d_15m or lower_low_15m)
-                    and (k_3m > 60 or k_15m > 80)
-                ):
-                    score += 6
-                    reasons.append("<dc15mlow")
-                elif (
-                    current_price <= dc_low_3m
-                    and k_3m < d_3m
-                    and (k_15m < d_15m or lower_low_15m)
-                ):
-                    score += 2
-                    reasons.append("<dc3mlow")
-            if (is_long and k_1m > k_1m_prev + 50.0 or k_3m > k_3m_prev + 40.0) or (
-                not is_long and k_1m < k_1m_prev - 50.0 or k_3m < k_3m_prev - 40.0
-            ):
-                score += 7
-            elif (is_long and k_1m > k_1m_prev + 40.0 or k_3m > k_3m_prev + 30.0) or (
-                not is_long and k_1m < k_1m_prev - 40.0 or k_3m < k_3m_prev - 30.0
-            ):
-                score += 3
-            elif (is_long and k_1m > k_1m_prev + 20.0 or k_3m > k_3m_prev + 20.0) or (
-                not is_long and k_1m < k_1m_prev - 20.0 or k_3m < k_3m_prev - 20.0
-            ):
-                score += 1
-            pa_confirm = False
-            if is_long:
-                if prev_cross_price != 0 and current_price >= prev_cross_price:
-                    pa_confirm = True
-                    score += 2
-                elif lr_slope > 0:
-                    pa_confirm = True
-                    score += 1
-            else:
-                if prev_cross_price != 0 and current_price <= prev_cross_price:
-                    pa_confirm = True
-                    score += 2
-                elif lr_slope < 0:
-                    pa_confirm = True
-                    score += 1
             logger.info(
                 f" in rate2 {position_key} {score} {k_str} tts1:{true_lag} ts3:{timestamp_str}"
             )

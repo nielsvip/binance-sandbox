@@ -42,3 +42,17 @@ def test_zero_thresholds_are_not_replaced_with_nonzero_defaults():
     cfg = SimpleNamespace(MTF_GR_MIN_TFS=0, MTF_GR_MIN_IND=0)
     assert gr_filter_pass({}, "LONG", "crypto", cfg)
     assert gr_filter_pass_vec({}, 1, True, cfg, np.array([50.])).all()
+
+
+def test_mixed_invalid_cells_follow_native_defaults_without_discarding_valid_cells():
+    data = {"rsi_15m": np.array([None, "bad", "70", "nan"], dtype=object)}
+    expected = [_tf_score({"rsi_15m": value}, "15m", True, False) for value in data["rsi_15m"]]
+    np.testing.assert_array_equal(tf_score(data, 4, "15m", True, False, np.full(4, 100.)), expected)
+    with pytest.raises(ValueError, match="not aligned"):
+        tf_score({"rsi_15m": np.array([70.])}, 4, "15m", True, False, np.full(4, 100.))
+
+
+def test_none_k_uses_stochastic_alias_like_native_scalar():
+    data = {"k_15m": np.array([None, 70.], dtype=object), "stoch_k_15m": np.array([10., 10.])}
+    expected = [_tf_score({key: values[index] for key, values in data.items()}, "15m", True, False) for index in range(2)]
+    np.testing.assert_array_equal(tf_score(data, 2, "15m", True, False, np.full(2, 100.)), expected)

@@ -31,6 +31,8 @@ def _config(rng):
 
 
 def _native(bottom, quality, side, tradier, generic, cfg):
+    cfg.MTS_GATE_ENABLED = generic
+    cfg.MTS_GATE_ENABLED_TRADIER = tradier
     scope = {"_mts_bottom": bottom, "_mts_eq": quality, "is_long": side, "config": cfg, "account_key": None}
     code = "def native():\n" + textwrap.indent(_source(), "    ")
     exec(compile(code, str(ORIGINAL), "exec"), scope, scope)
@@ -69,6 +71,6 @@ def test_native_rate_returns_exact_wait_reason_from_shared_mts_gate():
     source = (ROOT / "ez_positions_quick.py").read_text()
     tree = ast.parse(source)
     call = next(node for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_asr_mts_entry_gate_scalar")
-    returns = [node for node in ast.walk(tree) if isinstance(node, ast.Return) and node.lineno > call.lineno and "_asr_mts_wait_reason" in ast.unparse(node.value)]
+    returns = [node for node in ast.walk(tree) if isinstance(node, ast.Return) and node.value is not None and node.lineno > call.lineno and "_asr_mts_wait_reason" in ast.unparse(node.value)]
     assert len(returns) == 1
     assert ast.unparse(returns[0].value) == "(0, 'WAIT', _asr_mts_wait_reason)"

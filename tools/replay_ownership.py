@@ -4,7 +4,7 @@ from contextvars import ContextVar
 from tools.replay_clock import begin_bar_coverage, end_bar_coverage, replay_bar_coverage
 
 _scope = ContextVar("replay_ownership_scope", default=None)
-_OWNERSHIP_FLAGS = ("VEC_DICTATE_ONLY_ENABLED", "VEC_DRIVEN_ENABLED", "PARITY_VEC_EXACT_MODE")
+_OWNERSHIP_FLAGS = ("VEC_DICTATE_ONLY_ENABLED", "VEC_DRIVEN_ENABLED", "PARITY_VEC_EXACT_MODE", "VEC_BACKSTOP_SYNC_ENABLED", "VEC_BACKSTOP_ENABLED")
 
 def replay_ownership_scope(function):
     @functools.wraps(function)
@@ -72,6 +72,14 @@ def configure_replay_ownership(config, venue, resolver_owner=None, resolver_name
             state["resolver_restores"].append((ownership_owner, "_psym_get", per_symbol))
             setattr(ownership_owner, "_psym_get", replay_per_symbol)
             probes.append("_psym_get:ownership_keys_only")
+        layer = getattr(ownership_owner, "_ezm_per_sym_layer", None)
+        if layer is not None:
+            def replay_layer(*args, **kwargs):
+                values = layer(*args, **kwargs)
+                return {**values, **{name: False for name in _OWNERSHIP_FLAGS}} if isinstance(values, dict) else values
+            state["resolver_restores"].append((ownership_owner, "_ezm_per_sym_layer", layer))
+            setattr(ownership_owner, "_ezm_per_sym_layer", replay_layer)
+            probes.append("_ezm_per_sym_layer:ownership_keys_only")
     effective = bool(getattr(resolver_owner, resolver_name)("VEC_DICTATE_ONLY_ENABLED", True)) if resolver_owner is not None and resolver_name is not None else bool(getattr(config, "VEC_DICTATE_ONLY_ENABLED", True))
     report = {"venue": venue, "mode": "native_enabled_candidate" if native_mode else "configured_ownership", "original_vec_dictate_only": original, "effective_vec_dictate_only": effective, "ownership_resolver_overridden": native_mode and resolver_owner is not None, "production_ownership_changed": False}
     report["ownership_probes_overridden"] = probes

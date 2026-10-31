@@ -347,7 +347,7 @@
       "status": "Disclosed by agent; no retroactive backup claimed"
     }
   ],
-  "checkpoint_updated_at": "2026-10-31T06:26:39.650886+00:00",
+  "checkpoint_updated_at": "2026-10-31T06:51:58.557741+00:00",
   "replay_clock": {
     "signal_clock": "NPZ bar-open timestamp",
     "decision_clock": "bar-open +900seconds when V12_COMPLETED_BAR_SECONDS=900",
@@ -635,5 +635,41 @@
     "crypto_correction": "Ordinaryexits compare currentweightedmarkgain toCOMMISSION_BUFFER_PCT instead lifecyclepnl includingpriorrealizedprofits",
     "tests": "29passed across actualenginepartial/close/restore, stockweightedbasis, mandatorylossstops and helperboundaries",
     "first_consumer_refusal": "Differentcause: rawFIXED_STOP loststopmetadata inforwardstate/planner; agentpreservingmetadata and implementingmockstoplifecyclewithoutgatebypass"
+  },
+  "source_capture_063950": {
+    "S1_code": "/home/niels/parity_runs/native_crypto_replay_20261031T0613Z/code_20261031T063950Z",
+    "manifest_sha256": "12d954468d534899cba058f1eaebce3428177e58aef78f023eb0cd7f11ff636f",
+    "root_independent_verification": "3722files allhashesverified",
+    "excluded_concurrent_external_edits": [
+      "tools/v15_version_gate.py",
+      "tests/test_v15_version_gate_model_overlay.py"
+    ],
+    "scope": "Retainsimmutablebaseversionsofexcludednonruntimefiles; predateslaterMTF/ASR/ownershipfixes"
+  },
+  "native_mixed_ownership_063950": {
+    "status": "STOPPED_INVALID_NATIVE_ACCEPTANCE",
+    "actual_start_utc": "2026-10-31T06:46:29Z",
+    "stopped_utc": "2026-10-31T06:48:58Z",
+    "runtime": "/home/niels/parity_runs/native_crypto_diag_ang_20261031T063950Z",
+    "cause": "PARITY_VEC_EXACT_MODE globalTrue ORper-symFalse causedVEC_EXACT_LEGACY_ADOPTED despiteother2ownershipflagsreleased",
+    "fix": "Explicitmocknative scope nowreleases3ownershipflags plusactualownerprobe/per-symownershipkeys, restoresall onfailure; strategy/risksettingsunchanged",
+    "ownership_helper_sha256": "d139d2b14ae2481933c10e11bc0e8bfabf5b1913bfba49bea755d0c94a3e8eec",
+    "backtest_sha256": "3bdf01526461873b20fc2634320e9b29d2bfa98b177bdba0ebbc659078b90800",
+    "tests": "12ownership/isolationpass",
+    "next": "Agentstagingnewderivedvariantfornativererun; noresultartifactfrominvalidrun"
+  },
+  "watchdog_mtf_gate": {
+    "status": "LOCAL_TESTED_OUTSIDE_063950_CAPTURE",
+    "causes": [
+      "Vectorautomaticallycountedmissing3m asconfirmed",
+      "Nativeexplicitdc_pct precedenceomitted",
+      "Nativearmingstate andrequirearmedconditionwereomittedfromwatchdogentry"
+    ],
+    "fix": "Policyselectedmicroinputs, exactnativeGRdefaults+votes, NumPyvotes andactualnativepurearmingtransitions atattemptedwatchdogentries",
+    "evidence": "26nativearray/state tests plusactualengineOPEN waitsbar2ratherthanunarmedbar1; thresholdfallbackadditionaltestpassed",
+    "limitations": [
+      "BroadercoreentryMTF proxyandotherbackgroundproducersstillrequireaudit",
+      "Notyetfull14dreplayacceptance"
+    ]
   }
 }

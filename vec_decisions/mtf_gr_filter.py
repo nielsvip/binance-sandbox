@@ -8,16 +8,22 @@ _TFS = ("15m", "1h", "4h", "D", "W")
 
 
 def _a(npz, key, n):
-    try:
-        v = np.asarray(npz[key], dtype=np.float64)
-    except Exception:
+    if key not in npz or npz[key] is None:
         return np.zeros(n)
-    if v.shape[0] != n:
-        out = np.zeros(n)
-        m = min(n, v.shape[0])
-        out[:m] = v[:m]
-        v = out
-    return v
+    values = np.asarray(npz[key])
+    if values.ndim != 1 or len(values) != n:
+        raise ValueError(f"MTF score input {key} is not aligned to {n} bars")
+    try:
+        if values.dtype.kind == "O":
+            raise TypeError("Object cells require native scalar coercion")
+        return np.asarray(values, dtype=np.float64)
+    except (TypeError, ValueError):
+        def number(value):
+            try:
+                return 0.0 if value is None else float(value)
+            except (TypeError, ValueError):
+                return 0.0
+        return np.fromiter((number(value) for value in values), dtype=np.float64, count=n)
 
 
 def tf_score(npz, n, tf, is_long, invert, close):

@@ -1806,7 +1806,7 @@ class TradierConfig:
     EMA_9_21_FILTER_FILTER_TF: str = (
         "15m"  # missing parity — added 2026-09-19 (STOCKS_LONG yellow)
     )
-    EMA_BLANKET_FILTER_FILTER_TF: str = "OFF"  # missing parity — added 2026-09-19
+    EMA_BLANKET_FILTER_FILTER_TF: str = "15m"  # missing parity — added 2026-09-19
     EMA_BLANKET_FILTER_ENABLED: bool = (
         False  # 2026-09-29 USER: wired live (tradier_manage.queue_trade_action OPEN gate = v12 wave4 twin); False = live-neutral, swept per sym_side
     )
@@ -4534,7 +4534,7 @@ class TradierConfig:
     WT15M_AGAINST_FORCE_HEDGE_ENABLED: bool = False
     WT15M_AGAINST_PENALTY: float = -5.0
     WT15_CROSS_DC_BASIS_GATE_ENABLED: bool = True
-    WT_15M_CROSS_ENTRY_ENABLED: bool = False
+    WT_15M_CROSS_ENTRY_ENABLED: bool = True
     WT_15M_SAME_HEDGE_COOLDOWN_SEC: int = 1800
     WT_15M_SAME_HEDGE_DAILY_CAP: int = 2
     WT_15M_SAME_HEDGE_ENABLED: bool = False

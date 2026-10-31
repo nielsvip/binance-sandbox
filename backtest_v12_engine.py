@@ -4279,6 +4279,18 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         _parity_claim_gate.try_claim = lambda key, now=None: _claim_original(key, _sim_ts[0] if now is None else now)
         _ownership_report = configure_replay_ownership(ez_manage._ezm_base_config, "crypto", ownership_owner=ez_manage)
         v8_logger.warning(f"[REPLAY_OWNERSHIP_MODE] {_ownership_report}")
+        _native_ownership_configs = [("trade_manager", trade_manager.config), ("engine", config), ("quick", getattr(ez_positions_quick, "config", None))]
+        for _owner_label, _owner_config in _native_ownership_configs:
+            if _owner_config is not None:
+                _owner_report = configure_replay_ownership(_owner_config, f"crypto:{_owner_label}")
+                v8_logger.warning(f"[REPLAY_OWNERSHIP_MODE] {_owner_report}")
+        if os.environ.get("V12_REPLAY_NATIVE_OWNERSHIP") == "1":
+            for _owner_label, _owner_config in _native_ownership_configs:
+                if _owner_config is not None:
+                    for _ownership_key in ("VEC_DICTATE_ONLY_ENABLED", "VEC_DRIVEN_ENABLED", "PARITY_VEC_EXACT_MODE", "VEC_BACKSTOP_SYNC_ENABLED", "VEC_BACKSTOP_ENABLED"):
+                        if bool(getattr(_owner_config, _ownership_key, False)):
+                            raise RuntimeError(f"Native replay still vector-owned: {_owner_label}.{_ownership_key}")
+
         # ez_manage._PROCESS_START_TS is the WALL time at import while ez_manage.time is the SIM clock, so
         # (time.time() - _PROCESS_START_TS) was negative for the whole replay and the COLD_START_FLOOD_GUARD window never
         # ended (BTCUSDC_SHORT "2464984s left"): every vec-exact open lost its MTF bypass. A live process is warm after

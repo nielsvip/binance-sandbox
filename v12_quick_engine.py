@@ -4827,7 +4827,7 @@ class QuickConfig:
     REGIME_TRENDING_REENTRY_SIZE_MULT: float = 2.0
     REGIME_TRENDING_SLOT_RESERVE_PCT: float = 0.4
     REGIME_TRENDING_WT_EXIT_VEL: float = -12.0
-    REGIME_TRENDING_WT_REDUCE_FRAC_LOW: float = 0.2
+    REGIME_TRENDING_WT_REDUCE_FRAC_LOW: float = 0.05
     REGIME_TRENDING_WT_REDUCE_FRAC_MED: float = 0.15
     RSI_EXIT_LONG_TRADIER: float = 85.0
     RSI_EXIT_SHORT_TRADIER: float = 15.0
@@ -5616,6 +5616,12 @@ class QuickConfig:
         self.WT_15M_BOUNCE_HIGH_1H_GT_PREV = False
         self.WT_15M_BOUNCE_LOW_1H_GT_PREV = False
         self.REENTRY_AUGMENT_REQUIRE_NO_PRIOR_AUGMENT = True  # config_tradier value; STOCKS_SHORT bolds True, STOCKS_LONG has no bold row
+        # parity-sync 20261031: stocks-uniform bold differs from the raw (crypto) value — §67 overlay
+        self.WT_CROSS_EXIT_APPLIES_TO_LOSERS = True
+        self.EMA_9_21_FILTER_FILTER_TF = '1h'
+        self.EMA_BLANKET_FILTER_FILTER_TF = '15m'
+        self.NEWBORN_LOSS_KILL_FILTER_TF = '4h'
+        self.WT_15M_CROSS_ENTRY_ENABLED = True
 
     ABLATION_DISABLE_AGGRESSIVE_HEDGE: bool = False  # auto-wired 625
     ABLATION_DISABLE_AUGMENTATION: bool = False  # auto-wired 625
@@ -10306,7 +10312,7 @@ class QuickConfig:
     WT_COMPOSITE_SCORING_ENABLED: bool = True
     WT_CROSSUNDER_15M_SHORT: bool = True
     WT_CROSSUNDER_FINAL_COOLDOWN_S: float = 0.0
-    WT_CROSS_EXIT_APPLIES_TO_LOSERS: bool = True
+    WT_CROSS_EXIT_APPLIES_TO_LOSERS: bool = False
     WT_DC_DIRECT_COMBINED_STOCH_GATE: float = 100.0
     WT_DC_DIRECT_COMPLETED_ENABLED: bool = False
     WT_DC_DIRECT_HTF_ALIGN_REQUIRED: int = 0
@@ -15791,7 +15797,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _iso_force_masters(
         cfg
     )  # [N1/004] isolated-family test mode forces the family master(s) ON (no-op when ENTRY_ISOLATE_FAMILY is empty)
-    entry_sig = _setup_memo("entry_sig", compute_entry_signals, cfg, npz, n, is_long, sym, lambda: compute_entry_signals(npz, n, is_long, cfg, sym))
+    entry_sig = _setup_memo(f"entry_sig:{sym}", compute_entry_signals, cfg, npz, n, is_long, lambda: compute_entry_signals(npz, n, is_long, cfg, sym))
     # 2026-10-21 BTC dedicated entry override (crypto; default OFF = baseline untouched).
     # Live: ez_positions_quick.py:29364-29378 (_btc_dedicated_active gate) + :3441 head-gate
     # on ENABLE_BTC_DEDICATED_ENTRY. Vec has no account leg: scope = switch ON + sym in

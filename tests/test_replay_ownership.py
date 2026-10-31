@@ -92,3 +92,24 @@ def test_global_and_per_symbol_exact_owner_are_scoped_without_altering_risk(monk
         asyncio.run(simulate())
     assert owner._vec_exact_mode_on is probe and owner._psym_get is resolver
     assert config.PARITY_VEC_EXACT_MODE is True
+
+
+def test_per_symbol_proxy_layer_and_distinct_manager_config_release_only_ownership(monkeypatch):
+    monkeypatch.setenv("V12_REPLAY_NATIVE_OWNERSHIP", "1")
+    base = SimpleNamespace(PARITY_VEC_EXACT_MODE=True, VEC_BACKSTOP_SYNC_ENABLED=True)
+    manager = SimpleNamespace(PARITY_VEC_EXACT_MODE=True, VEC_BACKSTOP_SYNC_ENABLED=True, MIN_GAIN=4.5)
+    stored = {"PARITY_VEC_EXACT_MODE": True, "VEC_BACKSTOP_ENABLED": True, "MIN_GAIN": 4.5}
+    layer = lambda symbol, side: stored
+    owner = SimpleNamespace(_ezm_per_sym_layer=layer)
+    @replay_ownership_scope
+    async def simulate():
+        configure_replay_ownership(base, "crypto", ownership_owner=owner)
+        configure_replay_ownership(manager, "crypto:manager")
+        resolved = owner._ezm_per_sym_layer("TEST", "LONG")
+        assert not (base.PARITY_VEC_EXACT_MODE or manager.PARITY_VEC_EXACT_MODE or resolved["PARITY_VEC_EXACT_MODE"])
+        assert not manager.VEC_BACKSTOP_SYNC_ENABLED and not resolved["VEC_BACKSTOP_ENABLED"]
+        assert manager.MIN_GAIN == resolved["MIN_GAIN"] == 4.5
+        assert stored["PARITY_VEC_EXACT_MODE"] is True
+    asyncio.run(simulate())
+    assert base.PARITY_VEC_EXACT_MODE and manager.PARITY_VEC_EXACT_MODE and manager.VEC_BACKSTOP_SYNC_ENABLED
+    assert owner._ezm_per_sym_layer is layer
