@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T00:22:43Z",
+ "ts": "2026-10-31T00:27:45Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -44,8 +44,8 @@
   },
   "men": {
    "fills_6h": 33,
-   "open_positions": 8,
-   "unrealised_usd": 0.18,
+   "open_positions": 7,
+   "unrealised_usd": 0.28,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 43,
+   "fills_6h": 57,
    "open_positions": 17,
-   "unrealised_usd": 0.83,
+   "unrealised_usd": 1.11,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 6,
    "open_positions": 3,
-   "unrealised_usd": 0.09,
+   "unrealised_usd": 0.12,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 22,
    "open_positions": 8,
-   "unrealised_usd": 0.35,
+   "unrealised_usd": 0.36,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,54 +127,54 @@
     "71258"
    ],
    "starts_30m": 2,
-   "log_age_s": 45.0
+   "log_age_s": 58.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 26.0
+   "log_age_s": 40.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 32.0
   },
   "inf": {
    "pids": [
     "64156"
    ],
    "starts_30m": 1,
-   "log_age_s": 1298.0
+   "log_age_s": 1600.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": 47.0
+   "log_age_s": 3.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 19255.0
+   "log_age_s": 19557.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 20670.0
+   "log_age_s": 20972.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T00:22:44Z",
+   "ts": "2026-10-31T00:27:46Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 1298s"
+   "evidence": "ez_manage_inf.log not written for 1600s"
   }
  ],
  "alert_counts": {
@@ -231,5 +231,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.5
+ "sweep_s": 1.49
 }

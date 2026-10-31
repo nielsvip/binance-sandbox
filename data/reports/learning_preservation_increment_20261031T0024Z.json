@@ -1,0 +1,51 @@
+{
+  "created_at_utc": "2026-10-31T00:23:48.799303+00:00",
+  "scope": "Incremental S5 selective preservation; not full S5/S6 corpus verification.",
+  "wd25_identity": {
+    "device": "/dev/disk7s1",
+    "volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+    "disk_uuid": "24C21E6C-CB0F-4A51-A231-0B504069C45A",
+    "filesystem": "ExFAT",
+    "free_bytes": 3467570577408,
+    "identity_source": "diskutil info -plist /Volumes/WD25, VolumeUUID field; DiskUUID recorded separately"
+  },
+  "verified_copy_receipts": [
+    {
+      "path": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/learn_maps/verification_receipt.json",
+      "sha256": "182f245db06f773cbfd45b7c860efc511d878a4e0d9b2c8d5515d583310a62d6",
+      "bytes_total": 9319345,
+      "created_at_utc": "2026-10-31T00:16:16.807825+00:00",
+      "source_unchanged": true,
+      "destination_verified": true
+    },
+    {
+      "path": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/verification_receipt.json",
+      "sha256": "edabf09cc819d6b2302d5f49e68f2637fbbb13cc87aa5f53ef5e4527674c7885",
+      "bytes_total": 64032059,
+      "created_at_utc": "2026-10-31T00:19:48.595717+00:00",
+      "source_unchanged": true,
+      "destination_verified": true
+    },
+    {
+      "path": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/verification_receipt.json",
+      "sha256": "45c1ab651ea8f3e65262161a8d09ade5872c463a65e2ab1a44108187fe384b08",
+      "bytes_total": 53648190,
+      "created_at_utc": "2026-10-31T00:22:25.687524+00:00",
+      "source_unchanged": true,
+      "destination_verified": true
+    }
+  ],
+  "duplicate_exclusion": {
+    "source": "S5 /home/niels/v20_u4/prec/prec_s5new_20261028T001235Z_1542916.tsv.gz and its JSON receipt",
+    "existing_copy": "WD25 S6 /full_data_learn/precision/extract/",
+    "proof": "Earlier metadata audit recorded byte-identical SHA256 values: TSV.GZ 240ed7c49a5011374a7795d47682bb6732e403c59b90784c086095ad137cea77; JSON receipt d7595db84317e1ffa5674570ada13ac01648d445a0b2b52a989a50878373eceb. No redundant transfer."
+  },
+  "remaining_s5_sources": [
+    "must/A, A2, B, B2, seed_v3u3",
+    "must/hosts and other must outputs",
+    "code/, pcode/",
+    "B/tmp/events_sorted.tsv (~15,993,543,228 bytes; not hashed/copied)",
+    "other S5 learning sources not yet enumerated"
+  ],
+  "coverage_limit": "These three selective S5 copies do not establish complete preservation, accepted-model lineage, or S5/S6 retirement eligibility."
+}

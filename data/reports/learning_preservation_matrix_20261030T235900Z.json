@@ -1,14 +1,14 @@
 {
-  "audit_at_utc": "2026-10-30T23:22:36Z",
-  "coverage": "incomplete; no S5/S6 retirement criteria satisfied; S5 v20_u4 source trees, mutable E targets, and historical datasets remain unresolved.",
+  "audit_at_utc": "2026-10-31T00:23:48.799303+00:00",
+  "coverage": "incomplete; selected S5 learn maps and union_A/union_B state+receipt outputs are independently checksum-verified on WD25; S5 A/A2/B/B2/seed/code/pcode and ~16GB B/tmp remain unresolved, as do S6 mutable E targets and other historical datasets. No S5/S6 retirement criteria satisfied.",
   "external_drive_visibility": [
     {
-      "current_visibility": "physically present, currently unmounted",
+      "current_visibility": "mounted at /Volumes/WD25, ExFAT, writable; current VolumeUUID revalidated",
       "device": "/dev/disk7s1",
-      "limitations": "not currently mounted, so no fresh verification or free-space measurement",
+      "limitations": "point-in-time identity/capacity only; mount can change; use VolumeUUID (DiskUUID is a distinct identifier) before writes",
       "name": "WD25",
       "uuid": "04543668-3000-3F41-BB34-1C876F724D28",
-      "verified_content": "three S6 trees listed above; byte-verified at transfer/check time"
+      "verified_content": "prior S6 trees and A/B bundle plus selected S5 learn maps, must/union_A and must/union_B files; each new set byte-verified by per-copy receipt"
     },
     {
       "current_visibility": "mounted /Volumes/SSD2T, ExFAT, writable",
@@ -53,6 +53,12 @@
       "evidence": "current sizes/existence recorded for selected S1 stores; no independent verified copies evidenced",
       "item": "S1 ancillary stores and current host-local delta windows",
       "risk": "S1 retained; active logs are host-local by policy"
+    },
+    {
+      "estimated_logical_bytes": 15993543228,
+      "evidence": "S5 /home/niels/v20_u4/B/tmp/events_sorted.tsv metadata size only; no content hash or cross-copy comparison",
+      "item": "S5 B/tmp/events_sorted.tsv",
+      "risk": "large historical event evidence may be unique; not copied or proven duplicate"
     }
   ],
   "matrix": [
@@ -163,10 +169,28 @@
           "verified_at_utc": "2026-10-30T23:22:36Z",
           "wd25_current_state_at_verify": "mounted ExFAT, about 3.47TB free",
           "wd25_uuid": "04543668-3000-3F41-BB34-1C876F724D28"
+        },
+        {
+          "bytes": 9319345,
+          "location": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/learn_maps",
+          "source": "S5 /home/niels/v20_u4/learn/{binding_map_*.json}",
+          "verification": "receipt /Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/learn_maps/verification_receipt.json SHA256 182f245db06f773cbfd45b7c860efc511d878a4e0d9b2c8d5515d583310a62d6; four files matched source SHA256 and source unchanged"
+        },
+        {
+          "bytes": 64032059,
+          "location": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A",
+          "source": "S5 /home/niels/v20_u4/must/union_A plus union_A.out",
+          "verification": "receipt /Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/verification_receipt.json SHA256 edabf09cc819d6b2302d5f49e68f2637fbbb13cc87aa5f53ef5e4527674c7885; six files matched source SHA256, source unchanged"
+        },
+        {
+          "bytes": 53648190,
+          "location": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B",
+          "source": "S5 /home/niels/v20_u4/must/union_B plus union_B.out",
+          "verification": "receipt /Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/verification_receipt.json SHA256 45c1ab651ea8f3e65262161a8d09ade5872c463a65e2ab1a44108187fe384b08; six files matched source SHA256, source unchanged"
         }
       ],
       "preservation_rule": "Keep originals on S5/S6; do not retire either until every required unique tree is inventoried, copied and file-verified.",
-      "unresolved_source": "S5 and S6 A/B manifest files match each other, but S5 manifest-listed payload files were absent at their recorded paths; S6 A/B payloads are now independently preserved on WD25. S5 v20_u4/learn,must,code,pcode,prec and other contents still lack a complete independent copy. WD25 can later become unavailable when unmounted; verification was point-in-time."
+      "unresolved_source": "S5 and S6 A/B manifest files match each other, but S5 manifest-listed payload files were absent at their recorded paths; S6 A/B payloads are now independently preserved on WD25. S5 v20_u4/learn,must,code,pcode,prec and other contents still lack a complete independent copy. WD25 can later become unavailable when unmounted; verification was point-in-time. Additional selected S5 learn maps and union_A/B state outputs are now copied to WD25; this is partial only. Remaining S5 must/A,A2,B,B2,seed_v3u3,hosts, code, pcode, other learning sources and B/tmp/events_sorted.tsv (~15,993,543,228B; not hashed/copied) are unresolved. S5 prec archive was excluded as SHA-identical to existing WD25 S6 precision/extract copy."
     },
     {
       "current_source_locations": [
@@ -255,18 +279,18 @@
   ],
   "next_concrete_bounded_preservation_transfer": {
     "not_started": true,
+    "recommendation": "Inventory an allowlisted small S5 must/model/receipt set (A/A2/B/B2/seed_v3u3), compare exact path+hash to all verified WD25 bundles and receipts, then copy only unique entries to a fresh directory. Defer the ~16GB events_sorted.tsv until its provenance, stability, and overlap are bounded.",
     "preconditions": [
-      "revalidate WD25 UUID and capacity before any write",
-      "check active consumers and source stability",
-      "resolve exact source paths, sizes, hashes, provenance, and overlap with the already-preserved A/B model bundle and 1.652GB S6 spills tree",
+      "revalidate WD25 VolumeUUID 04543668-3000-3F41-BB34-1C876F724D28 and free capacity before write",
+      "check active source handles and source stability",
+      "exclude exact-hash duplicates already on WD25",
       "retain all S5/S6 originals"
-    ],
-    "recommendation": "Inventory an allowlisted S5 v20_u4 learn/must and source-receipt set, compare path+hash against S6/WD25 evidence, then copy only demonstrably unique artifacts to a fresh WD25 path."
+    ]
   },
   "purpose": "Consolidated manifest/receipt-backed preservation status; metadata and existing evidence only, no large copy or whole-volume scan.",
-  "source_audit": "data/reports/learning_preservation_audit_20261030T200206Z.json",
-  "source_audit_sha256": "7a32dcbe8c98a62f79cd26dffc6f1f1b9f70642bc51bed428e27f398f434fd06",
-  "source_backup": "backups/before_learning_preservation_matrix_refresh_202610302322.json",
+  "source_audit": "data/reports/learning_preservation_increment_20261031T0024Z.json",
+  "source_audit_sha256": "c5334150162a58c7224b906592132c6d62e08e24c95ad1ec43c9265c4f6f710f",
+  "source_backup": "backups/before_learning_preservation_matrix_refresh_20261031T0024.json",
   "timestamp_correction": {
     "corrected_refresh_time_utc": "2026-10-30T23:22:36Z",
     "exact_prior_creation_time": "unavailable from retained tool receipts",

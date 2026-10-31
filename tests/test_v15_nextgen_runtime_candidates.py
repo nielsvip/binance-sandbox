@@ -12,7 +12,7 @@ def test_current_runtime_field_and_template_are_both_required(tmp_path):
     template = {"tabs": {"ENTRY": {"rows": [[3, "NEW_ENABLED", "True", False], [4, "REMOVED_ENABLED", "True", False]], "yellows": ["FILTER_TF=1h"]}}}
     proposals = [{"switch": switch, "cand": "True", "filter": "FILTER_TF", "opt": option} for switch, option in (("NEW_ENABLED", "1h"), ("REMOVED_ENABLED", "1h"), ("NEW_ENABLED", "4h"))]
     result = guard.filter_current_cells(proposals, "CRYPTO_LONG", template, tmp_path, cell_eligible=lambda tab, row, switch, candidate, header: (tab, row, header) == ("ENTRY", 3, "FILTER_TF=1h"))
-    assert result["accepted"] == [proposals[0]]
+    assert result["accepted"] == [dict(proposals[0], tab="ENTRY", row=3)]
     assert "unknown_or_invalid_current_field" in result["rejected"][0]["reason"]
     assert result["rejected"][1]["reason"] == "outside_exact_current_template_or_wrong_tab"
 
@@ -62,11 +62,11 @@ def test_wrong_tab_and_row_non_yellow_are_rejected(tmp_path):
         (tmp_path / filename).write_text(f'class {name}:\n    NEW_ENABLED: bool = False\n    FILTER_TF: str = "OFF"\n')
     template = {"tabs": {"ENTRY": {"rows": [[3, "NEW_ENABLED", "True", False]], "yellows": ["FILTER_TF=1h"]}, "EXIT": {"rows": [[4, "NEW_ENABLED", "True", False]], "yellows": ["FILTER_TF=1h"]}}}
     prototype = {"switch": "NEW_ENABLED", "cand": "True", "filter": "FILTER_TF", "opt": "1h"}
-    rows = [dict(prototype, tab="WRONG"), dict(prototype, tab="EXIT"), prototype]
+    rows = [dict(prototype, tab="WRONG"), dict(prototype, tab="EXIT"), prototype, dict(prototype, tab="ENTRY", row=999)]
     callback = lambda tab, row, switch, candidate, header: tab == "ENTRY" and row == 3
     result = guard.filter_current_cells(rows, "CRYPTO_LONG", template, tmp_path, callback)
     assert not result["accepted"]
-    assert [row["reason"] for row in result["rejected"]] == ["outside_exact_current_template_or_wrong_tab", "not_an_eligible_yellow_cell_of_actual_row", "ambiguous_tab_requires_explicit_identity"]
+    assert [row["reason"] for row in result["rejected"]] == ["outside_exact_current_template_or_wrong_tab", "not_an_eligible_yellow_cell_of_actual_row", "ambiguous_tab_requires_explicit_identity", "outside_exact_current_template_or_wrong_tab"]
 
 
 def test_unverified_registry_is_not_claimed_as_protected_and_tampering_refused(tmp_path):

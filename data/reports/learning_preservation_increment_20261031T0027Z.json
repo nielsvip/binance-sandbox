@@ -1,0 +1,56 @@
+{
+  "created_at_utc": "2026-10-31T00:27:35.448052+00:00",
+  "scope": "Selective S5 evidence preserved on WD25; this is not full source-tree preservation or retirement clearance.",
+  "supersedes": [
+    "data/reports/learning_preservation_matrix_20261030T235900Z.json (prior filename retained as historical artifact; last refreshed 2026-10-31T00:24Z)",
+    "data/reports/learning_preservation_increment_20261031T0024Z.json"
+  ],
+  "wd25_identity": {
+    "device": "/dev/disk7s1",
+    "volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+    "disk_uuid": "24C21E6C-CB0F-4A51-A231-0B504069C45A",
+    "filesystem": "ExFAT",
+    "identity_source": "diskutil info -plist, VolumeUUID checked before and after transfer; DiskUUID is distinct"
+  },
+  "verified_copy_receipts": [
+    {
+      "receipt_path": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/learn_maps/verification_receipt.json",
+      "receipt_sha256": "182f245db06f773cbfd45b7c860efc511d878a4e0d9b2c8d5515d583310a62d6",
+      "bytes_total": 9319345,
+      "source_root": "/home/niels/v20_u4/learn",
+      "destination_root": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/learn_maps"
+    },
+    {
+      "receipt_path": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/verification_receipt.json",
+      "receipt_sha256": "edabf09cc819d6b2302d5f49e68f2637fbbb13cc87aa5f53ef5e4527674c7885",
+      "bytes_total": 64032059,
+      "source_root": "/home/niels/v20_u4/must/union_A plus must/union_A.out",
+      "destination_root": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A"
+    },
+    {
+      "receipt_path": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/verification_receipt.json",
+      "receipt_sha256": "45c1ab651ea8f3e65262161a8d09ade5872c463a65e2ab1a44108187fe384b08",
+      "bytes_total": 53648190,
+      "source_root": "/home/niels/v20_u4/must/union_B and must/union_B.out",
+      "destination_root": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B"
+    },
+    {
+      "receipt_path": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "receipt_sha256": "89d696eeb8608dea61c979b151b05cd4d50c23e51b8bd89ae2f838e7612d0b31",
+      "bytes_total": 51230881,
+      "source_root": "/home/niels/v20_u4/must/A2",
+      "destination_root": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2"
+    }
+  ],
+  "duplicate_exclusion": {
+    "source": "S5 /home/niels/v20_u4/prec/prec_s5new_20261028T001235Z_1542916.tsv.gz and JSON receipt",
+    "existing_copy": "WD25 S6 /full_data_learn/precision/extract/",
+    "proof": "Previously byte-identified SHA256: TSV.GZ 240ed7c49a5011374a7795d47682bb6732e403c59b90784c086095ad137cea77; JSON receipt d7595db84317e1ffa5674570ada13ac01648d445a0b2b52a989a50878373eceb."
+  },
+  "remaining_s5_sources": [
+    "must/A, B, B2, seed_v3u3 and hosts; A2 now selectively copied",
+    "code/, pcode/ and other S5 learning sources",
+    "B/tmp/events_sorted.tsv (~15,993,543,228B) metadata only; no copy or content hash"
+  ],
+  "coverage_limit": "Copies cover learn binding maps, must/union_A, must/union_B, and must/A2 selected regular files only. No full S5/S6 coverage, accepted-model lineage, or retirement eligibility established."
+}

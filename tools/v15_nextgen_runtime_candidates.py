@@ -30,16 +30,25 @@ def filter_current_cells(proposals, category, template_index, runtime_root=None,
                 header = f"{str(field).strip()}={str(option).strip()}"
                 positions = allowed.get((str(switch).strip(), str(candidate).strip(), header)) or []
                 requested_tab = row.get("tab") or row.get("sheet")
+                requested_row = row.get("row")
                 if requested_tab:
                     positions = [position for position in positions if position[0] == requested_tab]
+                if requested_row is not None:
+                    positions = [position for position in positions if str(position[1]) == str(requested_row).strip()]
                 if not positions:
                     reason = "outside_exact_current_template_or_wrong_tab"
                 elif cell_eligible is None:
                     reason = "actual_row_cell_classifier_required"
                 elif len({position[0] for position in positions}) > 1 and not requested_tab:
                     reason = "ambiguous_tab_requires_explicit_identity"
-                elif not any(cell_eligible(tab, number, str(switch).strip(), candidate, header) is True for tab, number in positions):
-                    reason = "not_an_eligible_yellow_cell_of_actual_row"
+                else:
+                    eligible = [(tab, number) for tab, number in positions if cell_eligible(tab, number, str(switch).strip(), candidate, header) is True]
+                    if not eligible:
+                        reason = "not_an_eligible_yellow_cell_of_actual_row"
+                    elif len(eligible) != 1:
+                        reason = "ambiguous_row_requires_explicit_identity"
+                    else:
+                        row["tab"], row["row"] = eligible[0]
         if reason:
             rejected.append({"proposal": row, "reason": reason})
         else:
