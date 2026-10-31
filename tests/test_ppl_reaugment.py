@@ -18,9 +18,11 @@ def _npz():
     n = 120
     close = np.empty(n)
     close[:8] = 100.0 * (1.005 ** np.arange(8))
-    close[8:] = close[7] * (0.999 ** np.arange(1, n - 7))
+    close[8] = close[7] * 1.001
+    close[9] = 104.6  # exceeds the native 4.5% generic gain-since-add tier after PPL arms
+    close[10:] = close[9] * (0.999 ** np.arange(1, n - 9))
     ts = np.arange(n, dtype=float) * 900 + 1_700_000_000.0
-    wt = np.array([5.0] * 7 + [20.0] * (n - 7))  # cross above dc (10) at bar 7
+    wt = np.array([5.0] * 9 + [20.0] * (n - 9))  # cross after PPL arms at bar 9
     return {
         "close": close,
         "close_15m": close,
@@ -28,7 +30,7 @@ def _npz():
         "timestamp_15m": ts,
         "open_15m": close,
         "high_15m": close,
-        "low_15m": close * 0.999,
+        "low_15m": close.copy(),
         "volume_15m": np.ones(n),
         "wt1_15m": wt,
         "wt2_15m": np.zeros(n),
@@ -64,6 +66,7 @@ def _run(npz, reaug, mult=1.5, trig="DC_RECLAIM"):
     cfg.PPL_REAUGMENT_ENABLED = reaug
     cfg.PPL_REAUGMENT_SIZE_MULT = mult
     cfg.PPL_REAUGMENT_TRIGGER = trig
+    cfg.AUGMENTED_DC_BREAK_ENABLED = False  # isolate this PPL trigger fixture from the unrelated LEC channel requirement
     return V.simulate_one(npz, "PROBE", True, cfg, force_initial_seed=True)
 
 
@@ -126,14 +129,14 @@ def test_reaugment_wt_cross_trigger():
 def test_reaugment_wt_slowdown_trigger():
     """WT_SLOWDOWN: wt1 hooking back up (decline decelerating) re-augments
     before any band reclaim."""
-    wt1 = np.array([0.0, 0.0, -2.0, -4.0, -3.0, -1.0] + [0.0] * 114)
+    wt1 = np.array([-5.0] * 9 + [-1.0] + [0.0] * 110)
     res = _run(_npz_wt(wt1), True, trig="WT_SLOWDOWN")
     taps = _taps(res["ledger"])
     reaugs = _reaugs(res["ledger"], "WT_SLOWDOWN")
     assert taps, "probe must tap PPL or it proves nothing"
     assert len(reaugs) == 1
     assert reaugs[0]["type"] == "AUGMENT"
-    assert reaugs[0]["bar"] == 4
+    assert reaugs[0]["bar"] == 9
     assert reaugs[0]["qty"] == taps[0]["qty"] * 1.5
 
 

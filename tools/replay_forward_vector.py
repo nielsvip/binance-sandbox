@@ -19,6 +19,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import numpy as np
 
@@ -57,6 +58,26 @@ def row_prefix(npz, stop: int, row_count: int):
 
 def _expected_closed_bar(decision_ts: int) -> int:
     return (int(decision_ts) // 900 - 1) * 900
+
+
+def _validate_stock_rth_timestamps(timestamps):
+    tz = ZoneInfo("America/New_York")
+    by_date = {}
+    for raw_ts in timestamps:
+        ts = int(raw_ts)
+        dt = datetime.fromtimestamp(ts, tz)
+        minute = dt.hour * 60 + dt.minute
+        if dt.weekday() >= 5 or dt.second or dt.microsecond or minute < 570 or minute >= 960 or dt.minute % 15:
+            raise ValueError(f"stock NPZ timestamp outside 15m RTH grid: {ts} ({dt.isoformat()})")
+        by_date.setdefault(dt.date(), []).append(ts)
+    for date, values in by_date.items():
+        if any(right - left != 900 for left, right in zip(values, values[1:])):
+            raise ValueError(f"stock NPZ has a missing/irregular intraday bar on {date}")
+
+
+def _timestamps_sha256(timestamps):
+    payload = json.dumps([int(ts) for ts in timestamps], separators=(",", ":")).encode()
+    return hashlib.sha256(payload).hexdigest()
 
 
 def _is_signal_event(event):
@@ -220,6 +241,11 @@ def _make_runtime(code_root: Path, npz_path: Path, symside: str, output_path: Pa
     if runtime_root.exists():
         raise FileExistsError(f"isolated runtime already exists: {runtime_root}")
     shutil.copytree(code_root, runtime_code)
+    for copied in (runtime_code, *runtime_code.rglob("*")):
+        if copied.is_symlink():
+            continue
+        mode = copied.stat().st_mode
+        os.chmod(copied, mode | (0o700 if copied.is_dir() else 0o200))
     symbol = symside.rsplit("_", 1)[0]
     canonical = runtime_code / "backtest_v8" / "indicators" / f"{symbol}.npz"
     canonical.parent.mkdir(parents=True, exist_ok=True)
@@ -361,7 +387,10 @@ def _parallel_state_chunk(task):
 def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
            end_ts: int, output_path: Path, code_root: Path, code_manifest: Path | None = None,
            limit: int | None = None, planner_account: str | None = None,
-           exchange_info_path: Path | None = None, state_workers: int = 1):
+           exchange_info_path: Path | None = None, state_workers: int = 1,
+           score_start_ts: int | None = None, timestamp_policy: str = "crypto_15m_regular",
+           expected_warmup_bars: int | None = None, expected_scored_bars: int | None = None,
+           expected_timestamps_sha256: str | None = None):
     active_set = json.loads(active_path.read_text())
     if str(active_set.get("sym_side", "")).upper() != symside.upper():
         raise ValueError(f"active set is for {active_set.get('sym_side')}, requested {symside}")
@@ -374,14 +403,33 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
     timestamps = np.asarray(arrays.get("timestamps", []), dtype=np.int64)
     if timestamps.ndim != 1 or len(timestamps) < 2 or np.any(np.diff(timestamps) <= 0):
         raise ValueError("NPZ timestamps must be a strictly increasing 1D vector")
-    if not np.all(np.diff(timestamps) == 900):
-        raise ValueError("frozen input is not a complete, regular 15m sequence")
+    if timestamp_policy not in {"crypto_15m_regular", "stock_rth"}:
+        raise ValueError(f"unsupported timestamp policy {timestamp_policy!r}")
+    if timestamp_policy == "crypto_15m_regular" and not np.all(np.diff(timestamps) == 900):
+        raise ValueError("frozen crypto input is not a complete, regular 15m sequence")
+    if timestamp_policy == "stock_rth":
+        _validate_stock_rth_timestamps(timestamps)
     selected = np.flatnonzero((timestamps > int(start_ts)) & (timestamps <= int(end_ts)))
-    expected_rows = int((int(end_ts) - int(start_ts)) // 900)
-    if len(selected) != expected_rows or np.any(np.diff(timestamps[selected]) != 900):
-        raise ValueError(f"requested interval expected {expected_rows} rows, found {len(selected)}")
+    if timestamp_policy == "crypto_15m_regular":
+        expected_rows = int((int(end_ts) - int(start_ts)) // 900)
+        if len(selected) != expected_rows or np.any(np.diff(timestamps[selected]) != 900):
+            raise ValueError(f"requested interval expected {expected_rows} rows, found {len(selected)}")
+    score_start_ts = int(start_ts if score_start_ts is None else score_start_ts)
+    if not int(start_ts) <= score_start_ts < int(end_ts) or not np.any(timestamps == score_start_ts):
+        raise ValueError("score-start timestamp must be present and within [start, end)")
+    if timestamp_policy == "stock_rth" and (expected_warmup_bars is None or expected_scored_bars is None):
+        raise ValueError("stock_rth replay requires frozen expected warmup and scored row counts")
     if limit is not None:
         selected = selected[: max(0, int(limit))]
+    actual_warmup_rows = int(np.count_nonzero(timestamps[selected] <= score_start_ts))
+    actual_scored_rows = int(np.count_nonzero(timestamps[selected] > score_start_ts))
+    expected_warmup_rows = actual_warmup_rows if expected_warmup_bars is None or limit is not None else int(expected_warmup_bars)
+    expected_scored_rows = actual_scored_rows if expected_scored_bars is None or limit is not None else int(expected_scored_bars)
+    if (expected_warmup_rows, expected_scored_rows) != (actual_warmup_rows, actual_scored_rows):
+        raise ValueError(f"frozen warmup/scored counts expected {expected_warmup_rows}/{expected_scored_rows}, found {actual_warmup_rows}/{actual_scored_rows}")
+    selected_timestamps_sha256 = _timestamps_sha256(timestamps[selected])
+    if expected_timestamps_sha256 and selected_timestamps_sha256 != expected_timestamps_sha256:
+        raise ValueError("selected NPZ timestamp hash differs from frozen expectation")
     state_workers = max(1, min(int(state_workers), len(selected) or 1))
 
     source_hashes = _source_hashes(code_root)
@@ -455,6 +503,7 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
     )
     counts = {name: 0 for name in sorted(_ACTION_TYPES)}
     state_rows = 0
+    phase_counts = {"warmup": 0, "scored": 0}
     invalid_counts = {}
     try:
         with output_path.open("w", encoding="utf-8") as stream:
@@ -488,6 +537,11 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 "source_hashes": source_hashes,
                 "interval_start_exclusive": _iso(start_ts),
                 "interval_end_inclusive": _iso(end_ts),
+                "score_start_exclusive": _iso(score_start_ts),
+                "timestamp_policy": timestamp_policy,
+                "selected_timestamps_sha256": selected_timestamps_sha256,
+                "warmup_bar_count_expected": expected_warmup_rows,
+                "scored_bar_count_expected": expected_scored_rows,
                 "bar_count": len(selected),
                 "state_workers": state_workers,
                 "state_worker_semantics": "independent causal state_for prefixes; output sorted by bar; planner and simulated fills remain serial" if state_workers > 1 else "serial causal state_for prefixes",
@@ -504,11 +558,15 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
             }
             stream.write(json.dumps(header, sort_keys=True, default=str) + "\n")
             cutoff_index = int(np.searchsorted(timestamps, int(start_ts), side="left"))
-            if cutoff_index >= len(timestamps) or int(timestamps[cutoff_index]) != int(start_ts):
-                raise ValueError("cutoff timestamp must be present in the frozen NPZ")
+            if cutoff_index < len(timestamps) and int(timestamps[cutoff_index]) == int(start_ts):
+                cutoff_bar_ts = int(start_ts)
+            elif timestamp_policy == "stock_rth" and cutoff_index == 0 and int(start_ts) + 900 == int(timestamps[0]):
+                cutoff_bar_ts = int(timestamps[0])
+            else:
+                raise ValueError("initial cutoff must be present in the NPZ or immediately precede first stock RTH bar")
             cutoff_prefix = row_prefix(arrays, cutoff_index, len(timestamps))
             original["npz_holder"]["npz"] = cutoff_prefix
-            cutoff_decision_ts = int(start_ts) + 900
+            cutoff_decision_ts = cutoff_bar_ts + 900
             original["npz_holder"]["decision_ts"] = cutoff_decision_ts
             forward_state.time = _ReplayClock(cutoff_decision_ts, real_time_module)
             cutoff_state = forward_state.state_for(symside, window_days=30)
@@ -518,8 +576,8 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
             stream.write(json.dumps({
                 "record": "initial_lifecycle",
                 "sym_side": symside.upper(),
-                "cutoff_npz_open_ts": int(start_ts),
-                "cutoff_npz_open_utc": _iso(start_ts),
+                "cutoff_npz_open_ts": cutoff_bar_ts,
+                "cutoff_npz_open_utc": _iso(cutoff_bar_ts),
                 "cutoff_decision_clock_ts": cutoff_decision_ts,
                 "cutoff_decision_clock_utc": _iso(cutoff_decision_ts),
                 "state_for_wall_ts": cutoff_state.get("ts"),
@@ -573,6 +631,8 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 if int(result.get("npz_tail") or 0) not in (0, bar_ts):
                     raise AssertionError(f"state_for consumed tail {result.get('npz_tail')} beyond selected bar {bar_ts}")
                 state_rows += 1
+                phase = "warmup" if bar_ts <= score_start_ts else "scored"
+                phase_counts[phase] += 1
                 if result.get("ok") is not True:
                     _why = str(result.get("reason") or "unspecified_state_for_failure")
                     invalid_counts[_why] = invalid_counts.get(_why, 0) + 1
@@ -580,6 +640,7 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 market_price = float(prefix["close"][-1])
                 state_record = {
                     "record": "state",
+                    "phase": phase,
                     "planner_state": planner_state,
                     "market_price": market_price,
                     "row": row_number,
@@ -606,6 +667,7 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                     counts[action] += 1
                     stream.write(json.dumps({
                         "record": "action",
+                        "phase": phase,
                         "sym_side": symside.upper(),
                         "npz_open_ts": bar_ts,
                         "npz_open_utc": _iso(bar_ts),
@@ -640,7 +702,7 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                         fill_qty, size_reason = binance_sizer.size(order, held, market_price)
                         convergence = order_type == "OPEN" and "OPEN" not in current_model_types
                         stream.write(json.dumps({
-                            "record": "planner_order", "npz_open_ts": bar_ts,
+                            "record": "planner_order", "phase": phase, "npz_open_ts": bar_ts,
                             "decision_clock_ts": decision_ts, "account": planner_account,
                             "action": order_type,
                             "classification": "convergence" if convergence else "same_bar_model_action",
@@ -667,17 +729,25 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                         elif order_type == "CLOSE":
                             broker_position = {}
                         stream.write(json.dumps({
-                            "record": "planner_fill", "npz_open_ts": bar_ts,
+                            "record": "planner_fill", "phase": phase, "npz_open_ts": bar_ts,
                             "decision_clock_ts": decision_ts, "account": planner_account,
                             "action": order_type, "order_key": order["key"],
                             "filled_qty": float(fill_qty), "broker_qty_after": float((broker_position or {}).get("qty") or 0.0),
                             "broker_price_after": (broker_position or {}).get("price"),
                             "done_key_count": len(done_keys), "qty_is_diagnostic_only": True,
                         }, sort_keys=True, default=str) + "\n")
+            coverage_ok = (state_rows == len(selected)
+                           and phase_counts["warmup"] == expected_warmup_rows
+                           and phase_counts["scored"] == expected_scored_rows)
+            if not coverage_ok:
+                raise AssertionError(f"replay coverage mismatch: states={state_rows}/{len(selected)}, phases={phase_counts}, expected warmup/scored={expected_warmup_rows}/{expected_scored_rows}")
             trailer = {
                 "record": "replay_summary",
                 "sym_side": symside.upper(),
                 "states_evaluated": state_rows,
+                "phase_counts": phase_counts,
+                "expected_phase_counts": {"warmup": expected_warmup_rows, "scored": expected_scored_rows},
+                "coverage_ok": coverage_ok,
                 "action_counts": counts,
                 "planner_account": planner_account,
                 "planner_final_broker_position": broker_position if planner_account else None,
@@ -698,8 +768,9 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 os.environ.pop(name, None)
             else:
                 os.environ[name] = value
-    return {"states_evaluated": state_rows, "action_counts": counts,
-            "invalid_state_counts": invalid_counts, "output": str(output_path),
+    return {"states_evaluated": state_rows, "phase_counts": phase_counts,
+            "coverage_ok": state_rows == len(selected) and phase_counts == {"warmup": expected_warmup_rows, "scored": expected_scored_rows},
+            "action_counts": counts, "invalid_state_counts": invalid_counts, "output": str(output_path),
             "runtime_root": str(runtime_root)}
 
 
@@ -710,6 +781,11 @@ def main(argv=None):
     parser.add_argument("--sym-side", required=True)
     parser.add_argument("--start-ts", required=True, type=int, help="exclusive bar-open timestamp")
     parser.add_argument("--end-ts", required=True, type=int, help="inclusive bar-open timestamp")
+    parser.add_argument("--score-start-ts", type=int, help="exclusive warmup/scored boundary; bars through this timestamp are warmup")
+    parser.add_argument("--timestamp-policy", choices=("crypto_15m_regular", "stock_rth"), default="crypto_15m_regular")
+    parser.add_argument("--expected-warmup-bars", type=int)
+    parser.add_argument("--expected-scored-bars", type=int)
+    parser.add_argument("--expected-timestamps-sha256")
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--code-root", required=True, type=Path)
     parser.add_argument("--code-manifest", type=Path)
@@ -722,6 +798,9 @@ def main(argv=None):
         args.npz, args.active_set, args.sym_side, args.start_ts, args.end_ts,
         args.out, args.code_root.resolve(), args.code_manifest, args.limit,
         args.planner_account, args.exchange_info_json, args.state_workers,
+        args.score_start_ts, args.timestamp_policy,
+        args.expected_warmup_bars, args.expected_scored_bars,
+        args.expected_timestamps_sha256,
     ), sort_keys=True))
 
 

@@ -1,6 +1,6 @@
 {
   "acceptance_contract": "Exact entry/augment/reduce/close action bars; quantities may differ. Focused reachability is not full rolling replay acceptance.",
-  "as_of_utc": "2026-10-31T05:17:40+00:00",
+  "as_of_utc": "2026-10-31T05:33:52+00:00",
   "decision_rule": "A vector block or score weight is not treated as full-path parity unless producer predicate, eligibility, downstream gate, and execution reachability are all evidenced.",
   "paths": [
     {
@@ -289,6 +289,37 @@
       "proof": "tests/test_augment_gain_gate_all_sources.py proves actual simulate_one AT_LOSS HL source no longer books an AUGMENT at -1%; tests/test_wt_winner_pullback_augment.py passes both side winner fixtures and shared gate cases (18 combined passed).",
       "limitations": "The unified choke point is applied to all source classes, but only AT_LOSS ledger refusal and WT winner/pullback families currently have source-specific behavior fixtures. Add direct firing-and-block/allow cases for HAIKU, DD_BOUNCE, STOCK_LIVE/N4, QUICK_OPEN_STRONG, ladder/signal, and FAST_RISER before claiming each family individually verified. The new gate test does not validate all native data-producer inputs.",
       "status": "SHARED VECTOR GATE NOW COVERS ALL `_uag_src_ok` CRYPTO AUGMENT SOURCES. Individual source reachability fixtures remain pending; no source-specific bypass remains at this gate."
+    },
+    {
+      "path": "PPL_REAUGMENT source and execute_now gate chain",
+      "native": "ez_manage.py:60112-60204 emits PPL_REAUGMENT_{DC_RECLAIM|WT_CROSS|WT_SLOWDOWN} through trade_manager.execute_now(action=QUICK_AUGMENT); it does not traverse execute_trade_action's separate 27531+ gain gate.",
+      "engine": "v12_quick_engine.py:23082-23130 applies the PPL source-specific gate before booking the PPL_REAUGMENT event.",
+      "predicate": "Paired trigger arms after PPL partial REDUCE; before booking, mirror native effective PPL gain and losing-position/augment-depth pullback gates, projected-entry nonnegative check, typed universal gain-since-last-add gate, raw position-gain <3% block, short SMA200 size/overbought gate, and later AUGMENT_GUARD over START_POSITION_SIZE.",
+      "native_gate_chain": [
+        "ez_manage.py:36520-36652 LOSING_POSITION_HARD_BLOCK, PULLBACK_AUGMENT exception, augment-depth gate, and projected-entry gate; effective_gain_pct doubles gain only after PPL fired and only when EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED.",
+        "ez_manage.py:37203-37275 UNIVERSAL_AUGMENT_GAIN_GATE; computes gain since last augmentation price or entry price; applies live_unw_gates.augment_tier_min_gain (PPL_REAUGMENT_WT_CROSS is typed bounce; DC_RECLAIM and WT_SLOWDOWN are generic), with PULLBACK_AUGMENT exception.",
+        "ez_manage.py:38843-38857 raw realgain <3% guard; only reentry or vector-provenance exemptions pass, neither applies to native EPQ PPL source.",
+        "ez_manage.py:38858-38878 SHORT_SMA_GATE for short augment when current price is above SMA200_15m and position value >= per-sym SPS; pass only through the configured extreme-overbought RSI4h/RSI_D/BB%B override.",
+        "ez_manage.py:39643-39652 AUGMENT_GUARD requires MIN_GAIN when current position value exceeds per-sym START_POSITION_SIZE."
+      ],
+      "proof": "tests/test_ppl_reaugment.py, tests/test_ppl_reaugment_execute_now_gates.py, and tests/test_ppl_reaugment_short_sma.py (15 passed): extracted actual native raw-3% branch; losing/augment-depth pullback conditions; projected-entry check; typed WT_CROSS UAGAIN tier; short SMA/overbought thresholds; actual simulate_one PPL trigger action bar 9 with configured gain tiers (2.8% blocked; >4.5% trigger accepted; typed 4% WT_CROSS threshold blocks).",
+      "status": "Implemented for the enumerated inner gain predicates. This is not full execute_now action parity: other side-list, provenance, rate-limit, freshness, and exchange-order layers remain account/runtime concerns.",
+      "switches": [
+        "PPL_REAUGMENT_ENABLED",
+        "PPL_REAUGMENT_TRIGGER",
+        "PPL_REAUGMENT_SIZE_MULT",
+        "EZ_REENTRY_PPL_DOUBLE_GAIN_ENABLED",
+        "MIN_GAIN",
+        "PULLBACK_AUGMENT_ENABLED",
+        "PULLBACK_AUGMENT_REVERSAL_MIN",
+        "UNIVERSAL_AUGMENT_GAIN_GATE_ENABLED",
+        "AUGMENT_MIN_GAIN_PCT",
+        "MIN_GAIN_TO_BUY_AGGRESSIVELY",
+        "AUGMENT_BOUNCE_MIN_GAIN_PCT",
+        "START_POSITION_SIZE"
+      ],
+      "templates": "Existing PPL_REAUGMENT rows remain the source for enable/trigger/size; no template edits made. The gate uses existing gain and PPL settings; no new switches introduced.",
+      "limitations": "Vector sim models standalone native PPL source with vector_exempt=False. Full portfolio/account execution preconditions and exchange-side checks are not represented in this single-symbol ledger. Other native execute_now infrastructure gates remain outside this PPL predicate module."
     }
   ],
   "recent_verification": {
@@ -299,8 +330,13 @@
     "paired15m_live_entry_engine_and_augment_gate": {
       "at_utc": "2026-10-31T05:17:40+00:00",
       "result": "Paired 15m scalar/vector input comparison: 40,571 AAPL bars across crypto/Tradier, LONG/SHORT, LTF on/off yielded zero component score/fire mismatches. Actual WT_DC compute_entry_signals mask toggles at same-bar AAPL index 103 with a 5.6 score boost. simulate_one ledger action bars did not differ on that diagnostic. Shared augment gain gate actual ledger regression blocked -1% AT_LOSS HL add; remaining action/source-family limitations recorded on path entries."
+    },
+    "ppl_reaugment_gates": {
+      "at_utc": "2026-10-31T05:33:52+00:00",
+      "result": "15 focused tests passed across the PPL gate, PPL trigger, and short-SMA suites; v12 compiled and relocked; no production sync, orders, or service restarts.",
+      "backup": "backups/before_ppl_reaugment_short_sma_wire_v12_quick_engine_20261031T053339Z_1793424819443137000.py"
     }
   },
-  "review_updated_at": "2026-10-31T05:17:40+00:00",
+  "review_updated_at": "2026-10-31T05:33:52+00:00",
   "scope": "ez_positions_quick.py flat OPEN, explicit REENTRY, and vectorizable non-hedge/non-scalp exit paths reviewed in this pass"
 }

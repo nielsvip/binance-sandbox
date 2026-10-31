@@ -347,7 +347,7 @@
       "status": "Disclosed by agent; no retroactive backup claimed"
     }
   ],
-  "checkpoint_updated_at": "2026-10-31T05:09:15.869220+00:00",
+  "checkpoint_updated_at": "2026-10-31T05:32:05.089129+00:00",
   "replay_clock": {
     "signal_clock": "NPZ bar-open timestamp",
     "decision_clock": "bar-open +900seconds when V12_COMPLETED_BAR_SECONDS=900",
@@ -401,7 +401,21 @@
       "missing": 0,
       "different": 0
     },
-    "archive_sha256": "c9a96837f3923dbcf37bbc22b4ff13bb44a0462efa41a853b1a11e08c29b6a31"
+    "archive_sha256": "c9a96837f3923dbcf37bbc22b4ff13bb44a0462efa41a853b1a11e08c29b6a31",
+    "confirmed_deleter": {
+      "script": "tools/s2_disk_guard.sh",
+      "cron": "S1 every15minutes",
+      "evidence": "/home/niels/logs/s1_disk_guard.log records C:tmp>3d deletion of candidate11 cat_side_defaults.py at05:05:41 and per_sym_live_set.py at05:06:24",
+      "cause": "Copied sources retain old mtime; imports do not retain open file descriptors",
+      "fix": "CategoryC requires both mtime and ctime older3days; durable replay roots outside/tmp",
+      "source_sha256": "f70858edf34ad2c38f1f594b3fd54b8d956930c60f3618bc6bc3661dd8817be8",
+      "deployed": [
+        "S1 sandbox",
+        "S5 sandbox",
+        "S2 sandbox"
+      ],
+      "validation": "bash -n and real find selection regression test passed"
+    }
   },
   "native_replay_mode": {
     "old_crypto_fixture": "Implicitly forced VEC_DICTATE_ONLY_ENABLED=False; native-enabled candidate diagnostic, not current vector-only authority",
@@ -441,7 +455,7 @@
     "wt_comparator_account": "30 passed; subsequent review found missing WT shared gain gate, correction in progress"
   },
   "candidate11": {
-    "status": "FROZEN_DIAGNOSTIC_RUNS_STARTING",
+    "status": "INVALID_SOURCE_DELETED_RUNTIME_IMPORT_ERRORS_RUNS_STOPPED",
     "npz_sha256": "a9324ed1f07621a2b1f724166d654b9c137646742a503d62b924595109c934d8",
     "last_bar_ts": 1793414700,
     "last_bar_utc": "2026-10-31T02:45:00Z",
@@ -450,7 +464,7 @@
     "settings_scope": "retrospective frozen current settings, not historical as-traded",
     "source_content_manifest_sha256": "d5ccc041612b8e29812f66aac105b2e1f9d89386e9ab00cfce24cc7e2acd903c",
     "source_manifest_entries": 3634,
-    "source_verification": "ez_paths reports all original non-bytecode file hashes match; full-tree pyc/runtime outputs differ and are excluded explicitly"
+    "source_verification": "Content initially verified; later cleanup deleted source files during replay. No acceptance evidence."
   },
   "disk_recovery": {
     "manifest": "backups/parity_backup_offload_manifest.jsonl",
@@ -479,5 +493,29 @@
     "different_vector_state_hashes": 0,
     "different_held_quantities": 28,
     "verdict": "NOT_TRADE_PARITY_PROOF; no matched current-common-key fills in sampled journal; historical admission coverage unavailable"
+  },
+  "durable_replay_source": {
+    "path": "/home/niels/parity_runs/native_crypto_20261031T0518Z/code",
+    "manifest_sha256": "7e9cd2eb13a9d7f03421c34bc238b64445a2f81ceadf8e003dced8dcfef84597",
+    "entries": 3604,
+    "S1_root_independent_verification": "sha256sum -c passed",
+    "S5_agent_verification": "sha256sum -c passed",
+    "scope": "Frozen candidate before subsequent PPL/ADX changes; not total parity proof"
+  },
+  "rolling_replay_correction": {
+    "crypto_total": 2880,
+    "crypto_warmup": 1536,
+    "crypto_scored": 1344,
+    "start_exclusive": 1790822700,
+    "score_start_exclusive": 1792205100,
+    "end_inclusive": 1793414700,
+    "status": "Incorrect scored-only stream stopped; full prefix and reusable planner state being implemented",
+    "stocks": "1515 actual canonicalRTHrows:1255warmup+260scored; contiguouscalendar assumption being corrected"
+  },
+  "adx_regime_exception": {
+    "status": "LOCAL_PREDICATE_TESTED_FULL_REPLAY_PENDING",
+    "cause": "Vector blanket lowADX veto omitted native k_focus extreme exception; secondary hardgate used baseTF rather than configured TF_FOCUS",
+    "fix": "Both vector consumers use configured ADX_TF and TF_FOCUS with strict native thresholds; no native diagnostic change",
+    "tests": "9 passed against AST-extracted actual AdvancedSignalRater branch including long/short/boundary/NaN/missing/disabled cases"
   }
 }

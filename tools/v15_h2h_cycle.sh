@@ -91,10 +91,23 @@ $SSH "$HOST" "cd ~/binance-sandbox && /home/niels/.conda/envs/binance_env_mac/bi
 rsync -az --timeout=300 -e "$SSH" "$HOST:$OUT" "$OUT" >> "$LOG" 2>&1 || { say "decision pull failed"; exit 1; }
 
 if [ "${V15_H2H_APPLY:-0}" = "1" ]; then
-  # 2026-10-27: written zstd-compressed (1.46 GB -> ~0.35 GB, lossless). Raw hourly copies filled the Mac to 249 MB free
-  # faster than backup_retention_prune could archive them. Raw cp stays the fallback if zstd is missing.
+  # 2026-10-27: written zstd-compressed (1.46 GB -> ~0.35 GB, lossless). Raw hourly copies filled the Mac to 249 MB free.
+  # USER 2026-10-31 "we need ALL those tools to go to 5T directly wihout putting in danger mac integrity ever again":
+  # the backup goes to the 5 TB drive (tools/offload_target.py) or not at all — never the Mac disk — and h2h NEVER
+  # applies to the live 30D store without a VERIFIED backup. Before this, `zstd ... 2>/dev/null || cp ... 2>/dev/null`
+  # both failed silently on a full disk and the apply ran anyway, i.e. the 30D store could change with no way back.
+  BKDIR="$("$PY" tools/offload_target.py --subdir h2h --need-mb 1600)" || {
+    say "REFUSED apply: no healthy backup target on the 5T drive ($("$PY" tools/offload_target.py --subdir h2h --json 2>/dev/null)) — live 30D store untouched"
+    exit 1
+  }
+  BK="$BKDIR/before_h2h_${VENUE}_${TS}.db.zst"
   _ZSTD="$(command -v zstd || echo /opt/homebrew/bin/zstd)"
-  "$_ZSTD" -q -3 -T4 data/hourly_reconfig/per_sym_store.db -o "backups/before_h2h_${VENUE}_${TS}.db.zst" 2>/dev/null || cp -p data/hourly_reconfig/per_sym_store.db "backups/before_h2h_${VENUE}_${TS}.db" 2>/dev/null
+  _TO="$(command -v timeout || echo /opt/homebrew/bin/timeout)"
+  if ! "$_TO" -k 30 900 "$_ZSTD" -q -3 -T4 data/hourly_reconfig/per_sym_store.db -o "$BK" || ! "$_TO" -k 30 900 "$_ZSTD" -q -t "$BK"; then
+    say "REFUSED apply: backup $BK failed or did not verify — live 30D store untouched"
+    exit 1
+  fi
+  say "backup verified on the 5T drive: $BK"
   "$PY" tools/v15_golive_headtohead.py apply --in "$OUT" --apply 2>&1 | tail -30 | tee -a "$LOG"
 else
   "$PY" tools/v15_golive_headtohead.py apply --in "$OUT" 2>&1 | tail -30 | tee -a "$LOG"

@@ -16176,7 +16176,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             from vec_decisions.net_exit_gate import vector_exit_event_allowed as _exit_allowed
             _configured_fee_pct = 0.0 if is_tradier else max(0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0))
             _additional_fee_pct = max(0.0, _configured_fee_pct - float(commission_pct or 0.0))
-            _accepted = _exit_allowed(event, pos, _bar_pos_snapshot, 0.25, is_long, half_fee, _additional_fee_pct)
+            _accepted = _exit_allowed(event, pos, _bar_pos_snapshot, 0.25, is_long, half_fee, _additional_fee_pct, require_positive_mark_gain=is_tradier)
         except Exception:
             _accepted = False
         if not _accepted:
@@ -17766,20 +17766,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 )  # [UNWV/002] live UNW-L twin at the execute_now fresh-OPEN chokepoint also gates MOMENTUM_WATCHDOG opens (crypto)
     except Exception:
         pass
-    try:  # [N1/004] crypto rate() ADX REGIME hard block (ez_positions_quick.py 2705-2712): adx_{ADX_TF} < ADX_RANGING_THRESHOLD -> WAIT. Master ADX_REGIME_FILTER_ENABLED (crypto default False => inert).
-        # The live k_focus extreme exception uses TF_FOCUS=3m: 3m is IGNORED by user order, the exception is NOT modelled (=> blocks slightly more than live when k_3m is extreme).
-        if (
-            str(getattr(cfg, "MODE", "crypto")) != "tradier"
-            and bool(getattr(cfg, "ADX_REGIME_FILTER_ENABLED", False))
-            and not bool(getattr(cfg, "REGIME_DETECTION_ENABLED", False))
-        ):
-            _adx_blk = _safe(
-                npz, "adx_" + str(getattr(cfg, "ADX_TF", "1h") or "1h"), n, 50.0
-            ) < float(getattr(cfg, "ADX_RANGING_THRESHOLD", 20.0))
-            entry_sig = entry_sig & ~_adx_blk
-            augment_sig = augment_sig & ~_adx_blk
-    except Exception:
-        pass
+    if str(getattr(cfg, "MODE", "crypto")) != "tradier":
+        from vec_decisions.adx_regime_gate import block_mask as _adx_regime_block
+        _adx_blk = _adx_regime_block(npz, n, is_long, cfg, _safe)
+        entry_sig = entry_sig & ~_adx_blk
+        augment_sig = augment_sig & ~_adx_blk
     _rag_pass = None
     if (
         _rag_on
@@ -23094,13 +23085,59 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _ppl_effective_gain = _ppl_gate.effective_gain(
                     cfg, _ppl_raw_gain, bool(pos.get("_ppl_armed", 0))
                 )
-                _ppl_gate_ok, _ppl_gate_reason = _ppl_gate.allows_reaugment(
+                _ppl_qty_now = abs(float(pos.get("qty", 0.0)))
+                _ppl_peak = float(pos.get("peak_pnl_pct", 0.0))
+                _ppl_initial_qty = abs(float(pos.get("entry_qty", 0.0)))
+                _ppl_gate_ok, _ppl_gate_reason = _ppl_gate.allows_losing_position_increase(
                     cfg,
-                    _ppl_raw_gain,
                     _ppl_effective_gain,
-                    float(pos.get("max_gain", 0.0)),
-                    float(pos.get("qty", 0.0)),
+                    _ppl_peak,
+                    _ppl_qty_now,
+                    _ppl_initial_qty,
                 )
+                _ppl_gate_ok = _ppl_gate_ok and _ppl_gate.projected_entry_nonnegative(
+                    is_long,
+                    float(pos.get("avg_price", pos.get("entry_price", 0.0))),
+                    _ppl_qty_now,
+                    _reaug_qty,
+                    float(px),
+                )
+                _ppl_last_aug_px = float(pos.get("last_aug_px", 0.0) or 0.0)
+                if _ppl_last_aug_px <= 0.0:
+                    _ppl_last_aug_px = float(pos.get("entry_price", pos.get("avg_price", 0.0)))
+                _ppl_reason = "PPL_REAUGMENT_" + _reaug_trig_name
+                if _ppl_gate_ok:
+                    _ppl_gate_ok = _ppl_gate.passes_universal_gain_since_add(
+                        cfg,
+                        is_long,
+                        float(px),
+                        _ppl_last_aug_px,
+                        _ppl_raw_gain,
+                        _ppl_peak,
+                        _ppl_reason,
+                    )
+                _ppl_position_value = _ppl_qty_now * float(px)
+                if _ppl_gate_ok:
+                    _ppl_gate_ok = _ppl_gate.passes_raw_three_percent_gate(
+                        _ppl_raw_gain, _ppl_position_value
+                    )
+                _ppl_start_size = float(getattr(cfg, "START_POSITION_SIZE", 45.0))
+                if _ppl_gate_ok and not is_long:
+                    _ppl_gate_ok = _ppl_gate.passes_short_sma_gate(
+                        cfg,
+                        is_long,
+                        float(px),
+                        float(_safe(npz, "sma_200_15m", n, 0.0)[i]),
+                        _ppl_position_value,
+                        _ppl_start_size,
+                        float(_safe(npz, "rsi_4h", n, 50.0)[i]),
+                        float(_safe(npz, "rsi_D", n, 50.0)[i]),
+                        float(_safe(npz, "bb_pct_b_4h", n, 0.5)[i]),
+                    )
+                if _ppl_gate_ok:
+                    _ppl_gate_ok = _ppl_gate.passes_augment_guard(
+                        cfg, _ppl_raw_gain, _ppl_position_value, _ppl_start_size
+                    )
                 if not _ppl_gate_ok:
                     _reaug_qty = 0.0
             if _reaug_qty > 0:

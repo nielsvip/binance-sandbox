@@ -1,0 +1,133 @@
+{
+  "captured_at_utc": "2026-10-31T05:32:09Z",
+  "coordinator_evidence": {
+    "event_counts": {
+      "s1": 54717,
+      "s2": 52026,
+      "s5": 41567,
+      "s6": 35657
+    },
+    "evidence_kind": "coordinator_only",
+    "imported_heartbeat_status": {
+      "s1": {
+        "at_utc": "2026-10-31T05:31:41Z",
+        "status": "RUNNING"
+      },
+      "s2": {
+        "at_utc": "2026-10-31T05:29:13Z",
+        "status": "RUNNING"
+      },
+      "s5": {
+        "at_utc": "2026-10-31T05:27:52Z",
+        "status": "RUNNING"
+      },
+      "s6": {
+        "at_utc": "2026-10-31T05:28:39Z",
+        "status": "RUNNING"
+      }
+    },
+    "initial_s2_snapshot_error": "fleet_s2.snapshot.sqlite3 was absent on first poll; imported successfully after it appeared",
+    "job_counts": {
+      "s1": 31476,
+      "s2": 29928,
+      "s5": 25320,
+      "s6": 21720
+    },
+    "job_status_counts": {
+      "s1": {
+        "PENDING_PARAMETERS": 8235,
+        "WAITING_FOR_SOURCE_WINDOW": 23241
+      },
+      "s2": {
+        "PENDING_PARAMETERS": 7830,
+        "WAITING_FOR_SOURCE_WINDOW": 22098
+      },
+      "s5": {
+        "PENDING_PARAMETERS": 9073,
+        "WAITING_FOR_SOURCE_WINDOW": 16247
+      },
+      "s6": {
+        "PENDING_PARAMETERS": 7783,
+        "WAITING_FOR_SOURCE_WINDOW": 13937
+      }
+    },
+    "latest_poll_at_utc": "2026-10-31T05:30:55.361299Z"
+  },
+  "database": {
+    "integrity_check": "ok",
+    "path": "/home/niels/binance-sandbox/data/paper_forward_lab/scenarios.db"
+  },
+  "deployment": {
+    "active_state": "active",
+    "collector_run_directories_created": [
+      "s2",
+      "s5",
+      "s6"
+    ],
+    "host": "s1",
+    "interval_seconds": 60,
+    "limits": {
+      "cpu_quota_percent": 25,
+      "cpu_weight": 1,
+      "io_weight": 1,
+      "memory_high_bytes": 1073741824,
+      "memory_max_bytes": 2147483648,
+      "nice": 19,
+      "oom_score_adjust": 500
+    },
+    "service": "paper-independent-collect.service",
+    "sub_state": "running",
+    "unit_path": "/home/niels/.config/systemd/user/paper-independent-collect.service",
+    "unit_sha256": "2752a454916dc9ee932f3c23ccdcbe4f4bf2a1050079230fc91a2a8eadc538f8",
+    "worker_services_restarted": false
+  },
+  "deployment_notes": [
+    "An early poll occurred before the S2 coordinator snapshot existed and logged COORDINATOR_ERROR; the next successful poll imported S2."
+  ],
+  "execution_evidence": {
+    "accounting_fills": 0,
+    "forward_receipts": 0,
+    "independent_forward_results": 0,
+    "independent_forward_runs": 0,
+    "meaning": "No worker execution receipts or outcomes were present at capture; no fills or performance were fabricated.",
+    "performance_claims_emitted": false,
+    "trades": 0,
+    "worker_result_manifests_imported": 0
+  },
+  "inputs": {
+    "collector_path": "/home/niels/binance-sandbox/data/paper_forward_lab/runtime/259e13fdcf88a81ca1d091b3fa102be04ca87a727c4339897be0b806aaf79f82/tools/paper_forward_collect.py",
+    "collector_sha256": "e800239d8fa9c37dc0b2ba15181f87780515fa115d61990988933b8c67ddeca4",
+    "hashes_match": true,
+    "plan_path": "/home/niels/binance-sandbox/data/paper_forward_lab/independent/c448841839bb41caa13a/plan.json",
+    "plan_sha256": "8e38ead4a53cafcc741d03a275dea5152888cd3a5fb16f8ebbcef4d1828ad6c9",
+    "runtime_path": "/home/niels/binance-sandbox/data/paper_forward_lab/runtime/259e13fdcf88a81ca1d091b3fa102be04ca87a727c4339897be0b806aaf79f82",
+    "source_collector_sha256": "e800239d8fa9c37dc0b2ba15181f87780515fa115d61990988933b8c67ddeca4"
+  },
+  "plan_inventory": {
+    "expected_manifest_jobs": 108444,
+    "host_job_counts": {
+      "s1": 31476,
+      "s2": 29928,
+      "s5": 25320,
+      "s6": 21720
+    },
+    "missing_planned_run_ids": 0,
+    "parameter_status_counts": {
+      "NEEDS_AUTHORITATIVE_VALUES": 32921,
+      "RESOLVED": 75523
+    },
+    "plan_import_id": "plan-a9b2e00225abc8115d6d33e21f693cd5f5185dcdc84fd88a0b9ed3df37476581",
+    "planned_run_ids_found_in_sql": 108444,
+    "registration_at_capture": "already_present",
+    "run_status_counts": {
+      "PENDING_PARAMETERS": 32921,
+      "PENDING_VALIDATED_EXECUTION": 75523
+    },
+    "unique_expected_planned_run_ids": 108444
+  },
+  "process_deviations": [
+    "The first accounting-related edits to tools/paper_forward_results.py and tools/paper_forward_collect.py did not have pre-edit backups. This was disclosed; no retrospective or fabricated backups were created. Later edits had backups where noted, and no file was rolled back."
+  ],
+  "promotion_enabled": false,
+  "schema_version": 1
+}

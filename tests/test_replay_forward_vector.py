@@ -6,6 +6,8 @@ from tools.replay_forward_vector import (
     _ReplayClock,
     _actions_at,
     _expected_closed_bar,
+    _timestamps_sha256,
+    _validate_stock_rth_timestamps,
     row_prefix,
 )
 
@@ -25,6 +27,36 @@ def test_prefix_slices_every_time_aligned_array_without_future_rows():
     assert int(prefix["scalar"]) == 5
     assert prefix["metadata"] == "fixed"
 
+
+
+def test_stock_rth_policy_allows_session_gaps_without_filling_them():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    tz = ZoneInfo("America/New_York")
+    stamps = [
+        int(datetime(2026, 10, 29, 9, 30, tzinfo=tz).timestamp()),
+        int(datetime(2026, 10, 29, 9, 45, tzinfo=tz).timestamp()),
+        int(datetime(2026, 10, 30, 9, 30, tzinfo=tz).timestamp()),
+        int(datetime(2026, 10, 30, 9, 45, tzinfo=tz).timestamp()),
+    ]
+    _validate_stock_rth_timestamps(stamps)
+    assert stamps[2] - stamps[1] > 900
+    assert _timestamps_sha256(stamps) == _timestamps_sha256(list(stamps))
+
+
+def test_stock_rth_policy_rejects_missing_intraday_bars():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    import pytest
+
+    tz = ZoneInfo("America/New_York")
+    stamps = [
+        int(datetime(2026, 10, 29, 9, 30, tzinfo=tz).timestamp()),
+        int(datetime(2026, 10, 29, 10, 0, tzinfo=tz).timestamp()),
+    ]
+    with pytest.raises(ValueError, match="missing/irregular intraday bar"):
+        _validate_stock_rth_timestamps(stamps)
 
 def test_bar_open_timestamp_maps_to_next_close_decision_clock():
     bar_open = 1_800_000_000
@@ -103,7 +135,7 @@ def test_replay_calls_state_for_on_strictly_causal_prefixes(tmp_path, monkeypatc
 
     monkeypatch.setattr(forward_state, "state_for", fake_state_for)
     result = replay(npz_path, active_path, "XUSDC_LONG", 900, 2700,
-                    output_path, code_root, limit=None)
+                    output_path, code_root, limit=None, score_start_ts=1800)
 
     assert result["states_evaluated"] == 2
     assert seen == [
@@ -116,9 +148,13 @@ def test_replay_calls_state_for_on_strictly_causal_prefixes(tmp_path, monkeypatc
     action_rows = [row for row in rows if row["record"] == "action"]
     assert [row["npz_open_ts"] for row in action_rows] == [1800, 2700]
     state_rows = [row for row in rows if row["record"] == "state"]
+    assert [row["phase"] for row in state_rows] == ["warmup", "scored"]
     assert [row["market_price"] for row in state_rows] == [101.0, 102.0]
     assert state_rows[0]["planner_state"]["engine_qty"] == 1800.0
     assert state_rows[0]["planner_state"]["acts_last_bar"] == [{"type": "OPEN", "ts": 1800}]
+    summary = next(row for row in rows if row["record"] == "replay_summary")
+    assert summary["coverage_ok"] is True
+    assert summary["phase_counts"] == {"warmup": 1, "scored": 1}
 
 
 def test_actual_vector_planner_emits_convergence_open_and_honors_done_key(tmp_path):

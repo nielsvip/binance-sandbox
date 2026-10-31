@@ -39,11 +39,8 @@ def crypto_block(npz, n, is_long, cfg, close, safe, k_focus):
     ok = (sma_d > 0) & px_ok
     dist = np.where(ok, (close - sma_d) / np.where(sma_d > 0, sma_d, 1.0), 0.0)
     blk |= ok & ((dist > 0.35) if is_long else (dist < -0.35))
-    if bool(_f(cfg, 'ADX_REGIME_FILTER_ENABLED', False)) and not bool(_f(cfg, 'REGIME_DETECTION_ENABLED', False)):
-        adx = safe(npz, f"adx_{str(_f(cfg, 'ADX_TF', '1h'))}", n, 50.0)
-        thr = float(_f(cfg, 'ADX_RANGING_THRESHOLD', 20.0))
-        extreme = (k_focus < 20) if is_long else (k_focus > 80)
-        blk |= (adx < thr) & ~extreme
+    from vec_decisions.adx_regime_gate import block_mask as adx_regime_block
+    blk |= adx_regime_block(npz, n, is_long, cfg, safe)
     smin = float(_f(cfg, 'SHORT_RSI_MIN_1H', 0) or 0)
     if (not is_long) and smin > 0:
         blk |= safe(npz, 'rsi_1h', n, 50.0) < smin
