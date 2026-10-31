@@ -18,6 +18,11 @@ LOG=/Users/niels/logs/offload_all_to_5t.log
 cd "$BASE" || exit 2
 say() { echo "[$(date -u +%FT%TZ)] $*" >> "$LOG" 2>/dev/null; }
 
+if pgrep -f "tools/offload_to_5t.py" >/dev/null 2>&1; then
+  say "SKIP: another offload is still running — two movers on one file would race"
+  exit 0
+fi
+
 if ! "$PY" -B tools/offload_target.py --subdir _health >/dev/null 2>&1; then
   say "SKIP: 5T drive unavailable ($("$PY" -B tools/offload_target.py --subdir _health --json 2>/dev/null)) — nothing moved, nothing removed"
   exit 0

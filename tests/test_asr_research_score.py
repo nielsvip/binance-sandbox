@@ -11,7 +11,8 @@ from vec_decisions.asr_research_score import apply_research_score_scalar, apply_
 
 def _reference_nodes():
     root = Path(__file__).resolve().parents[1]
-    source = (root / "ez_positions_quick.py").read_text()
+    matches = sorted((root / "backups").glob("before_asr_research_score_wire_ez_positions_quick_*.py"))
+    source = next(path.read_text() for path in matches if hashlib.sha256(path.read_bytes()).hexdigest() == "fc283e675dc88d15f654873e0b751213b6268c8ce4e4874538a6d6e6a7685fe4")
     digest = hashlib.sha256(source.encode()).hexdigest()
     assert digest == "fc283e675dc88d15f654873e0b751213b6268c8ce4e4874538a6d6e6a7685fe4"
     tree = ast.parse(source)
@@ -20,6 +21,15 @@ def _reference_nodes():
     start = next(i for i, node in enumerate(container.body) if isinstance(node, ast.If) and "EMA_PULLBACK_ENABLED" in ast.unparse(node))
     end = next(i for i, node in enumerate(container.body[start:], start) if isinstance(node, ast.If) and "MACD_EXIT_ENABLED" in ast.unparse(node))
     return [ast.fix_missing_locations(ast.If(test=ast.UnaryOp(op=ast.Not(), operand=ast.Name(id="is_exit", ctx=ast.Load())), body=container.body[start:end], orelse=[]))]
+
+
+def test_live_rate_research_block_calls_shared_adapter_inside_entry_branch():
+    root = Path(__file__).resolve().parents[1]
+    tree = ast.parse((root / "ez_positions_quick.py").read_text())
+    rate = next(node for node in ast.walk(tree) if isinstance(node, ast.AsyncFunctionDef) and node.name == "rate" and node.lineno == 3616)
+    calls = [node for node in ast.walk(rate) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_apply_asr_research_score"]
+    assert len(calls) == 1
+    assert any(isinstance(node, ast.ImportFrom) and node.module == "vec_decisions.asr_research_score" for node in ast.walk(rate))
 
 
 def _cfg():

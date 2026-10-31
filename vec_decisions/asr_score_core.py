@@ -527,6 +527,29 @@ def apply_shared_entry_score_components_vec(
     return result, masks
 
 
+def apply_gain_quality_bonus_scalar(score: float, gain: float) -> tuple[float, tuple[bool, bool]]:
+    """Apply the source-ordered gain bonuses between the K gate and DC score."""
+    result = float(score)
+    first = result > 10 and gain > 3
+    if first:
+        result += 12
+    second = result > 8 and gain > 1.5
+    if second:
+        result += 8
+    return result, (first, second)
+
+
+def apply_gain_quality_bonus_vec(score: Any, gain: Any) -> tuple[np.ndarray, dict[str, np.ndarray]]:
+    """Vector twin; preserves the second comparison after the first bonus."""
+    result, gains = np.broadcast_arrays(np.asarray(score, dtype=float), np.asarray(gain, dtype=float))
+    result = result.copy()
+    first = (result > 10) & (gains > 3)
+    result[first] += 12
+    second = (result > 8) & (gains > 1.5)
+    result[second] += 8
+    return result, {"GAIN_GT3_SCORE_GT10": first, "GAIN_GT1_5_SCORE_GT8_AFTER_FIRST": second}
+
+
 def apply_ma_distance_score_scalar(
     score: float,
     reasons: list[str],

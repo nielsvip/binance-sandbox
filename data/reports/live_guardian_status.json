@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T05:54:46Z",
+ "ts": "2026-10-31T05:59:55Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 60,
    "open_positions": 13,
-   "unrealised_usd": 0.16,
+   "unrealised_usd": 0.04,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 108,
    "open_positions": 16,
-   "unrealised_usd": -0.06,
+   "unrealised_usd": -0.2,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 23,
    "open_positions": 9,
-   "unrealised_usd": 0.14,
+   "unrealised_usd": 0.12,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,54 +127,54 @@
     "67104"
    ],
    "starts_30m": 1,
-   "log_age_s": 649.0
+   "log_age_s": 957.0
   },
   "men": {
    "pids": [
     "18080"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 3.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 1.0
   },
   "inf": {
    "pids": [
     "68362"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 8.0
   },
   "flz": {
    "pids": [
     "78871"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 0.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 4349.0
+   "log_age_s": 4657.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 4664.0
+   "log_age_s": 4973.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T05:54:48Z",
+   "ts": "2026-10-31T05:59:57Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 649s"
+   "evidence": "ez_manage_fin.log not written for 957s"
   }
  ],
  "alert_counts": {
@@ -229,14 +229,7 @@
    "why": "ORDER_STORM_ACCOUNT 27 fills/10min",
    "undo": "alert-only (never-halt policy 2026-10-10)",
    "dry_run": false
-  },
-  "key:men:PENDLEUSDT_LONG": {
-   "ts": 1793418974.591674,
-   "until": 1793426174.591677,
-   "why": "SIZE_ANOMALY order $541.17 > 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:men:PENDLEUSDT_LONG",
-   "dry_run": false
   }
  },
- "sweep_s": 1.77
+ "sweep_s": 1.82
 }

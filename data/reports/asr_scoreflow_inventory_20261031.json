@@ -1,7 +1,8 @@
 {
-  "coverage_status": "Partial shared implementation only. Native scalar hooks and source-AST differential tests exist for listed pure score slices. NumPy components are not yet consumed by v12 and the overall score aggregate/entry threshold path is incomplete. Current rate() still contains other score mutations; account/tracker, regime, MTS, historical/global ranking, time-dependent return gates, multiplier ordering and return semantics remain gaps.",
-  "current_native_score_mutations_including_initialization": 354,
-  "current_native_sha256": "fc283e675dc88d15f654873e0b751213b6268c8ce4e4874538a6d6e6a7685fe4",
+  "coverage_status": "Partial shared implementation only. Native scalar hooks and source-AST differential tests exist for listed pure slices. NumPy components are not yet consumed by v12; there is no complete ordered ASR array composer or entry-threshold/action path. Current rate() still has other score mutations; account/tracker, regime, MTS, historical/global ranking, time-dependent return gates, multiplier ordering and return semantics remain gaps.",
+  "current_asr_mutation_semantics": "Count includes initialization plus direct score assignment/augmented-assignment statements still inside rate(); shared scalar hooks remove corresponding inline statements. It is a source mutation census, not the uncovered-component count.",
+  "current_native_score_mutations_including_initialization": 324,
+  "current_native_sha256": "ef661f182a7372ac6dc42269dc57be575d4f959a6adc63a8cd09fa6608395961",
   "existing_vector_related_modules": [
     "vec_decisions/quick_missing_entry_score.py (partial, no v12 caller found)",
     "vec_paths/live_entry_engine.py (separate LIVE_ENTRY_ENGINE score, not AdvancedSignalRater aggregate)",
@@ -388,7 +389,7 @@
     ]
   },
   "pre_wire_source_sha256": "7634c897c67a28dbbfcbf99f39cabc1e564084bf82d07f632b6042267399d1a8",
-  "remaining_native_score_mutations_including_initialization": 354,
+  "remaining_native_score_mutations_including_initialization": 324,
   "score_updates": [
     {
       "expr": "8",
@@ -8475,6 +8476,7 @@
       "op": "="
     }
   ],
+  "score_updates_source_sha256": "7634c897c67a28dbbfcbf99f39cabc1e564084bf82d07f632b6042267399d1a8",
   "shared_score_components": [
     {
       "baseline_blocks": [
@@ -8506,7 +8508,7 @@
     {
       "baseline_block": "SMA500 1h and EMA20 4h price-distance scoring",
       "module": "vec_decisions/asr_score_core.py",
-      "native_hook_line": 4946,
+      "native_hook_line": 4948,
       "vector_api": [
         "apply_ma_distance_score_vec"
       ]
@@ -8515,8 +8517,8 @@
       "baseline_block": "side-specific channel recovery, K-zone and DC-basis cross scoring before MA position bonuses",
       "module": "vec_decisions/asr_score_core.py",
       "native_hook_lines": [
-        5028,
-        5066
+        5030,
+        5068
       ],
       "vector_api": [
         "apply_channel_k_cross_score_vec"
@@ -8525,10 +8527,40 @@
     {
       "baseline_block": "native final overbought multiplier, round/clamp and recommendation tail",
       "module": "vec_decisions/asr_score_tail.py",
-      "native_hook_line": 8622,
+      "native_hook_line": 8336,
       "owner": "root",
       "vector_api": [
         "finish_array"
+      ]
+    },
+    {
+      "baseline_block": "source-ordered score/gain thresholds: +12 when score>10 and gain>3, then +8 when updated score>8 and gain>1.5",
+      "module": "vec_decisions/asr_score_core.py",
+      "native_hook_line": 8243,
+      "test": "tests/test_asr_gain_quality_score.py",
+      "vector_api": [
+        "apply_gain_quality_bonus_vec"
+      ]
+    },
+    {
+      "baseline_block": "ordered EMA pullback, BB/RSI/Stoch, MACD zero, RSI2, HA streak, BB breakout, triple confirmation, EMA200/StochRSI, RSI/MACD/EMA and Donchian breakout bonuses",
+      "module": "vec_decisions/asr_research_score.py",
+      "native_hook_line": 8259,
+      "test": "tests/test_asr_research_score.py",
+      "vector_api": [
+        "apply_research_score_vec"
+      ]
+    },
+    {
+      "baseline_block": "weighted five-timeframe DC position score and side-specific per-TF bonuses/penalties",
+      "module": "vec_decisions/asr_dc_position_score.py",
+      "native_hook_line": 8255,
+      "test": [
+        "tests/test_asr_dc_position_score.py",
+        "tests/test_asr_dc_position_native_call.py"
+      ],
+      "vector_api": [
+        "apply_dc_position_score_vec"
       ]
     }
   ],
