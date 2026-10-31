@@ -1,0 +1,1409 @@
+{
+  "archive_code_reference": {
+    "archive_sha256": "1e5d774605b3f3c5936d5d43b00269a9dfb531d75f46beff94001d0bf1a2161e",
+    "manifest_trainer_claim": "Mac v18_brain e4eea554 via a presorted-corpus wrapper; shipped code champion 3bddf47d + POS_FLOOR patch 7c056836",
+    "path": "/Volumes/WD25/binance_archive/s5_code_pcode_full_20261031T022850Z/s5_code_pcode.tar.gz",
+    "trainer_code_path": "code/tools/v18_brain.py",
+    "trainer_md5_in_archive": "e4eea5545a148fd27604e5698eadbb2f"
+  },
+  "audit_at_utc": "2026-10-31T02:51:09.467753+00:00",
+  "b_manifest": {
+    "file_payload_manifest_entries": [
+      {
+        "built_from": "mac:/Users/niels/Documents/binance/tools",
+        "bytes": 146493,
+        "file": "tools/v18_brain.py",
+        "kind": "code",
+        "md5": "7c0568360231fdf31baa8124a0115c66"
+      },
+      {
+        "built_from": "s6:/home/niels/v20_u4/B/brain_union",
+        "bytes": 9932348,
+        "file": "tools/v18_data_brain_v18_brain_CRYPTO_LONG.json",
+        "kind": "brain",
+        "md5": "da6cefb2212259e032b10d37a40593d3"
+      },
+      {
+        "built_from": "s6:/home/niels/v20_u4/B/brain_union",
+        "bytes": 9832434,
+        "file": "tools/v18_data_brain_v18_brain_CRYPTO_SHORT.json",
+        "kind": "brain",
+        "md5": "feb6df1f1885d390f53b36e8679902ee"
+      },
+      {
+        "built_from": "s6:/home/niels/v20_u4/B/brain_union",
+        "bytes": 9855567,
+        "file": "tools/v18_data_brain_v18_brain_STOCKS_LONG.json",
+        "kind": "brain",
+        "md5": "ae8b00f04a89670d76f8c530416a9489"
+      },
+      {
+        "built_from": "s6:/home/niels/v20_u4/B/brain_union",
+        "bytes": 9929922,
+        "file": "tools/v18_data_brain_v18_brain_STOCKS_SHORT.json",
+        "kind": "brain",
+        "md5": "3c80df61ee162c230ce44277ad853d66"
+      },
+      {
+        "built_from": "s5 (built), copied to s6:/home/niels/v20_u4/must_union/union_B",
+        "bytes": 15856168,
+        "file": "tools/v18_data_learn_must_pos_CRYPTO_LONG.json",
+        "kind": "must_pos",
+        "md5": "9ce50cbcccc6bc2470de3f1948152338"
+      },
+      {
+        "built_from": "s5 (built), copied to s6:/home/niels/v20_u4/must_union/union_B",
+        "bytes": 13315719,
+        "file": "tools/v18_data_learn_must_pos_CRYPTO_SHORT.json",
+        "kind": "must_pos",
+        "md5": "c2281c10e5559488d71cbe65c6efc30d"
+      },
+      {
+        "built_from": "s5 (built), copied to s6:/home/niels/v20_u4/must_union/union_B",
+        "bytes": 3893201,
+        "file": "tools/v18_data_learn_must_pos_STOCKS_LONG.json",
+        "kind": "must_pos",
+        "md5": "8761a325a39b17853e8a844f3ee30f6d"
+      },
+      {
+        "built_from": "s5 (built), copied to s6:/home/niels/v20_u4/must_union/union_B",
+        "bytes": 4905145,
+        "file": "tools/v18_data_learn_must_pos_STOCKS_SHORT.json",
+        "kind": "must_pos",
+        "md5": "ea6f487416563c9ed1defe03dd510672"
+      }
+    ],
+    "mtime_ns": 1793201042833544087,
+    "path": "/home/niels/v20_u4/B/MANIFEST.json",
+    "sha256": "47d873fd7c6b015f734f90317b2e7954538c6b9eeca6605750b230fec4a51a2d",
+    "size": 191024,
+    "sources": [
+      {
+        "bytes": 42283,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_history_mac_20261022T205516Z_20495_419498.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_history_mac_20261022T205516Z_20495_419498.tsv.gz"
+      },
+      {
+        "bytes": 5565917,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_ledgers_mac_20261022T205517Z_20555_030501.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_ledgers_mac_20261022T205517Z_20555_030501.tsv.gz"
+      },
+      {
+        "bytes": 7309843,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s1arch_20261022T210357Z_1221833_012082.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s1arch_20261022T210357Z_1221833_012082.tsv.gz"
+      },
+      {
+        "bytes": 5470238,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s1run35_20261022T205958Z_1197678_291458.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s1run35_20261022T205958Z_1197678_291458.tsv.gz"
+      },
+      {
+        "bytes": 105145671,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s2old_20261022T205459Z_1172004_930150.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s2old_20261022T205459Z_1172004_930150.tsv.gz"
+      },
+      {
+        "bytes": 111828292,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s2run33_20261022T205459Z_1172002_855122.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s2run33_20261022T205459Z_1172002_855122.tsv.gz"
+      },
+      {
+        "bytes": 11990901,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s2run34_20261022T205459Z_1172003_827664.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s2run34_20261022T205459Z_1172003_827664.tsv.gz"
+      },
+      {
+        "bytes": 15520545,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s2run35_20261022T205619Z_1179503_907033.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s2run35_20261022T205619Z_1179503_907033.tsv.gz"
+      },
+      {
+        "bytes": 7989423,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s5run33_20261022T205459Z_1172000_830197.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s5run33_20261022T205459Z_1172000_830197.tsv.gz"
+      },
+      {
+        "bytes": 9977466,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s5run34_20261022T205558Z_1178588_154778.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s5run34_20261022T205558Z_1178588_154778.tsv.gz"
+      },
+      {
+        "bytes": 16092793,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s5run35_20261022T205705Z_1184611_055390.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s5run35_20261022T205705Z_1184611_055390.tsv.gz"
+      },
+      {
+        "bytes": 6411087,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s6run33_20261022T205834Z_1189744_155803.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s6run33_20261022T205834Z_1189744_155803.tsv.gz"
+      },
+      {
+        "bytes": 12070704,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s6run34_20261022T205919Z_1192821_078705.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s6run34_20261022T205919Z_1192821_078705.tsv.gz"
+      },
+      {
+        "bytes": 17773107,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s6run35_20261022T210034Z_1202111_657658.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s6run35_20261022T210034Z_1202111_657658.tsv.gz"
+      },
+      {
+        "bytes": 13179332,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_native_mac_20261022T205518Z_20670_360008.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_native_mac_20261022T205518Z_20670_360008.tsv.gz"
+      },
+      {
+        "bytes": 104331055,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+        "path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_rebuilt_s2_20261022T205439Z_1171672_670395.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/spill_union2/spill_rebuilt_s2_20261022T205439Z_1171672_670395.tsv.gz"
+      },
+      {
+        "bytes": 64860489,
+        "origin": "s5:~/rebuild_scratch_s5/learn/spill_union/boards_filtered (S6 progress boards, filtered, 10-22; extract report = the unfiltered boards spill + filter_report.json)",
+        "path": "s6:/home/niels/v20_u4/spills/boards_filtered/spill_progress_s6boards_progress_20261022T203843Z_1114955_197953.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/boards_filtered/spill_progress_s6boards_progress_20261022T203843Z_1114955_197953.tsv.gz"
+      },
+      {
+        "bytes": 6356621,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261026T233913Z_3733619_652628.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261026T233913Z_3733619_652628.tsv.gz"
+      },
+      {
+        "bytes": 8697,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T003503Z_413951_376638.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T003503Z_413951_376638.tsv.gz"
+      },
+      {
+        "bytes": 65730,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T013503Z_1365615_627229.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T013503Z_1365615_627229.tsv.gz"
+      },
+      {
+        "bytes": 7899,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T015939Z_1740591_678108.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T015939Z_1740591_678108.tsv.gz"
+      },
+      {
+        "bytes": 83104,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T033506Z_3222553_920276.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T033506Z_3222553_920276.tsv.gz"
+      },
+      {
+        "bytes": 584114,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T103504Z_1372972_041606.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T103504Z_1372972_041606.tsv.gz"
+      },
+      {
+        "bytes": 15780,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T113503Z_2265996_277989.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T113503Z_2265996_277989.tsv.gz"
+      },
+      {
+        "bytes": 86,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T123503Z_526728_109737.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T123503Z_526728_109737.tsv.gz"
+      },
+      {
+        "bytes": 13505,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T153503Z_2745908_854913.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T153503Z_2745908_854913.tsv.gz"
+      },
+      {
+        "bytes": 87,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T163503Z_3583577_126577.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T163503Z_3583577_126577.tsv.gz"
+      },
+      {
+        "bytes": 64061,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T173503Z_279544_746117.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T173503Z_279544_746117.tsv.gz"
+      },
+      {
+        "bytes": 136392,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T183503Z_1107130_373523.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T183503Z_1107130_373523.tsv.gz"
+      },
+      {
+        "bytes": 49479,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T193508Z_1666839_197420.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T193508Z_1666839_197420.tsv.gz"
+      },
+      {
+        "bytes": 1888943,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261026T233935Z_3738155_571058.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261026T233935Z_3738155_571058.tsv.gz"
+      },
+      {
+        "bytes": 1667564,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T003504Z_414962_907666.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T003504Z_414962_907666.tsv.gz"
+      },
+      {
+        "bytes": 1646909,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T013505Z_1367069_779164.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T013505Z_1367069_779164.tsv.gz"
+      },
+      {
+        "bytes": 1648892,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T015940Z_1740796_907403.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T015940Z_1740796_907403.tsv.gz"
+      },
+      {
+        "bytes": 1677216,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T033510Z_3225326_172409.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T033510Z_3225326_172409.tsv.gz"
+      },
+      {
+        "bytes": 506171,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T103514Z_1376974_634131.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T103514Z_1376974_634131.tsv.gz"
+      },
+      {
+        "bytes": 506171,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T113504Z_2266609_311132.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T113504Z_2266609_311132.tsv.gz"
+      },
+      {
+        "bytes": 506170,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T123503Z_527488_957493.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T123503Z_527488_957493.tsv.gz"
+      },
+      {
+        "bytes": 506171,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T153506Z_2747950_871611.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T153506Z_2747950_871611.tsv.gz"
+      },
+      {
+        "bytes": 506171,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T163503Z_3584205_838991.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T163503Z_3584205_838991.tsv.gz"
+      },
+      {
+        "bytes": 413021,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T173509Z_282123_440635.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T173509Z_282123_440635.tsv.gz"
+      },
+      {
+        "bytes": 491344,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T183509Z_1109659_723582.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T183509Z_1109659_723582.tsv.gz"
+      },
+      {
+        "bytes": 494476,
+        "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+        "path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T193527Z_1670167_908900.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T193527Z_1670167_908900.tsv.gz"
+      },
+      {
+        "bytes": 97852251,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261026T225936Z_833033_773711.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261026T225936Z_833033_773711.tsv.gz"
+      },
+      {
+        "bytes": 87,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T003509Z_1168936_455634.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T003509Z_1168936_455634.tsv.gz"
+      },
+      {
+        "bytes": 709311,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T013510Z_1368382_392722.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T013510Z_1368382_392722.tsv.gz"
+      },
+      {
+        "bytes": 724965,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T015945Z_1453631_082090.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T015945Z_1453631_082090.tsv.gz"
+      },
+      {
+        "bytes": 716007,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T033514Z_1774135_826021.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T033514Z_1774135_826021.tsv.gz"
+      },
+      {
+        "bytes": 2147919,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T103516Z_3491239_900533.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T103516Z_3491239_900533.tsv.gz"
+      },
+      {
+        "bytes": 370210,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T113506Z_3732254_520906.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T113506Z_3732254_520906.tsv.gz"
+      },
+      {
+        "bytes": 312258,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T123506Z_3899777_105805.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T123506Z_3899777_105805.tsv.gz"
+      },
+      {
+        "bytes": 2876,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T133504Z_4038501_395457.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T133504Z_4038501_395457.tsv.gz"
+      },
+      {
+        "bytes": 113029,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T143503Z_4157819_960532.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T143503Z_4157819_960532.tsv.gz"
+      },
+      {
+        "bytes": 371657,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T153509Z_171875_398542.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T153509Z_171875_398542.tsv.gz"
+      },
+      {
+        "bytes": 441707,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T163506Z_394943_030949.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T163506Z_394943_030949.tsv.gz"
+      },
+      {
+        "bytes": 290875,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T173511Z_613509_363645.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T173511Z_613509_363645.tsv.gz"
+      },
+      {
+        "bytes": 290104,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T183511Z_839092_824623.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T183511Z_839092_824623.tsv.gz"
+      },
+      {
+        "bytes": 343902,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T193530Z_1025192_253986.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T193530Z_1025192_253986.tsv.gz"
+      },
+      {
+        "bytes": 41851521,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_progress_s2auto_20261026T230425Z_851682_131167.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_progress_s2auto_20261026T230425Z_851682_131167.tsv.gz"
+      },
+      {
+        "bytes": 39452537,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2/spill_progress_s2auto_20261027T193540Z_1025455_727014.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2/spill_progress_s2auto_20261027T193540Z_1025455_727014.tsv.gz"
+      },
+      {
+        "bytes": 181403272,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261026T230821Z_1148308_798499.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261026T230821Z_1148308_798499.tsv.gz"
+      },
+      {
+        "bytes": 87,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T003610Z_1802665_055666.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T003610Z_1802665_055666.tsv.gz"
+      },
+      {
+        "bytes": 6638899,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T013622Z_2185999_426464.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T013622Z_2185999_426464.tsv.gz"
+      },
+      {
+        "bytes": 3307867,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T020311Z_2305238_154442.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T020311Z_2305238_154442.tsv.gz"
+      },
+      {
+        "bytes": 1156482,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T040356Z_2952472_869360.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T040356Z_2952472_869360.tsv.gz"
+      },
+      {
+        "bytes": 87,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T103739Z_1150936_452295.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T103739Z_1150936_452295.tsv.gz"
+      },
+      {
+        "bytes": 87,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T113713Z_1495303_568525.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T113713Z_1495303_568525.tsv.gz"
+      },
+      {
+        "bytes": 87,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T123711Z_1687409_349006.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T123711Z_1687409_349006.tsv.gz"
+      },
+      {
+        "bytes": 87,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T133711Z_1768990_593096.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T133711Z_1768990_593096.tsv.gz"
+      },
+      {
+        "bytes": 87,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T143722Z_1878512_032111.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T143722Z_1878512_032111.tsv.gz"
+      },
+      {
+        "bytes": 87,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T153721Z_2223862_162452.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T153721Z_2223862_162452.tsv.gz"
+      },
+      {
+        "bytes": 87,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T163716Z_2563553_932249.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T163716Z_2563553_932249.tsv.gz"
+      },
+      {
+        "bytes": 834563,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T173720Z_2953978_075760.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T173720Z_2953978_075760.tsv.gz"
+      },
+      {
+        "bytes": 1631561,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T183721Z_3397903_432333.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T183721Z_3397903_432333.tsv.gz"
+      },
+      {
+        "bytes": 1667023,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T193752Z_3824381_144276.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T193752Z_3824381_144276.tsv.gz"
+      },
+      {
+        "bytes": 75551874,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_progress_s5auto_20261026T232032Z_1233124_386502.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_progress_s5auto_20261026T232032Z_1233124_386502.tsv.gz"
+      },
+      {
+        "bytes": 74735950,
+        "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s5/spill_progress_s5auto_20261027T193821Z_3826086_539735.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s5/spill_progress_s5auto_20261027T193821Z_3826086_539735.tsv.gz"
+      },
+      {
+        "bytes": 125111677,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261026T232421Z_546312_232957.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261026T232421Z_546312_232957.tsv.gz"
+      },
+      {
+        "bytes": 86,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T003731Z_981826_615461.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T003731Z_981826_615461.tsv.gz"
+      },
+      {
+        "bytes": 1102275,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T013802Z_1276276_731503.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T013802Z_1276276_731503.tsv.gz"
+      },
+      {
+        "bytes": 978095,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T020723Z_1421392_481598.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T020723Z_1421392_481598.tsv.gz"
+      },
+      {
+        "bytes": 823638,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T064742Z_2899896_115735.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T064742Z_2899896_115735.tsv.gz"
+      },
+      {
+        "bytes": 85,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T104136Z_51048_208305.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T104136Z_51048_208305.tsv.gz"
+      },
+      {
+        "bytes": 86,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T114108Z_358669_624192.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T114108Z_358669_624192.tsv.gz"
+      },
+      {
+        "bytes": 86,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T124100Z_527028_833823.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T124100Z_527028_833823.tsv.gz"
+      },
+      {
+        "bytes": 86,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T134102Z_584320_777725.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T134102Z_584320_777725.tsv.gz"
+      },
+      {
+        "bytes": 86,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T144109Z_687601_321904.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T144109Z_687601_321904.tsv.gz"
+      },
+      {
+        "bytes": 87,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T154108Z_1021014_780672.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T154108Z_1021014_780672.tsv.gz"
+      },
+      {
+        "bytes": 87,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T164057Z_1353257_053275.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T164057Z_1353257_053275.tsv.gz"
+      },
+      {
+        "bytes": 579081,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T174123Z_1739295_877777.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T174123Z_1739295_877777.tsv.gz"
+      },
+      {
+        "bytes": 1416682,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T184156Z_2155295_896512.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T184156Z_2155295_896512.tsv.gz"
+      },
+      {
+        "bytes": 1512945,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T194210Z_2536033_718098.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T194210Z_2536033_718098.tsv.gz"
+      },
+      {
+        "bytes": 78468930,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_progress_s6auto_20261026T233532Z_614940_878233.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_progress_s6auto_20261026T233532Z_614940_878233.tsv.gz"
+      },
+      {
+        "bytes": 73734991,
+        "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+        "path": "s6:/home/niels/v20_u4/spills/s6/spill_progress_s6auto_20261027T194237Z_2536670_748399.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s6/spill_progress_s6auto_20261027T194237Z_2536670_748399.tsv.gz"
+      },
+      {
+        "bytes": 38991872,
+        "origin": "mac data/brain_scratch/spill_boards progress boards (10-22)",
+        "path": "s6:/home/niels/v20_u4/spills/macboards/spill_progress_macboards_20261022T191139Z_20496_443715.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/macboards/spill_progress_macboards_20261022T191139Z_20496_443715.tsv.gz"
+      },
+      {
+        "bytes": 21039179,
+        "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+        "path": "s6:/home/niels/v20_u4/spills/s2lifecycle/spill_progress_s2lifecycle_20261027T203424Z_1197130_838059.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/s2lifecycle/spill_progress_s2lifecycle_20261027T203424Z_1197130_838059.tsv.gz"
+      },
+      {
+        "bytes": 239203316,
+        "origin": "mac data/brain_scratch/spill_ext (E3T fleet_archive s5 v15_* runs 3-32 + iso + S1_offload_20261013, extracted 2026-10-27 20:44Z; md5 879763d2a1721facdb4a8650755dd455)",
+        "path": "s6:/home/niels/v20_u4/spills/ext/spill_logs_e3tarch_20261027T203352Z_94635_491877.tsv.gz",
+        "realpath": "s6:/home/niels/v20_u4/spills/ext/spill_logs_e3tarch_20261027T203352Z_94635_491877.tsv.gz"
+      }
+    ],
+    "sources_summary": {
+      "bytes": 1651286693,
+      "missing_extract_report": 0,
+      "n_spills": 97
+    },
+    "train_spill_bytes_sum": 1651286693,
+    "train_spill_count": 97
+  },
+  "events_sorted": {
+    "first_json_keys": [
+      "e",
+      "rk",
+      "s",
+      "set",
+      "t"
+    ],
+    "first_json_types": {
+      "e": "str",
+      "rk": "int",
+      "s": "str",
+      "set": "list",
+      "t": "str"
+    },
+    "first_record_bytes": 1142,
+    "first_record_sha256": "3f2ecc29fe2dd340d31b730ce2e14eb066680078898c6b7f2b6965fc45e1b129",
+    "first_sort_key": "0000-00-00T00:00:00Z",
+    "full_file_hash": "not computed; 15.99GB file; no full scan",
+    "mtime_ns": 1793141147681362035,
+    "path": "/home/niels/v20_u4/B/tmp/events_sorted.tsv",
+    "regular": true,
+    "size": 15993543228
+  },
+  "interpretation": {
+    "dedup": "No same-named events_sorted.tsv exists in the known preserved S6 spills tree or A/B receipt directory. No full WD archive search or full-file hash was performed.",
+    "exact_generation_linkage": "Unresolved. B MANIFEST lists 97 S6 spill copies and shipped model outputs; B/run_train.sh points at S5 staging spill dirs and tmp path, while S5 B/brain_union and B/brain_state are empty. The actual S6 A/B model outputs match the S5 manifest file MD5/size, but the S5 manifest does not hash events_sorted.tsv.",
+    "reconstruction": "The recorded 97 compressed input spills are present in the independently checksum-verified WD S6 spill tree and the trainer source is preserved. This supports a regeneration path, but not byte-for-byte proof that the current temporary TSV was the exact input to the published model run.",
+    "temp_kind": "Plain TSV temporary sort output consistent with archived v18_brain.sorted_events: timestamp sort key, then JSON event record; first-record JSON keys e/rk/s/set/t."
+  },
+  "preserved_spill_input_comparison": {
+    "all_97_manifest_paths_present_in_wd": true,
+    "all_97_wd_sizes_match_manifest_bytes": true,
+    "existing_spill_tree_receipt": "data/reports/learning_preservation_audit_20261030T200206Z.json:s6_v20_u4_spills_copy",
+    "existing_tree_checksum_evidence": "rsync -nrc --itemize-changes --stats -rt found 171 entries (161 regular files, 10 dirs), 1,651,762,046 bytes, 0 created/changed/deleted, 0 bytes transferred",
+    "manifest_input_bytes": 1651286693,
+    "manifest_spills": 97,
+    "note": "B manifest records each spill path, origin, and byte size, but no per-spill SHA. The S6 spill tree has an independent whole-tree rsync checksum verification receipt.",
+    "per_spill_sha_in_B_manifest": false
+  },
+  "run_train_sh": {
+    "mtime_ns": 1793140908740636447,
+    "path": "/home/niels/v20_u4/B/run_train.sh",
+    "sha256": "28b341b3bbb90b95f0e91b448f25d8561860404e4b17129dd2a4d818272febe3",
+    "size": 904,
+    "spill_dirs": [
+      "--spill-dir $S/rebuild_scratch_s5/learn/spill_union2 --spill-dir $S/rebuild_scratch_s5/learn/spill_union/boards_filtered \\",
+      "--spill-dir $S/v20_union_s5/spills/s1 --spill-dir $S/v20_union_s5/spills_dedup/s2 --spill-dir $S/v20_union_s5/spills_dedup/s5 \\",
+      "--spill-dir $S/v20_union_s5/spills_dedup/s6 --spill-dir $S/v20_union_s5/spills/macboards --spill-dir $S/v20_union_s5/spills/s2lifecycle \\",
+      "--spill-dir $S/v20_union_s5/spills/ext \\"
+    ],
+    "tmp_dir_line": [
+      "--cut 2026-10-24T21:34:18Z --tmp-dir $S/v20_u4/B/tmp --state $S/v20_u4/B/brain_state/v18_brain_state.pkl \\"
+    ]
+  },
+  "scope": "metadata/header and provenance audit; no 15.99GB file read beyond first 1142 bytes; no full hash or copy of events_sorted.tsv",
+  "source_spills": [
+    {
+      "bytes": 42283,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_history_mac_20261022T205516Z_20495_419498.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_history_mac_20261022T205516Z_20495_419498.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 5565917,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_ledgers_mac_20261022T205517Z_20555_030501.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_ledgers_mac_20261022T205517Z_20555_030501.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 7309843,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s1arch_20261022T210357Z_1221833_012082.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_logs_s1arch_20261022T210357Z_1221833_012082.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 5470238,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s1run35_20261022T205958Z_1197678_291458.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_logs_s1run35_20261022T205958Z_1197678_291458.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 105145671,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s2old_20261022T205459Z_1172004_930150.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_logs_s2old_20261022T205459Z_1172004_930150.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 111828292,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s2run33_20261022T205459Z_1172002_855122.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_logs_s2run33_20261022T205459Z_1172002_855122.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 11990901,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s2run34_20261022T205459Z_1172003_827664.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_logs_s2run34_20261022T205459Z_1172003_827664.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 15520545,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s2run35_20261022T205619Z_1179503_907033.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_logs_s2run35_20261022T205619Z_1179503_907033.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 7989423,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s5run33_20261022T205459Z_1172000_830197.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_logs_s5run33_20261022T205459Z_1172000_830197.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 9977466,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s5run34_20261022T205558Z_1178588_154778.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_logs_s5run34_20261022T205558Z_1178588_154778.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 16092793,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s5run35_20261022T205705Z_1184611_055390.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_logs_s5run35_20261022T205705Z_1184611_055390.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 6411087,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s6run33_20261022T205834Z_1189744_155803.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_logs_s6run33_20261022T205834Z_1189744_155803.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 12070704,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s6run34_20261022T205919Z_1192821_078705.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_logs_s6run34_20261022T205919Z_1192821_078705.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 17773107,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_logs_s6run35_20261022T210034Z_1202111_657658.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_logs_s6run35_20261022T210034Z_1202111_657658.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 13179332,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_native_mac_20261022T205518Z_20670_360008.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_native_mac_20261022T205518Z_20670_360008.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 104331055,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/spill_union2/spill_rebuilt_s2_20261022T205439Z_1171672_670395.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union2 (10-22 union #2 re-extract)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/spill_union2/spill_rebuilt_s2_20261022T205439Z_1171672_670395.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 64860489,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/boards_filtered/spill_progress_s6boards_progress_20261022T203843Z_1114955_197953.tsv.gz",
+      "origin": "s5:~/rebuild_scratch_s5/learn/spill_union/boards_filtered (S6 progress boards, filtered, 10-22; extract report = the unfiltered boards spill + filter_report.json)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/boards_filtered/spill_progress_s6boards_progress_20261022T203843Z_1114955_197953.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 6356621,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261026T233913Z_3733619_652628.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_logs_s1auto_20261026T233913Z_3733619_652628.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 8697,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T003503Z_413951_376638.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_logs_s1auto_20261027T003503Z_413951_376638.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 65730,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T013503Z_1365615_627229.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_logs_s1auto_20261027T013503Z_1365615_627229.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 7899,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T015939Z_1740591_678108.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_logs_s1auto_20261027T015939Z_1740591_678108.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 83104,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T033506Z_3222553_920276.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_logs_s1auto_20261027T033506Z_3222553_920276.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 584114,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T103504Z_1372972_041606.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_logs_s1auto_20261027T103504Z_1372972_041606.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 15780,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T113503Z_2265996_277989.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_logs_s1auto_20261027T113503Z_2265996_277989.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 86,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T123503Z_526728_109737.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_logs_s1auto_20261027T123503Z_526728_109737.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 13505,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T153503Z_2745908_854913.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_logs_s1auto_20261027T153503Z_2745908_854913.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 87,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T163503Z_3583577_126577.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_logs_s1auto_20261027T163503Z_3583577_126577.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 64061,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T173503Z_279544_746117.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_logs_s1auto_20261027T173503Z_279544_746117.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 136392,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T183503Z_1107130_373523.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_logs_s1auto_20261027T183503Z_1107130_373523.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 49479,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_logs_s1auto_20261027T193508Z_1666839_197420.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_logs_s1auto_20261027T193508Z_1666839_197420.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 1888943,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261026T233935Z_3738155_571058.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_progress_s1auto_20261026T233935Z_3738155_571058.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 1667564,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T003504Z_414962_907666.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_progress_s1auto_20261027T003504Z_414962_907666.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 1646909,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T013505Z_1367069_779164.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_progress_s1auto_20261027T013505Z_1367069_779164.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 1648892,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T015940Z_1740796_907403.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_progress_s1auto_20261027T015940Z_1740796_907403.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 1677216,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T033510Z_3225326_172409.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_progress_s1auto_20261027T033510Z_3225326_172409.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 506171,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T103514Z_1376974_634131.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_progress_s1auto_20261027T103514Z_1376974_634131.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 506171,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T113504Z_2266609_311132.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_progress_s1auto_20261027T113504Z_2266609_311132.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 506170,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T123503Z_527488_957493.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_progress_s1auto_20261027T123503Z_527488_957493.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 506171,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T153506Z_2747950_871611.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_progress_s1auto_20261027T153506Z_2747950_871611.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 506171,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T163503Z_3584205_838991.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_progress_s1auto_20261027T163503Z_3584205_838991.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 413021,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T173509Z_282123_440635.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_progress_s1auto_20261027T173509Z_282123_440635.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 491344,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T183509Z_1109659_723582.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_progress_s1auto_20261027T183509Z_1109659_723582.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 494476,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s1/spill_progress_s1auto_20261027T193527Z_1670167_908900.tsv.gz",
+      "origin": "s1:~/v20_spills (hourly, pulled 2026-10-27 19:3xZ)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s1/spill_progress_s1auto_20261027T193527Z_1670167_908900.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 97852251,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261026T225936Z_833033_773711.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261026T225936Z_833033_773711.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 87,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T003509Z_1168936_455634.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261027T003509Z_1168936_455634.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 709311,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T013510Z_1368382_392722.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261027T013510Z_1368382_392722.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 724965,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T015945Z_1453631_082090.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261027T015945Z_1453631_082090.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 716007,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T033514Z_1774135_826021.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261027T033514Z_1774135_826021.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 2147919,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T103516Z_3491239_900533.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261027T103516Z_3491239_900533.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 370210,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T113506Z_3732254_520906.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261027T113506Z_3732254_520906.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 312258,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T123506Z_3899777_105805.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261027T123506Z_3899777_105805.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 2876,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T133504Z_4038501_395457.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261027T133504Z_4038501_395457.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 113029,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T143503Z_4157819_960532.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261027T143503Z_4157819_960532.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 371657,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T153509Z_171875_398542.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261027T153509Z_171875_398542.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 441707,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T163506Z_394943_030949.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261027T163506Z_394943_030949.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 290875,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T173511Z_613509_363645.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261027T173511Z_613509_363645.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 290104,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T183511Z_839092_824623.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261027T183511Z_839092_824623.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 343902,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_logs_s2auto_20261027T193530Z_1025192_253986.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_logs_s2auto_20261027T193530Z_1025192_253986.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 41851521,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_progress_s2auto_20261026T230425Z_851682_131167.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_progress_s2auto_20261026T230425Z_851682_131167.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 39452537,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2/spill_progress_s2auto_20261027T193540Z_1025455_727014.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2/spill_progress_s2auto_20261027T193540Z_1025455_727014.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 181403272,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261026T230821Z_1148308_798499.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261026T230821Z_1148308_798499.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 87,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T003610Z_1802665_055666.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261027T003610Z_1802665_055666.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 6638899,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T013622Z_2185999_426464.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261027T013622Z_2185999_426464.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 3307867,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T020311Z_2305238_154442.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261027T020311Z_2305238_154442.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 1156482,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T040356Z_2952472_869360.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261027T040356Z_2952472_869360.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 87,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T103739Z_1150936_452295.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261027T103739Z_1150936_452295.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 87,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T113713Z_1495303_568525.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261027T113713Z_1495303_568525.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 87,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T123711Z_1687409_349006.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261027T123711Z_1687409_349006.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 87,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T133711Z_1768990_593096.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261027T133711Z_1768990_593096.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 87,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T143722Z_1878512_032111.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261027T143722Z_1878512_032111.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 87,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T153721Z_2223862_162452.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261027T153721Z_2223862_162452.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 87,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T163716Z_2563553_932249.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261027T163716Z_2563553_932249.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 834563,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T173720Z_2953978_075760.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261027T173720Z_2953978_075760.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 1631561,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T183721Z_3397903_432333.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261027T183721Z_3397903_432333.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 1667023,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_logs_s5auto_20261027T193752Z_3824381_144276.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_logs_s5auto_20261027T193752Z_3824381_144276.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 75551874,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_progress_s5auto_20261026T232032Z_1233124_386502.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_progress_s5auto_20261026T232032Z_1233124_386502.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 74735950,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s5/spill_progress_s5auto_20261027T193821Z_3826086_539735.tsv.gz",
+      "origin": "s5:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s5/spill_progress_s5auto_20261027T193821Z_3826086_539735.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 125111677,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261026T232421Z_546312_232957.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261026T232421Z_546312_232957.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 86,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T003731Z_981826_615461.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261027T003731Z_981826_615461.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 1102275,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T013802Z_1276276_731503.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261027T013802Z_1276276_731503.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 978095,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T020723Z_1421392_481598.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261027T020723Z_1421392_481598.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 823638,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T064742Z_2899896_115735.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261027T064742Z_2899896_115735.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 85,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T104136Z_51048_208305.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261027T104136Z_51048_208305.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 86,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T114108Z_358669_624192.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261027T114108Z_358669_624192.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 86,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T124100Z_527028_833823.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261027T124100Z_527028_833823.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 86,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T134102Z_584320_777725.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261027T134102Z_584320_777725.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 86,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T144109Z_687601_321904.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261027T144109Z_687601_321904.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 87,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T154108Z_1021014_780672.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261027T154108Z_1021014_780672.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 87,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T164057Z_1353257_053275.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261027T164057Z_1353257_053275.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 579081,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T174123Z_1739295_877777.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261027T174123Z_1739295_877777.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 1416682,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T184156Z_2155295_896512.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261027T184156Z_2155295_896512.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 1512945,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_logs_s6auto_20261027T194210Z_2536033_718098.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_logs_s6auto_20261027T194210Z_2536033_718098.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 78468930,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_progress_s6auto_20261026T233532Z_614940_878233.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_progress_s6auto_20261026T233532Z_614940_878233.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 73734991,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s6/spill_progress_s6auto_20261027T194237Z_2536670_748399.tsv.gz",
+      "origin": "s6:~/v20_spills (hourly, pulled 19:3xZ, deduped)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s6/spill_progress_s6auto_20261027T194237Z_2536670_748399.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 38991872,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/macboards/spill_progress_macboards_20261022T191139Z_20496_443715.tsv.gz",
+      "origin": "mac data/brain_scratch/spill_boards progress boards (10-22)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/macboards/spill_progress_macboards_20261022T191139Z_20496_443715.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 21039179,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/s2lifecycle/spill_progress_s2lifecycle_20261027T203424Z_1197130_838059.tsv.gz",
+      "origin": "s2:~/v20_spills (hourly, pulled 19:3xZ, deduped: all spill_logs + oldest/newest spill_progress)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/s2lifecycle/spill_progress_s2lifecycle_20261027T203424Z_1197130_838059.tsv.gz",
+      "wd_size_matches": true
+    },
+    {
+      "bytes": 239203316,
+      "manifest_path": "s6:/home/niels/v20_u4/spills/ext/spill_logs_e3tarch_20261027T203352Z_94635_491877.tsv.gz",
+      "origin": "mac data/brain_scratch/spill_ext (E3T fleet_archive s5 v15_* runs 3-32 + iso + S1_offload_20261013, extracted 2026-10-27 20:44Z; md5 879763d2a1721facdb4a8650755dd455)",
+      "wd_archive_path": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/ext/spill_logs_e3tarch_20261027T203352Z_94635_491877.tsv.gz",
+      "wd_size_matches": true
+    }
+  ]
+}

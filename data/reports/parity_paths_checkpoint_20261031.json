@@ -1,7 +1,7 @@
 {
-  "computed_at": "2026-10-31T02:17:22.637082+00:00",
+  "computed_at": "2026-10-31T02:48:07.125170+00:00",
   "status": "IN_PROGRESS_NATIVE_PARITY_FAIL",
-  "fleet_deployed": false,
+  "fleet_deployed": "PARTIAL_AUTO_PUSH_DISCOVERED; NOT_A_REVIEWED_FLEET_BATCH",
   "log_text_preserved": true,
   "local_template_install_summary": {
     "ts": "202610310207",
@@ -106,12 +106,10 @@
     "B04 tier sizing differs between native and vector_direct execution overlay; historical engine must not read current tiers"
   ],
   "local_defaults_incident": {
-    "command": "python3 tools/build_cat_side_defaults_4.py --help",
-    "effect": "No help handling; rebuilt local per_sym_settings.json and SQL from canonical templates",
-    "fleet_write": false,
-    "comparison_reference": "backups/daily_chain_mac_202610302000/data_per_sym_settings.json",
-    "reference_is_exact_precall_snapshot": false,
-    "differing_values_vs_reference": 68
+    "command": "tools/build_cat_side_defaults_4.py --help",
+    "effect": "Script has no help handler; rebuilt local per_sym_settings.json and SQL KV from canonical templates",
+    "audit": "/tmp/parity_local_defaults_change_audit_20261031.json",
+    "comparison": "68 differences vs older daily backup; no exact precall snapshot; no whole restore"
   },
   "known_test_failure": {
     "test": "tests/test_fixed_stop.py::test_existing_exchange_stop_is_kept_during_software_spec_restore",
@@ -124,5 +122,165 @@
     "all reachable path inventory classification",
     "S1/S5 production log verification",
     "ang/inf full common-sym_side and loss attribution"
-  ]
+  ],
+  "latest_crypto_replay": {
+    "computed_at": "2026-10-31T02:46:40Z",
+    "symbol_side": "1000PEPEUSDC_LONG",
+    "frozen_npz_md5": "88b03db6b7ace4203ae899f65b40f30c",
+    "window_days": 7,
+    "tol_seconds": 0,
+    "vector_trips": 7,
+    "native_trips": 8,
+    "matched_entries": 7,
+    "matching_exits": 6,
+    "verdict": "FAIL",
+    "remaining_first_exit": "2026-10-30T12:00:00Z native WT velocity exit absent vector"
+  },
+  "reviewed_test_evidence": {
+    "affected_suite": {
+      "passed": 71,
+      "junit": "/tmp/parity_reviewed_paths_latest.xml"
+    },
+    "minimum_hold_suite": {
+      "passed": 25
+    },
+    "central_exit_suite_after_zero_reduce_test": {
+      "passed": 7
+    }
+  },
+  "automatic_code_copy": {
+    "label": "com.niels.s1-livecode-push",
+    "status": "TEMPORARILY_PAUSED_FOR_REVIEW",
+    "resume_record": "/tmp/parity_livecode_push_resume.json",
+    "reason": "120-second job had auto-copied unfinished edits and templates to S1 main; S1/S5 sandbox copies remain older"
+  },
+  "source_template_queue": {
+    "nine_switches_pushed": true,
+    "S1_inbox_verified": true,
+    "S1_canonical_books_installed": false
+  },
+  "S5_missing_helper_repair": {
+    "file": "/home/niels/binance/live_twins/vec_backstop.py",
+    "import_verified": true,
+    "restarted": false
+  },
+  "ang_inf": {
+    "compared_shared_order_bars": 25,
+    "action_status_equal": 21,
+    "duplicate_reduction_observed": "HYPEUSDT_LONG same board key sent again by ang one bar later; TTL expiration reproduction pending",
+    "profit_loss_cause": "UNRESOLVED"
+  },
+  "local_template_install_summary_round2": {
+    "ts": "202610310220",
+    "apply": true,
+    "entries": {
+      "BREAKOUT_RETEST_ARMED_ENABLED": {
+        "refused": {},
+        "present": [
+          "TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx!ENTRY_BREAKOUT_CHANNEL",
+          "TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_BREAKOUT_CHANNEL"
+        ],
+        "planned": [],
+        "installed": []
+      },
+      "BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT": {
+        "refused": {},
+        "present": [
+          "TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx!ENTRY_BREAKOUT_CHANNEL",
+          "TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx!ENTRY_BREAKOUT_CHANNEL"
+        ],
+        "planned": [],
+        "installed": []
+      },
+      "EXIT_K5M_BOUNCE_ENABLED": {
+        "refused": {},
+        "present": [
+          "TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_LONG.xlsx!EXIT_VELOCITY",
+          "TEMPLATE_FINAL_NORM/TEMPLATE_STOCKS_SHORT.xlsx!EXIT_VELOCITY"
+        ],
+        "planned": [],
+        "installed": []
+      },
+      "GAIN_THRESHOLD_LOW": {
+        "refused": {},
+        "present": [],
+        "planned": [
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx!EXIT_VELOCITY",
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_VELOCITY"
+        ],
+        "installed": [
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx!EXIT_VELOCITY+3",
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_VELOCITY+3"
+        ]
+      },
+      "OPTIMAL_HOLD_BARS_3M": {
+        "refused": {},
+        "present": [
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx!EXIT_VELOCITY",
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_VELOCITY"
+        ],
+        "planned": [],
+        "installed": []
+      },
+      "OPTIMAL_HOLD_BARS_EXIT_ENABLED": {
+        "refused": {},
+        "present": [
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx!EXIT_VELOCITY",
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_VELOCITY"
+        ],
+        "planned": [],
+        "installed": []
+      },
+      "SATOSHIT_PROTECT_TRADES": {
+        "refused": {},
+        "present": [],
+        "planned": [
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL",
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL"
+        ],
+        "installed": [
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL+2",
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL+2"
+        ]
+      },
+      "STRUCTURAL_RANGE_SHIFT_K_HIGH": {
+        "refused": {},
+        "present": [],
+        "planned": [
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL",
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL"
+        ],
+        "installed": [
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL+3",
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL+3"
+        ]
+      },
+      "STRUCTURAL_RANGE_SHIFT_K_LOW": {
+        "refused": {},
+        "present": [],
+        "planned": [
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL",
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL"
+        ],
+        "installed": [
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx!EXIT_STRUCTURAL+3",
+          "TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx!EXIT_STRUCTURAL+3"
+        ]
+      }
+    },
+    "files": {
+      "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx": [
+        "GAIN_THRESHOLD_LOW@EXIT_VELOCITY+3",
+        "SATOSHIT_PROTECT_TRADES@EXIT_STRUCTURAL+2",
+        "STRUCTURAL_RANGE_SHIFT_K_HIGH@EXIT_STRUCTURAL+3",
+        "STRUCTURAL_RANGE_SHIFT_K_LOW@EXIT_STRUCTURAL+3"
+      ],
+      "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx": [
+        "GAIN_THRESHOLD_LOW@EXIT_VELOCITY+3",
+        "SATOSHIT_PROTECT_TRADES@EXIT_STRUCTURAL+2",
+        "STRUCTURAL_RANGE_SHIFT_K_HIGH@EXIT_STRUCTURAL+3",
+        "STRUCTURAL_RANGE_SHIFT_K_LOW@EXIT_STRUCTURAL+3"
+      ]
+    }
+  }
 }

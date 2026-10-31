@@ -90,10 +90,11 @@ def test_refused_stateful_wt_exit_keeps_identity_and_elapsed_age(wt_exempt, expe
     assert closed["exit_family"] == "WT_4H_VEL_EXIT"
 
 
-def test_zero_quantity_quick_reduce_does_not_suppress_later_native_wt_exit():
-    data = _npz()
+@pytest.mark.parametrize("bb_recovery", [False, True])
+def test_zero_quantity_quick_reduce_does_not_suppress_later_native_wt_exit(bb_recovery):
+    data = _npz(bb_recovery=bb_recovery)
     n = len(data["close"])
-    prices = np.full(n, 100.2)
+    prices = np.full(n, 100.9 if bb_recovery else 100.2)
     prices[0] = 100.0
     for key in ("close", "close_15m", "open_15m", "high_15m", "low_15m"):
         data[key] = prices.copy()
@@ -102,7 +103,9 @@ def test_zero_quantity_quick_reduce_does_not_suppress_later_native_wt_exit():
     cfg.STRUCTURAL_RANGE_SHIFT_EXIT = False
     cfg.WT_CROSS_EXIT_ENABLED = True
     cfg.WT_CROSS_EXIT_MIN_AGE_MINUTES = 1.0
+    cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER = bb_recovery
     cfg.WT_REDUCE_FRAC_LOW = 0.0
+    cfg.WT_REDUCE_FRAC_MED = 0.0
     cfg.NOLOSS_MIN_PROFIT_PCT = 0.1
     cfg.WT_4H_VEL_EXIT_ENABLED = True
     cfg.WT_4H_VEL_EXIT_REQUIRE_K_EXTREME = False

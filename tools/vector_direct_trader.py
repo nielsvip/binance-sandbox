@@ -1187,6 +1187,8 @@ class Trader:
             try:
                 for line in p.read_text().splitlines():
                     r = json.loads(line)
+                    if r.get("act") == "REDUCE" and r.get("status") == "SKIP_SIZE":
+                        continue
                     if r.get("final") and r.get("key") and not r.get("dry_run") and r.get("status") not in ("DRY_RUN", "KILLED"):
                         done.add(r["key"])
                         if r.get("status") in ("SENT", "ERROR") and "|OPEN" in r["key"] and hasattr(self, "done_ts"):
@@ -2033,10 +2035,14 @@ class Trader:
                         self.alert(row["status"], account=acct, sym_side=o["ss"], profit_check=profit_check, severity="CRITICAL")
                     continue
             if qty <= 0:
-                row.update({"status": "SKIP_SIZE", "detail": why, "final": True})
-                self.done.add(o["key"])
-                self._ledger(row)
-                log(f"{acct} {o['ss']} {o['act']} SKIP: {why}")
+                retryable = o["act"] == "REDUCE"
+                row.update({"status": "REFUSED_REDUCE_SIZE" if retryable else "SKIP_SIZE", "detail": why, "final": not retryable})
+                if not retryable:
+                    self.done.add(o["key"])
+                if o["key"] not in self.quiet:
+                    self.quiet.add(o["key"])
+                    self._ledger(row)
+                    log(f"{acct} {o['ss']} {o['act']} SKIP: {why}")
                 continue
             if self.a.dry_run or killed:
                 # never final on disk: arming (or removing KILL) must still send what the board dictates
@@ -2099,7 +2105,8 @@ class Trader:
                 if o["act"] == "OPEN" and o.get("anchor") is not None and (str(resp.get("status") or "").upper() == "FILLED" or float(resp.get("executedQty") or 0) > 0):
                     self.filled_open_anchors.add((acct, o["ss"], int(o["anchor"])))
                 self.done.add(o["key"])
-                self.done_ts[o["key"]] = time.time()
+                if o["act"] == "OPEN":
+                    self.done_ts[o["key"]] = time.time()
                 log(f"SENT {acct} {o['ss']} {o['act']} qty={qty} px~{price} -> {resp}")
                 if stop_level_armed is not None:
                     try:

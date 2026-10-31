@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-31T02:46:23.524562+00:00",
+  "recorded_at": "2026-10-31T02:51:02.238332+00:00",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -14,7 +14,8 @@
       "mounted_drives_observed": [
         "WD25",
         "SSD2T",
-        "E3T"
+        "E3T",
+        "TOSHIBA_EXT"
       ],
       "transfer_destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_rebuild_scratch",
       "transfer_verified_complete": true,
@@ -22,17 +23,17 @@
         "name": "TOSHIBA_EXT",
         "device": "/dev/disk5s1",
         "uuid": "CB74078E-CB60-392D-A83D-73E7DCF836DC",
-        "state": "physically_present_unmounted",
-        "mount_deferred": "shares USB hub with active WD25 preservation; read-only mount after stable copy"
+        "state": "last_observed_mounted_read_write",
+        "qualification": "Mounted by prior/external activity; this supervisor did not remount. Canonical eval master/rebuild retained."
       },
       "verified_copy_scope": "verified at 2026-10-30T20:51:05Z: rsync dry-run with checksum checked all 243 entries (207 regular files, 36 directories), total 1,331,992,053 B; 0 created/changed/transferred/deleted and 0 bytes transferred. This establishes byte-for-byte match with current S6 source and no source changes observable at verification. Source contains no symlinks (separate bounded source listing); source mtime scan found no files changed within the prior 60 minutes.",
       "ongoing_copy": {
+        "status": "previous spill transfer completed; use dated preservation matrix for exact verified scope",
         "source": "s6:/home/niels/v20_u4/spills/",
         "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/",
-        "status": "in progress; rsync session 19510; source size approximately 1.6G; no symlinks; do not count as verified until whole-tree checksum dry-run completes",
-        "wd25_uuid": "04543668-3000-3F41-BB34-1C876F724D28"
+        "qualification": "Full source preservation remains incomplete; later S6 training-state PKL copy is owned by corpus_inventory and is not yet verified."
       },
-      "latest_matrix": "data/reports/learning_preservation_matrix_20261031T0027Z.json"
+      "latest_matrix": "data/reports/learning_preservation_matrix_20261031T0232Z.json"
     },
     "full_matched_learning_refresh": {
       "status": "incomplete",
@@ -41,14 +42,15 @@
       "newer_context_coverage": "unverified"
     },
     "new_switch_exploration": {
-      "status": "shadow_only",
+      "status": "review_helpers_integration_in_progress",
       "helper": "tools/v15_nextgen_shadow_plan.py",
-      "production_integrated": false
+      "production_integrated": false,
+      "priority_helper": "tools/v15_nextgen_protection_priority.py"
     },
     "gain_improvement": {
       "status": "unproven",
       "required": "real engine trade returns, matched frozen inputs, independent chronological evaluation",
-      "promotion_authority": "existing S2 version gate against last promoted neural network"
+      "promotion_authority": "Existing S2 version gate against last promoted NN; retain actual integrity/holdout criteria. BACKTEST_BIBLE \u00a792 supersedes old mandatory 365D-before-live sequencing; diagnostic evidence remains diagnostic, no invented additional yearlong prerequisite."
     },
     "compute_reduction": {
       "status": "unproven",
@@ -462,7 +464,7 @@
       "terminal_at": "2026-10-31T02:43:52.312685Z",
       "actual_output_bytes": 5450255,
       "frozen_template_sha256": "3e989e4fb5171a19ca48fb9865b463c28457a83e0641523ae75e4823f3aed1d4",
-      "qualification": "Result inspection pending. Same historical engine and frozen domain; not authority-corrected current-runtime evidence or NN promotion."
+      "qualification": "Root checked all three receipts: pure effective-config factorials; no positive joint or interaction effect, no current independent confirmation. Historical frozen runtime only; no adoption. Corrected-authority rerun requested."
     },
     "preservation": {
       "receipt": "data/reports/experience_restore_reclamation_20261031T012834Z.json",
@@ -540,7 +542,7 @@
       "scope": "one frozen previous baseline; all four config/ledger/result/cutoff hashes equal; no candidate gain proof"
     },
     "activation_conflicts": "data/reports/nextgen_protection_activation_conflicts_20261031.json",
-    "next": "legal template protection/recovery combinations and native refusal trace for fifth reclaim signal before S2 comparison",
+    "next": "Run corrected-authority protection combinations, extend stock authority proof, and integrate source-bound exploration/feedback before controlled prior-NN comparison.",
     "second_trace": {
       "source": "data/reports/nextgen_protection_gate_trace_20261031T020032Z",
       "status": "BASELINE_4_HASH_MATCH",
@@ -587,5 +589,6 @@
     "earlier_local_domain_census_short": "ec3384e042f6e22114e79c8586de634931de5f0c7b84f7df596b2ad93862c7b1",
     "current_local_short_at_read": "099c457aee495922df2599fd7895b68c9a7b12ac315b52690a05ada2944cd10e",
     "consequence": "unlaunched targeted stage rejected/rebuilt against exact frozen reference; current-domain reconciliation remains separate"
-  }
+  },
+  "historical_fields_notice": "Early benchmark_repair/latest_review and legacy evidence fields retain dated provenance; latest_verified_progress and per-requirement current status take precedence. Do not infer active processes from historical session IDs."
 }

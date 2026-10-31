@@ -15585,6 +15585,72 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     base_tf = _base_tf(npz, cfg)
     ts = npz.get("timestamps", npz.get(f"timestamp_{base_tf}", np.array([])))
     n = len(ts)
+    _partial_context = getattr(cfg, "_PARTIAL_EXECUTION_CONTEXT", None)
+    _partial_audit = {"accepted_count": 0, "rejected_count": 0, "last_rejection": None}
+    _partial_context_error = None
+    _partial_observation_ts = None
+    if _partial_context is not None:
+        try:
+            from vec_decisions import partial_account_execution as _partial_account
+            _partial_context_ok, _partial_context_error = _partial_account.validate_context(
+                _partial_context, sym, "LONG" if is_long else "SHORT",
+                int(ts[0]) if n else 0, int(ts[-1]) if n else 0,
+            )
+            if _partial_context_ok:
+                _partial_observation_ts = int(_partial_context["observation_bar_ts"])
+        except Exception as _partial_context_exc:
+            _partial_context_ok = False
+            _partial_context_error = f"CONTEXT_VALIDATION_ERROR:{type(_partial_context_exc).__name__}"
+    else:
+        _partial_context_ok = False
+
+    def _account_partial_plan(_position, _qty, _price, _bar_ts):
+        if _partial_context is None:
+            return True, float(_qty), None
+        if not _partial_context_ok:
+            _partial_audit["rejected_count"] += 1
+            _partial_audit["last_rejection"] = str(_partial_context_error or "ACCOUNT_CONTEXT_INVALID")
+            return False, 0.0, None
+        if int(_bar_ts) < _partial_observation_ts:
+            return True, float(_qty), None
+        if int(_bar_ts) != _partial_observation_ts:
+            _partial_audit["rejected_count"] += 1
+            _partial_audit["last_rejection"] = "NO_FRESH_ACCOUNT_OBSERVATION_FOR_BAR"
+            return False, 0.0, None
+        _account_qty = _position.get("_account_projected_qty") if isinstance(_position, dict) else None
+        if _account_qty is None:
+            _partial_audit["rejected_count"] += 1
+            _partial_audit["last_rejection"] = "ACCOUNT_POSITION_NOT_SEEDED_AT_OBSERVATION"
+            return False, 0.0, None
+        _lot = _partial_context["market_lot"]
+        _plan = _partial_account.plan_partial_reduce(
+            float(_qty), float(_position.get("qty") or 0.0), float(_account_qty),
+            float(_lot["step_size"]), float(_lot["min_qty"]),
+        )
+        if not _plan["ok"]:
+            _partial_audit["rejected_count"] += 1
+            _partial_audit["last_rejection"] = str(_plan.get("reason") or "PARTIAL_REJECTED")
+            return False, 0.0, None
+        return True, float(_plan["engine_reduce_qty"]), _plan
+
+    def _account_partial_commit(_position, _plan, _event):
+        if _plan is None:
+            return
+        _position["_account_projected_qty"] = float(_plan["account_projected_qty_after"])
+        _partial_audit["accepted_count"] += 1
+        if isinstance(_event, dict):
+            _event["account_partial_projection"] = {
+                "account_key": str(_partial_context["account_key"]),
+                "observed_qty_before": float(_plan["account_qty_before"]),
+                "projected_reduce_qty": float(_plan["account_reduce_qty"]),
+                "projected_qty_after": float(_plan["account_projected_qty_after"]),
+                "requested_fraction": float(_plan["requested_fraction"]),
+                "executable_fraction": float(_plan["executable_fraction"]),
+                "observation_bar_ts": int(_partial_observation_ts),
+                "decision_generation": str(_partial_context["decision_generation"]),
+                "config_sha256": str(_partial_context["config_sha256"]),
+                "projection_only_not_a_fill": True,
+            }
     if str(getattr(cfg, "MODE", "crypto")) == "tradier" and bool(
         getattr(cfg, "STDEV_REJECT_EXIT_ENABLED", False)
     ):
@@ -19282,6 +19348,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         px = close[i]
         if px <= 0:
             continue
+        if _partial_context is not None and _partial_context_ok and int(ts[i]) == _partial_observation_ts and pos is not None:
+            pos["_account_projected_qty"] = float(_partial_context["observed_qty"])
         if _sg_rth_off is not None and bool(_sg_rth_off[i]):
             if pos is not None:
                 bars_in_pos += (
@@ -19299,6 +19367,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _cs_ow, _cs_book.owed = _cs_book.owed, None
                 _cs_rs = _cash_settle.deferred_reason(_cs_ow)
                 _cs_q = float(pos["qty"]) if _cs_ow["full"] else min(float(pos["qty"]), float(_cs_ow["qty"]))
+                _cs_partial_rejected = False
                 _cs_book.stats["owed_executed"] += 1
                 if _cs_ow["full"] or _cs_q >= float(pos["qty"]) - 1e-12:
                     pos["fees"] += abs(pos["qty"] * px) * half_fee
@@ -19317,20 +19386,29 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     has_closed_before = True
                     _cs_book.on_sell(_cs_ts, flat=True)
                 elif _cs_q > 0:
-                    pos["realized"] += (px - pos["avg_price"]) * _cs_q if is_long else (pos["avg_price"] - px) * _cs_q
-                    pos["fees"] += abs(_cs_q * px) * half_fee
-                    pos["qty"] -= _cs_q
-                    _cs_event_count = len(events)
-                    events.append({"type": "REDUCE", "ts": _cs_ts, "price": float(px), "qty": float(_cs_q), "pos_deployed": float(pos["deployed"]), "bar": int(i), "reason": _cs_rs})
-                    if len(events) == _cs_event_count:
+                    _cs_ok, _cs_engine_qty, _cs_plan = _account_partial_plan(pos, _cs_q, px, _cs_ts)
+                    if not _cs_ok:
                         _cs_book.owed = _cs_ow
                         _cs_book.stats["owed_executed"] = max(0, int(_cs_book.stats.get("owed_executed", 0)) - 1)
-                        if _pending_exit_control_restore is not None:
-                            _pending_exit_control_restore = (_pending_exit_control_restore[0], _pending_exit_control_restore[1], bars_in_pos)
-                        continue
-                    pos["last_reduce_bar"] = int(i)
-                    _cs_book.on_sell(_cs_ts, flat=False)
-                continue
+                        _cs_partial_rejected = True
+                    else:
+                        _cs_q = _cs_engine_qty
+                        pos["realized"] += (px - pos["avg_price"]) * _cs_q if is_long else (pos["avg_price"] - px) * _cs_q
+                        pos["fees"] += abs(_cs_q * px) * half_fee
+                        pos["qty"] -= _cs_q
+                        _cs_event_count = len(events)
+                        events.append({"type": "REDUCE", "ts": _cs_ts, "price": float(px), "qty": float(_cs_q), "pos_deployed": float(pos["deployed"]), "bar": int(i), "reason": _cs_rs})
+                        if len(events) == _cs_event_count:
+                            _cs_book.owed = _cs_ow
+                            _cs_book.stats["owed_executed"] = max(0, int(_cs_book.stats.get("owed_executed", 0)) - 1)
+                            if _pending_exit_control_restore is not None:
+                                _pending_exit_control_restore = (_pending_exit_control_restore[0], _pending_exit_control_restore[1], bars_in_pos)
+                            continue
+                        _account_partial_commit(pos, _cs_plan, events[-1])
+                        pos["last_reduce_bar"] = int(i)
+                        _cs_book.on_sell(_cs_ts, flat=False)
+                if not _cs_partial_rejected:
+                    continue
             _cs_snap = _cash_settle.snapshot(_cs_book, _cs_ts, pos, trades, events, {"cd": cd, "hcb": has_closed_before, "bip": bars_in_pos, "otc": dict(_ot_cnt)})
         # 2026-09-18 HARDCODED RALLY REENTRY bypass cooldown: if close>exit and wt rising, ignore cd
         # 2026-09-26 TARGET-DC immediate reentry [aug-reentry: centralized in target_dc_reentry_gate + master-gated]
@@ -20907,38 +20985,37 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     getattr(cfg, "WT_REDUCE_FRAC_MED", 0.25),
                     getattr(cfg, "WT_REDUCE_FRAC_HIGH", 0.50),
                 )
-                if (
-                    not np.isfinite(_bbr_qty_early)
-                    or _bbr_qty_early <= 0.0
-                    or _bbr_qty_early >= pos["qty"]
-                    or _bbr_qty_early < _bbr_order_min_early
-                ):
-                    continue
-                _bbr_reason_early = (
-                    "BB_RECOVERY_EXIT_TRADIER_LONG"
-                    if is_long
-                    else "BB_RECOVERY_EXIT_TRADIER_SHORT"
-                )
-                pos["realized"] += (
-                    (px - pos["avg_price"]) * _bbr_qty_early
-                    if is_long
-                    else (pos["avg_price"] - px) * _bbr_qty_early
-                )
-                pos["fees"] += abs(_bbr_qty_early * px) * half_fee
-                pos["qty"] -= _bbr_qty_early
-                events.append(
-                    {
-                        "type": "REDUCE",
-                        "ts": float(ts[i]) if i < len(ts) else 0.0,
-                        "price": float(px),
-                        "qty": float(_bbr_qty_early),
-                        "pos_deployed": float(pos["deployed"]),
-                        "bar": int(i),
-                        "reason": _bbr_reason_early,
-                    }
-                )
-                pos["last_reduce_bar"] = int(i)
-                continue
+                if np.isfinite(_bbr_qty_early) and 0.0 < _bbr_qty_early < pos["qty"] and _bbr_qty_early >= _bbr_order_min_early:
+                    _bbr_ts_early = float(ts[i]) if i < len(ts) else 0.0
+                    _bbr_ok_early, _bbr_engine_qty_early, _bbr_plan_early = _account_partial_plan(pos, _bbr_qty_early, px, _bbr_ts_early)
+                    if _bbr_ok_early:
+                        _bbr_qty_early = _bbr_engine_qty_early
+                        _bbr_reason_early = (
+                            "BB_RECOVERY_EXIT_TRADIER_LONG"
+                            if is_long
+                            else "BB_RECOVERY_EXIT_TRADIER_SHORT"
+                        )
+                        pos["realized"] += (
+                            (px - pos["avg_price"]) * _bbr_qty_early
+                            if is_long
+                            else (pos["avg_price"] - px) * _bbr_qty_early
+                        )
+                        pos["fees"] += abs(_bbr_qty_early * px) * half_fee
+                        pos["qty"] -= _bbr_qty_early
+                        events.append(
+                            {
+                                "type": "REDUCE",
+                                "ts": _bbr_ts_early,
+                                "price": float(px),
+                                "qty": float(_bbr_qty_early),
+                                "pos_deployed": float(pos["deployed"]),
+                                "bar": int(i),
+                                "reason": _bbr_reason_early,
+                            }
+                        )
+                        _account_partial_commit(pos, _bbr_plan_early, events[-1])
+                        pos["last_reduce_bar"] = int(i)
+                        continue
         # 2026-10-01 b2c LIVE CRYPTO EXIT CHAIN hook (live_exit_chain.step): hit -> full close (STOP/CLOSE/KILL reasons) or partial REDUCE by live gain bands
         if _lec_P is not None:
             # lane-D: live EPQ check_exit_candidates returns at line 1 when ABLATION_DISABLE_QUICK_EXIT (ez_positions_quick:13807); step_pp below stays
@@ -21032,7 +21109,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         pos.get("entry_qty", pos["qty"])
                     ):
                         _lec_qty = pos["qty"]
-                if _lec_qty > 0.0:
+                _lec_plan = None
+                if 0.0 < _lec_qty < float(pos["qty"]):
+                    _lec_ok, _lec_engine_qty, _lec_plan = _account_partial_plan(pos, _lec_qty, px, float(ts[i]) if i < len(ts) else 0.0)
+                    if _lec_ok:
+                        _lec_qty = _lec_engine_qty
+                    else:
+                        _lec_hit = None
+                if _lec_hit and _lec_qty > 0.0:
                     _lec_ts = (
                         float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
                     )
@@ -21069,6 +21153,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 "bars_held": int(i - pos["entry_bar"]),
                             }
                         )
+                        _account_partial_commit(pos, _lec_plan, trades[-1])
                         pos = None
                         cd = cooldown_bars
                         has_closed_before = True
@@ -21091,6 +21176,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 "reason": _lec_reason,
                             }
                         )
+                        _account_partial_commit(pos, _lec_plan, events[-1])
                         pos["last_reduce_bar"] = int(i)
                     continue
             # b2c: ez_manage.process_position exits (R1 / R2 / MOMENTUM_TP / DC_BASIS_3M_REDUCE) — full closes
@@ -21179,6 +21265,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         pos.get("entry_qty", pos["qty"])
                     ):
                         _sfk_q = pos["qty"]
+                    _sfk_plan = None
+                    if _sfk_q < float(pos["qty"]) - 1e-12:
+                        _sfk_ok, _sfk_engine_qty, _sfk_plan = _account_partial_plan(pos, _sfk_q, px, float(ts[i]) if i < len(ts) else 0.0)
+                        _sfk_q = _sfk_engine_qty if _sfk_ok else 0.0
                     _sfk_ts = (
                         float(ts[i])
                         if i < len(ts)
@@ -21217,6 +21307,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 "bars_held": int(i - pos["entry_bar"]),
                             }
                         )
+                        _account_partial_commit(pos, _sfk_plan, trades[-1])
                         pos = None
                         cd = cooldown_bars
                         has_closed_before = True
@@ -21239,6 +21330,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 "reason": _sfk_reason,
                             }
                         )
+                        _account_partial_commit(pos, _sfk_plan, events[-1])
                         pos["last_reduce_bar"] = int(i)
                     continue
         # 2026-09-30 STATEFUL PORTED EXITS (WT_4H_VEL_EXIT / WT_EXHAUST_EXIT / MU_CORRECTION_EXIT — gain/age-gated; ported_stateful_exit.py)

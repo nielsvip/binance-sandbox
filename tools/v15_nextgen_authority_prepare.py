@@ -27,6 +27,8 @@ def main():
     parser.add_argument('--candidate', required=True)
     parser.add_argument('--patch-manifest', required=True)
     parser.add_argument('--harness', required=True)
+    parser.add_argument('--expected-oracle')
+    parser.add_argument('--expected-oracle-sha256')
     args = parser.parse_args()
     base, destination, candidate, harness = map(Path, (args.source_base, args.destination, args.candidate, args.harness))
     source_receipt = Path(args.source_receipt)
@@ -51,9 +53,12 @@ def main():
         entry = manifest['files'][relative]
         if original_runtime['files'][relative] != entry['preimage_sha256'] or sha(candidate / relative) != entry['candidate_sha256']:
             raise ValueError(f'code-repair preimage/candidate differs: {relative}')
-    expected = harness / 'expected_previous_baseline_oracle.json'
+    if bool(args.expected_oracle) != bool(args.expected_oracle_sha256):
+        raise ValueError('explicit oracle path and hash must be paired')
+    expected = Path(args.expected_oracle) if args.expected_oracle else harness / 'expected_previous_baseline_oracle.json'
     expected_sha = sha(expected)
-    if expected_sha != '0a822a68a84275b6b1c71c7e38c005c55c0e65a25b3d70c026450f296bb8591a':
+    intended_oracle_sha = args.expected_oracle_sha256 or '0a822a68a84275b6b1c71c7e38c005c55c0e65a25b3d70c026450f296bb8591a'
+    if expected_sha != intended_oracle_sha:
         raise ValueError('unchanged genuine old oracle differs')
     destination.mkdir(parents=True, exist_ok=False)
     outputs = {}

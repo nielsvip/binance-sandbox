@@ -19,16 +19,16 @@ def pass_mask(npz, n, is_long, cfg, close, safe):
             return None
         buf = float(getattr(cfg, 'ENTRY_DC_BUFFER_PCT', 0.10) or 0.10) / 100.0
         ok = np.zeros(n, dtype=bool)
+        any_data = np.zeros(n, dtype=bool)
         for etf in tfs:
             norm = {"5m": "3m"}.get(etf, etf)
             lo = safe(npz, f"dc_low_{norm}", n, 0)
             hi = safe(npz, f"dc_high_{norm}", n, 0)
-            if np.all(lo == 0) and np.all(hi == 0):
-                continue
+            any_data |= (lo > 0) | (hi > 0)
             if is_long:
                 ok = ok | ((lo > 0) & (close >= lo * (1 + buf))) | ((hi > 0) & (close >= hi * (1 + buf)))
             else:
                 ok = ok | ((hi > 0) & (close <= hi * (1 - buf))) | ((lo > 0) & (close <= lo * (1 - buf)))
-        return np.asarray(ok, dtype=bool) if np.any(ok) else None
+        return np.asarray(ok | ~any_data, dtype=bool)
     except Exception:
         return None

@@ -67,6 +67,28 @@ def test_dc_break_matches_vec(is_long):
 
 
 @pytest.mark.parametrize("is_long", [True, False])
+def test_dc_break_missing_prior_channel_does_not_depend_on_future_rows(is_long):
+    close = np.asarray([10.0, 10.6, 9.4])
+    npz = {
+        "dc_high_15m_prev": np.asarray([0.0, 10.5, 10.5]),
+        "dc_low_15m_prev": np.asarray([0.0, 9.5, 9.5]),
+        "dc_high_15m": np.asarray([9.0, 10.5, 10.5]),
+        "dc_low_15m": np.asarray([11.0, 9.5, 9.5]),
+    }
+    vec = GFT._cond("dc_break", npz, len(close), "15m", is_long, close, _safe)
+    get = _getter({"DC_BREAK_FILTER_TF": "15m"})
+    live_allow = [
+        not G.entry_filter_tf_veto(_ind(npz, i), is_long, close[i], get)[0]
+        for i in range(len(close))
+    ]
+    assert live_allow == [bool(x) for x in vec]
+    assert bool(vec[0]) is True
+    prefix_npz = {key: value[:1] for key, value in npz.items()}
+    prefix = GFT._cond("dc_break", prefix_npz, 1, "15m", is_long, close[:1], _safe)
+    assert prefix.tolist() == vec[:1].tolist()
+
+
+@pytest.mark.parametrize("is_long", [True, False])
 def test_breakout_retest_matches_vec_and_needs_armed(is_long):
     close = np.array([10.6, 10.6, 10.4, 9.4, 9.6, 10.0])
     npz = {

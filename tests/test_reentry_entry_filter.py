@@ -1,13 +1,16 @@
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
 from vec_decisions.generic_filter_tf import FILTER_TF_MAP, _cond
+from vec_decisions.entry_dc_gate import pass_mask as entry_dc_pass_mask
 from vec_decisions.reentry_entry_filter import (
     compare_mask_coverage,
     generic_filter_tf_live_masks,
     live_15m_masks,
+    live_reentry_min_pass,
     min_pass_allowed,
     min_pass_result,
     min_pass_required,
@@ -270,6 +273,96 @@ def test_oi_mask_is_causal_and_enabled_missing_values_pass_consistently():
         with_future, 3, True, cfg, np.asarray([1.0, 99.0, 102.0]), safe
     )
     assert extended[:2].tolist() == prefix_only.tolist()
+
+
+def test_entry_dc_filter_mask_is_active_and_causal_when_enabled():
+    cfg = SimpleNamespace(ENTRY_DC_TF="15m", ENTRY_DC_BUFFER_PCT=0.1)
+
+    def safe(data, key, n, default=0.0):
+        return np.asarray(data[key], dtype=float) if key in data else np.full(n, default)
+
+    all_zero = entry_dc_pass_mask(
+        {"dc_low_15m": np.zeros(2), "dc_high_15m": np.zeros(2)},
+        2,
+        True,
+        cfg,
+        np.asarray([10.0, 10.0]),
+        safe,
+    )
+    assert all_zero.tolist() == [True, True]
+    assert entry_dc_pass_mask({}, 2, True, cfg, np.asarray([10.0, 10.0]), safe).tolist() == [True, True]
+
+    full = {
+        "dc_low_15m": np.asarray([0.0, 8.0, 8.0]),
+        "dc_high_15m": np.asarray([0.0, 12.0, 12.0]),
+    }
+    close = np.asarray([10.0, 7.0, 13.0])
+    with_suffix = entry_dc_pass_mask(full, 3, True, cfg, close, safe)
+    prefix = entry_dc_pass_mask(
+        {key: value[:1] for key, value in full.items()},
+        1,
+        True,
+        cfg,
+        close[:1],
+        safe,
+    )
+    assert with_suffix.tolist() == [True, False, True]
+    assert with_suffix[:1].tolist() == prefix.tolist()
+
+
+def test_live_reentry_min_pass_enabled_count_boundaries_and_disabled_lane():
+    cfg = SimpleNamespace(
+        MODE="crypto",
+        BASE_TF="15m",
+        ENTRY_CHOKE_GATES_ON_FINAL=False,
+        ENTRY_VET_RELAX_MODE=3,
+        FUNDING_GATE_ENABLED=False,
+        WT_DIV_ENTRY_GATE_ENABLED=False,
+        OI_CONFIRM_ENABLED=False,
+        HTF_DIRECTION_GATE_ENABLED=False,
+        EMA_BLANKET_FILTER_ENABLED=False,
+        WT_PERCENTILE_ENTRY_GATE_ENABLED=False,
+        MOM3_FILTER_TF="15m",
+        DC_BREAK_FILTER_TF="15m",
+        ENTRY_DC_TF="15m",
+        ENTRY_DC_BUFFER_PCT=0.1,
+    )
+    indicators = {
+        "close_3bar_15m": 11.0,
+        "dc_high_15m_prev": 11.0,
+        "dc_low_15m": 9.0,
+        "dc_high_15m": 9.0,
+    }
+    one, passed1, required1, active1, masks = live_reentry_min_pass(
+        indicators, True, cfg, 10.0, min_pass=1, enabled=True
+    )
+    two, passed2, required2, active2, _ = live_reentry_min_pass(
+        indicators, True, cfg, 10.0, min_pass=2, enabled=True
+    )
+    all_required, passed_all, required_all, active_all, _ = live_reentry_min_pass(
+        indicators, True, cfg, 10.0, min_pass=5, enabled=True
+    )
+    assert set(masks) == {
+        "MOM3_FILTER_TF",
+        "YELLOW_MOM3_FILTER_TF",
+        "DC_BREAK_FILTER_TF",
+        "YELLOW_DC_BREAK_FILTER_TF",
+        "ENTRY_DC_GATE",
+    }
+    assert (one, passed1, required1, active1) == (True, 3, 1, 5)
+    assert (two, passed2, required2, active2) == (True, 3, 2, 5)
+    assert (all_required, passed_all, required_all, active_all) == (False, 3, 5, 5)
+    assert live_reentry_min_pass(
+        {"wt1_15m": "invalid"}, True, cfg, 10.0, min_pass=1, enabled=False
+    ) == (True, 0, 0, 0, {})
+
+
+def test_native_epq_min_pass_is_reentry_only_and_fail_closed_on_invalid_masks():
+    source = (Path(__file__).resolve().parents[1] / "ez_positions_quick.py").read_text()
+    assert "if curr_amt == 0 and _vec_reentry_fire and _reentry_ftf_enabled:" in source
+    assert "_live_reentry_min_pass(indicators, is_long, _reentry_cfg_view" in source
+    assert "[REENTRY_MIN_PASS_INVALID]" in source
+    assert "[WORKER_FTF_VETO]" in source
 
 
 def test_full_provider_matches_active_vector_names_for_single_generic_gate():

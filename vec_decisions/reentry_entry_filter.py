@@ -266,6 +266,17 @@ def vector_entry_mask_snapshot(indicators, is_long, cfg, current_price, timestam
     return masks
 
 
+def live_reentry_min_pass(indicators, is_long, cfg, current_price, min_pass=1, timestamp=None, enabled=True):
+    """Evaluate the shared native reentry gate; disabled lanes are a no-op."""
+    if not enabled:
+        return True, 0, 0, 0, {}
+    masks = vector_entry_mask_snapshot(
+        indicators, is_long, cfg, current_price, timestamp
+    )
+    allowed, passed, required, active = min_pass_result(masks, min_pass)
+    return allowed, passed, required, active, masks
+
+
 def live_15m_masks(indicators, is_long):
     """Build the existing scalar Tradier REENTRY_ENTRY_FILTER predicates.
 

@@ -72,10 +72,7 @@ def _cond(kind, npz, n, tf, is_long, close, safe):
         # Donchian breakout = close beyond the PRIOR bar's channel (dc_*_{tf} includes the
         # current bar, so close > dc_high_{tf} is structurally impossible — proven 0-trades)
         key = (f"dc_high_{tf}_prev" if is_long else f"dc_low_{tf}_prev")
-        fallback = (f"dc_high_{tf}" if is_long else f"dc_low_{tf}")
         lvl = safe(npz, key, n, 0.0)
-        if not np.any(lvl > 0):
-            lvl = safe(npz, fallback, n, 0.0)
         c = (close > lvl) if is_long else (close < lvl)
         return np.where(lvl > 0, c, True)
     if kind in ("wt_cross_side", "wt_against"):
