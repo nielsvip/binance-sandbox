@@ -113,7 +113,7 @@ def bind_asr_npz_arrays(npz, cfg):
     return result
 
 
-def assemble_asr_composer_inputs(npz, cfg, causal_state, n, is_long):
+def assemble_asr_composer_inputs(npz, cfg, causal_state, n, is_long, arrays_bound=False):
     """Bind raw causal NPZ columns and explicit replay state into the composer schema.
 
     Missing arrays raise; the only defaults here are source-defined current-channel
@@ -121,7 +121,7 @@ def assemble_asr_composer_inputs(npz, cfg, causal_state, n, is_long):
     """
     if not isinstance(causal_state, dict):
         raise ValueError("causal_state must be an explicit mapping")
-    selected = bind_asr_npz_arrays(npz, cfg)
+    selected = dict(npz) if arrays_bound else bind_asr_npz_arrays(npz, cfg)
     def col(key):
         if key not in selected:
             raise ValueError(f"missing causal NPZ field {key}")
@@ -193,7 +193,7 @@ def assemble_asr_composer_inputs(npz, cfg, causal_state, n, is_long):
               "dc_low_4h": dc["dc_low_4h"], "dc_low_4h_ant": dc["dc_low_4h_ant"],
               "recent_exit": state("recent_exit", bool), "k_3m_cross_over": state("k_3m_cross_over", bool),
               "k_3m_cross_under": state("k_3m_cross_under", bool)}
-    return {"n": n, "cfg": cfg, "score_before_dc": state("score_before_dc"), "stages": {
+    return {"n": n, "cfg": cfg, "npz_arrays_bound": bool(arrays_bound), "score_before_dc": state("score_before_dc"), "stages": {
         "pre_dc_entry_state": pre_dc, "dc_structure": dc, "breakout_pa": breakout, "directional": directional, "wt_intelligence": wt,
         "volume_setup": volume, "tracker_history_modifier": history,
         "channel_confluence": {"npz": selected, "current_price": price, "use_ltf": bool(getattr(cfg, "USE_1M_3M_SIGNALS_ENABLED", False))},
@@ -222,15 +222,16 @@ def compose_asr_late_score(inputs, is_long, is_exit=False, post_late_entry_state
     if n < 1:
         raise ValueError("n must be positive")
     stages = {key: dict(value) if isinstance(value, dict) else value for key, value in inputs["stages"].items()}
-    decoded_npz = bind_asr_npz_arrays(stages["channel_confluence"]["npz"], inputs["cfg"])
+    arrays_bound = bool(inputs.get("npz_arrays_bound", False))
+    decoded_npz = dict(stages["channel_confluence"]["npz"]) if arrays_bound else bind_asr_npz_arrays(stages["channel_confluence"]["npz"], inputs["cfg"])
     if "wt_intelligence" in stages:
-        stages["wt_intelligence"] = bind_asr_npz_arrays(stages["wt_intelligence"], inputs["cfg"])
+        stages["wt_intelligence"] = dict(stages["wt_intelligence"]) if arrays_bound else bind_asr_npz_arrays(stages["wt_intelligence"], inputs["cfg"])
     if "directional" in stages:
-        stages["directional"] = bind_asr_npz_arrays(stages["directional"], inputs["cfg"])
+        stages["directional"] = dict(stages["directional"]) if arrays_bound else bind_asr_npz_arrays(stages["directional"], inputs["cfg"])
     stages["channel_confluence"]["npz"] = decoded_npz
     if "late_score_including_research" in stages:
         late_npz = stages["late_score_including_research"]["npz"]
-        stages["late_score_including_research"]["npz"] = bind_asr_npz_arrays(late_npz, inputs["cfg"])
+        stages["late_score_including_research"]["npz"] = dict(late_npz) if arrays_bound else bind_asr_npz_arrays(late_npz, inputs["cfg"])
     absent = [name for name in ASR_LATE_STAGE_ORDER if name != "market_quality_and_delta_entry_contributions" and name not in stages]
     if absent:
         raise ValueError(f"missing ordered ASR stages: {','.join(absent)}")

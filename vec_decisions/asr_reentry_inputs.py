@@ -49,7 +49,7 @@ def _source_number(values, key, n, default):
 
 
 def bind_asr_reentry_inputs(npz, cfg, lifecycle, n, is_long, current_price, true_lag,
-                            prev_cross_price, bounce_reentry_k_reset):
+                            prev_cross_price, bounce_reentry_k_reset, arrays_bound=False):
     """Build inputs for `apply_asr_reentry_entry_stage` without state invention.
 
     Volume fallback 1.0 and per-field oscillator defaults match the native read
@@ -59,7 +59,7 @@ def bind_asr_reentry_inputs(npz, cfg, lifecycle, n, is_long, current_price, true
     n = int(n)
     if n < 1 or not isinstance(lifecycle, Mapping):
         raise ValueError("valid n and explicit lifecycle mapping are required")
-    selected = bind_asr_npz_arrays(npz, cfg)
+    selected = dict(npz) if arrays_bound else bind_asr_npz_arrays(npz, cfg)
     current = _array({"current_price": current_price}, "current_price", n)
     lag = _array({"true_lag": true_lag}, "true_lag", n)
     previous_cross = _array({"prev_cross_price": prev_cross_price}, "prev_cross_price", n)

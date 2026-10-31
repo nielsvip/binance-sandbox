@@ -7525,7 +7525,7 @@ class AdvancedSignalRater:
                 logger.info(f" in rate {position_key} {score} {final_score} {k_str} ")
             score, _dc_sufficient = apply_asr_dc_sufficiency_scalar(
                 score, dc_high_3m, dc_low_3m, dc_high_15m, dc_low_15m,
-                dc_high_1h, dc_low_1h, dc_high_4h, dc_low_4h,
+                dc_high_1h, dc_low_1h,
             )
             rec = "WAIT"
             if (

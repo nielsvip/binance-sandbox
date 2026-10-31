@@ -60,7 +60,7 @@ def _required_col(values, key, n, dtype=float):
     return _col(values, key, n, dtype=dtype)
 
 
-def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None):
+def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None, arrays_bound=False):
     """Run ordered entry gates/scores through channel and K/DC-cross scoring.
 
     ``context`` supplies account/market state the NPZ cannot provide. If the
@@ -74,7 +74,7 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
     context = {} if context is None else context
     if not isinstance(context, Mapping):
         raise ValueError("context must be a mapping")
-    arrays = bind_asr_npz_arrays(npz, cfg)
+    arrays = dict(npz) if arrays_bound else bind_asr_npz_arrays(npz, cfg)
     current_price = _required_col(context, "current_price", n)
     score_arrays = dict(arrays)
     score_arrays["close"] = current_price
@@ -185,7 +185,7 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
         "0dc_htf_pos", "0dc_ltf_pos", "0dc_moment", "0dc_expansion", "0dc_width_composite"
     ) if key in context}
     mts_state = analyze_mts_state_array(
-        npz, cfg=cfg, is_long=is_long, n=n, external_context=mts_external
+        npz, cfg=cfg, is_long=is_long, n=n, external_context=mts_external, arrays_bound=arrays_bound
     )
     mts_bottom = mts_state["bottom_score"]
     mts_quality = mts_state["entry_quality"]

@@ -347,7 +347,7 @@
       "status": "Disclosed by agent; no retroactive backup claimed"
     }
   ],
-  "checkpoint_updated_at": "2026-10-31T08:26:59.086565+00:00",
+  "checkpoint_updated_at": "2026-10-31T08:58:16.386610+00:00",
   "replay_clock": {
     "signal_clock": "NPZ bar-open timestamp",
     "decision_clock": "bar-open +900seconds when V12_COMPLETED_BAR_SECONDS=900",
@@ -832,5 +832,80 @@
       ]
     },
     "limitations": "SENT acknowledgments notexchangefillconfirmation; latestdecisionperbar, partialjournal/provenancecoverage; notfullANGINFproof"
+  },
+  "evidence_20261031_0859": {
+    "native_v6g": {
+      "source_manifest_sha256": "e79bed8a6f1f6d9f958160d603b8a476769f3301ad4829e51c59e020158e8fac",
+      "source_review": "3761 files, base072413 plus3 changed3 added4 inert metadata excluded; zero unlisted at capture",
+      "run_root": "/home/niels/parity_runs/native_crypto_replay_20261031T0613Z/candidate_native_ang_20261031T082713Z_v6f",
+      "output": "output_native_ang_v6g_full",
+      "coverage_bars": 2880,
+      "indicator_calls": 2880,
+      "flat_producer_calls": 3801,
+      "filled_actions_full": 66,
+      "filled_actions_scored": 40,
+      "hot_miss": 0,
+      "stale_indicator": 0,
+      "network_attempts": 0,
+      "private_db_unchanged": true,
+      "performance_valid": false,
+      "performance_invalid_reason": "trades29<30 samplefloor; not action-parity verdict",
+      "save_guard_warnings": 169,
+      "save_guard_cause": "realwalltime vs historicalmemnewest, isolated persistence only; retain as warnings",
+      "native_cadence": "explicit perbar vs live wrapper every20 callbacks"
+    },
+    "first_scored_discrepancies": {
+      "status": "TRACED_ACTION_MISMATCH_ROOT_CAUSE_PENDING",
+      "first5_actionbars": "matched",
+      "vector_only_first_ts": 1792299600,
+      "vector_only_first_reason": "LEGACY_PSR_REENTRY",
+      "subsequent_vector_only_ts": [
+        1792305000,
+        1792305900,
+        1792316700,
+        1792323900
+      ],
+      "comparison_incomplete": true
+    },
+    "invalid_runs": {
+      "v6f": "Stopped672bars because code copied from previously exercised v6e retained simulated mutable state; no acceptance",
+      "scored4_0845": "Stopped parent1900724+4children because child guard not installed; partial diagnostic only"
+    },
+    "guarded_scored4": {
+      "pid": 1950120,
+      "driver_sha256": "7420e5058a45374fdf349c74b9eb17329387656a1c3a16a6823275638e56c77b",
+      "source": "v6g",
+      "bars": 1344,
+      "start_exclusive": 1792205100,
+      "end": 1793414700,
+      "parent_and_worker_guard": true,
+      "probe3": {
+        "invalid": 0,
+        "network_attempts": 0
+      },
+      "status": "RUNNING_NOT_FULL_VERDICT"
+    },
+    "local_root_mtf": {
+      "helper": "vec_decisions/execute_mtf_gate.py",
+      "actual_native_AST_oracle_plus_watchdog_tests_passed": 29,
+      "engine_consumer": "NOT_WIRED; original action provenance and shared state required",
+      "test_incident": "16 synthetic TEST retestqueue rows written at1793436975; exact rows backedup/quarantined,763others preserved; callback now isolated",
+      "quarantine": "data/reports/mtf_test_queue_quarantine_20261031T0856Z.jsonl"
+    },
+    "quick_agent_incident": "wrong-target composer text in test_asr_entry_candidate_route.py corrected preserving corruptedbackup; rootverified7testfunctions SHA246b809e0fa30267a43d95d4e424648a3087fc190aba24d5c487c224f6fad613",
+    "asr": "stream prebind + sequentialDelta implemented, fullnative-rate differential and engine consumer STILL PENDING",
+    "stocks": "WTforceOPEN/AUG,STDEVexit,WTminTFmaster/order local; root47independenttests passed precedinglatestWTmaster, agentlatest77 tests; HTFWreversal wiring inprogress; newcanonical switches queued not fleetactivated",
+    "production_dependencies": "23 exact dependencies repaired S1/S5 sandbox only; installedengineunchanged; production PEPE validstates resumed; exact manifests in parity_dep_repair_20261031T0807Z",
+    "ang_inf": "same frozen provenance PEPE1793428200 OPEN both broker FILLED documented in ang_inf_historical_actions_20261031T082504Z.json; only one matched sentbar, not universe proof",
+    "remaining": [
+      "fullsamebarcomparison",
+      "ASRfullconsumer",
+      "stock14dreplayAAPLproducerpending",
+      "softwarestopactualconsumerintrabarproof",
+      "genericMTFengineintegration",
+      "qty_streakhistoricalcontaminationunresolved",
+      "allcanonical switches and path census",
+      "fleetvalidatedrelease"
+    ]
   }
 }

@@ -53,7 +53,7 @@ def _source_max_first(bound, value):
     return np.where(np.isnan(arr), bound, np.maximum(bound, arr))
 
 
-def analyze_mts_state_array(npz, *, cfg, is_long, n=None, external_context=None):
+def analyze_mts_state_array(npz, *, cfg, is_long, n=None, external_context=None, arrays_bound=False):
     """Return the native MTS fields needed by ASR as arrays.
 
     `external_context` may provide causal 0dc_* overlays from the same native
@@ -61,7 +61,7 @@ def analyze_mts_state_array(npz, *, cfg, is_long, n=None, external_context=None)
     `.get(..., source_default)` behavior; it never derives these fields from
     unrelated NPZ channels.
     """
-    selected = bind_asr_npz_arrays(npz, cfg)
+    selected = dict(npz) if arrays_bound else bind_asr_npz_arrays(npz, cfg)
     if n is None:
         n = len(np.asarray(selected["timestamps"])) if "timestamps" in selected else 0
     n = int(n)

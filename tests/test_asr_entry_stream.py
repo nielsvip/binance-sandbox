@@ -30,12 +30,12 @@ def test_asr_entry_stream_advances_delta_and_composes_candidate_once_per_bar(mon
     stream = _stream(monkeypatch)
     seen = {}
 
-    def prefix(npz, n, is_long, cfg, context, score=None):
+    def prefix(npz, n, is_long, cfg, context, score=None, arrays_bound=False):
         seen["prefix_ts"] = int(npz["timestamps"][0])
         seen["prefix_price"] = float(context["current_price"][0])
         return {"score": np.array([18.0]), "entry_allowed": np.array([True]), "masks": {}}
 
-    def assemble(npz, cfg, state, n, is_long):
+    def assemble(npz, cfg, state, n, is_long, arrays_bound=False):
         seen["bound_score"] = float(state["score_before_dc"][0])
         return {"n": n, "cfg": cfg, "score_before_dc": state["score_before_dc"], "stages": {}}
 
@@ -50,7 +50,7 @@ def test_asr_entry_stream_advances_delta_and_composes_candidate_once_per_bar(mon
     monkeypatch.setattr(stream_module, "compose_asr_entry_candidate_array", compose)
     result = stream.update(
         0,
-        {"current_price": 10.0, "is_hedge": False},
+        {"current_price": 10.0, "is_hedge": False, "bounce_reentry_k_reset": False},
         {"current_price": 10.0},
         {"is_allowed": True},
         {"position_exists": False},
@@ -70,6 +70,10 @@ def test_asr_entry_stream_requires_full_explicit_context_and_sequential_bars(mon
     stream = _stream(monkeypatch)
     with pytest.raises(ValueError, match="prefix, late, upstream, and lifecycle"):
         stream.update(0, {}, None, {}, {})
+    with pytest.raises(ValueError, match="persisted bounce_reentry_k_reset"):
+        stream.update(0, {"current_price": 10.0, "is_hedge": False},
+                      {"current_price": 10.0}, {"is_allowed": True},
+                      {"position_exists": False})
     assert stream.last_index == -1
     with pytest.raises(ValueError, match="requires sequential index 0"):
         stream.update(1, {}, {}, {}, {})

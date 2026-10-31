@@ -93,6 +93,10 @@ class AsrEntryStream:
             raise ValueError("ASR entry stream requires explicit prefix, late, upstream, and lifecycle mappings")
         if "is_hedge" not in prefix_context:
             raise ValueError("ASR entry stream requires explicit prefix_context.is_hedge")
+        if "bounce_reentry_k_reset" not in prefix_context and not any(
+            key in late_causal_state for key in ("true_lag", "prev_cross_price", "bounce_reentry_k_reset")
+        ):
+            raise ValueError("ASR entry stream requires persisted bounce_reentry_k_reset state")
         if "current_price" not in prefix_context or "current_price" not in late_causal_state:
             raise ValueError("ASR entry stream requires current_price in prefix and late context")
         row_npz = self._npz_row(index)
@@ -114,17 +118,17 @@ class AsrEntryStream:
                 from vec_decisions.asr_reentry_inputs import bind_asr_reentry_inputs
                 reentry = bind_asr_reentry_inputs(
                     row_npz, self.cfg, life, 1, self.is_long, price, late["true_lag"],
-                    late["prev_cross_price"], late["bounce_reentry_k_reset"],
+                    late["prev_cross_price"], late["bounce_reentry_k_reset"], arrays_bound=True,
                 )
                 prefix.update(reentry["context"])
                 prefix["htf_trend"] = reentry["htf_trend"]
                 prefix["htf_trend_score"] = reentry["htf_trend_score"]
             prefix_result = score_asr_entry_prefix_array(
-                row_npz, 1, self.is_long, self.cfg, prefix
+                row_npz, 1, self.is_long, self.cfg, prefix, arrays_bound=True
             )
             late["score_before_dc"] = prefix_result["score"]
             late_inputs = assemble_asr_composer_inputs(
-                row_npz, self.cfg, late, 1, self.is_long
+                row_npz, self.cfg, late, 1, self.is_long, arrays_bound=True
             )
             post_late = late_causal_state.get("post_late_entry_state")
             post_late = {} if post_late is None else {

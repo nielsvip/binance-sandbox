@@ -1,6 +1,8 @@
-"""HTF_W_REVERSAL_EXIT — Weekly WaveTrend reversal exit (+ optional Daily confirm) (shared scalar+vec).
+"""HTF_W_REVERSAL_EXIT — vector mirror of the live stock Weekly WT reversal exit.
 
-LIVE SOURCE: tradier_manage.py TradierStopEvaluator.evaluate_stop() lines ~6035-6053.
+LIVE SOURCE: tradier_manage.py StockStrategy.evaluate_stop() lines 35770-35804. The live
+branch evaluates its predicate inline; this module's scalar adapter is a test/helper path,
+not the native call site. v12_quick_engine calls this vector predicate from simulate_one.
   Gated by HTF_W_REVERSAL_EXIT_TRADIER_ENABLED (default False) AND gain > 0 (state).
   _w_has = (wt1_W != 0 OR wt2_W != 0) ; _d_has = (wt1_D != 0 OR wt2_D != 0)
   Only evaluated when _w_has is True.
@@ -9,12 +11,12 @@ LIVE SOURCE: tradier_manage.py TradierStopEvaluator.evaluate_stop() lines ~6035-
   need_d = HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D (default True)
   fires when _w_against AND (_d_against OR not need_d).
 
-2026-05-30 PARITY (mirrors strategy_enhancements._pyramid_fires pattern): live scalar
-(check_htf_w_reversal) AND vec (check_htf_w_reversal_vec) share the SAME pure per-bar
-predicate _htf_w_reversal_fires(), so the two paths CANNOT drift. Pure core: no config.
+The scalar adapter and vector adapter share the same pure per-bar predicate. The native
+StockStrategy branch currently repeats that comparison inline, so parity is checked by
+source/ledger tests rather than by a shared live import. The pure core has no config.
 
-STATE SEAM: gain > 0 is per-position state — applied by the wrapper/caller (faithful to
-live line 6035). The pure core is the indicator-only W (+optional D) reversal test.
+STATE SEAM: gain > 0 is per-position state — applied by the caller, matching the live
+branch. The pure core is the indicator-only W (+optional D) reversal test.
 
 NPZ / indicator fields read by the core:
   wt1_W, wt2_W, wt1_D, wt2_D.
