@@ -192,6 +192,85 @@ def _mq_crossing_fixture(enabled):
     return npz, cfg, fire_bar
 
 
+def test_vector_trigger_score_matches_native_scalar_oracle_with_momentum_fade():
+    import tradier_manage as tm
+
+    for is_long in (True, False):
+        npz = _base_npz()
+        n = len(npz["close"])
+        bar = 201
+        values = {
+            "k_15m": 20.0 if is_long else 80.0,
+            "d_15m": 30.0 if is_long else 85.0,
+            "k_1m": 20.0 if is_long else 80.0,
+            "d_1m": 15.0 if is_long else 85.0,
+            "k_1m_prev": 10.0 if is_long else 90.0,
+            "wt1_15m": 10.0 if is_long else -10.0,
+            "wt2_15m": 0.0,
+            "rel_vol_15m": 2.5,
+            "atr_15m": 1.0,
+            "high_15m": 105.0,
+            "low_15m": 100.0,
+            "mfi_4h": 20.0 if is_long else 80.0,
+        }
+        for key, value in values.items():
+            column = np.full(n, value)
+            if key in ("k_15m", "d_15m", "k_1m", "d_1m", "k_1m_prev", "wt1_15m", "wt2_15m", "rel_vol_15m", "atr_15m", "high_15m", "low_15m", "mfi_4h"):
+                npz[key] = column
+        npz["timestamp_1m"] = np.asarray(npz["timestamps"], dtype=float) - 30.0
+        npz["bar_direction_1h"] = np.zeros(n)
+        npz["bar_strength_1h"] = np.zeros(n)
+        npz["bar_vol_confirm_1h"] = np.zeros(n, dtype=bool)
+        npz["bar_pattern_1h"] = np.full(n, "none", dtype=object)
+        npz["bar_swing_bull_1h"] = np.zeros(n, dtype=bool)
+        npz["bar_swing_bear_1h"] = np.zeros(n, dtype=bool)
+        npz["bar_streak_1h"] = np.zeros(n, dtype=int)
+        npz["bar_compression_1h"] = np.zeros(n, dtype=bool)
+        npz["bar_vol_spike_1h"] = np.zeros(n, dtype=bool)
+        npz["bar_direction_1h"][bar] = 1.0 if is_long else -1.0
+        npz["bar_strength_1h"][bar] = 0.7
+        npz["bar_vol_confirm_1h"][bar] = True
+        npz["bar_pattern_1h"][bar] = "BullishPattern" if is_long else "BearishPattern"
+        npz["bar_swing_bull_1h"][bar] = is_long
+        npz["bar_swing_bear_1h"][bar] = not is_long
+        npz["bar_streak_1h"][bar] = 3 if is_long else -3
+        npz["bar_compression_1h"][bar] = True
+        npz["bar_vol_spike_1h"][bar] = True
+        cfg = _cfg()
+        cfg.MODE = "tradier"
+        cfg.LTF_SUB15M_TRADING_ENABLED = False
+        cfg.MARKET_QUALITY_SCORE_ENABLED_TRADIER = False
+        cfg.K_ZONE_ENTRY_ENABLED_TRADIER = False
+        cfg.BB_BREAKOUT_ENTRY_TF = "OFF"
+        cfg.ENTRY_SCORE_THRESHOLD = 0.0
+        cfg.WT_COMPOSITE_SCORING_ENABLED_TRADIER = False
+        cfg.WT_COMPOSITE_SCORING_ENABLED = False
+        cfg.BACKTEST_VALIDATED_GATES_TRADIER = False
+        cfg.MOMENTUM_FADE_ENABLED_TRADIER = True
+        cfg.MOMENTUM_FADE_BODY_ATR_MIN_TRADIER = 2.0
+        cfg.MOMENTUM_FADE_VOL_MIN_TRADIER = 2.0
+        cfg.MOMENTUM_FADE_K_ZONE_TRADIER = True
+        cfg.MOMENTUM_FADE_SCORE_BONUS_TRADIER = 5
+        vector_score, _, vector_reasons = entry_score_arrays(npz, n, "SYNTH", is_long, cfg)
+        strategy = tm.StockStrategy.__new__(tm.StockStrategy)
+        strategy.config = cfg
+        strategy.trade_manager = _Tradeability("SYNTH", is_long)
+        indicators = {key: (np.asarray(value)[bar].item() if hasattr(np.asarray(value)[bar], "item") else np.asarray(value)[bar]) for key, value in npz.items() if np.asarray(value).ndim == 1 and len(np.asarray(value)) == n}
+        cfg_token = tm._TR_SCORE_CFG_CTX.set(cfg)
+        ts_token = tm._TR_SCORE_TS_CTX.set(float(npz["timestamps"][bar]))
+        try:
+            scalar_score, _, scalar_reason = strategy.calculate_signal_score(
+                "v12", "SYNTH", is_long, float(indicators["close"]), indicators, None, is_exit=False
+            )
+        finally:
+            tm._TR_SCORE_TS_CTX.reset(ts_token)
+            tm._TR_SCORE_CFG_CTX.reset(cfg_token)
+        assert vector_score[bar] == scalar_score
+        assert "MOM_FADE" in scalar_reason
+        assert "MOM_FADE" in vector_reasons[bar]
+        assert scalar_reason in vector_reasons[bar]
+
+
 def test_vector_golden_angles_score_matches_native_scalar_oracle_both_sides():
     import tradier_manage as tm
 
@@ -211,6 +290,21 @@ def test_vector_golden_angles_score_matches_native_scalar_oracle_both_sides():
             npz["wt_velocity_1h"][fire_bar] = 4.0
             npz["wt_cross_rising_1h"] = np.zeros(n, dtype=bool)
             npz["wt_cross_rising_1h"][fire_bar] = True
+            npz["k_4h"][fire_bar] = 20.0
+            npz["d_4h"][fire_bar] = 10.0
+            npz["dc_position_1h"][fire_bar] = 0.2
+            npz["dc_position_4h"] = np.full(n, 0.2)
+            npz["dc_width_1h"] = np.full(n, 10.0)
+            npz["dc_width_1h_prev"] = np.full(n, 5.0)
+            for tf in ("5m", "15m", "1h", "4h", "D"):
+                for field in ("dc_high", "dc_high_ant", "dc_low", "dc_low_ant"):
+                    key = f"dc_high_{tf}_ant" if field == "dc_high_ant" else f"dc_low_{tf}_ant" if field == "dc_low_ant" else f"{field}_{tf}"
+                    npz[key] = np.zeros(n)
+            for tf in ("15m", "1h"):
+                npz[f"dc_high_{tf}"][fire_bar] = 101.0
+                npz[f"dc_high_{tf}_ant"][fire_bar] = 99.0
+                npz[f"dc_low_{tf}"][fire_bar] = 97.0
+                npz[f"dc_low_{tf}_ant"][fire_bar] = 98.0
         else:
             npz["k_15m"][fire_bar] = 80.0
             npz["d_15m"][fire_bar] = 85.0
@@ -221,11 +315,28 @@ def test_vector_golden_angles_score_matches_native_scalar_oracle_both_sides():
             npz["wt_velocity_1h"][fire_bar] = -4.0
             npz["wt_cross_rising_1h"] = np.ones(n, dtype=bool)
             npz["wt_cross_rising_1h"][fire_bar] = False
+            npz["k_4h"][fire_bar] = 80.0
+            npz["d_4h"][fire_bar] = 90.0
+            npz["dc_position_1h"][fire_bar] = 0.8
+            npz["dc_position_4h"] = np.full(n, 0.8)
+            npz["dc_width_1h"] = np.full(n, 10.0)
+            npz["dc_width_1h_prev"] = np.full(n, 5.0)
+            for tf in ("5m", "15m", "1h", "4h", "D"):
+                for field in ("dc_high", "dc_high_ant", "dc_low", "dc_low_ant"):
+                    npz[f"{field}_{tf}"] = np.zeros(n)
+            for tf in ("15m", "1h"):
+                npz[f"dc_high_{tf}"][fire_bar] = 103.0
+                npz[f"dc_high_{tf}_ant"][fire_bar] = 102.0
+                npz[f"dc_low_{tf}"][fire_bar] = 99.0
+                npz[f"dc_low_{tf}_ant"][fire_bar] = 101.0
         cfg = _cfg()
         cfg.MODE = "tradier"
         cfg.LTF_SUB15M_TRADING_ENABLED = False
         cfg.MARKET_QUALITY_SCORE_ENABLED_TRADIER = False
-        cfg.K_ZONE_ENTRY_ENABLED_TRADIER = False
+        cfg.K_ZONE_ENTRY_ENABLED_TRADIER = True
+        cfg.K_ZONE_LONG_THRESHOLD_TRADIER = 35.0
+        cfg.K_ZONE_SHORT_THRESHOLD_TRADIER = 65.0
+        cfg.K_ZONE_ENTRY_BONUS_TRADIER = 17
         cfg.BB_BREAKOUT_ENTRY_TF = "OFF"
         cfg.ENTRY_SCORE_THRESHOLD = 0.0
         cfg.WT_COMPOSITE_SCORING_ENABLED_TRADIER = False
@@ -248,6 +359,12 @@ def test_vector_golden_angles_score_matches_native_scalar_oracle_both_sides():
         assert vector_score[fire_bar] == scalar_score
         assert "GA_" in scalar_reason
         assert "GA_" in vector_reasons[fire_bar]
+        assert "KZone_4h(+17)" in scalar_reason
+        assert "KZone_4h(+17)" in vector_reasons[fire_bar]
+        assert "DC_POS_BONUS" in scalar_reason
+        assert "DC_POS_BONUS" in vector_reasons[fire_bar]
+        assert "DC_RETEST_" in scalar_reason
+        assert "DC_RETEST_" in vector_reasons[fire_bar]
 
 
 def test_vector_market_quality_injection_matches_native_scalar_score():

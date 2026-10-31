@@ -65,3 +65,20 @@ def test_actual_engine_switch_changes_open_bar():
     cfg.TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED=False
     disabled=engine.simulate_one(data,'MANDATORY_TEST',True,cfg)
     assert not [row for row in disabled['ledger'] if row.get('type')=='OPEN']
+
+@pytest.mark.parametrize("is_long", [True, False])
+def test_gr_coercion_and_native_exception_behavior(is_long):
+    from vec_decisions.tradeable_mandatory_entry import gr_vote_mask
+    cells = [None, "bad", "green", "red", 0., 1., float("nan"), float("inf"), "55"]
+    n = len(cells)
+    for field in ("rsi", "mfi", "ha_color", "macd_hist", "stoch_k", "dc_position", "bb_pct_b"):
+        arrays = {f"{field}_15m": np.asarray(cells,dtype=object)}
+        expected=[]
+        for index in range(n):
+            ind={key:values[index] for key,values in arrays.items()}
+            try:
+                scores=[_ind_score(ind,tf,is_long,100.)[0] for tf in ("3m","15m","1h","4h","D")]
+                expected.append(sum(scores)>=1)
+            except Exception:
+                expected.append(True)
+        np.testing.assert_array_equal(gr_vote_mask(arrays,n,is_long,np.full(n,100.),1,0,5),expected)

@@ -50974,7 +50974,8 @@ async def _process_single_override_check(
                             _xv_z = safe_fetch_float(_ind_z.get("wt_crossover_value_3m"), 0.0)
                             _xvp_z = safe_fetch_float(_ind_z.get("wt_crossover_value_3m_prev"), 0.0)
                             _hh_ok_z = (not _req_hh_z) or ((_xv_z > 0 and _xvp_z > 0) and ((_is_long_z and _xv_z > _xvp_z) or (_is_short_z and _xv_z < _xvp_z)))
-                            _wt_trigger_z = _dist_ok_z and _wt_dir_ok_z and _hh_ok_z and _htf_ok_z
+                            from vec_decisions.tradeable_mandatory_entry import force_trigger as _mandatory_force_trigger
+                            _wt_trigger_z = bool(_mandatory_force_trigger(_px_z, _sma15_z, _wt1_3m_z, _wt2_3m_z, _wt1_15m_z, _wt2_15m_z, _wt1_1h_z, _wt2_1h_z, _xv_z, _xvp_z, _is_long_z, _fo_pct_z, _req_hh_z))
                             if _wt_trigger_z and _px_z > 0:
                                 _wf_usd = float(
                                     getattr(config, "WT_3M_FORCE_OPEN_SIZE_USD", 9.0)

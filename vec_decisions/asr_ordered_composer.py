@@ -60,12 +60,13 @@ def bind_asr_npz_arrays(npz, cfg):
         array = np.asarray(raw)
         if array.dtype.kind not in "biuf":
             continue
-        decoded = np.empty(array.shape, dtype=object)
-        for index, value in np.ndenumerate(array):
+        unique, inverse = np.unique(array, return_inverse=True)
+        labels = []
+        for value in unique:
             if not np.isfinite(value) or float(value) != float(int(value)):
                 raise ValueError(f"{key}: unrecognized encoded ASR label {value!r}")
-            decoded[index] = decode_live_indicator_labels({key: int(value)})[key]
-        result[key] = decoded
+            labels.append(decode_live_indicator_labels({key: int(value)})[key])
+        result[key] = np.asarray(labels, dtype=object)[inverse].reshape(array.shape)
     for key, raw in tuple(result.items()):
         if not isinstance(key, str) or not key.startswith("wt_structure_") or key[len("wt_structure_"):] not in _ASR_TIMEFRAMES:
             continue
@@ -77,12 +78,22 @@ def bind_asr_npz_arrays(npz, cfg):
         trough = np.asarray(result.get(f"wt_trough_structure_{tf}", np.zeros(array.shape)))
         if peak.shape != array.shape or trough.shape != array.shape:
             raise ValueError(f"{key}: structure companion shape mismatch")
-        decoded = np.empty(array.shape, dtype=object)
-        for index, value in np.ndenumerate(array):
-            if not np.isfinite(value) or float(value) != float(int(value)):
-                raise ValueError(f"{key}: unrecognized encoded ASR label {value!r}")
-            decoded[index] = decode_live_indicator_labels({key: int(value), f"wt_peak_structure_{tf}": peak[index], f"wt_trough_structure_{tf}": trough[index]})[key]
-        result[key] = decoded
+        flat_values = array.reshape(-1)
+        flat_peak = peak.reshape(-1)
+        flat_trough = trough.reshape(-1)
+        if not np.all(np.isfinite(flat_values)) or np.any(flat_values != np.trunc(flat_values)):
+            bad = flat_values[~np.isfinite(flat_values) | (flat_values != np.trunc(flat_values))][0]
+            raise ValueError(f"{key}: unrecognized encoded ASR label {bad!r}")
+        combos = set(zip((int(value) for value in flat_values), flat_peak.tolist(), flat_trough.tolist()))
+        labels = {}
+        for value, peak_label, trough_label in combos:
+            labels[(value, peak_label, trough_label)] = decode_live_indicator_labels({
+                key: value, f"wt_peak_structure_{tf}": peak_label,
+                f"wt_trough_structure_{tf}": trough_label,
+            })[key]
+        decoded = [labels[(int(value), peak_label, trough_label)]
+                   for value, peak_label, trough_label in zip(flat_values, flat_peak, flat_trough)]
+        result[key] = np.asarray(decoded, dtype=object).reshape(array.shape)
     for key, raw in tuple(result.items()):
         if isinstance(key, str) and (key.startswith("wt_cross_rising_") or key.startswith("wt_extreme_")) and np.asarray(raw).dtype.kind in "biuf":
             arr = np.asarray(raw)

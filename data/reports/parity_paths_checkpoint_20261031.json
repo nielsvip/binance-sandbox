@@ -347,7 +347,7 @@
       "status": "Disclosed by agent; no retroactive backup claimed"
     }
   ],
-  "checkpoint_updated_at": "2026-10-31T06:51:58.557741+00:00",
+  "checkpoint_updated_at": "2026-10-31T07:17:09.816593+00:00",
   "replay_clock": {
     "signal_clock": "NPZ bar-open timestamp",
     "decision_clock": "bar-open +900seconds when V12_COMPLETED_BAR_SECONDS=900",
@@ -569,7 +569,8 @@
     "corrected_count": "422 score mutations includinginitialization; 105returns; earlier434figureunsupported",
     "implementation": "Shared scalar/NumPy ordered sections and micro-input policy native-wired; full vector scorer and engine action consumer still incomplete",
     "latest_source_census": 267,
-    "scope": "AST score mutation count is not coverage proof; causal portfolio/tracker/cross-symbol inputs being classified"
+    "scope": "AST score mutation count is not coverage proof; causal portfolio/tracker/cross-symbol inputs being classified",
+    "latest_note": "Composer includes pre-DC and later score stages plus raw NPZ decoder/binder, but full early gates/score prefix and engine consumer remain incomplete."
   },
   "native_replay_basepath_incident": {
     "status": "INVALID_RUNS_STOPPED; VERIFIED_PERFORMANCE_ROWS_QUARANTINED; QTY_STREAK_UNKNOWN_UNRESOLVED",
@@ -671,5 +672,43 @@
       "BroadercoreentryMTF proxyandotherbackgroundproducersstillrequireaudit",
       "Notyetfull14dreplayacceptance"
     ]
+  },
+  "mandatory_flat_entry_paths": {
+    "status": "LOCAL_TESTED_NOT_DEPLOYED",
+    "paths": [
+      "TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED DC entry",
+      "Nested crypto WT_3M_FORCE_OPEN_ENABLED entry"
+    ],
+    "tests": "17 passed at 2026-10-31 ~07:17 UTC: original native AST predicate differentials, GR edge cases, actual simulate_one switch ON/OFF ledger",
+    "input_policy": "Native and vector use paired 15m input when lower-timeframe policy is off; original log text retained",
+    "precedence": "WT branch requires parent mandatory switch and absence of raw DC trigger; no fallback on blocked DC",
+    "template": "Mandatory switch absent both crypto books, registered and queued locally; installation and live producer replay proof pending",
+    "limitations": [
+      "Background producer cadence must be replayed explicitly",
+      "Full rolling replay still required",
+      "Generic entry filter and queue/execute_now parity requires further path coverage"
+    ]
+  },
+  "native_ownership_v4": {
+    "status": "COMPLETE_DIAGNOSTIC_NOT_ACCEPTANCE",
+    "runtime_manifest_sha256": "a5cc4fc67f8e622576fa086df5f3fb334c2e3cc347ebed401c7382b7e6b082ce",
+    "root_verification": "All 3724 code files matched hashes and sizes",
+    "result": "/home/niels/parity_runs/native_crypto_diag_ang_20261031T063950Z/output_native_ownership_v4/result.json",
+    "bars": 2880,
+    "canonical_orders": 66,
+    "ownership_markers": 0,
+    "limitations": [
+      "Actual IndicatorStore had incorrect categorical decoding before ASR; local fix pending new replay",
+      "process_position only does not cover every background producer",
+      "Not performance proof"
+    ]
+  },
+  "rolling_063950_current": {
+    "status": "RUNNING",
+    "pid": 641344,
+    "source_manifest_sha256": "12d954468d534899cba058f1eaebce3428177e58aef78f023eb0cd7f11ff636f",
+    "output": "/home/niels/parity_runs/native_crypto_replay_20261031T0613Z/output_063950_rolling_ang/rolling_state_30d_14d.jsonl",
+    "expected_total": 2880,
+    "expected_scored": 1344
   }
 }

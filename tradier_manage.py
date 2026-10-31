@@ -7964,6 +7964,12 @@ _TR_SCORE_TS_CTX: ContextVar = ContextVar("_TR_SCORE_TS_CTX", default=None)
 _TR_SCORE_MQ_CTX: ContextVar = ContextVar("_TR_SCORE_MQ_CTX", default=None)
 _TR_SCORE_GA_CTX: ContextVar = ContextVar("_TR_SCORE_GA_CTX", default=None)
 _TR_SCORE_ST_CTX: ContextVar = ContextVar("_TR_SCORE_ST_CTX", default=None)
+_TR_SCORE_SETUP_CTX: ContextVar = ContextVar("_TR_SCORE_SETUP_CTX", default=None)
+_TR_SCORE_TRIGGER_CTX: ContextVar = ContextVar("_TR_SCORE_TRIGGER_CTX", default=None)
+_TR_SCORE_BAR_CTX: ContextVar = ContextVar("_TR_SCORE_BAR_CTX", default=None)
+_TR_SCORE_DC_BONUS_CTX: ContextVar = ContextVar("_TR_SCORE_DC_BONUS_CTX", default=None)
+_TR_SCORE_KZONE_CTX: ContextVar = ContextVar("_TR_SCORE_KZONE_CTX", default=None)
+_TR_SCORE_DCRT_CTX: ContextVar = ContextVar("_TR_SCORE_DCRT_CTX", default=None)
 _TR_PROXY_GUARD = threading.local()
 
 
@@ -33259,32 +33265,47 @@ class StockStrategy:
             good_entry = stoch_short or kzone_short or rsi_short or _bb_breakout
         if not good_entry:
             return 0.0, "WAIT", f"NO_{'LONG' if is_long else 'SHORT'}_SETUP"
-        if dc_entry_long or dc_entry_short:
-            score += 5
-            reasons.append(
-                f"DC_POS_BONUS({'L' if is_long else 'S'}_1h={_dc_pos_1h:.2f}_4h={_dc_pos_4h:.2f})"
-            )
+        _dc_bonus_vector = _TR_SCORE_DC_BONUS_CTX.get()
+        if _dc_bonus_vector is None:
+            if dc_entry_long or dc_entry_short:
+                score += 5
+                reasons.append(
+                    f"DC_POS_BONUS({'L' if is_long else 'S'}_1h={_dc_pos_1h:.2f}_4h={_dc_pos_4h:.2f})"
+                )
+        elif _dc_bonus_vector[0]:
+            score += _dc_bonus_vector[0]
+            reasons.append(_dc_bonus_vector[1])
         # MT4: DC breakout-retest bonus (broken level = support/resistance)
-        _dc_rt_long, _dc_rt_short, _dc_rt_detail = self.compute_dc_retest_score(
-            current_price, i
-        )
-        if is_long and _dc_rt_long >= 2:
-            score += 6
-            reasons.append(f"DC_RETEST_L({_dc_rt_long}TF:{_dc_rt_detail})")
-        elif not is_long and _dc_rt_short >= 2:
-            score += 6
-            reasons.append(f"DC_RETEST_S({_dc_rt_short}TF:{_dc_rt_detail})")
-        if kzone_long or kzone_short:
-            # RECONNECT 2026-04-14 — k_zone: K_ZONE_ENTRY_BONUS_TRADIER score-add when K in zone
-            _kz_bonus = _cfg(
-                "K_ZONE_ENTRY_BONUS_TRADIER",
-                getattr(self.config, "TRADIER_K_ZONE_ENTRY_BONUS_TRADIER", 25),
-                account_key,
-                symbol,
-                _side,
+        _dc_retest_vector = _TR_SCORE_DCRT_CTX.get()
+        if _dc_retest_vector is None:
+            _dc_rt_long, _dc_rt_short, _dc_rt_detail = self.compute_dc_retest_score(
+                current_price, i
             )
-            score += float(_kz_bonus)
-            reasons.append(f"KZone_4h(+{_kz_bonus})")
+            if is_long and _dc_rt_long >= 2:
+                score += 6
+                reasons.append(f"DC_RETEST_L({_dc_rt_long}TF:{_dc_rt_detail})")
+            elif not is_long and _dc_rt_short >= 2:
+                score += 6
+                reasons.append(f"DC_RETEST_S({_dc_rt_short}TF:{_dc_rt_detail})")
+        elif _dc_retest_vector[0]:
+            score += _dc_retest_vector[0]
+            reasons.append(_dc_retest_vector[1])
+        _kzone_vector = _TR_SCORE_KZONE_CTX.get()
+        if _kzone_vector is None:
+            if kzone_long or kzone_short:
+                # RECONNECT 2026-04-14 — k_zone: K_ZONE_ENTRY_BONUS_TRADIER score-add when K in zone
+                _kz_bonus = _cfg(
+                    "K_ZONE_ENTRY_BONUS_TRADIER",
+                    getattr(self.config, "TRADIER_K_ZONE_ENTRY_BONUS_TRADIER", 25),
+                    account_key,
+                    symbol,
+                    _side,
+                )
+                score += float(_kz_bonus)
+                reasons.append(f"KZone_4h(+{_kz_bonus})")
+        elif _kzone_vector[0]:
+            score += _kzone_vector[0]
+            reasons.append(_kzone_vector[1])
         if rsi_long or rsi_short:
             reasons.append(f"MFI_{_flow_val:.0f}")
         # --- WT COMPOSITE SCORING (TRADIER) ---
@@ -33518,200 +33539,228 @@ class StockStrategy:
         else:
             _sentiment_vector, _trend_vector, _st_reasons = _st_vector
             score += _sentiment_vector
+            score += _trend_vector
             reasons.extend(_st_reasons)
-        # --- 3. PULLBACK/SETUP LAYER (The Wave) ---
-        # "Buy Low, Sell High" within the trend.
-        setup_points = 0
+        _setup_vector = _TR_SCORE_SETUP_CTX.get()
+        if _setup_vector is None:
+            # --- 3. PULLBACK/SETUP LAYER (The Wave) ---
+            # "Buy Low, Sell High" within the trend.
+            setup_points = 0
 
-        if not is_exit:
-            dc_low_15m = g("dc_low_15m")
-            dc_high_15m = g("dc_high_15m")
-            dc_low_5m = g("dc_low_5m")
-            dc_high_5m = g("dc_high_5m")
+            if not is_exit:
+                dc_low_15m = g("dc_low_15m")
+                dc_high_15m = g("dc_high_15m")
+                dc_low_5m = g("dc_low_5m")
+                dc_high_5m = g("dc_high_5m")
 
+                if is_long:
+                    if dc_low_15m > 0 and (current_price - dc_low_15m) / dc_low_15m < 0.015:
+                        setup_points += 5
+                        reasons.append("Bounce_15m_Low")
+                    elif dc_low_5m > 0 and (current_price - dc_low_5m) / dc_low_5m < 0.008:
+                        setup_points += 4
+                        reasons.append("Bounce_5m_Low")
+
+                    # 4H Stoch: If < 50, we have room. If > 80, we are chasing.
+                    if k_D > 95:
+                        setup_points -= 5
+                    elif k_D < 50 and k_D > d_D:
+                        setup_points += 5
+
+                    if k_4h < 50:
+                        setup_points += 5
+                        reasons.append("4h_Deep_Value")
+                    elif k_4h < 80:
+                        setup_points += 1
+                    if k_4h < 20 and k_4h > d_4h:
+                        setup_points += 4
+                    elif k_4h < 50 and k_4h > d_4h:
+                        setup_points += 2
+
+                    else:
+                        setup_points -= 3  # Chasing top
+
+                    # 1H Stoch: Ideally turning up
+                    if k_1h < 40 and k_1h > g("k_1h_prev"):
+                        setup_points += 3
+                        reasons.append("1h_Turn_Up")
+                    elif k_1h < 80 and k_1h > d_1h:
+                        setup_points += 2
+
+                else:  # SHORT
+                    if (
+                        dc_high_15m > 0
+                        and (dc_high_15m - current_price) / dc_high_15m < 0.015
+                    ):
+                        setup_points += 5
+                        reasons.append("Bounce_15m_High")
+                    elif (
+                        dc_high_5m > 0 and (dc_high_5m - current_price) / dc_high_5m < 0.008
+                    ):
+                        setup_points += 4
+                        reasons.append("Bounce_5m_High")
+
+                    if k_D < 5:
+                        setup_points -= 5
+                    if k_D < 50 and k_D > d_D:
+                        setup_points += 5
+                    if k_4h > 50:
+                        setup_points += 5
+                        reasons.append("4h_Premium_Short")
+                    elif k_4h > 20:
+                        setup_points += 2
+                    if k_4h > 80 and k_4h < d_4h:
+                        setup_points += 4
+                    elif k_4h > 50 and k_4h < d_4h:
+                        setup_points += 2
+                    else:
+                        setup_points -= 3  # Chasing bottom
+                    if k_1h > 60 and k_1h < g("k_1h_prev"):
+                        setup_points += 3
+                        reasons.append("1h_Turn_Down")
+                    elif k_1h > 20 and k_1h < d_1h:
+                        setup_points += 2
+
+            score += setup_points
+
+        else:
+            _setup_points_vector, _setup_reasons_vector = _setup_vector
+            score += _setup_points_vector
+            reasons.extend(_setup_reasons_vector)
+        _trigger_vector = _TR_SCORE_TRIGGER_CTX.get()
+        if _trigger_vector is None:
+            trig_points = 0
+            wt1, wt2 = g("wt1_15m"), g("wt2_15m")
+            rel_vol = g("rel_vol_15m", 1.0)
             if is_long:
-                if dc_low_15m > 0 and (current_price - dc_low_15m) / dc_low_15m < 0.015:
-                    setup_points += 5
-                    reasons.append("Bounce_15m_Low")
-                elif dc_low_5m > 0 and (current_price - dc_low_5m) / dc_low_5m < 0.008:
-                    setup_points += 4
-                    reasons.append("Bounce_5m_Low")
+                if k_15m > d_15m:
+                    trig_points += 2
+                if k_5m > d_5m:
+                    trig_points += 2
+                if wt1 > wt2:
+                    trig_points += 2
+                if k_5m < 30 and k_5m > d_5m:
+                    trig_points += 3
+                    reasons.append("5m_Sniper")
 
-                # 4H Stoch: If < 50, we have room. If > 80, we are chasing.
-                if k_D > 95:
-                    setup_points -= 5
-                elif k_D < 50 and k_D > d_D:
-                    setup_points += 5
-
-                if k_4h < 50:
-                    setup_points += 5
-                    reasons.append("4h_Deep_Value")
-                elif k_4h < 80:
-                    setup_points += 1
-                if k_4h < 20 and k_4h > d_4h:
-                    setup_points += 4
-                elif k_4h < 50 and k_4h > d_4h:
-                    setup_points += 2
-
+                if m1_is_fresh:
+                    # Crossover logic
+                    if k_1m > d_1m and k_1m_prev <= d_1m and k_1m < 30:
+                        trig_points += 4
+                        reasons.append("1m_Cross_Up")
+                    # Falling Knife penalty
+                    if k_1m < d_1m and k_5m < d_5m and score < 15:
+                        trig_points -= 3
                 else:
-                    setup_points -= 3  # Chasing top
-
-                # 1H Stoch: Ideally turning up
-                if k_1h < 40 and k_1h > g("k_1h_prev"):
-                    setup_points += 3
-                    reasons.append("1h_Turn_Up")
-                elif k_1h < 80 and k_1h > d_1h:
-                    setup_points += 2
+                    reasons.append("1m_Stale_Ignored")
 
             else:  # SHORT
-                if (
-                    dc_high_15m > 0
-                    and (dc_high_15m - current_price) / dc_high_15m < 0.015
-                ):
-                    setup_points += 5
-                    reasons.append("Bounce_15m_High")
-                elif (
-                    dc_high_5m > 0 and (dc_high_5m - current_price) / dc_high_5m < 0.008
-                ):
-                    setup_points += 4
-                    reasons.append("Bounce_5m_High")
+                if k_15m < d_15m:
+                    trig_points += 2
+                if k_5m < d_5m:
+                    trig_points += 2
+                if wt1 < wt2:
+                    trig_points += 2
+                if k_5m > 70 and k_5m < d_5m:
+                    trig_points += 3
+                    reasons.append("5m_Sniper")
 
-                if k_D < 5:
-                    setup_points -= 5
-                if k_D < 50 and k_D > d_D:
-                    setup_points += 5
-                if k_4h > 50:
-                    setup_points += 5
-                    reasons.append("4h_Premium_Short")
-                elif k_4h > 20:
-                    setup_points += 2
-                if k_4h > 80 and k_4h < d_4h:
-                    setup_points += 4
-                elif k_4h > 50 and k_4h < d_4h:
-                    setup_points += 2
+                # --- 1M CONDITIONAL BLOCK ---
+                if m1_is_fresh:
+                    if k_1m < d_1m and k_1m_prev >= d_1m and k_1m > 70:
+                        trig_points += 4
+                        reasons.append("1m_Cross_Down")
+                    # Rocket Ship penalty
+                    if k_1m > d_1m and k_5m > d_5m and score < 15:
+                        trig_points -= 3
                 else:
-                    setup_points -= 3  # Chasing bottom
-                if k_1h > 60 and k_1h < g("k_1h_prev"):
-                    setup_points += 3
-                    reasons.append("1h_Turn_Down")
-                elif k_1h > 20 and k_1h < d_1h:
-                    setup_points += 2
-
-        score += setup_points
-
-        trig_points = 0
-        wt1, wt2 = g("wt1_15m"), g("wt2_15m")
-        rel_vol = g("rel_vol_15m", 1.0)
-        if is_long:
-            if k_15m > d_15m:
+                    reasons.append("1m_Stale_Ignored")
+            if rel_vol > 1.2:
                 trig_points += 2
-            if k_5m > d_5m:
-                trig_points += 2
-            if wt1 > wt2:
-                trig_points += 2
-            if k_5m < 30 and k_5m > d_5m:
-                trig_points += 3
-                reasons.append("5m_Sniper")
-
-            if m1_is_fresh:
-                # Crossover logic
-                if k_1m > d_1m and k_1m_prev <= d_1m and k_1m < 30:
-                    trig_points += 4
-                    reasons.append("1m_Cross_Up")
-                # Falling Knife penalty
-                if k_1m < d_1m and k_5m < d_5m and score < 15:
+                reasons.append("High_Vol")
+            # BACKTEST_CHANGE_T55b: MOMENTUM FADE — big candle + high volume = fade the move (mean reversion)
+            _mf_en = getattr(self.config, "MOMENTUM_FADE_ENABLED_TRADIER", True)
+            if _mf_en and not is_exit:
+                _mf_body_min = getattr(
+                    self.config, "MOMENTUM_FADE_BODY_ATR_MIN_TRADIER", 2.0
+                )
+                _mf_vol_min = getattr(self.config, "MOMENTUM_FADE_VOL_MIN_TRADIER", 2.0)
+                _mf_kz = getattr(self.config, "MOMENTUM_FADE_K_ZONE_TRADIER", True)
+                _mf_bonus = getattr(self.config, "MOMENTUM_FADE_SCORE_BONUS_TRADIER", 5)
+                _mf_atr = g("atr_15m")
+                _mf_hi = g("high_15m")
+                _mf_lo = g("low_15m")
+                _mf_range = _mf_hi - _mf_lo if _mf_hi > 0 and _mf_lo > 0 else 0
+                _mf_body_vs_atr = (_mf_range / _mf_atr) if _mf_atr > 0 else 0
+                if _mf_body_vs_atr >= _mf_body_min and rel_vol >= _mf_vol_min:
+                    _mf_k_ok = True
+                    if _mf_kz:
+                        _mf_k_ok = (is_long and k_15m < 40) or (not is_long and k_15m > 60)
+                    if _mf_k_ok:
+                        trig_points += _mf_bonus
+                        reasons.append(
+                            f"MOM_FADE({'L' if is_long else 'S'},rng={_mf_body_vs_atr:.1f}xATR,rv={rel_vol:.1f}x,k={k_15m:.0f},+{_mf_bonus})_bcT55b"
+                        )
+            score += trig_points
+        else:
+            trig_points, _trigger_reasons, _trigger_inputs = _trigger_vector
+            _trigger_k1 = _trigger_inputs["k1"]
+            _trigger_d1 = _trigger_inputs["d1"]
+            _trigger_k5 = _trigger_inputs["k5"]
+            _trigger_d5 = _trigger_inputs["d5"]
+            if _trigger_inputs["fresh"]:
+                if is_long and _trigger_k1 < _trigger_d1 and _trigger_k5 < _trigger_d5 and score < 15:
                     trig_points -= 3
-            else:
-                reasons.append("1m_Stale_Ignored")
-
-        else:  # SHORT
-            if k_15m < d_15m:
-                trig_points += 2
-            if k_5m < d_5m:
-                trig_points += 2
-            if wt1 < wt2:
-                trig_points += 2
-            if k_5m > 70 and k_5m < d_5m:
-                trig_points += 3
-                reasons.append("5m_Sniper")
-
-            # --- 1M CONDITIONAL BLOCK ---
-            if m1_is_fresh:
-                if k_1m < d_1m and k_1m_prev >= d_1m and k_1m > 70:
-                    trig_points += 4
-                    reasons.append("1m_Cross_Down")
-                # Rocket Ship penalty
-                if k_1m > d_1m and k_5m > d_5m and score < 15:
+                elif (not is_long) and _trigger_k1 > _trigger_d1 and _trigger_k5 > _trigger_d5 and score < 15:
                     trig_points -= 3
-            else:
-                reasons.append("1m_Stale_Ignored")
-        if rel_vol > 1.2:
-            trig_points += 2
-            reasons.append("High_Vol")
-        # BACKTEST_CHANGE_T55b: MOMENTUM FADE — big candle + high volume = fade the move (mean reversion)
-        _mf_en = getattr(self.config, "MOMENTUM_FADE_ENABLED_TRADIER", True)
-        if _mf_en and not is_exit:
-            _mf_body_min = getattr(
-                self.config, "MOMENTUM_FADE_BODY_ATR_MIN_TRADIER", 2.0
-            )
-            _mf_vol_min = getattr(self.config, "MOMENTUM_FADE_VOL_MIN_TRADIER", 2.0)
-            _mf_kz = getattr(self.config, "MOMENTUM_FADE_K_ZONE_TRADIER", True)
-            _mf_bonus = getattr(self.config, "MOMENTUM_FADE_SCORE_BONUS_TRADIER", 5)
-            _mf_atr = g("atr_15m")
-            _mf_hi = g("high_15m")
-            _mf_lo = g("low_15m")
-            _mf_range = _mf_hi - _mf_lo if _mf_hi > 0 and _mf_lo > 0 else 0
-            _mf_body_vs_atr = (_mf_range / _mf_atr) if _mf_atr > 0 else 0
-            if _mf_body_vs_atr >= _mf_body_min and rel_vol >= _mf_vol_min:
-                _mf_k_ok = True
-                if _mf_kz:
-                    _mf_k_ok = (is_long and k_15m < 40) or (not is_long and k_15m > 60)
-                if _mf_k_ok:
-                    trig_points += _mf_bonus
-                    reasons.append(
-                        f"MOM_FADE({'L' if is_long else 'S'},rng={_mf_body_vs_atr:.1f}xATR,rv={rel_vol:.1f}x,k={k_15m:.0f},+{_mf_bonus})_bcT55b"
-                    )
-        score += trig_points
-        bar_points = 0
-        for _bp_tf, _bp_w in [("1h", 1), ("4h", 2), ("D", 3)]:
-            _bp_dir = float(i.get(f"bar_direction_{_bp_tf}", 0) or 0)
-            _bp_str = float(i.get(f"bar_strength_{_bp_tf}", 0) or 0)
-            _bp_vc = bool(i.get(f"bar_vol_confirm_{_bp_tf}", False))
-            _bp_pat = str(i.get(f"bar_pattern_{_bp_tf}", "none"))
-            if _bp_dir != 0 and _bp_str >= 0.3:
-                _pts = _bp_w * (1 + int(_bp_vc)) * (1 if _bp_str >= 0.6 else 0.5)
-                if (is_long and _bp_dir > 0) or (not is_long and _bp_dir < 0):
-                    bar_points += _pts
-                    reasons.append(f"{_bp_pat}_{_bp_tf}")
-                elif (is_long and _bp_dir < 0) or (not is_long and _bp_dir > 0):
-                    bar_points -= _pts
-            if i.get(f"bar_swing_bull_{_bp_tf}") and is_long:
-                bar_points += _bp_w
-                reasons.append(f"Swing_Bull_{_bp_tf}")
-            elif i.get(f"bar_swing_bear_{_bp_tf}") and not is_long:
-                bar_points += _bp_w
-                reasons.append(f"Swing_Bear_{_bp_tf}")
-            elif i.get(f"bar_swing_bull_{_bp_tf}") and not is_long:
-                bar_points -= _bp_w
-            elif i.get(f"bar_swing_bear_{_bp_tf}") and is_long:
-                bar_points -= _bp_w
-            _streak = int(i.get(f"bar_streak_{_bp_tf}", 0) or 0)
-            if is_long and _streak >= 3:
-                bar_points += _bp_w
-            elif not is_long and _streak <= -3:
-                bar_points += _bp_w
-            elif is_long and _streak <= -3:
-                bar_points -= _bp_w
-            elif not is_long and _streak >= 3:
-                bar_points -= _bp_w
-            if i.get(f"bar_compression_{_bp_tf}"):
-                bar_points += 1
-                reasons.append(f"Squeeze_{_bp_tf}")
-            if i.get(f"bar_vol_spike_{_bp_tf}") and _bp_dir != 0:
-                if (is_long and _bp_dir > 0) or (not is_long and _bp_dir < 0):
+            reasons.extend(_trigger_reasons)
+            score += trig_points
+        _bar_vector = _TR_SCORE_BAR_CTX.get()
+        if _bar_vector is None:
+            bar_points = 0
+            for _bp_tf, _bp_w in [("1h", 1), ("4h", 2), ("D", 3)]:
+                _bp_dir = float(i.get(f"bar_direction_{_bp_tf}", 0) or 0)
+                _bp_str = float(i.get(f"bar_strength_{_bp_tf}", 0) or 0)
+                _bp_vc = bool(i.get(f"bar_vol_confirm_{_bp_tf}", False))
+                _bp_pat = str(i.get(f"bar_pattern_{_bp_tf}", "none"))
+                if _bp_dir != 0 and _bp_str >= 0.3:
+                    _pts = _bp_w * (1 + int(_bp_vc)) * (1 if _bp_str >= 0.6 else 0.5)
+                    if (is_long and _bp_dir > 0) or (not is_long and _bp_dir < 0):
+                        bar_points += _pts
+                        reasons.append(f"{_bp_pat}_{_bp_tf}")
+                    elif (is_long and _bp_dir < 0) or (not is_long and _bp_dir > 0):
+                        bar_points -= _pts
+                if i.get(f"bar_swing_bull_{_bp_tf}") and is_long:
                     bar_points += _bp_w
-        score += bar_points
+                    reasons.append(f"Swing_Bull_{_bp_tf}")
+                elif i.get(f"bar_swing_bear_{_bp_tf}") and not is_long:
+                    bar_points += _bp_w
+                    reasons.append(f"Swing_Bear_{_bp_tf}")
+                elif i.get(f"bar_swing_bull_{_bp_tf}") and not is_long:
+                    bar_points -= _bp_w
+                elif i.get(f"bar_swing_bear_{_bp_tf}") and is_long:
+                    bar_points -= _bp_w
+                _streak = int(i.get(f"bar_streak_{_bp_tf}", 0) or 0)
+                if is_long and _streak >= 3:
+                    bar_points += _bp_w
+                elif not is_long and _streak <= -3:
+                    bar_points += _bp_w
+                elif is_long and _streak <= -3:
+                    bar_points -= _bp_w
+                elif not is_long and _streak >= 3:
+                    bar_points -= _bp_w
+                if i.get(f"bar_compression_{_bp_tf}"):
+                    bar_points += 1
+                    reasons.append(f"Squeeze_{_bp_tf}")
+                if i.get(f"bar_vol_spike_{_bp_tf}") and _bp_dir != 0:
+                    if (is_long and _bp_dir > 0) or (not is_long and _bp_dir < 0):
+                        bar_points += _bp_w
+            score += bar_points
 
+        else:
+            _bar_points_vector, _bar_reasons_vector = _bar_vector
+            score += _bar_points_vector
+            reasons.extend(_bar_reasons_vector)
         if is_exit and position:
             # For exits, we want to know if the trend is BROKEN.
             # A low score means "Sell Now". A high score means "Hold".

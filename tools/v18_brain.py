@@ -188,12 +188,13 @@ def source_noop_gain_cells(ev, counters):
     naked = ev.get("n")
     proof = (ev.get("eval_provenance") or {}).get("naked") or {}
     source_hash = ev.get("source_sha256")
-    source_ok = ev.get("src") == "progress" and ev.get("ts_source") == "explicit_progress_row_npz" and ev.get("nzk") == 1 and isinstance(source_hash, str) and re.fullmatch(r"[0-9a-f]{64}", source_hash) and all(ev.get(key) for key in ("source_file", "progress_key", "source_record_identity", "explicit_row_npz"))
+    identity = ev.get("source_record_identity")
+    source_ok = ev.get("src") == "progress" and ev.get("ts_source") == "explicit_progress_row_npz" and ev.get("nzk") == 1 and isinstance(source_hash, str) and re.fullmatch(r"[0-9a-f]{64}", source_hash) and isinstance(identity, str) and re.fullmatch(r"[0-9a-f]{64}", identity) and all(ev.get(key) for key in ("source_file", "progress_key", "explicit_row_npz"))
     naked_ok = isinstance(naked, (list, tuple)) and len(naked) >= 10 and naked[1] == 1 and naked[-1] == 1 and _f(naked[0]) is not None and proof.get("valid") is True and proof.get("cached") is False and not proof.get("err") and not proof.get("invalid_reason") and proof.get("evaluation_success") is not False
     if not source_ok or not naked_ok or ev.get("is_running") or str(ev.get("reason") or "").startswith(("RUNNING_IDENTITY", "DEAD_VEC_PATH", "NOT_WIRED_VEC")):
         counters["gain_noop_excluded_row_provenance"] += len(noops)
         return []
-    if ev.get("npz") != ev.get("explicit_row_npz") or _f(ev.get("cb")) is None or _f(proof.get("cum_before")) != _f(ev.get("cb")):
+    if npz_ts_of(ev.get("npz")) is None or npz_ts_of(ev.get("npz")) != npz_ts_of(ev.get("explicit_row_npz")) or _f(ev.get("cb")) is None or _r(_f(proof.get("cum_before"))) != _r(_f(ev.get("cb"))):
         counters["gain_noop_excluded_chain_provenance"] += len(noops)
         return []
     excluded = set()

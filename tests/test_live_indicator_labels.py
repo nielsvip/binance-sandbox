@@ -128,3 +128,81 @@ def test_decoded_npz_enum_fields_equal_actual_live_indicator_labels():
             assert decoded[key] == live[key], (offset, key, decoded[key], live[key])
         assert decoded["wt_cross_rising_1h"] is bool(live["wt_cross_rising_1h"])
         assert decoded["wt_extreme_1h"] is bool(live["wt_extreme_1h"])
+
+
+def test_actual_indicator_store_predecode_preserves_live_enum_semantics(tmp_path):
+    from backtest_v8_harness import IndicatorStore
+
+    codes = np.asarray([-2, -1, 0, 1, 2], dtype=np.int8)
+    timestamps = np.arange(5, dtype=np.int64) * 900 + 1_790_000_000
+    path = tmp_path / "indicator_store_enum_fixture.npz"
+    np.savez(
+        path,
+        timestamps=timestamps,
+        close=np.full(5, 100.0),
+        wt_cross_15m=np.asarray([-1, 0, 1, 0, 0], dtype=np.int8),
+        wt_signal_15m=np.asarray([-1, 0, 1, -1, 1], dtype=np.int8),
+        wt_divergence_15m=codes,
+        wt_momentum_state_15m=np.asarray([-2, -1, 0, 1, 2], dtype=np.int8),
+        wt_peak_structure_15m=np.asarray([0, -1, 0, 1, 0], dtype=np.int8),
+        wt_trough_structure_15m=np.asarray([0, 0, -1, 0, 1], dtype=np.int8),
+        wt_structure_15m=np.asarray([0, -1, -1, 1, 1], dtype=np.int8),
+        wt_wave_phase_15m=np.asarray([-1, 0, 1, 0, -1], dtype=np.int8),
+    )
+
+    store = IndicatorStore(str(path))
+    rows = [
+        decode_live_indicator_labels(store.build_indicator_dict(i)) for i in range(5)
+    ]
+    assert [row["wt_signal_15m"] for row in rows] == [
+        "SELL",
+        "NEUTRAL",
+        "BUY",
+        "SELL",
+        "BUY",
+    ]
+    assert [row["wt_divergence_15m"] for row in rows] == [
+        "HIDDEN_BEAR",
+        "BEAR",
+        None,
+        "BULL",
+        "HIDDEN_BULL",
+    ]
+    assert [row["wt_momentum_state_15m"] for row in rows] == [
+        "EXHAUST_DOWN",
+        "IMPULSE_DOWN",
+        "EXHAUST_DOWN",
+        "IMPULSE_UP",
+        "EXHAUST_UP",
+    ]
+    assert rows[1]["wt_peak_structure_15m"] == "LH"
+    assert rows[1]["wt_structure_15m"] == "LH"
+    assert rows[2]["wt_trough_structure_15m"] == "LL"
+    assert rows[2]["wt_structure_15m"] == "LL"
+    assert rows[0]["wt_wave_phase_15m"] == "CONTRACTING"
+    assert rows[1]["wt_wave_phase_15m"] == "TRANSITIONING"
+    assert rows[2]["wt_wave_phase_15m"] == "EXPANDING"
+    assert rows[1]["wt_cross_15m"] is None
+    assert rows[2]["wt_divergence_15m"] is None
+    assert rows[2]["wt_peak_structure_15m"] is None
+    assert rows[0]["wt_structure_15m"] is None
+
+
+def test_decoder_normalizes_old_store_string_labels():
+    assert decode_live_indicator_labels(
+        {
+            "wt_cross_15m": "NONE",
+            "wt_divergence_15m": "",
+            "wt_momentum_state_15m": "NEUTRAL",
+            "wt_peak_structure_15m": "NEUTRAL",
+            "wt_wave_phase_15m": "NEUTRAL",
+            "wt_signal_15m": "BULL",
+        }
+    ) == {
+        "wt_cross_15m": None,
+        "wt_divergence_15m": None,
+        "wt_momentum_state_15m": "EXHAUST_DOWN",
+        "wt_peak_structure_15m": None,
+        "wt_wave_phase_15m": "TRANSITIONING",
+        "wt_signal_15m": "BUY",
+    }

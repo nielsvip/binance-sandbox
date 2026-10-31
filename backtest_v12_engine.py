@@ -4784,20 +4784,16 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # both-sides-losing deadlock by killing hedges as soon as wt_3m turns.
     # User-configured HEDGE_ACCOUNTS from config are honored.
     from config import Config as _CfgClass
-    # Allow technical stops to fire (override STRICT_NO_LOSS dead-code defaults)
-    _CfgClass.FAST_CUT_LOSS_THRESHOLD = -3.0
-    _CfgClass.BREAKOUT_GUARD_LOSS_THRESHOLD = -3.0
-    _CfgClass.STOP_LOSS_THRESHOLD = 3.0
-    # Patch via module imports (each module may have imported Config or config)
-    # Use sys.modules to avoid shadowing the module-level imports already bound in this function
-    import sys as _sys
-    for _mn in ['ez_manage', 'ez_positions_quick', 'ez_positions_service', 'utils']:
-        _m = _sys.modules.get(_mn)
-        if _m and hasattr(_m, 'config') and _m.config is not None:
-            try:
-                _m.config.FAST_CUT_LOSS_THRESHOLD = -3.0
-            except Exception:
-                pass
+    from vec_decisions.replay_policies import configure_replay_settings
+    _native_replay_settings = os.environ.get("V12_REPLAY_NATIVE_SETTINGS") == "1"
+    _replay_settings_policy = configure_replay_settings(
+        config,
+        _CfgClass,
+        [ez_manage, ez_positions_quick],
+        _native_replay_settings,
+    )
+    trade_manager._v12_replay_settings_policy = _replay_settings_policy
+    v8_logger.info("[V8_REPLAY_SETTINGS_POLICY] %s", json.dumps(_replay_settings_policy, sort_keys=True, default=str))
     # NEWBORN_PROTECT uses time.time() (Unix epoch) — V8 patches time.time via _SimTime.
     # No special handling needed.
     v8_logger.info(f"V8 CONFIG: HEDGE_MODE={getattr(config, 'HEDGE_MODE', 'unset')} HEDGE_ACCOUNTS={getattr(config, 'HEDGE_ACCOUNTS', [])} STRICT_NO_LOSS_ACCOUNTS={getattr(config, 'STRICT_NO_LOSS_ACCOUNTS', [])} DELTA_ENGINE_ENABLED={getattr(config, 'DELTA_ENGINE_ENABLED', 'unset')} NEWBORN_PROTECT={getattr(config, 'NEWBORN_PROTECT_ENABLED', 'unset')}")
@@ -5395,6 +5391,25 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
 
     if forward_session is not None:
         forward_session.bind(executed_trades, trade_manager.positions)
+    from vec_decisions.replay_policies import override_check_due
+    _override_check_cadence = os.environ.get("V12_REPLAY_OVERRIDE_CHECK_CADENCE", "disabled")
+    if _override_check_cadence != "disabled" and os.environ.get("V12_REAL_EXECUTE") != "1":
+        raise RuntimeError("override producer replay requires V12_REAL_EXECUTE=1 and the actual execute_now route")
+    override_producer_coverage = {
+        "cadence_policy": _override_check_cadence,
+        "live_wrapper_cadence": "every_20_callbacks",
+        "per_bar_policy_is_replay_specific": _override_check_cadence == "per_bar",
+        "bars_considered": 0,
+        "due_bars": 0,
+        "flat_tradeable_opportunities": 0,
+        "calls": 0,
+        "nonflat_skips": 0,
+        "filled_event_rows": 0,
+        "first_call_bar_ts": None,
+        "last_call_bar_ts": None,
+        "call_bar_ts_sha256": __import__("hashlib").sha256(),
+        "outcome_counts": {},
+    }
     _paper_stream_exhausted = False
     async for step, ts in historical_or_forward_steps(sorted_ts, forward_session):
         if _v8_wall_deadline > 0 and (__import__('time').time() - _v8_wall_t0) > _v8_wall_deadline:
@@ -5461,13 +5476,6 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             #     trade_manager.augmented_positions.clear()
             if hasattr(trade_manager, '_dc_breakout_entry_cd'):
                 trade_manager._dc_breakout_entry_cd.clear()
-
-        # NO_LOSS already disabled before loop — ensure it stays off on ALL Config instances
-        config.STRICT_NO_LOSS_ACCOUNTS = []
-        config.Config.STRICT_NO_LOSS_ACCOUNTS = []
-        for _m in [ez_manage, ez_positions_quick]:
-            if hasattr(_m, 'config'):
-                _m.config.STRICT_NO_LOSS_ACCOUNTS = []
 
         # Update indicators + prices for all symbols
         for sym, store in stores.items():
@@ -7357,6 +7365,46 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                         if step < 10 or step % 1000 == 0:
                             v8_logger.error(f"[V8_PP_ERROR] step={step} pk={pk} err={_pp_err}")
 
+        if _override_check_cadence != "disabled":
+            override_producer_coverage["bars_considered"] += 1
+            if override_check_due(_override_check_cadence, step):
+                override_producer_coverage["due_bars"] += 1
+                for _override_pk in sorted(getattr(trade_manager, "tradeable_keys", set()) or set()):
+                    if not str(_override_pk).startswith(f"{account_key}:"):
+                        continue
+                    _override_account, _override_symbol, _override_side = ez_manage.parse_position_key(_override_pk)
+                    if _override_account != account_key or _override_symbol not in stores:
+                        continue
+                    _override_position = trade_manager.positions.get(_override_pk)
+                    if _override_position is not None and abs(float(getattr(_override_position, "positionAmt", 0) or 0)) > 1e-9:
+                        override_producer_coverage["nonflat_skips"] += 1
+                        continue
+                    override_producer_coverage["flat_tradeable_opportunities"] += 1
+                    _override_before_events = len(executed_trades)
+                    _override_token = ez_manage._psym_ctx_set(_override_symbol, _override_side)
+                    try:
+                        _override_result = await ez_manage._process_single_override_check(
+                            trade_manager,
+                            account_key,
+                            _override_pk,
+                            {},
+                            order_queue,
+                            float(_sim_ts[0]),
+                            trade_manager.config,
+                        )
+                        await order_queue._orders.join()
+                        await drain_pending_v8_tasks()
+                    finally:
+                        ez_manage._psym_ctx_clear(_override_token)
+                    override_producer_coverage["calls"] += 1
+                    override_producer_coverage["first_call_bar_ts"] = override_producer_coverage["first_call_bar_ts"] or float(ts)
+                    override_producer_coverage["last_call_bar_ts"] = float(ts)
+                    override_producer_coverage["call_bar_ts_sha256"].update(__import__("struct").pack(">d", float(ts)))
+                    override_producer_coverage["filled_event_rows"] += max(0, len(executed_trades) - _override_before_events)
+                    _override_outcome = str(_override_result or "NO_ACTION")
+                    _override_counts = override_producer_coverage["outcome_counts"]
+                    _override_counts[_override_outcome] = _override_counts.get(_override_outcome, 0) + 1
+
         # HEDGE LIFECYCLE — 2026-04-17: wire real hedge engine into backtest.
         # Live main loop calls these periodically; backtest must too or HEDGE_* switches
         # never exercise and all hedge sweeps show zero variance.
@@ -8335,6 +8383,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             f.write(json.dumps(t, default=str) + "\n")
     v8_logger.info(f"Trades saved to {log_path}")
     print(f"V8_LOG: {log_path}")
+    override_producer_coverage["call_bar_ts_sha256"] = override_producer_coverage["call_bar_ts_sha256"].hexdigest()
+    executed_trades.producer_coverage = override_producer_coverage
+    executed_trades.replay_settings_policy = _replay_settings_policy
     return executed_trades
 
 
@@ -19139,6 +19190,8 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
         m["canonical_order_ledger"] = _canonical_native_orders
         m["replay_ownership"] = getattr(executed, "replay_ownership", [])
         m["replay_coverage"] = getattr(executed, "replay_coverage", {"verdict": "NOT_RECORDED"})
+        m["producer_coverage"] = getattr(executed, "producer_coverage", {"status": "NOT_RECORDED"})
+        m["replay_settings_policy"] = getattr(executed, "replay_settings_policy", {"mode": "NOT_RECORDED"})
         m["sim_account"] = str(_run_one_sim_account or os.environ.get("V12_SIM_ACCOUNT") or ("trb" if mode == "tradier" else "ang")).lower()
         m["exit_guarantee_replay"] = _xg_rp.replay_stats() if _xg_rp is not None else None  # 2026-10-14: would-escalate / would-retry counts (pass-through)
         return m

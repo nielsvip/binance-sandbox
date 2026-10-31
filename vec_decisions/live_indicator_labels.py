@@ -54,6 +54,17 @@ def decode_live_indicator_labels(indicators: Mapping) -> dict:
             if int(value) not in mapping:
                 raise ValueError(f"{key}: unsupported live indicator enum {value!r}")
             result[key] = mapping[int(value)]
+        elif family is not None and isinstance(value, str):
+            legacy = {
+                "wt_cross": {"NONE": None},
+                "wt_divergence": {"": None, "NEUTRAL": None},
+                "wt_momentum_state": {"NEUTRAL": "EXHAUST_DOWN"},
+                "wt_peak_structure": {"": None, "NEUTRAL": None},
+                "wt_trough_structure": {"": None, "NEUTRAL": None},
+                "wt_wave_phase": {"NEUTRAL": "TRANSITIONING"},
+                "wt_signal": {"BULL": "BUY", "BEAR": "SELL"},
+            }
+            result[key] = legacy.get(family, {}).get(value, value)
         elif any(
             key.startswith(name + "_") and key[len(name) + 1 :] in _TIMEFRAMES
             for name in _BOOLS

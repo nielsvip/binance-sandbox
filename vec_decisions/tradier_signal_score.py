@@ -247,6 +247,221 @@ def sentiment_trend_score_vec(npz, n, is_long, safe):
     return sent_points, trend_points, reason_rows
 
 
+def pullback_setup_score_vec(npz, n, is_long, ltf_enabled):
+    """Vectorize native pullback/setup additive score layer."""
+    def col(key, default=0.0):
+        return _column(npz, key, n, default)
+    price = col("close", 0.0)
+    dc_low_15 = col("dc_low_15m", 0.0)
+    dc_high_15 = col("dc_high_15m", 0.0)
+    dc_low_5 = col("dc_low_5m" if ltf_enabled else "dc_low_15m", 0.0)
+    dc_high_5 = col("dc_high_5m" if ltf_enabled else "dc_high_15m", 0.0)
+    k_d, d_d = col("k_D", 50.0), col("d_D", 50.0)
+    k4, d4 = col("k_4h", 50.0), col("d_4h", 50.0)
+    k1, d1 = col("k_1h", 50.0), col("d_1h", 50.0)
+    k1_prev = col("k_1h_prev", 0.0)
+    points = np.zeros(n, dtype=float)
+    reasons = [[] for _ in range(n)]
+    if is_long:
+        bounce15 = (dc_low_15 > 0.0) & (((price - dc_low_15) / np.where(dc_low_15 > 0.0, dc_low_15, 1.0)) < 0.015)
+        bounce5 = (~bounce15) & (dc_low_5 > 0.0) & (((price - dc_low_5) / np.where(dc_low_5 > 0.0, dc_low_5, 1.0)) < 0.008)
+        points += np.where(bounce15, 5.0, np.where(bounce5, 4.0, 0.0))
+        points += np.where(k_d > 95.0, -5.0, np.where((k_d < 50.0) & (k_d > d_d), 5.0, 0.0))
+        points += np.where(k4 < 50.0, 5.0, np.where(k4 < 80.0, 1.0, 0.0))
+        points += np.where((k4 < 20.0) & (k4 > d4), 4.0, np.where((k4 < 50.0) & (k4 > d4), 2.0, -3.0))
+        turn = (k1 < 40.0) & (k1 > k1_prev)
+        points += np.where(turn, 3.0, np.where((k1 < 80.0) & (k1 > d1), 2.0, 0.0))
+        for index in np.flatnonzero(bounce15 | bounce5 | ((k4 < 50.0) & (k4 < 80.0)) | turn):
+            if bounce15[index]: reasons[index].append("Bounce_15m_Low")
+            elif bounce5[index]: reasons[index].append("Bounce_5m_Low")
+            if k4[index] < 50.0: reasons[index].append("4h_Deep_Value")
+            if turn[index]: reasons[index].append("1h_Turn_Up")
+    else:
+        bounce15 = (dc_high_15 > 0.0) & (((dc_high_15 - price) / np.where(dc_high_15 > 0.0, dc_high_15, 1.0)) < 0.015)
+        bounce5 = (~bounce15) & (dc_high_5 > 0.0) & (((dc_high_5 - price) / np.where(dc_high_5 > 0.0, dc_high_5, 1.0)) < 0.008)
+        points += np.where(bounce15, 5.0, np.where(bounce5, 4.0, 0.0))
+        points += np.where(k_d < 5.0, -5.0, 0.0)
+        points += np.where((k_d < 50.0) & (k_d > d_d), 5.0, 0.0)
+        points += np.where(k4 > 50.0, 5.0, np.where(k4 > 20.0, 2.0, 0.0))
+        points += np.where((k4 > 80.0) & (k4 < d4), 4.0, np.where((k4 > 50.0) & (k4 < d4), 2.0, -3.0))
+        turn = (k1 > 60.0) & (k1 < k1_prev)
+        points += np.where(turn, 3.0, np.where((k1 > 20.0) & (k1 < d1), 2.0, 0.0))
+        for index in np.flatnonzero(bounce15 | bounce5 | (k4 > 50.0) | turn):
+            if bounce15[index]: reasons[index].append("Bounce_15m_High")
+            elif bounce5[index]: reasons[index].append("Bounce_5m_High")
+            if k4[index] > 50.0: reasons[index].append("4h_Premium_Short")
+            if turn[index]: reasons[index].append("1h_Turn_Down")
+    return points, reasons
+
+
+def trigger_score_vec(npz, n, is_long, cfg, ltf_enabled):
+    """Vectorize native trigger points except the score-dependent falling-knife penalty."""
+    def col(key, default=0.0):
+        return _column(npz, key, n, default)
+    k15, d15 = col("k_15m", 50.0), col("d_15m", 50.0)
+    k5 = col("k_5m" if ltf_enabled else "k_15m", 50.0)
+    d5 = col("d_5m" if ltf_enabled else "d_15m", 50.0)
+    k1, d1, k1_prev = col("k_1m", 50.0), col("d_1m", 50.0), col("k_1m_prev", 50.0)
+    wt1_15, wt2_15 = col("wt1_15m", 0.0), col("wt2_15m", 0.0)
+    rel_vol = col("rel_vol_15m", 1.0)
+    timestamps = col("timestamps", 0.0)
+    try:
+        raw_ts = np.asarray(npz["timestamp_1m"], dtype=float).reshape(-1)
+        if raw_ts.size != n: raise ValueError("unaligned timestamp_1m")
+        fresh = (timestamps - raw_ts) < 60.0
+    except (KeyError, TypeError, ValueError):
+        fresh = np.ones(n, dtype=bool)
+    points = np.zeros(n, dtype=float)
+    reasons = [[] for _ in range(n)]
+    if is_long:
+        points += np.where(k15 > d15, 2.0, 0.0)
+        points += np.where(k5 > d5, 2.0, 0.0)
+        points += np.where(wt1_15 > wt2_15, 2.0, 0.0)
+        sniper = (k5 < 30.0) & (k5 > d5)
+        points += np.where(sniper, 3.0, 0.0)
+        cross1 = fresh & (k1 > d1) & (k1_prev <= d1) & (k1 < 30.0)
+        points += np.where(cross1, 4.0, 0.0)
+    else:
+        points += np.where(k15 < d15, 2.0, 0.0)
+        points += np.where(k5 < d5, 2.0, 0.0)
+        points += np.where(wt1_15 < wt2_15, 2.0, 0.0)
+        sniper = (k5 > 70.0) & (k5 < d5)
+        points += np.where(sniper, 3.0, 0.0)
+        cross1 = fresh & (k1 < d1) & (k1_prev >= d1) & (k1 > 70.0)
+        points += np.where(cross1, 4.0, 0.0)
+    stale = ~fresh
+    high_vol = rel_vol > 1.2
+    points += np.where(high_vol, 2.0, 0.0)
+    for index in np.flatnonzero(sniper | cross1 | stale | high_vol):
+        if sniper[index]: reasons[index].append("5m_Sniper")
+        if cross1[index]: reasons[index].append("1m_Cross_Up" if is_long else "1m_Cross_Down")
+        if stale[index]: reasons[index].append("1m_Stale_Ignored")
+        if high_vol[index]: reasons[index].append("High_Vol")
+    if bool(getattr(cfg, "MOMENTUM_FADE_ENABLED_TRADIER", True)):
+        body_min = float(getattr(cfg, "MOMENTUM_FADE_BODY_ATR_MIN_TRADIER", 2.0))
+        volume_min = float(getattr(cfg, "MOMENTUM_FADE_VOL_MIN_TRADIER", 2.0))
+        k_zone = bool(getattr(cfg, "MOMENTUM_FADE_K_ZONE_TRADIER", True))
+        bonus_raw = getattr(cfg, "MOMENTUM_FADE_SCORE_BONUS_TRADIER", 5)
+        bonus = float(bonus_raw)
+        atr = col("atr_15m", 0.0)
+        high = col("high_15m", 0.0)
+        low = col("low_15m", 0.0)
+        price_range = np.where((high > 0.0) & (low > 0.0), high - low, 0.0)
+        body_vs_atr = np.divide(price_range, atr, out=np.zeros(n, dtype=float), where=atr > 0.0)
+        k_ok = ((k15 < 40.0) if is_long else (k15 > 60.0)) if k_zone else np.ones(n, dtype=bool)
+        fade = (body_vs_atr >= body_min) & (rel_vol >= volume_min) & k_ok
+        points += np.where(fade, bonus, 0.0)
+        for index in np.flatnonzero(fade):
+            reasons[index].append(f"MOM_FADE({'L' if is_long else 'S'},rng={body_vs_atr[index]:.1f}xATR,rv={rel_vol[index]:.1f}x,k={k15[index]:.0f},+{bonus_raw})_bcT55b")
+    return points, reasons, {"k1": k1, "d1": d1, "k5": k5, "d5": d5, "fresh": fresh}
+
+
+def bar_pattern_score_vec(npz, n, is_long):
+    """Vectorize native multi-timeframe bar-pattern and streak score layer."""
+    points = np.zeros(n, dtype=float)
+    reasons = [[] for _ in range(n)]
+    for tf, weight in (("1h", 1.0), ("4h", 2.0), ("D", 3.0)):
+        direction = _column(npz, f"bar_direction_{tf}", n, 0.0)
+        strength = _column(npz, f"bar_strength_{tf}", n, 0.0)
+        vol_confirm = np.fromiter((bool(_value_at(npz, f"bar_vol_confirm_{tf}", i, n)) for i in range(n)), dtype=bool, count=n)
+        pattern = [_value_at(npz, f"bar_pattern_{tf}", i, n) for i in range(n)]
+        bull = np.fromiter((bool(_value_at(npz, f"bar_swing_bull_{tf}", i, n)) for i in range(n)), dtype=bool, count=n)
+        bear = np.fromiter((bool(_value_at(npz, f"bar_swing_bear_{tf}", i, n)) for i in range(n)), dtype=bool, count=n)
+        streak = np.asarray([int(_value_at(npz, f"bar_streak_{tf}", i, n) or 0) for i in range(n)], dtype=int)
+        compression = np.fromiter((bool(_value_at(npz, f"bar_compression_{tf}", i, n)) for i in range(n)), dtype=bool, count=n)
+        vol_spike = np.fromiter((bool(_value_at(npz, f"bar_vol_spike_{tf}", i, n)) for i in range(n)), dtype=bool, count=n)
+        scored_bar = (direction != 0.0) & (strength >= 0.3)
+        bar_value = weight * (1.0 + vol_confirm.astype(float)) * np.where(strength >= 0.6, 1.0, 0.5)
+        favorable = (direction > 0.0) if is_long else (direction < 0.0)
+        points += np.where(scored_bar, np.where(favorable, bar_value, -bar_value), 0.0)
+        if is_long:
+            swing_value = np.where(bull, weight, np.where(bear, -weight, 0.0))
+            streak_value = np.where(streak >= 3, weight, np.where(streak <= -3, -weight, 0.0))
+        else:
+            swing_value = np.where(bear, weight, np.where(bull, -weight, 0.0))
+            streak_value = np.where(streak <= -3, weight, np.where(streak >= 3, -weight, 0.0))
+        points += swing_value + streak_value + compression.astype(float)
+        points += np.where(vol_spike & (direction != 0.0) & favorable, weight, 0.0)
+        for index in np.flatnonzero(scored_bar | bull | bear | compression):
+            if scored_bar[index] and favorable[index]:
+                reasons[index].append(f"{str(pattern[index] or 'none')}_{tf}")
+            if bull[index] and is_long:
+                reasons[index].append(f"Swing_Bull_{tf}")
+            elif bear[index] and not is_long:
+                reasons[index].append(f"Swing_Bear_{tf}")
+            elif bull[index] and not is_long:
+                pass
+            elif bear[index] and is_long:
+                pass
+            if compression[index]:
+                reasons[index].append(f"Squeeze_{tf}")
+    return points, reasons
+
+
+def entry_bonus_layers_vec(npz, n, is_long, cfg):
+    """Vectorize DC-position and K-zone additive entry score factors."""
+    dc_pos_1h = _column(npz, "dc_position_1h", n, 0.5)
+    dc_pos_4h = _column(npz, "dc_position_4h", n, 0.5)
+    dc_threshold = float(getattr(cfg, "DC_POSITION_ENTRY_THRESHOLD", 0.25))
+    dc_long = (dc_pos_1h < dc_threshold) | (dc_pos_4h < dc_threshold)
+    dc_short = (dc_pos_1h > (1.0 - dc_threshold)) | (dc_pos_4h > (1.0 - dc_threshold))
+    if bool(getattr(cfg, "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION", True)) and "dc_width_1h" in npz and "dc_width_1h_prev" in npz:
+        width_raw = np.asarray(npz["dc_width_1h"])
+        width_prev_raw = np.asarray(npz["dc_width_1h_prev"])
+        if width_raw.ndim == 1 and width_raw.size == n and width_prev_raw.ndim == 1 and width_prev_raw.size == n:
+            width = _column(npz, "dc_width_1h", n, 0.0)
+            width_prev = _column(npz, "dc_width_1h_prev", n, 0.0)
+            expansion_ok = np.where(np.isfinite(width), width, 0.0) > np.where(np.isfinite(width_prev), width_prev, 0.0)
+            dc_long &= expansion_ok
+            dc_short &= expansion_ok
+    dc_points = np.where(dc_long | dc_short, 5.0, 0.0)
+    dc_reasons = [f"DC_POS_BONUS({'L' if is_long else 'S'}_1h={dc_pos_1h[i]:.2f}_4h={dc_pos_4h[i]:.2f})" if dc_points[i] else "" for i in range(n)]
+    kzone_enabled = bool(getattr(cfg, "K_ZONE_ENTRY_ENABLED_TRADIER", True))
+    k4, d4 = _column(npz, "k_4h", n, 50.0), _column(npz, "d_4h", n, 50.0)
+    kzone_long = kzone_enabled & (k4 < float(getattr(cfg, "K_ZONE_LONG_THRESHOLD_TRADIER", 35.0))) & (k4 > d4)
+    kzone_short = kzone_enabled & (k4 > float(getattr(cfg, "K_ZONE_SHORT_THRESHOLD_TRADIER", 65.0))) & (k4 < d4)
+    bonus_raw = getattr(cfg, "K_ZONE_ENTRY_BONUS_TRADIER", getattr(cfg, "TRADIER_K_ZONE_ENTRY_BONUS_TRADIER", 25))
+    kzone_points = np.where(kzone_long | kzone_short, float(bonus_raw), 0.0)
+    kzone_reasons = [f"KZone_4h(+{bonus_raw})" if kzone_points[i] else "" for i in range(n)]
+    return dc_points, dc_reasons, kzone_points, kzone_reasons
+
+
+def dc_retest_score_vec(npz, n, is_long, ltf_enabled):
+    """Vectorize native multi-timeframe DC expansion/retest score and detail text."""
+    price = _column(npz, "close", n, 0.0)
+    long_score = np.zeros(n, dtype=int)
+    short_score = np.zeros(n, dtype=int)
+    details = [[] for _ in range(n)]
+    for tf in ("5m", "15m", "1h", "4h", "D"):
+        source_tf = "15m" if tf == "5m" and not ltf_enabled else tf
+        high = _column(npz, f"dc_high_{source_tf}", n, 0.0)
+        high_prev = _column(npz, f"dc_high_{source_tf}_ant", n, 0.0)
+        low = _column(npz, f"dc_low_{source_tf}", n, 0.0)
+        low_prev = _column(npz, f"dc_low_{source_tf}_ant", n, 0.0)
+        usable = (high > 0.0) & (high_prev > 0.0) & (low > 0.0) & (low_prev > 0.0) & ((high - low) > 0.0)
+        high_expansion = usable & (high > high_prev) & (((high - high_prev) / np.where(high_prev > 0.0, high_prev, 1.0) * 100.0) > 0.1)
+        high_dist = (price - high_prev) / np.where(high_prev > 0.0, high_prev, 1.0) * 100.0
+        long_retest = high_expansion & (high_dist > 0.0) & (high_dist < 1.5)
+        short_failed = high_expansion & (high_dist <= 0.0)
+        long_score += long_retest.astype(int)
+        short_score += short_failed.astype(int)
+        low_expansion = usable & (low < low_prev) & (((low_prev - low) / np.where(low_prev > 0.0, low_prev, 1.0) * 100.0) > 0.1)
+        low_dist = (low_prev - price) / np.where(low_prev > 0.0, low_prev, 1.0) * 100.0
+        short_retest = low_expansion & (low_dist > 0.0) & (low_dist < 1.5)
+        long_failed = low_expansion & (low_dist <= 0.0)
+        short_score += short_retest.astype(int)
+        long_score += long_failed.astype(int)
+        for index in np.flatnonzero(long_retest | short_failed | short_retest | long_failed):
+            if long_retest[index]: details[index].append(f"{tf}:retest_hi({high_dist[index]:.1f}%)")
+            elif short_failed[index]: details[index].append(f"{tf}:failed_hi")
+            if short_retest[index]: details[index].append(f"{tf}:retest_lo({low_dist[index]:.1f}%)")
+            elif long_failed[index]: details[index].append(f"{tf}:failed_lo")
+    detail_text = ["|".join(row) if row else "no_retest" for row in details]
+    bonus = np.where((long_score if is_long else short_score) >= 2, 6.0, 0.0)
+    reasons = [f"DC_RETEST_{'L' if is_long else 'S'}({int(long_score[i] if is_long else short_score[i])}TF:{detail_text[i]})" if bonus[i] else "" for i in range(n)]
+    return bonus, reasons
+
+
 def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None):
     """Evaluate native StockStrategy score and final threshold in bar order.
 
@@ -271,6 +486,12 @@ def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None):
     mq_bonus, mq_reasons = market_quality_score_vec_details(npz, n, is_long, cfg, _column)
     ga_bonus, ga_reasons = golden_angles_score_vec(npz, n, is_long, _column)
     sentiment_bonus, trend_bonus, st_reasons = sentiment_trend_score_vec(npz, n, is_long, _column)
+    ltf_enabled = bool(getattr(cfg, "LTF_SUB15M_TRADING_ENABLED", False))
+    setup_bonus, setup_reasons = pullback_setup_score_vec(npz, n, is_long, ltf_enabled)
+    trigger_bonus, trigger_reasons, trigger_inputs = trigger_score_vec(npz, n, is_long, cfg, ltf_enabled)
+    bar_bonus, bar_reasons = bar_pattern_score_vec(npz, n, is_long)
+    dc_bonus, dc_reasons, kzone_bonus, kzone_reasons = entry_bonus_layers_vec(npz, n, is_long, cfg)
+    dc_retest_bonus, dc_retest_reasons = dc_retest_score_vec(npz, n, is_long, ltf_enabled)
     score_values = np.zeros(n, dtype=float)
     fires = np.zeros(n, dtype=bool)
     reasons = [""] * n
@@ -291,12 +512,28 @@ def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None):
             mq_token = tm._TR_SCORE_MQ_CTX.set((float(mq_bonus[index]), mq_reasons[index]) if mq_enabled else None)
             ga_token = tm._TR_SCORE_GA_CTX.set((float(ga_bonus[index]), ga_reasons[index]))
             st_token = tm._TR_SCORE_ST_CTX.set((float(sentiment_bonus[index]), float(trend_bonus[index]), st_reasons[index]))
+            setup_token = tm._TR_SCORE_SETUP_CTX.set((float(setup_bonus[index]), setup_reasons[index]))
+            trigger_token = tm._TR_SCORE_TRIGGER_CTX.set((
+                float(trigger_bonus[index]),
+                trigger_reasons[index],
+                {key: value[index].item() if hasattr(value[index], "item") else value[index] for key, value in trigger_inputs.items()},
+            ))
+            bar_token = tm._TR_SCORE_BAR_CTX.set((float(bar_bonus[index]), bar_reasons[index]))
+            dc_bonus_token = tm._TR_SCORE_DC_BONUS_CTX.set((float(dc_bonus[index]), dc_reasons[index]))
+            kzone_token = tm._TR_SCORE_KZONE_CTX.set((float(kzone_bonus[index]), kzone_reasons[index]))
+            dcrt_token = tm._TR_SCORE_DCRT_CTX.set((float(dc_retest_bonus[index]), dc_retest_reasons[index]))
             try:
                 score, recommendation, reason = strategy.calculate_signal_score(
                     "v12", symbol, is_long, float(indicators.get("close", 0.0) or 0.0), indicators, None, is_exit=False
                 )
                 threshold = float(tm._cfg("ENTRY_SCORE_THRESHOLD", 12.0, "v12", symbol, side) or 0.0)
             finally:
+                tm._TR_SCORE_DCRT_CTX.reset(dcrt_token)
+                tm._TR_SCORE_KZONE_CTX.reset(kzone_token)
+                tm._TR_SCORE_DC_BONUS_CTX.reset(dc_bonus_token)
+                tm._TR_SCORE_BAR_CTX.reset(bar_token)
+                tm._TR_SCORE_TRIGGER_CTX.reset(trigger_token)
+                tm._TR_SCORE_SETUP_CTX.reset(setup_token)
                 tm._TR_SCORE_ST_CTX.reset(st_token)
                 tm._TR_SCORE_GA_CTX.reset(ga_token)
                 tm._TR_SCORE_MQ_CTX.reset(mq_token)

@@ -186,14 +186,13 @@ class _IndicatorDict(dict):
 # Integer encodings used by backtest_v8_precompute.py
 # Each tuple: (field_prefix, mapping {int -> string})
 _INT_DECODE = {
-    "wt_cross":          {-1: "BEAR", 0: "NONE", 1: "BULL"},
-    "wt_signal":         {-1: "BEAR", 0: "NEUTRAL", 1: "BULL"},
-    "wt_divergence":     {-1: "BEAR", 0: "", 1: "BULL"},
-    "wt_momentum_state": {-2: "EXHAUST_DOWN", -1: "IMPULSE_DOWN", 0: "NEUTRAL", 1: "IMPULSE_UP", 2: "EXHAUST_UP"},
-    "wt_peak_structure": {-1: "LH", 0: "NEUTRAL", 1: "HH"},
-    "wt_trough_structure": {-1: "LL", 0: "NEUTRAL", 1: "HL"},
-    "wt_structure":      {-1: "LH", 0: "NEUTRAL", 1: "HH"},
-    "wt_wave_phase":     {-1: "CONTRACTING", 0: "NEUTRAL", 1: "EXPANDING"},
+    "wt_cross":          {-1: "BEAR", 0: None, 1: "BULL"},
+    "wt_signal":         {-1: "SELL", 0: "NEUTRAL", 1: "BUY"},
+    "wt_divergence":     {-2: "HIDDEN_BEAR", -1: "BEAR", 0: None, 1: "BULL", 2: "HIDDEN_BULL"},
+    "wt_momentum_state": {-2: "EXHAUST_DOWN", -1: "IMPULSE_DOWN", 0: "EXHAUST_DOWN", 1: "IMPULSE_UP", 2: "EXHAUST_UP"},
+    "wt_peak_structure": {-1: "LH", 0: None, 1: "HH"},
+    "wt_trough_structure": {-1: "LL", 0: None, 1: "HL"},
+    "wt_wave_phase":     {-1: "CONTRACTING", 0: "TRANSITIONING", 1: "EXPANDING"},
     "wt_composite_bias": {-1: "SHORT", 0: "NEUTRAL", 1: "LONG"},
     "ha":                {-1: "red", 0: "neutral", 1: "green"},
 }
@@ -375,7 +374,7 @@ class IndicatorStore:
         # The precompute already broadcasts HTF values to base bars, so the only
         # values that may safely be filled here are explicit NaNs.
         _ffill_suffixes = ("_1h", "_4h", "_D")
-        _skip_prefixes = ("open_", "high_", "low_", "close_", "volume_", "timestamps")
+        _skip_prefixes = ("open_", "high_", "low_", "close_", "volume_", "timestamps", "wt_cross_", "wt_divergence_", "wt_signal_", "wt_momentum_state_", "wt_peak_structure_", "wt_trough_structure_", "wt_structure_", "wt_wave_phase_", "ha_")
         for key in list(self.arrays.keys()):
             if not any(key.endswith(s) for s in _ffill_suffixes):
                 continue
@@ -605,6 +604,12 @@ class IndicatorStore:
             return default
         val = arr[idx]
         if arr.dtype == object:
+            if val is None and key.startswith((
+                "wt_cross_", "wt_divergence_", "wt_signal_",
+                "wt_momentum_state_", "wt_peak_structure_",
+                "wt_trough_structure_", "wt_structure_", "wt_wave_phase_", "ha_",
+            )):
+                return None
             return val if val is not None else default
         if isinstance(val, (np.floating, float)) and np.isnan(val):
             return default
