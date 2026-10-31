@@ -29,6 +29,15 @@ _ENUMS = {
     "ha": {-1: "red", 0: "neutral", 1: "green"},
 }
 _BOOLS = ("wt_cross_rising", "wt_extreme")
+_LEGACY_LABELS = {
+    "wt_cross": {"NONE": None},
+    "wt_divergence": {"": None, "NEUTRAL": None},
+    "wt_momentum_state": {"NEUTRAL": "EXHAUST_DOWN"},
+    "wt_peak_structure": {"": None, "NEUTRAL": None},
+    "wt_trough_structure": {"": None, "NEUTRAL": None},
+    "wt_wave_phase": {"NEUTRAL": "TRANSITIONING"},
+    "wt_signal": {"BULL": "BUY", "BEAR": "SELL"},
+}
 
 
 def _enum_name(key: str) -> str | None:
@@ -55,16 +64,7 @@ def decode_live_indicator_labels(indicators: Mapping) -> dict:
                 raise ValueError(f"{key}: unsupported live indicator enum {value!r}")
             result[key] = mapping[int(value)]
         elif family is not None and isinstance(value, str):
-            legacy = {
-                "wt_cross": {"NONE": None},
-                "wt_divergence": {"": None, "NEUTRAL": None},
-                "wt_momentum_state": {"NEUTRAL": "EXHAUST_DOWN"},
-                "wt_peak_structure": {"": None, "NEUTRAL": None},
-                "wt_trough_structure": {"": None, "NEUTRAL": None},
-                "wt_wave_phase": {"NEUTRAL": "TRANSITIONING"},
-                "wt_signal": {"BULL": "BUY", "BEAR": "SELL"},
-            }
-            result[key] = legacy.get(family, {}).get(value, value)
+            result[key] = _LEGACY_LABELS.get(family, {}).get(value, value)
         elif any(
             key.startswith(name + "_") and key[len(name) + 1 :] in _TIMEFRAMES
             for name in _BOOLS

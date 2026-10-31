@@ -4785,11 +4785,18 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # User-configured HEDGE_ACCOUNTS from config are honored.
     from config import Config as _CfgClass
     from vec_decisions.replay_policies import configure_replay_settings
+    import sys as _replay_sys
     _native_replay_settings = os.environ.get("V12_REPLAY_NATIVE_SETTINGS") == "1"
+    _replay_modules = [ez_manage, ez_positions_quick]
+    _replay_modules.extend(
+        module
+        for name in ("ez_positions_service", "utils")
+        if (module := _replay_sys.modules.get(name)) is not None
+    )
     _replay_settings_policy = configure_replay_settings(
         config,
         _CfgClass,
-        [ez_manage, ez_positions_quick],
+        _replay_modules,
         _native_replay_settings,
     )
     trade_manager._v12_replay_settings_policy = _replay_settings_policy

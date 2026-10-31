@@ -7970,6 +7970,8 @@ _TR_SCORE_BAR_CTX: ContextVar = ContextVar("_TR_SCORE_BAR_CTX", default=None)
 _TR_SCORE_DC_BONUS_CTX: ContextVar = ContextVar("_TR_SCORE_DC_BONUS_CTX", default=None)
 _TR_SCORE_KZONE_CTX: ContextVar = ContextVar("_TR_SCORE_KZONE_CTX", default=None)
 _TR_SCORE_DCRT_CTX: ContextVar = ContextVar("_TR_SCORE_DCRT_CTX", default=None)
+_TR_SCORE_WTC_CTX: ContextVar = ContextVar("_TR_SCORE_WTC_CTX", default=None)
+_TR_SCORE_PRE_CTX: ContextVar = ContextVar("_TR_SCORE_PRE_CTX", default=None)
 _TR_PROXY_GUARD = threading.local()
 
 
@@ -32725,6 +32727,13 @@ class StockStrategy:
             )
         score = 0.0
         reasons = []
+        _pre_vector = _TR_SCORE_PRE_CTX.get()
+        if not is_exit and _pre_vector is not None:
+            _pre_adjustment, _pre_reasons, _pre_blocked = _pre_vector
+            if _pre_blocked:
+                return 0.0, "WAIT", str(_pre_blocked)
+            score += float(_pre_adjustment)
+            reasons.extend(_pre_reasons)
         longs = getattr(self.trade_manager, f"symbols_long_{account_key}", [])
         shorts = getattr(self.trade_manager, f"symbols_short_{account_key}", [])
         has_position = (
@@ -32749,7 +32758,7 @@ class StockStrategy:
         # KG_NO_HTF_DATA_ALLOW philosophy). Residual approx: v12 blocks a no-data ROW
         # when other rows pass; per-tick live cannot see other rows. TF as-is
         # (no 5m->3m norm; live has 3m data).
-        if not is_exit:
+        if not is_exit and _pre_vector is None:
             _edc_raw = str(getattr(self.config, "ENTRY_DC_TF", "OFF") or "OFF").strip()
             if _edc_raw.upper() != "OFF" and _edc_raw != "":
                 _edc_tfs = [
@@ -32788,7 +32797,7 @@ class StockStrategy:
                     return 0.0, "WAIT", f"ENTRY_DC_TF({_edc_raw})"
         # === BACKTEST-VALIDATED GATES (121 stocks, 60/40 train/test, STRICT_NO_LOSS) ===
         # These blocks are confirmed negative on BOTH train AND test sets
-        if not is_exit and _cfg_auto("BACKTEST_VALIDATED_GATES_TRADIER", True):
+        if not is_exit and _pre_vector is None and _cfg_auto("BACKTEST_VALIDATED_GATES_TRADIER", True):
             _atr_1h = g("atr_1h", 0)
             _atr_4h = g("atr_4h", 0)
             _mfi_4h = g("mfi_4h", 50)
@@ -33308,88 +33317,97 @@ class StockStrategy:
             reasons.append(_kzone_vector[1])
         if rsi_long or rsi_short:
             reasons.append(f"MFI_{_flow_val:.0f}")
-        # --- WT COMPOSITE SCORING (TRADIER) ---
-        _wt_comp_en_t = getattr(
-            self.config, "WT_COMPOSITE_SCORING_ENABLED_TRADIER", False
-        ) or getattr(self.config, "WT_COMPOSITE_SCORING_ENABLED", False)
-        if _wt_comp_en_t and not is_exit:
-            # Composite fields now computed by tradier_indicators._inject_wt_composite — already in dict
-            _wt_side_comp = (
-                i.get("wt_composite_long", 0)
-                if is_long
-                else i.get("wt_composite_short", 0)
-            )
-            _wt_side_align = (
-                i.get("wt_bull_alignment", 0)
-                if is_long
-                else i.get("wt_bear_alignment", 0)
-            )
-            _wt_block = -20.0
-            if _wt_side_align < 3:
-                return (
-                    0.0,
-                    "WAIT",
-                    f"WT_HTF_ALIGN_T({_wt_side_align}/5,comp={'L' if is_long else 'S'}={_wt_side_comp:.0f})",
+        _wt_vector = _TR_SCORE_WTC_CTX.get()
+        if _wt_vector is None:
+            # --- WT COMPOSITE SCORING (TRADIER) ---
+            _wt_comp_en_t = getattr(
+                self.config, "WT_COMPOSITE_SCORING_ENABLED_TRADIER", False
+            ) or getattr(self.config, "WT_COMPOSITE_SCORING_ENABLED", False)
+            if _wt_comp_en_t and not is_exit:
+                # Composite fields now computed by tradier_indicators._inject_wt_composite — already in dict
+                _wt_side_comp = (
+                    i.get("wt_composite_long", 0)
+                    if is_long
+                    else i.get("wt_composite_short", 0)
                 )
-            if _wt_side_comp < _wt_block:
-                return (
-                    0.0,
-                    "WAIT",
-                    f"WT_COMP_BLOCK_T({'L' if is_long else 'S'}={_wt_side_comp:.0f}<{_wt_block:.0f})",
+                _wt_side_align = (
+                    i.get("wt_bull_alignment", 0)
+                    if is_long
+                    else i.get("wt_bear_alignment", 0)
                 )
-            if _wt_side_comp >= 50:
-                score += 8
-                reasons.append(f"WT_STRONG({_wt_side_comp:.0f},+8)")
-            elif _wt_side_comp >= 30:
-                score += 5
-                reasons.append(f"WT_GOOD({_wt_side_comp:.0f},+5)")
-            elif _wt_side_comp >= 10:
-                score += 2
-                reasons.append(f"WT_OK({_wt_side_comp:.0f},+2)")
-            _wt_os = i.get("wt_oversold_tf_count", 0)
-            _wt_ob = i.get("wt_overbought_tf_count", 0)
-            if is_long and _wt_os >= 2:
-                score += 5
-                reasons.append(f"WT_MULTI_OS({_wt_os}TF,+5)")
-            elif not is_long and _wt_ob >= 2:
-                score += 5
-                reasons.append(f"WT_MULTI_OB({_wt_ob}TF,+5)")
-            # BC_154_DIV: Multi-TF divergence confluence. Backtest: 4h div 65-71% WR, 3TF bull = 82.9% WR +10%/wk
-            _div_tfs_t = ["5m", "15m", "1h", "4h"]
-            _div_bull_t = sum(
-                1
-                for tf in _div_tfs_t
-                if i.get(f"wt_divergence_{tf}") in ("BULL", "HIDDEN_BULL")
-            )
-            _div_bear_t = sum(
-                1
-                for tf in _div_tfs_t
-                if i.get(f"wt_divergence_{tf}") in ("BEAR", "HIDDEN_BEAR")
-            )
-            if is_long and _div_bull_t >= 3:
-                score += 25
-                reasons.append(f"DIV_BULL_3TF({_div_bull_t},+25)_bc154div")
-            elif is_long and _div_bull_t >= 2:
-                score += 15
-                reasons.append(f"DIV_BULL_2TF({_div_bull_t},+15)_bc154div")
-            elif is_long and _div_bull_t == 1:
-                score += 8
-                reasons.append(f"WT_BULL_DIV({i.get('wt_strongest_bull_div_tf')},+8)")
-            if not is_long and _div_bear_t >= 3:
-                score += 25
-                reasons.append(f"DIV_BEAR_3TF({_div_bear_t},+25)_bc154div")
-            elif not is_long and _div_bear_t >= 2:
-                score += 15
-                reasons.append(f"DIV_BEAR_2TF({_div_bear_t},+15)_bc154div")
-            elif not is_long and _div_bear_t == 1:
-                score += 8
-                reasons.append(f"WT_BEAR_DIV({i.get('wt_strongest_bear_div_tf')},+8)")
-            if is_long and _div_bear_t >= 2:
-                score -= 15
-                reasons.append(f"DIV_AGAINST_LONG({_div_bear_t}TF,-15)")
-            if not is_long and _div_bull_t >= 2:
-                score -= 15
-                reasons.append(f"DIV_AGAINST_SHORT({_div_bull_t}TF,-15)")
+                _wt_block = -20.0
+                if _wt_side_align < 3:
+                    return (
+                        0.0,
+                        "WAIT",
+                        f"WT_HTF_ALIGN_T({_wt_side_align}/5,comp={'L' if is_long else 'S'}={_wt_side_comp:.0f})",
+                    )
+                if _wt_side_comp < _wt_block:
+                    return (
+                        0.0,
+                        "WAIT",
+                        f"WT_COMP_BLOCK_T({'L' if is_long else 'S'}={_wt_side_comp:.0f}<{_wt_block:.0f})",
+                    )
+                if _wt_side_comp >= 50:
+                    score += 8
+                    reasons.append(f"WT_STRONG({_wt_side_comp:.0f},+8)")
+                elif _wt_side_comp >= 30:
+                    score += 5
+                    reasons.append(f"WT_GOOD({_wt_side_comp:.0f},+5)")
+                elif _wt_side_comp >= 10:
+                    score += 2
+                    reasons.append(f"WT_OK({_wt_side_comp:.0f},+2)")
+                _wt_os = i.get("wt_oversold_tf_count", 0)
+                _wt_ob = i.get("wt_overbought_tf_count", 0)
+                if is_long and _wt_os >= 2:
+                    score += 5
+                    reasons.append(f"WT_MULTI_OS({_wt_os}TF,+5)")
+                elif not is_long and _wt_ob >= 2:
+                    score += 5
+                    reasons.append(f"WT_MULTI_OB({_wt_ob}TF,+5)")
+                # BC_154_DIV: Multi-TF divergence confluence. Backtest: 4h div 65-71% WR, 3TF bull = 82.9% WR +10%/wk
+                _div_tfs_t = ["5m", "15m", "1h", "4h"]
+                _div_bull_t = sum(
+                    1
+                    for tf in _div_tfs_t
+                    if i.get(f"wt_divergence_{tf}") in ("BULL", "HIDDEN_BULL")
+                )
+                _div_bear_t = sum(
+                    1
+                    for tf in _div_tfs_t
+                    if i.get(f"wt_divergence_{tf}") in ("BEAR", "HIDDEN_BEAR")
+                )
+                if is_long and _div_bull_t >= 3:
+                    score += 25
+                    reasons.append(f"DIV_BULL_3TF({_div_bull_t},+25)_bc154div")
+                elif is_long and _div_bull_t >= 2:
+                    score += 15
+                    reasons.append(f"DIV_BULL_2TF({_div_bull_t},+15)_bc154div")
+                elif is_long and _div_bull_t == 1:
+                    score += 8
+                    reasons.append(f"WT_BULL_DIV({i.get('wt_strongest_bull_div_tf')},+8)")
+                if not is_long and _div_bear_t >= 3:
+                    score += 25
+                    reasons.append(f"DIV_BEAR_3TF({_div_bear_t},+25)_bc154div")
+                elif not is_long and _div_bear_t >= 2:
+                    score += 15
+                    reasons.append(f"DIV_BEAR_2TF({_div_bear_t},+15)_bc154div")
+                elif not is_long and _div_bear_t == 1:
+                    score += 8
+                    reasons.append(f"WT_BEAR_DIV({i.get('wt_strongest_bear_div_tf')},+8)")
+                if is_long and _div_bear_t >= 2:
+                    score -= 15
+                    reasons.append(f"DIV_AGAINST_LONG({_div_bear_t}TF,-15)")
+                if not is_long and _div_bull_t >= 2:
+                    score -= 15
+                    reasons.append(f"DIV_AGAINST_SHORT({_div_bull_t}TF,-15)")
+
+        elif not is_exit:
+            _wt_points_vector, _wt_reasons_vector, _wt_block_vector = _wt_vector
+            if _wt_block_vector:
+                return 0.0, "WAIT", _wt_block_vector
+            score += _wt_points_vector
+            reasons.extend(_wt_reasons_vector)
 
         _ga_vector = _TR_SCORE_GA_CTX.get()
         if _ga_vector is None:

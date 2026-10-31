@@ -462,6 +462,155 @@ def dc_retest_score_vec(npz, n, is_long, ltf_enabled):
     return bonus, reasons
 
 
+def wt_composite_score_vec(npz, n, is_long, cfg):
+    """Vectorize the native Tradier WT-composite entry scoring section."""
+    enabled = bool(getattr(cfg, "WT_COMPOSITE_SCORING_ENABLED_TRADIER", False) or getattr(cfg, "WT_COMPOSITE_SCORING_ENABLED", False))
+    if not enabled:
+        return np.zeros(n, dtype=float), [ [] for _ in range(n)], [None] * n
+    comp = _column(npz, "wt_composite_long" if is_long else "wt_composite_short", n, 0.0)
+    align = _column(npz, "wt_bull_alignment" if is_long else "wt_bear_alignment", n, 0.0)
+    blocked = [None] * n
+    for index in range(n):
+        if align[index] < 3.0:
+            blocked[index] = f"WT_HTF_ALIGN_T({align[index]:.0f}/5,comp={'L' if is_long else 'S'}={comp[index]:.0f})"
+        elif comp[index] < -20.0:
+            blocked[index] = f"WT_COMP_BLOCK_T({'L' if is_long else 'S'}={comp[index]:.0f}<-20)"
+    points = np.zeros(n, dtype=float)
+    points += np.where(comp >= 50.0, 8.0, np.where(comp >= 30.0, 5.0, np.where(comp >= 10.0, 2.0, 0.0)))
+    oversold = _column(npz, "wt_oversold_tf_count", n, 0.0)
+    overbought = _column(npz, "wt_overbought_tf_count", n, 0.0)
+    points += np.where((oversold >= 2.0) if is_long else (overbought >= 2.0), 5.0, 0.0)
+    divergence_tfs = ("5m", "15m", "1h", "4h")
+    bull_counts = np.zeros(n, dtype=int)
+    bear_counts = np.zeros(n, dtype=int)
+    for tf in divergence_tfs:
+        bull_values = [_value_at(npz, f"wt_divergence_{tf}", i, n) for i in range(n)]
+        bear_values = bull_values
+        bull_counts += np.fromiter((value in ("BULL", "HIDDEN_BULL") for value in bull_values), dtype=int, count=n)
+        bear_values = [_value_at(npz, f"wt_divergence_{tf}", i, n) for i in range(n)]
+        bear_counts += np.fromiter((value in ("BEAR", "HIDDEN_BEAR") for value in bear_values), dtype=int, count=n)
+    favorable = bull_counts if is_long else bear_counts
+    against = bear_counts if is_long else bull_counts
+    points += np.where(favorable >= 3, 25.0, np.where(favorable >= 2, 15.0, np.where(favorable == 1, 8.0, 0.0)))
+    points -= np.where(against >= 2, 15.0, 0.0)
+    reasons = [[] for _ in range(n)]
+    strongest_key = "wt_strongest_bull_div_tf" if is_long else "wt_strongest_bear_div_tf"
+    for index in range(n):
+        if comp[index] >= 50.0: reasons[index].append(f"WT_STRONG({comp[index]:.0f},+8)")
+        elif comp[index] >= 30.0: reasons[index].append(f"WT_GOOD({comp[index]:.0f},+5)")
+        elif comp[index] >= 10.0: reasons[index].append(f"WT_OK({comp[index]:.0f},+2)")
+        if is_long and oversold[index] >= 2.0:
+            raw_count = _value_at(npz, "wt_oversold_tf_count", index, n)
+            reasons[index].append(f"WT_MULTI_OS({raw_count}TF,+5)")
+        elif not is_long and overbought[index] >= 2.0:
+            raw_count = _value_at(npz, "wt_overbought_tf_count", index, n)
+            reasons[index].append(f"WT_MULTI_OB({raw_count}TF,+5)")
+        if favorable[index] >= 3: reasons[index].append(f"DIV_{'BULL' if is_long else 'BEAR'}_3TF({favorable[index]},+25)_bc154div")
+        elif favorable[index] >= 2: reasons[index].append(f"DIV_{'BULL' if is_long else 'BEAR'}_2TF({favorable[index]},+15)_bc154div")
+        elif favorable[index] == 1:
+            strongest = _value_at(npz, strongest_key, index, n)
+            reasons[index].append(f"WT_{'BULL' if is_long else 'BEAR'}_DIV({strongest},+8)")
+        if against[index] >= 2: reasons[index].append(f"DIV_AGAINST_{'LONG' if is_long else 'SHORT'}({against[index]}TF,-15)")
+    return points, reasons, blocked
+
+
+def entry_pre_gate_score_vec(npz, n, is_long, cfg, ltf_enabled):
+    """Vectorize native entry pre-gates, ordered returns and additive penalties."""
+    def col(key, default=0.0):
+        return _column(npz, key, n, default)
+    def cfgv(key, default):
+        return getattr(cfg, key, default)
+    price = col("close", 0.0)
+    blocked = [None] * n
+    adjustment = np.zeros(n, dtype=float)
+    reasons = [[] for _ in range(n)]
+    edc_raw = str(cfgv("ENTRY_DC_TF", "OFF") or "OFF").strip()
+    if edc_raw.upper() not in ("OFF", ""):
+        edc_tfs = [part.strip() for part in edc_raw.replace("+", ",").replace("|", ",").replace(" ", ",").split(",") if part.strip() and part.strip().upper() != "OFF"]
+        buffer = float(cfgv("ENTRY_DC_BUFFER_PCT", 0.10) or 0.10) / 100.0
+        active = np.zeros(n, dtype=bool)
+        allowed = np.zeros(n, dtype=bool)
+        for tf in edc_tfs:
+            source_tf = "15m" if not ltf_enabled and tf in ("3m", "5m") else tf
+            low, high = col(f"dc_low_{source_tf}", 0.0), col(f"dc_high_{source_tf}", 0.0)
+            active |= (low > 0.0) | (high > 0.0)
+            if is_long:
+                allowed |= ((low > 0.0) & (price >= low * (1.0 + buffer))) | ((high > 0.0) & (price >= high * (1.0 + buffer)))
+            else:
+                allowed |= ((high > 0.0) & (price <= high * (1.0 - buffer))) | ((low > 0.0) & (price <= low * (1.0 - buffer)))
+        for index in np.flatnonzero(active & ~allowed):
+            blocked[index] = f"ENTRY_DC_TF({edc_raw})"
+    if not bool(cfgv("BACKTEST_VALIDATED_GATES_TRADIER", True)):
+        return adjustment, reasons, blocked
+    atr1, atr4 = col("atr_1h", 0.0), col("atr_4h", 0.0)
+    mfi4, wt1h, wt4 = col("mfi_4h", 50.0), col("wt1_1h", 0.0), col("wt1_4h", 0.0)
+    k4, dcw1, dcw4 = col("k_4h", 50.0), col("dc_width_1h", 10.0), col("dc_width_4h", 10.0)
+    dcpos4, wtvel = col("dc_position_4h", 0.5), col("wt_velocity_1h", 0.0)
+    atr4_pct = np.divide(atr4, price, out=np.zeros(n), where=price > 0.0) * 100.0
+    atr1_pct = np.divide(atr1, price, out=np.zeros(n), where=price > 0.0) * 100.0
+    masks = (
+        ((atr4 > 0.0) & (price > 0.0) & (atr4_pct > 3.0), lambda i: f"BV_ATR_HIGH_4h({atr4_pct[i]:.2f}%)"),
+        ((atr1 > 0.0) & (price > 0.0) & (atr1_pct > 2.5), lambda i: f"BV_ATR_HIGH_1h({atr1_pct[i]:.2f}%)"),
+        ((mfi4 > 85.0) if is_long else (mfi4 < 15.0), lambda i: f"BV_MFI_{'OB' if is_long else 'OS'}({mfi4[i]:.0f})"),
+        (((wt1h > 60.0) | (wt4 > 60.0)) if is_long else ((wt1h < -60.0) | (wt4 < -60.0)), lambda i: f"BV_WT_{'OB' if is_long else 'OS'}(1h={wt1h[i]:.0f},4h={wt4[i]:.0f})"),
+        ((k4 > 90.0) if is_long else (k4 < 10.0), lambda i: f"BV_K4H_{'OB' if is_long else 'OS'}({k4[i]:.0f})"),
+        ((dcw4 < 1.5) | (dcw1 < 1.0), lambda i: f"BV_DC_SQUEEZE(1h={dcw1[i]:.1f},4h={dcw4[i]:.1f})"),
+        ((dcpos4 > 0.9) if is_long else (dcpos4 < 0.1), lambda i: f"BV_DC_{'TOP' if is_long else 'BOT'}({dcpos4[i]:.2f})"),
+        ((wtvel < -5.0) if is_long else (wtvel > 5.0), lambda i: f"BV_WT_VEL_{'DN' if is_long else 'UP'}({wtvel[i]:.1f})"),
+    )
+    for mask, make_reason in masks:
+        for index in np.flatnonzero(mask & np.asarray([item is None for item in blocked])):
+            blocked[index] = make_reason(index)
+    if bool(cfgv("CT_WT_VELOCITY_GATE_ENABLED", False)):
+        velocity_min = float(cfgv("CT_WT_VELOCITY_1H_MIN", 0.0))
+        velocity_block = ((wtvel < velocity_min) if is_long else (wtvel > -velocity_min)) & np.asarray([item is None for item in blocked])
+        for index in np.flatnonzero(velocity_block):
+            blocked[index] = f"CT_VEL_LONG({wtvel[index]:.1f}<{velocity_min})" if is_long else f"CT_VEL_SHORT({wtvel[index]:.1f}>-{velocity_min})"
+    entry_atr_min = float(cfgv("ENTRY_ATR_PCT_MIN", 0.0))
+    entry_atr_block = (entry_atr_min > 0.0) & (atr1 > 0.0) & (price > 0.0) & (atr1_pct < entry_atr_min) & np.asarray([item is None for item in blocked])
+    for index in np.flatnonzero(entry_atr_block):
+        blocked[index] = f"ATR_TOO_LOW({atr1_pct[index]:.2f}%<{entry_atr_min:.2f})"
+    rvol5_key = "relative_volume_5m" if "relative_volume_5m" in npz else "rel_vol_5m"
+    rvol15_key = "relative_volume_15m" if "relative_volume_15m" in npz else "rel_vol_15m"
+    rvol5 = col(rvol5_key, 0.0) if ltf_enabled else col(rvol15_key, 0.0)
+    rvol15 = col(rvol15_key, 0.0)
+    entry_vol_min = float(cfgv("ENTRY_VOL_MIN_RATIO", 0.0))
+    vol_max = np.maximum(rvol5, rvol15)
+    vol_block = (entry_vol_min > 0.0) & (vol_max < entry_vol_min) & np.asarray([item is None for item in blocked])
+    for index in np.flatnonzero(vol_block):
+        blocked[index] = f"VOL_TOO_LOW(max={vol_max[index]:.2f}<{entry_vol_min:.2f})"
+    def enabled(key, default=True): return bool(cfgv(key, default))
+    adx4 = col("adx_4h", 25.0)
+    adx_max, adx_penalty = float(cfgv("TR_ADX4H_MAX", 20.0)), float(cfgv("TR_ADX4H_BOYCOTT_SCORE", -40.0))
+    adx_hit = enabled("TR_ADX4H_GATE_ENABLED") & (adx4 > adx_max)
+    adjustment += np.where(adx_hit, adx_penalty, 0.0)
+    bb_up, bb_lo = col("bb_upper_4h", 0.0), col("bb_lower_4h", 0.0)
+    bb_width = np.divide(bb_up - bb_lo, price, out=np.zeros(n), where=(price > 0.0) & (bb_up > 0.0) & (bb_lo > 0.0)) * 100.0
+    bb_max, bb_penalty = float(cfgv("TR_BBWIDTH4H_MAX", 10.0)), float(cfgv("TR_BBWIDTH4H_BOYCOTT_SCORE", -35.0))
+    bb_hit = enabled("TR_BBWIDTH4H_GATE_ENABLED") & (bb_width > bb_max)
+    adjustment += np.where(bb_hit, bb_penalty, 0.0)
+    chop = col("choppiness_4h", 50.0)
+    chop_hit = enabled("TR_CHOP4H_GATE_ENABLED") & (chop >= float(cfgv("TR_CHOP4H_MIN", 50.0)))
+    chop_trend = enabled("TR_CHOP4H_GATE_ENABLED") & ~chop_hit & (chop < float(cfgv("TR_CHOP4H_TREND_MAX", 38.0)))
+    chop_bonus, chop_penalty = float(cfgv("TR_CHOP4H_BONUS", 15.0)), float(cfgv("TR_CHOP4H_PENALTY", -20.0))
+    adjustment += np.where(chop_hit, chop_bonus, np.where(chop_trend, chop_penalty, 0.0))
+    mfi_penalty = float(cfgv("TR_MFI4H_LONG_BOYCOTT_SCORE", -25.0))
+    mfi_hit = enabled("TR_MFI4H_LONG_ENABLED") & is_long & (mfi4 < float(cfgv("TR_MFI4H_LONG_MIN", 40.0)))
+    adjustment += np.where(mfi_hit, mfi_penalty, 0.0)
+    dc_hi4, dc_lo4 = col("dc_high_4h", 0.0), col("dc_low_4h", 0.0)
+    dc_width_pct = np.divide(dc_hi4 - dc_lo4, price, out=np.zeros(n), where=(price > 0.0) & (dc_hi4 > 0.0) & (dc_lo4 > 0.0)) * 100.0
+    dc_max, dc_penalty = float(cfgv("TR_DCWIDTH4H_SHORT_MAX", 15.0)), float(cfgv("TR_DCWIDTH4H_SHORT_BOYCOTT_SCORE", -25.0))
+    dc_hit = enabled("TR_DCWIDTH4H_SHORT_ENABLED") & (not is_long) & (dc_width_pct > dc_max)
+    adjustment += np.where(dc_hit, dc_penalty, 0.0)
+    for index in np.flatnonzero(adx_hit): reasons[index].append(f"TR_ADX4H_TREND({adx4[index]:.0f}>{adx_max:.0f},{adx_penalty:.0f})")
+    for index in np.flatnonzero(bb_hit): reasons[index].append(f"TR_BBW4H_WIDE({bb_width[index]:.1f}%>{bb_max:.1f},{bb_penalty:.0f})")
+    for index in np.flatnonzero(chop_hit): reasons[index].append(f"TR_CHOP4H_OK({chop[index]:.0f},+{chop_bonus:.0f})")
+    for index in np.flatnonzero(chop_trend): reasons[index].append(f"TR_CHOP4H_TREND({chop[index]:.0f},{chop_penalty:.0f})")
+    for index in np.flatnonzero(mfi_hit): reasons[index].append(f"TR_MFI4H_LOW_LONG({mfi4[index]:.0f},{mfi_penalty:.0f})")
+    for index in np.flatnonzero(dc_hit): reasons[index].append(f"TR_DCW4H_WIDE_SHORT({dc_width_pct[index]:.1f}%,{dc_penalty:.0f})")
+    return adjustment, reasons, blocked
+
+
 def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None):
     """Evaluate native StockStrategy score and final threshold in bar order.
 
@@ -492,6 +641,9 @@ def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None):
     bar_bonus, bar_reasons = bar_pattern_score_vec(npz, n, is_long)
     dc_bonus, dc_reasons, kzone_bonus, kzone_reasons = entry_bonus_layers_vec(npz, n, is_long, cfg)
     dc_retest_bonus, dc_retest_reasons = dc_retest_score_vec(npz, n, is_long, ltf_enabled)
+    wt_comp_bonus, wt_comp_reasons, wt_comp_blocked = wt_composite_score_vec(npz, n, is_long, cfg)
+    wt_comp_enabled = bool(getattr(cfg, "WT_COMPOSITE_SCORING_ENABLED_TRADIER", False) or getattr(cfg, "WT_COMPOSITE_SCORING_ENABLED", False))
+    pre_adjustments, pre_reasons, pre_blocked = entry_pre_gate_score_vec(npz, n, is_long, cfg, ltf_enabled)
     score_values = np.zeros(n, dtype=float)
     fires = np.zeros(n, dtype=bool)
     reasons = [""] * n
@@ -522,12 +674,16 @@ def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None):
             dc_bonus_token = tm._TR_SCORE_DC_BONUS_CTX.set((float(dc_bonus[index]), dc_reasons[index]))
             kzone_token = tm._TR_SCORE_KZONE_CTX.set((float(kzone_bonus[index]), kzone_reasons[index]))
             dcrt_token = tm._TR_SCORE_DCRT_CTX.set((float(dc_retest_bonus[index]), dc_retest_reasons[index]))
+            wtc_token = tm._TR_SCORE_WTC_CTX.set((float(wt_comp_bonus[index]), wt_comp_reasons[index], wt_comp_blocked[index]) if wt_comp_enabled else None)
+            pre_token = tm._TR_SCORE_PRE_CTX.set((float(pre_adjustments[index]), pre_reasons[index], pre_blocked[index]))
             try:
                 score, recommendation, reason = strategy.calculate_signal_score(
                     "v12", symbol, is_long, float(indicators.get("close", 0.0) or 0.0), indicators, None, is_exit=False
                 )
                 threshold = float(tm._cfg("ENTRY_SCORE_THRESHOLD", 12.0, "v12", symbol, side) or 0.0)
             finally:
+                tm._TR_SCORE_PRE_CTX.reset(pre_token)
+                tm._TR_SCORE_WTC_CTX.reset(wtc_token)
                 tm._TR_SCORE_DCRT_CTX.reset(dcrt_token)
                 tm._TR_SCORE_KZONE_CTX.reset(kzone_token)
                 tm._TR_SCORE_DC_BONUS_CTX.reset(dc_bonus_token)

@@ -104,3 +104,31 @@ def test_scalar_replay_cadence_calls_native_override_producer_and_drains_real_qu
     assert calls
     assert "V12_REPLAY_OVERRIDE_CHECK_CADENCE" in source.read_text()
     assert "V12_REAL_EXECUTE" in source.read_text()
+
+
+def test_legacy_replay_settings_keep_patching_module_local_configs():
+    config_class = type(
+        "Config",
+        (),
+        {
+            "FAST_CUT_LOSS_THRESHOLD": -999.0,
+            "BREAKOUT_GUARD_LOSS_THRESHOLD": -999.0,
+            "STOP_LOSS_THRESHOLD": 999.0,
+        },
+    )
+    manager_config = config_class()
+    auxiliary_config = SimpleNamespace(
+        FAST_CUT_LOSS_THRESHOLD=-999.0,
+        BREAKOUT_GUARD_LOSS_THRESHOLD=-999.0,
+        STOP_LOSS_THRESHOLD=999.0,
+    )
+    result = configure_replay_settings(
+        manager_config,
+        config_class,
+        [SimpleNamespace(config=auxiliary_config)],
+        native_faithful=False,
+    )
+    assert result["effective"]["FAST_CUT_LOSS_THRESHOLD"] == -3.0
+    assert auxiliary_config.FAST_CUT_LOSS_THRESHOLD == -3.0
+    assert auxiliary_config.BREAKOUT_GUARD_LOSS_THRESHOLD == -999.0
+    assert auxiliary_config.STOP_LOSS_THRESHOLD == 999.0
