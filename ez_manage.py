@@ -12449,7 +12449,7 @@ async def ii(
     _3m_zero = bool(result) and result.get("k_3m", 0) == 0 and result.get("d_3m", 0) == 0
     if not result or _htf_needed or _3m_zero:
         try:
-            full_data = _ii_market_json()
+            full_data = await asyncio.to_thread(_ii_market_json)
             if True:
                 if True:
                     if full_data:

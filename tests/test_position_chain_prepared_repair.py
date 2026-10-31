@@ -7,7 +7,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Optional, Set
 
-SOURCE = Path(__file__).resolve().parents[1] / "data/reports/position_chain_20261031/ez_positions_service.proposed.py"
+SOURCE = Path(__file__).resolve().parents[1] / "ez_positions_service.py"
 
 
 def methods(**extra):

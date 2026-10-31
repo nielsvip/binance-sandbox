@@ -1,5 +1,5 @@
 {
-  "ts": "2026-10-31T00:50:12.158763+00:00",
+  "ts": "2026-10-31T00:55:10.009023+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 3,
@@ -12,10 +12,10 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 6767,
+      "mem_avail_mb": 6978,
       "disk_free_gb": 9,
-      "load1": 11.1,
-      "dispatch_idle_why": "mem 6958MB < 8500",
+      "load1": 9.4,
+      "dispatch_idle_why": "mem 7282MB < 8500",
       "published_ss": []
     },
     "s2": {
@@ -23,16 +23,15 @@
       "published_last_3h": 1,
       "boards": {
         "BEAMXUSDT_LONG": 7,
-        "CRVUSDC_LONG": 7,
         "SCHW_SHORT": 7
       },
-      "boards_running": 3,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 10355,
-      "disk_free_gb": 20,
-      "load1": 16.2,
-      "dispatch_idle_why": "full 3/3",
+      "boards_running": 2,
+      "workers": 14,
+      "workers_vs_law_28": "14/28",
+      "mem_avail_mb": 8650,
+      "disk_free_gb": 19,
+      "load1": 18.3,
+      "dispatch_idle_why": "own venue work waits for memory (9311MB)",
       "published_ss": []
     },
     "s5": {
@@ -43,34 +42,35 @@
         "1000XECUSDT_SHORT": 0,
         "1MBABYDOGEUSDT_SHORT": 0,
         "AGI_SHORT": 7,
-        "ASTS_SHORT": 7
+        "AU_SHORT": 7
       },
       "boards_running": 5,
       "workers": 14,
       "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 5052,
+      "mem_avail_mb": 9275,
       "disk_free_gb": 42,
-      "load1": 11.0,
-      "dispatch_idle_why": "HOLD until 2026-10-31T00:50Z: 15-minute NN training resource reservation; withhold NEW S5 launches only; running boards continue; nonce=s5nn20261031_0035z",
+      "load1": 7.4,
+      "dispatch_idle_why": "mem 9920MB < 8500+3000 owed by 1 ramping",
       "published_ss": [
-        "RKLB_SHORT"
+        "ASTS_SHORT"
       ]
     },
     "s6": {
       "published_last_60m": 2,
       "published_last_3h": 12,
       "boards": {
-        "CLS_SHORT": 7,
+        "BABA_SHORT": 7,
+        "U_SHORT": 7,
         "VALE_SHORT": 7,
         "WDAY_LONG": 7
       },
-      "boards_running": 3,
-      "workers": 21,
-      "workers_vs_law_28": "21/28",
-      "mem_avail_mb": 22616,
-      "disk_free_gb": 19,
-      "load1": 9.7,
-      "dispatch_idle_why": "spacing 113s < 120",
+      "boards_running": 4,
+      "workers": 28,
+      "workers_vs_law_28": "28/28",
+      "mem_avail_mb": 16690,
+      "disk_free_gb": 16,
+      "load1": 16.6,
+      "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "DVN_LONG",
         "RS_LONG"
@@ -78,13 +78,13 @@
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=mem 6958MB < 8500)",
+    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=mem 7282MB < 8500)",
     "DISK_FLOOR:s1:9GB<40",
-    "LOW_THROUGHPUT:s2:0/h<12 (idle_why=full 3/3)",
-    "DISK_FLOOR:s2:20GB<40",
-    "LOW_THROUGHPUT:s5:1/h<12 (idle_why=HOLD until 2026-10-31T00:50Z: 15-minute NN training resource reservation; withhold NEW S5 launches only; running boards continue; nonce=s5nn20261031_0035z)",
-    "LOW_THROUGHPUT:s6:2/h<12 (idle_why=spacing 113s < 120)",
-    "DISK_FLOOR:s6:19GB<40"
+    "LOW_THROUGHPUT:s2:0/h<12 (idle_why=own venue work waits for memory (9311MB))",
+    "DISK_FLOOR:s2:19GB<40",
+    "LOW_THROUGHPUT:s5:1/h<12 (idle_why=mem 9920MB < 8500+3000 owed by 1 ramping)",
+    "LOW_THROUGHPUT:s6:2/h<12 (idle_why=full 4/4)",
+    "DISK_FLOOR:s6:16GB<40"
   ],
   "repair": "DISK_REPAIR:s1:9GB->10G (eval_cache_v1.db + rebuild_scratch_* deleted)"
 }

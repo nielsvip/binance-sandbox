@@ -7330,14 +7330,6 @@ class PositionService:
         await self._check_for_deletions(account_key, f"before _process_account_update_impl")
         await self._process_account_update_impl(account_key, raw_positions_data, now, updated_keys_in_api, account_positions, complete_snapshot=(not single and isinstance(data, list)))
         await self._check_for_deletions(account_key, f"after _process_account_update_impl")
-        # 2026-10-22 PAU BOUND (USER positions-reliability: the service must never hang, or the
-        # realtime backup starts): the stop cycle is best-effort per fetch — a wedged klines/API leg may
-        # cost one cycle's stop verification, never the 120 s PAU tripwire. Already-spawned breach closes
-        # and backstop ensures (tasks) keep running; verification resumes next cycle.
-        try:
-            await asyncio.wait_for(self._fixed_stop_fetch_cycle(account_key, account_positions), timeout=45.0)
-        except Exception:
-            pass
         positions_after_keys = set(account_positions.keys())
         positions_lost = positions_before_keys - positions_after_keys
         if positions_lost:
@@ -7352,6 +7344,8 @@ class PositionService:
             if positions_after == 0:
                 logger.critical(f"[process_account_update][{account_key}] 🚨 CRITICAL: Cannot broadcast/save - positions_after is 0! This should never happen after processing.")
             else:
+                if not await save_positions_guarded(self, account_key, force=True):
+                    logger.error(f"[process_account_update][{account_key}] confirmed update not persisted: save guard refused")
                 all_position_keys = set(self.positions_by_account.get(account_key, {}).keys())
                 try :
                     if config.VERBOSE_FETCH_LOGGING: logger.info(f"[process_account_update][{account_key}] 📡 Broadcasting ALL {len(all_position_keys)} positions to Redis")
@@ -7377,6 +7371,15 @@ class PositionService:
             self._last_api_seen[account_key] = set(updated_keys_in_api)
         except Exception:
             pass
+        cycles = self.__dict__.setdefault("_fixed_stop_cycle_tasks", {})
+        task = cycles.get(account_key)
+        if task is None or task.done():
+            async def maintain_stops():
+                try:
+                    await asyncio.wait_for(self._fixed_stop_fetch_cycle(account_key, account_positions), timeout=45.0)
+                except Exception as exc:
+                    logger.error(f"[fixed_stop_cycle][{account_key}] maintenance failed: {exc}", exc_info=True)
+            cycles[account_key] = asyncio.create_task(maintain_stops())
         return updated_keys_in_api
 
     async def _fixed_stop_fetch_cycle(self, account_key: str, account_positions: dict):
@@ -12045,23 +12048,25 @@ class PositionService:
             self._initializing = False
 
     async def _ensure_trade_manager(self) -> None:
-        """Ensure MultiAccountTradeManager is initialized and attached to service."""
         if self.trade_manager:
             return
-        try :
-            logger.info("[PositionService] Lazy loading MultiAccountTradeManager...")
-            TradeManagerClass = _get_trade_manager_class()
-            if TradeManagerClass:
-                try :
-                    symbols = [] 
-                    self.trade_manager = TradeManagerClass(accounts=self.accounts, symbols=symbols, positions_service=self)
-                    logger.info("[PositionService] MultiAccountTradeManager instantiated locally")
-                except Exception as e:
-                     logger.warning(f"[PositionService] Could not instantiate MultiAccountTradeManager locally: {e}. Waiting for external assignment.")
-            else:
-                logger.error("[PositionService] MultiAccountTradeManager class not found in ez_manage")
-        except Exception as e:
-            logger.error(f"[PositionService] Error ensuring TradeManager: {e}", exc_info=True)
+        task = getattr(self, "_trade_manager_init_task", None)
+        if task is None or task.done():
+            async def initialize():
+                def construct():
+                    manager_class = _get_trade_manager_class()
+                    if manager_class is None:
+                        raise RuntimeError("MultiAccountTradeManager class unavailable")
+                    return manager_class(accounts=self.accounts, symbols=[], positions_service=self)
+                try:
+                    manager = await asyncio.to_thread(construct)
+                    self.trade_manager = manager
+                    logger.info("[PositionService] MultiAccountTradeManager initialized outside the position event loop")
+                except Exception as exc:
+                    logger.error(f"[PositionService] TradeManager initialization failed: {exc}", exc_info=True)
+            task = asyncio.create_task(initialize())
+            self._trade_manager_init_task = task
+        await asyncio.shield(task)
 
     async def _ensure_hedge_engine_initialized(self) -> None:
         """Ensure HedgeEngine is initialized if HEDGE_MODE is enabled and dependencies are available."""
