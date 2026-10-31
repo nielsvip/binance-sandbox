@@ -127,7 +127,7 @@ def build_row(rec: dict, src: str) -> dict | None:
     t = float(f.get("fill_ms") or 0) / 1000.0 or float(rec.get("ledger_ts") or 0)
     quote = float(f.get("quote") or 0.0) or q * px
     why = str(rec.get("why") or "")
-    return {
+    row = {
         "ts": iso(t),
         "type": act,
         "qty": round(q, 8),
@@ -155,6 +155,9 @@ def build_row(rec: dict, src: str) -> dict | None:
         "sent_mark": rec.get("sent_mark"),
         "fill_src": f.get("src"),
     }
+    if isinstance(rec.get("decision_provenance"), dict):
+        row["decision_provenance"] = rec["decision_provenance"]
+    return row
 
 
 def file_has_order(p: Path, oid: str) -> bool:

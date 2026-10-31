@@ -418,27 +418,25 @@ def export(
         fill = cached if (cached or {}).get("found") else None
         if fill is None or needs_resolve(cached):
             stats["pending"] += 1
-        emit(
-            json.dumps(
-                {
-                    "venue": venue,
-                    "acct": r.get("acct"),
-                    "ss": r.get("ss"),
-                    "act": "CLOSE" if protective_stop else r.get("act"),
-                    "why": f"PROTECTIVE_DC15_STOP level={r.get('level')} entry_key={r.get('key')}" if protective_stop else r.get("why"),
-                    "key": f"{r.get('key')}|STOP|{oid}" if protective_stop else r.get("key"),
-                    "ledger_ts": r.get("ts"),
-                    "ledger_iso": r.get("iso"),
-                    "ledger_status": status,
-                    "sent_mark": r.get("level") if protective_stop else r.get("price"),
-                    "sent_qty": r.get("qty"),
-                    "resp": r.get("resp"),
-                    "fill": fill,
-                    "final": bool(fill) and not needs_resolve(cached),
-                },
-                default=str,
-            )
-        )
+        emitted = {
+            "venue": venue,
+            "acct": r.get("acct"),
+            "ss": r.get("ss"),
+            "act": "CLOSE" if protective_stop else r.get("act"),
+            "why": f"PROTECTIVE_DC15_STOP level={r.get('level')} entry_key={r.get('key')}" if protective_stop else r.get("why"),
+            "key": f"{r.get('key')}|STOP|{oid}" if protective_stop else r.get("key"),
+            "ledger_ts": r.get("ts"),
+            "ledger_iso": r.get("iso"),
+            "ledger_status": status,
+            "sent_mark": r.get("level") if protective_stop else r.get("price"),
+            "sent_qty": r.get("qty"),
+            "resp": r.get("resp"),
+            "fill": fill,
+            "final": bool(fill) and not needs_resolve(cached),
+        }
+        if isinstance(r.get("decision_provenance"), dict):
+            emitted["decision_provenance"] = r["decision_provenance"]
+        emit(json.dumps(emitted, default=str))
     if changed:
         atomic_write_json(cache_p, cache)
     stats["broker_calls"] = calls

@@ -53,10 +53,12 @@ def stamp(epoch=None):
 
 def read_book(path):
     try:
-        doc = json.loads(path.read_text())
+        with path.open() as source:
+            file_epoch = os.fstat(source.fileno()).st_mtime
+            doc = json.load(source)
     except (OSError, ValueError) as exc:
-        return None, f"{type(exc).__name__}: {str(exc)[:120]}"
-    return (doc, None) if isinstance(doc, dict) else (None, f"not an object: {type(doc).__name__}")
+        return None, f"{type(exc).__name__}: {str(exc)[:120]}", None
+    return (doc, None, file_epoch) if isinstance(doc, dict) else (None, f"not an object: {type(doc).__name__}", file_epoch)
 
 
 def quantity(record):
@@ -79,12 +81,12 @@ def collect(accounts):
             if not path.exists():
                 meta["unreadable"].append({"acct": acct, "file": f"{side}_positions.json", "error": "missing"})
                 continue
-            doc, error = read_book(path)
+            doc, error, file_epoch = read_book(path)
             if doc is None:
                 meta["unreadable"].append({"acct": acct, "file": f"{side}_positions.json", "error": error})
                 continue
-            meta["books"].append({"acct": acct, "side": side, "records": len(doc), "file_epoch": round(path.stat().st_mtime, 3),
-                                  "file_age_s": round(time.time() - path.stat().st_mtime, 1)})
+            meta["books"].append({"acct": acct, "side": side, "records": len(doc), "file_epoch": round(file_epoch, 3),
+                                  "file_age_s": round(time.time() - file_epoch, 1)})
             for key, record in doc.items():
                 if not isinstance(record, dict):
                     continue
@@ -94,7 +96,7 @@ def collect(accounts):
                 symbol = str(record.get("symbol") or key.split(":")[-1].rsplit("_", 1)[0]).upper()
                 position_side = str(record.get("position_side") or record.get("side") or side).upper()
                 position_side = "LONG" if position_side.startswith("L") else "SHORT"
-                row = {"qty": qty, "source_file_epoch": path.stat().st_mtime, "source_file": f"{acct}/{side}_positions.json"}
+                row = {"qty": qty, "source_file_epoch": file_epoch, "source_file": f"{acct}/{side}_positions.json"}
                 for field in LIFECYCLE:
                     if record.get(field) is not None:
                         row[field] = record[field]
@@ -158,13 +160,14 @@ def run(venues, dry_run=False):
         doc = document(venue, CRYPTO_ACCOUNTS if venue == "crypto" else STOCK_ACCOUNTS)
         path, digest = write_local(doc, venue)
         entry = {"local": str(path), "sha256": digest, "held_total": doc["held_total"], "sides": doc["sides"],
-                 "books": len(doc["books"]), "unreadable": doc["unreadable"], "routes": []}
+                 "books": len(doc["books"]), "source_books": doc["books"], "snapshot_epoch": doc.get("epoch"), "unreadable": doc["unreadable"], "routes": []}
         if not dry_run:
             trees = sorted({tree for host, tree in ROUTES[venue]})
             with cf.ThreadPoolExecutor(max_workers=len(trees)) as pool:
                 entry["routes"] = [route for result in pool.map(lambda tree: push_destination(venue, tree, path, digest), trees) for route in result]
             entry["delivered"] = sorted({r["tree"] for r in entry["routes"] if r["ok"]})
             entry["ok"] = entry["delivered"] == trees
+        entry["completed_epoch"] = time.time()
         report["venues"][venue] = entry
     status = ROOT / "data" / "reports" / "mac_positions_push.json"
     status.parent.mkdir(parents=True, exist_ok=True)
@@ -178,6 +181,10 @@ def run(venues, dry_run=False):
         temp = status.with_suffix(".tmp")
         temp.write_text(json.dumps({**report, "venues": combined}, indent=1, default=str))
         os.replace(temp, status)
+        if not dry_run:
+            receipt = status.parent / f"mac_positions_push_{dt.datetime.now(dt.timezone.utc):%Y-%m-%d}.jsonl"
+            with receipt.open("a") as output:
+                output.write(json.dumps(report, separators=(",", ":"), default=str) + "\n")
     return report
 
 

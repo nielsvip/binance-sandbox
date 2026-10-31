@@ -1,6 +1,10 @@
 import unittest
+import hashlib
+import json
+import tempfile
+from pathlib import Path
 
-from tools.fixed_stop_inventory import build_neural_builder_handoff, reconstruct_account
+from tools.fixed_stop_inventory import build_neural_builder_handoff, reconstruct_account, _load_verified_decision_state_records, _verified_recorded_switch
 
 
 def fill(trade_id, order_id, side, qty, price, realized=0, commission=0, commission_asset="BNB", timestamp=1000):
@@ -78,7 +82,7 @@ class FixedStopInventoryTests(unittest.TestCase):
 
     def test_explicit_entry_reason_only_and_open_position_reported(self):
         fills = [fill(1, 90, "BUY", 2, 10)]
-        orders = [{"orderId": 90, "type": "LIMIT", "clientOrderId": "x", "decisionReason": "RECORDED_SWITCH_A"}]
+        orders = [{"orderId": 90, "type": "LIMIT", "clientOrderId": "x", "entrySwitch": "RECORDED_SWITCH_A"}]
         result = reconstruct_account("acct", account_for(fills, orders, ending_qty=2), 0, 3000)
         life = result["lifecycles"][0]
         self.assertEqual(life["status"], "open")
@@ -114,6 +118,56 @@ class FixedStopInventoryTests(unittest.TestCase):
         self.assertEqual(handoff["coverage"]["entry_fill_events"], 1)
         self.assertEqual(handoff["coverage"]["entry_fill_events_with_verified_switch"], 0)
         self.assertEqual(handoff["cross_symbol"]["acct:ABCUSDT_LONG"]["entry_fill_events_with_order_id_history_match"], 1)
+
+    def test_hash_bound_forward_anchor_is_candidate_not_proven_order_generation(self):
+        fills = [fill(1, 94, "BUY", 1, 10), fill(2, 95, "SELL", 1, 9, -1, timestamp=2000)]
+        linked = {"94": [{"source": "history", "source_path": "history.jsonl", "order_id_relationship": "order_id",
+                           "recorded_type": "OPEN", "ledger_key": "acct|ABCUSDT_LONG|1000|OPEN",
+                           "recorded_provenance": {"src": "S1_VECTOR_DIRECT", "switch": "VECTOR_DIRECT"}}]}
+        forward = {("ABCUSDT_LONG", 1000, "OPEN"): {
+            "intents": [{"source": "bar_intent_archive", "source_path": "intent.json", "sha256": "intent-hash",
+                         "entry_reason": "REENTRY_LOWER_HIGH", "entry_ts": 1000}],
+            "forward_states": [{"source": "forward_state_expired", "source_path": "state.json", "sha256": "state-hash",
+                                "action": "OPEN", "entry_reason": "REENTRY_LOWER_HIGH", "settings_sha256": "settings-hash",
+                                "engine_ast_sha256": "engine-hash", "input_sha256": "input-hash"}]}}
+        result = reconstruct_account("acct", account_for(fills), 0, 3000, linked, forward)
+        life = result["lifecycles"][0]
+        self.assertEqual(life["entry_switch_attribution"], "unknown")
+        self.assertEqual(life["entry_switch_candidate"], "REENTRY_ON_HIGHER_LOW_ENABLED")
+        self.assertEqual(life["entry_switch_candidate_status"], "hash_bound_forward_action_candidate")
+        self.assertEqual(life["entry_switch_candidate_evidence"]["execution_generation_hash_join"], "unavailable_in_broker_history_and_order_record")
+        handoff = build_neural_builder_handoff({"acct": result}, "synthetic.json")
+        losses = handoff["losing_entry_switch_rankings"]["exact_anchor_candidates_unverified"]
+        self.assertEqual(losses[0]["completed_loss_lifecycle_count"], 1)
+
+    def test_content_addressed_order_decision_state_proves_recorded_switch(self):
+        state = {"settings_sha256": "settings", "engine_ast_sha256": "engine", "npz_tail": 123,
+                 "ts": "2026-10-31T00:00:00Z", "settings_updated_at": "2026-10-30T23:00:00Z", "bar_ts": 1000,
+                 "events_this_bar": [{"type": "OPEN", "reason": "REENTRY_LOWER_HIGH"}],
+                 "target_state": {"entry_reason": "REENTRY_LOWER_HIGH", "entry_ts": 1000}}
+        digest = hashlib.sha256(json.dumps(state, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
+        proof = {"state_sha256": digest, "state_file": "decision_states/" + digest[:2] + "/" + digest + ".json",
+                 "npz_tail": 123, "state_ts": state["ts"], "settings_sha256": "settings", "engine_ast_sha256": "engine",
+                 "settings_updated_at": state["settings_updated_at"]}
+        record = {"source": "history", "order_id_relationship": "order_id", "recorded_type": "OPEN",
+                  "decision_provenance": proof}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / proof["state_file"]
+            path.parent.mkdir(parents=True)
+            path.write_text(json.dumps(state, indent=1))
+            records = {"123": [record]}
+            _load_verified_decision_state_records(records, tmp, "crypto")
+            result = _verified_recorded_switch(records["123"])
+            self.assertEqual(result["switch"], "REENTRY_ON_HIGHER_LOW_ENABLED")
+            self.assertTrue(result["verified_decision_state"]["state_content_address_verified"])
+
+            state["target_state"]["entry_reason"] = "changed"
+            path.write_text(json.dumps(state, indent=1))
+            bad_record = {"source": "history", "order_id_relationship": "order_id", "recorded_type": "OPEN",
+                          "decision_provenance": proof}
+            bad_records = {"123": [bad_record]}
+            _load_verified_decision_state_records(bad_records, tmp, "crypto")
+            self.assertIsNone(_verified_recorded_switch(bad_records["123"]))
 
 
 if __name__ == "__main__":

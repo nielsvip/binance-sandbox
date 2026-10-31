@@ -261,14 +261,23 @@ def prioritize_confirmation(proposals, measured, current_context, eligible):
         validate_inputs(current_context, evaluate_prepared_sanitized)
     result = []
     for proposal in proposals:
-        item = dict(proposal, measured_priority=0.0, measured_sources=[], next_phase='independent_window_confirmation', current_confirmation_verified=False)
+        targets = {'joint_confirmation': 'Z_minus_B', 'y_given_x': 'Z_minus_X', 'x_given_y': 'Z_minus_Y', 'interaction': 'interaction_Z_minus_X_minus_Y_plus_B'}
+        target = proposal.get('priority_target', 'joint_confirmation')
+        if target not in targets:
+            raise ValueError('explicit known confirmation priority target required')
+        item = dict(proposal, measured_priority=0.0, measured_sources=[], measured_relationship_features=[], ranking_target=target, next_phase='independent_window_confirmation', current_confirmation_verified=False)
         for path, digest in measured:
             proof = load_measured_quartet(path, digest)
             if proof['context'] != current_context or eligible(proof['x'], proof['y'], proposal) is not True:
                 continue
             if pair_identity(proposal['x'], proposal['y']) == proof['canonical_pair_id']:
-                item['measured_priority'] = max(item['measured_priority'], proof['joint_delta_vs_baseline'])
+                effects = dict(proof['derived_diagnostics'])
+                if operation_identity(proposal['x']) != operation_identity(proof['x']):
+                    effects['X_minus_B'], effects['Y_minus_B'] = effects['Y_minus_B'], effects['X_minus_B']
+                    effects['Z_minus_X'], effects['Z_minus_Y'] = effects['Z_minus_Y'], effects['Z_minus_X']
+                item['measured_priority'] = max(item['measured_priority'], effects[targets[target]])
                 if digest not in item['measured_sources']:
                     item['measured_sources'].append(digest)
+                    item['measured_relationship_features'].append({'source_sha256': digest, 'effects': effects, 'positive_y_given_x': effects['Z_minus_X'] > 0, 'positive_x_given_y': effects['Z_minus_Y'] > 0, 'positive_interaction': effects['interaction_Z_minus_X_minus_Y_plus_B'] > 0, 'pure_effective_config_factorial': proof['pure_effective_config_factorial'], 'scope': 'derived diagnostics from the same four measurements; joint benefit does not assert benefit of each part'})
         result.append(item)
     return sorted(result, key=lambda item: (-item['measured_priority'], str(item.get('id', ''))))

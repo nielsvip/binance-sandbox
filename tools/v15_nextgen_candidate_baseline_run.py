@@ -22,6 +22,8 @@ def main():
     root, side = Path(args.root), Path(args.side)
     if os.environ.get('V15_BASELINE_PRECHECK') != '1' or os.environ.get('V15_BASELINE_VERIFY_ONLY') != '1':
         raise ValueError('explicit baseline-only precheck required; optimizer is forbidden')
+    os.environ['V15_PAIR_MODE'] = '0'
+    os.environ['V18_PAIR_CONCURRENT'] = '0'
     if os.getpgrp() != os.getpid():
         os.setsid()
     owned_pgid = os.getpgrp()

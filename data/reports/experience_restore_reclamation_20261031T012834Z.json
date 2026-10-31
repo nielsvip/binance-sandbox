@@ -1,0 +1,38 @@
+{
+  "audit_at_utc": "2026-10-31T01:28:34Z",
+  "prior_receipt": "data/reports/experience_restore_relocation_20261031T012502Z.json",
+  "gcs_object": "gs://v15-cold-329002141504/fleet_archives/s5/experience_cold_af1eab344426.tar.zst",
+  "gcs_generation": "1793154688805498",
+  "destination_archive": "/Volumes/WD25/binance_archive/experience_restore_20261031T0120Z/experience_cold.tar.zst",
+  "wd25_volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+  "archive_bytes": 2402070211,
+  "archive_sha256_source_gcs_and_wd25": "0b92fd8f47e8e95605a5451defcc34b7133ab4efc237ad95e3b369ac0878d138",
+  "archive_member_content_verification": {
+    "method": "zstd -dc verified WD25 archive | Python tarfile stream; read each compressed DB member fully and SHA256 its bytes",
+    "embedded_checksum_member": "experience_cold/SHA256SUMS",
+    "all_four_members_present": true,
+    "all_four_member_bytes_match_embedded_sha256sum": true,
+    "members": [
+      {"name": "experience_CRYPTO_LONG_202610.db.zst", "bytes": 929346786, "sha256": "6d451c5faa545621de1d425c06859aa3c189b21c8d0cae10ef0e96b5b3cdbd92"},
+      {"name": "experience_CRYPTO_SHORT_202610.db.zst", "bytes": 775731617, "sha256": "b6bc3c8fb4543136b62f183163a9c9e4f0b6d81ccc3b20cc70bf28f8e776babf"},
+      {"name": "experience_STOCKS_LONG_202610.db.zst", "bytes": 365075776, "sha256": "212dd28648fcd11343cb2b736cd2820b75a54567fd4543200f14bcfc1f1049a6"},
+      {"name": "experience_STOCKS_SHORT_202610.db.zst", "bytes": 331853589, "sha256": "5533d2c01320ef038d06edafe852e8da8b516b801693ecd9cd76643e8832872d"}
+    ]
+  },
+  "exact_source_files_reclaimed": [
+    {"path": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/experience_cold.tar.zst", "bytes": 2402070211, "sha256": "0b92fd8f47e8e95605a5451defcc34b7133ab4efc237ad95e3b369ac0878d138"},
+    {"path": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience_cold/experience_CRYPTO_LONG_202610.db.zst", "bytes": 929346786, "sha256": "6d451c5faa545621de1d425c06859aa3c189b21c8d0cae10ef0e96b5b3cdbd92"},
+    {"path": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience_cold/experience_CRYPTO_SHORT_202610.db.zst", "bytes": 775731617, "sha256": "b6bc3c8fb4543136b62f183163a9c9e4f0b6d81ccc3b20cc70bf28f8e776babf"},
+    {"path": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience_cold/experience_STOCKS_LONG_202610.db.zst", "bytes": 365075776, "sha256": "212dd28648fcd11343cb2b736cd2820b75a54567fd4543200f14bcfc1f1049a6"},
+    {"path": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience_cold/experience_STOCKS_SHORT_202610.db.zst", "bytes": 331853589, "sha256": "5533d2c01320ef038d06edafe852e8da8b516b801693ecd9cd76643e8832872d"}
+  ],
+  "total_reclaimed_bytes": 4804077979,
+  "reclamation_method": "Exact paths only; each source was immediately rehashed against expected SHA256 and checked size, inode, single-link count; lsof showed no open handles; exact path unlink after all checks. Sidecar manifests, SHA256SUMS, cold.out logs, WAL/SHM companions were retained.",
+  "post_reclamation": {
+    "all_five_paths_absent": true,
+    "sidecar_SHA256SUMS_retained": true,
+    "s6_df_available_bytes": 55933063168,
+    "run04_outputs_touched": false,
+    "master_or_live_data_touched": false
+  }
+}

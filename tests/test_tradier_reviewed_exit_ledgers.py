@@ -77,6 +77,13 @@ def _run(npz, switch, enabled):
     return V.simulate_one(npz, "SYNTH", True, cfg, force_initial_seed=True)
 
 
+def _run_after_augment_reduce(npz, switch, enabled):
+    cfg = _cfg()
+    cfg.AUGMENT_AT_LOSS_ENABLED = True
+    setattr(cfg, switch, enabled)
+    return V.simulate_one(npz, "SYNTH", True, cfg, force_initial_seed=True)
+
+
 def _reason_events(result, prefix):
     return [
         row
@@ -99,7 +106,7 @@ def test_wt_crossunder_switch_changes_simulate_one_close_ledger():
     fires = _reason_events(on, "WT_CROSSUNDER_FINAL")
     assert len(fires) == 1
     assert fires[0]["bar_exit"] == fire_bar
-    assert fires[0]["reason"] == "WT_CROSSUNDER_FINAL_5m_15m_1hTrue_4hFalse_DFalse_g4.00%_hold3015m_MANDATORY_REENTRY"
+    assert fires[0]["reason"] == "WT_CROSSUNDER_FINAL_5m_15m_1hTrue_4hFalse_DFalse_g4.00%_hold1005m_MANDATORY_REENTRY"
 
 
 def test_rule_b_switch_changes_simulate_one_close_ledger():
@@ -136,3 +143,36 @@ def test_k5m_bounce_switch_changes_simulate_one_close_ledger():
     assert len(fires) == 1
     assert fires[0]["bar_exit"] == fire_bar
     assert fires[0]["reason"] == "K5M_REAL_DROP_DC_k5:20.0<dc5:105.00_gain:4.00%"
+
+
+def test_rule_b_gain_uses_open_cost_basis_after_augment_and_partial_reduce():
+    npz = _base_npz()
+    augment_bar = 201
+    fire_bar = 202
+    npz["close"][augment_bar] = 99.8
+    if "close_15m" in npz:
+        npz["close_15m"][augment_bar] = 99.8
+    npz["low_15m_prev"][augment_bar - 1] = 98.0
+    npz["low_15m_prev"][augment_bar] = 99.0
+    npz["dc_low_15m_prev"][augment_bar - 1] = 94.0
+    npz["dc_low_15m_prev"][augment_bar] = 95.0
+    npz["close"][fire_bar] = 103.0
+    if "close_15m" in npz:
+        npz["close_15m"][fire_bar] = 103.0
+    npz["low_15m"][fire_bar] = 99.5
+    npz["low_15m_prev"][fire_bar] = 100.0
+    npz["high_15m"][fire_bar] = 103.5
+    npz["high_15m_prev"][fire_bar] = 104.0
+    off = _run_after_augment_reduce(npz, "RULE_B_5M_EXIT_ENABLED", False)
+    on = _run_after_augment_reduce(npz, "RULE_B_5M_EXIT_ENABLED", True)
+    off_ledger = off.get("ledger", [])
+    on_ledger = on.get("ledger", [])
+    augments = [row for row in on_ledger if row.get("type") == "AUGMENT"]
+    reduces = [row for row in on_ledger if row.get("type") == "REDUCE"]
+    assert any(row.get("bar") == augment_bar for row in augments)
+    assert any(row.get("bar") == fire_bar for row in reduces)
+    assert _reason_events(off, "RULE_B_5M_") == []
+    fires = _reason_events(on, "RULE_B_5M_")
+    assert len(fires) == 1
+    assert fires[0]["bar_exit"] == fire_bar
+    assert fires[0]["reason"] == "RULE_B_5M_LL_LH_gain:3.10%"

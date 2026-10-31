@@ -6,6 +6,7 @@ from vec_decisions.ez_missing_hold_bars_exit import (
     optimal_hold_bars_exit_live_adapter,
     optimal_hold_bars_exit_mask,
     satoshit_standard_exits_skipped,
+    unrealized_position_gain_pct,
 )
 
 
@@ -66,6 +67,33 @@ def test_vector_adapter_uses_real_bar_timestamps_and_strict_age_boundary():
     assert not optimal_hold_bars_exit_mask(
         npz, 4, cfg, np.full(4, 0.6), np.full(4, 1000.0), np.full(4, 4700.0), True, False
     ).any()
+
+
+def test_hold_gain_after_augment_and_reduce_matches_native_average_entry():
+    # Native augmentation moves entry_price to the fill-weighted average; reduction
+    # realizes PnL but does not add it to Position.gain.
+    quantity = 1.0
+    average_entry = 100.0
+    realized = 0.0
+    augment_quantity = 1.0
+    augment_price = 110.0
+    average_entry = (
+        quantity * average_entry + augment_quantity * augment_price
+    ) / (quantity + augment_quantity)
+    quantity += augment_quantity
+    reduce_quantity = 1.0
+    reduce_price = 115.0
+    realized += (reduce_price - average_entry) * reduce_quantity
+    quantity -= reduce_quantity
+    current_price = 110.0
+    native_gain = (current_price - average_entry) / average_entry * 100.0
+    lifecycle_gain = (
+        realized + (current_price - average_entry) * quantity
+    ) / (average_entry * (quantity + reduce_quantity)) * 100.0
+    assert quantity == 1.0
+    assert unrealized_position_gain_pct(True, current_price, average_entry) == native_gain
+    assert native_gain == 4.761904761904762
+    assert lifecycle_gain != native_gain
     assert not optimal_hold_bars_exit_mask(
         {}, 4, Config(), np.full(4, 0.6), np.full(4, 1000.0), np.full(4, 4700.0), True, False
     ).any()
@@ -212,6 +240,8 @@ def test_satoshit_protection_switch_suppresses_hold_in_source_tagged_ledger(monk
         cfg.CYCLE_TP_TIERED_ENABLED = False
         cfg.PARTIAL_PROFIT_LOCK_ENABLED = False
         result = V.simulate_one(npz, "SATOSHIT_HOLD", True, cfg, force_initial_seed=False)
+        opened = [row for row in result["ledger"] if row.get("type") == "OPEN"]
+        assert opened and "SATOSHIT" in str(opened[0].get("reason", ""))
         return [row for row in result["ledger"] if row.get("reason") == "HOLD_BARS_EXIT"]
 
     assert closes(False)

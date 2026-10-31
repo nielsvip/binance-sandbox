@@ -20646,6 +20646,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 from vec_decisions.ez_missing_hold_bars_exit import (
                     optimal_hold_bars_exit_live_adapter,
                     satoshit_standard_exits_skipped,
+                    unrealized_position_gain_pct,
                 )
 
                 _entry_bar = int(pos.get("entry_bar", -1))
@@ -20665,15 +20666,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         if _hold_event.get("type") == "AUGMENT":
                             _last_aug_ts = float(_hold_event.get("ts") or 0.0)
                             break
-                _hold_gain_dollars = pos["realized"] + (
-                    (px - pos["avg_price"]) * pos["qty"]
-                    if is_long
-                    else (pos["avg_price"] - px) * pos["qty"]
-                )
-                _hold_gain_pct = (
-                    _hold_gain_dollars / pos["deployed"] * 100.0
-                    if pos["deployed"] > 0
-                    else 0.0
+                _hold_gain_pct = unrealized_position_gain_pct(
+                    is_long, px, pos["avg_price"]
                 )
                 _hold_now_ts = float(ts[i]) if i < len(ts) else 0.0
                 _hold_aug_reasons = [
@@ -24061,6 +24055,29 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 )
             except Exception:
                 pass
+            if _tech_reason == "TECHNICAL_EXIT":
+                _wt_final_info = getattr(cfg, "WT_FINAL_EXIT_INFO", None)
+                if isinstance(_wt_final_info, dict):
+                    _wt_final_mask = _wt_final_info.get("mask")
+                    if (
+                        _wt_final_mask is not None
+                        and i < len(_wt_final_mask)
+                        and bool(_wt_final_mask[i])
+                    ):
+                        import vec_decisions.wt_crossover_final_vec as _wt_final_vec
+
+                        def _wt_final_flag(_key):
+                            _arr = _wt_final_info.get(_key)
+                            return bool(_arr[i]) if _arr is not None and i < len(_arr) else False
+
+                        _tech_reason = _wt_final_vec.close_reason(
+                            is_long,
+                            _wt_final_flag("f1h"),
+                            _wt_final_flag("f4h"),
+                            _wt_final_flag("fD"),
+                            pnl_pct_preview,
+                            held_bars * bmin,
+                        )
             if not _hold_bars_fire and _tech_reason == "TECHNICAL_EXIT":
                 _bb_recovery_info = getattr(cfg, "BB_RECOVERY_EXIT_INFO", None)
                 _bb_recovery_mask = (

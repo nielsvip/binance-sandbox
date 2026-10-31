@@ -258,6 +258,16 @@ def atomic_write_json(path: Path, payload) -> None:
     os.replace(tmp, path)
 
 
+def persist_decision_state(directory, state):
+    encoded = json.dumps(state, sort_keys=True, separators=(",", ":"), default=str).encode()
+    digest = hashlib.sha256(encoded).hexdigest()
+    relative = Path("decision_states") / digest[:2] / (digest + ".json")
+    path = Path(directory) / relative
+    if not path.exists():
+        atomic_write_json(path, state)
+    return {"state_sha256": digest, "state_file": str(relative), "npz_tail": state.get("npz_tail"), "state_ts": state.get("ts"), "settings_sha256": state.get("settings_sha256"), "engine_ast_sha256": state.get("engine_ast_sha256"), "settings_updated_at": state.get("settings_updated_at")}
+
+
 def load_env_files(paths) -> dict:
     """KEY = VALUE lines (spaces and quotes tolerated). Values never printed."""
     env = {}
@@ -1548,6 +1558,7 @@ class Trader:
                 self.alert("BACKSTOP_FAILURE_MAC_MISSED_ORDER", account=acct, sym_side=e["ss"], board=e["want"], bar=e["bar"], broker_qty=held, action=orders[-1]["act"])
             orders = [o for o in orders if o["key"] not in self.done]
             if orders:
+                self.capture_order_states(orders, states)
                 n += self.send_orders(acct, orders, pos, killed)
         self.missed_rows = {}
         return n
@@ -1696,11 +1707,16 @@ class Trader:
                 st = states.get(ss) or {}
                 sig = [st.get("npz_tail"), st.get("ts"), (untradeable.get(ss) or {}).get("bar")]
                 row = consumed.setdefault(ss, {}).get(acct)
-                if not row or row.get("sig") != sig:
+                if not row or row.get("sig") != sig or not row.get("decision_provenance"):
                     consumed[ss][acct] = {"sig": sig, "npz_tail": st.get("npz_tail"), "ok": bool(st.get("ok")), "at": planned_at,
                                           "orders": [o["act"] for o in orders if o["ss"] == ss], "keys": [o["key"] for o in orders if o["ss"] == ss],
                                           "held": float((pos.get(ss) or {}).get("qty") or 0.0), "allowed": bool(allowed(acct, ss)) if (ss in keys.get(acct, ()) and st.get("open") and not (pos.get(ss) or {}).get("qty")) else None,
                                           "notes": [n for s, n in notes if s == ss], "untradeable_bar": (untradeable.get(ss) or {}).get("bar")}
+                    try:
+                        consumed[ss][acct]["decision_provenance"] = persist_decision_state(self.out, st)
+                        self._ledger({"event": "DECISION", "acct": acct, "ss": ss, "bar": bar, **consumed[ss][acct]})
+                    except OSError as exc:
+                        self.alert("DECISION_PROVENANCE_WRITE_FAILED", account=acct, sym_side=ss, error=str(exc), severity="CRITICAL")
                     consumed_dirty = True
             self.obs[acct] = (now, {ss: p["qty"] for ss, p in pos.items()})
             for ss, n in notes:
@@ -1727,6 +1743,7 @@ class Trader:
                 except Exception as exc:
                     self.alert("PROTECTED_OTO_CANCEL_FAILED", account=acct, error=str(exc)[:200], severity="CRITICAL")
                     log(f"PROTECTED_OTO_CANCEL_FAILED {acct}: {exc}")
+            self.capture_order_states(orders, states)
             orders_n += self.send_orders(acct, orders, pos, killed)
         if consumed_dirty:
             try:
@@ -1876,6 +1893,14 @@ class Trader:
                         "why": f"REBALANCE long book ${book:.0f} > cap ${REBAL_LONG_CAP:.0f} ({how}): {q:.0f} -> {tgt:.0f} sh"})
         return out
 
+    def capture_order_states(self, orders, states):
+        for order in orders:
+            try:
+                order["decision_provenance"] = persist_decision_state(self.out, states.get(order["ss"]) or {})
+            except OSError as exc:
+                order["decision_provenance"] = {"status": "CAPTURE_FAILED", "error": str(exc)}
+                self.alert("DECISION_PROVENANCE_WRITE_FAILED", account=order.get("acct"), sym_side=order["ss"], error=str(exc), severity="CRITICAL")
+
     def send_orders(self, acct, orders, pos, killed):
         orders_n = 0
         submitted_sides = set()
@@ -1898,7 +1923,7 @@ class Trader:
                     log(f"{acct} {o['ss']} {o['act']} held: broker position refresh failed: {str(exc)[:160]}")
                     continue
             held = float((pos.get(o["ss"]) or {}).get("qty") or 0.0)
-            row = {"event": "ORDER", "acct": acct, "ss": o["ss"], "act": o["act"], "key": o["key"], "why": o["why"], "held": held}
+            row = {"event": "ORDER", "acct": acct, "ss": o["ss"], "act": o["act"], "key": o["key"], "why": o["why"], "held": held, "decision_provenance": o.get("decision_provenance") or {"status": "NOT_CAPTURED"}}
             if self.venue == "crypto" and o["act"] in ("OPEN", "AUGMENT") and (self.out / "EXITS_ONLY").exists():
                 if o["key"] not in self.quiet:
                     self.quiet.add(o["key"])

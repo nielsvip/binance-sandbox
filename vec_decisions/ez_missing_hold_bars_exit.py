@@ -3,6 +3,17 @@
 import numpy as np
 
 
+def unrealized_position_gain_pct(is_long, current_price, average_entry_price):
+    """Match ez_manage.calculate_gain: unrealized price move from current average entry."""
+    current_price = float(current_price)
+    average_entry_price = float(average_entry_price)
+    if average_entry_price <= 0.0:
+        return 0.0
+    if is_long:
+        return (current_price - average_entry_price) / average_entry_price * 100.0
+    return (average_entry_price - current_price) / average_entry_price * 100.0
+
+
 def satoshit_standard_exits_skipped(cfg, entry_reason, augmentation_reasons):
     """Match ez_satoshit.is_satoshit_trade from the latest position reason."""
     if not bool(getattr(cfg, "SATOSHIT_PROTECT_TRADES", False)) or not bool(

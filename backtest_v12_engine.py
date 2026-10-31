@@ -2823,7 +2823,11 @@ def _refresh_sim_position_marks(trade_manager, price_cache, sim_dt):
         if _amt >= 0.0001:
             _ep = getattr(_pos, 'entry_price', 0) or _mp
             _is_long = _pk.endswith('_LONG')
-            _pos.gain = ((_mp - _ep) / _ep * 100) if _is_long else ((_ep - _mp) / _ep * 100) if _ep > 0 else 0
+            _pos.gain = (
+                ((_mp - _ep) / _ep * 100)
+                if _is_long
+                else ((_ep - _mp) / _ep * 100) if _ep > 0 else 0
+            )
             _pos.prev_gain = getattr(_pos, 'prev_gain', _pos.gain)
             if _pos.gain > getattr(_pos, 'max_gain', 0):
                 _pos.max_gain = _pos.gain

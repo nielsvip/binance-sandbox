@@ -1,0 +1,460 @@
+{
+  "read_as_of": "2026-10-31",
+  "scope": "Read-only census of original S1/S5 VEC-related logs; raw logs were not modified.",
+  "date_limit": "EZ manage log prefixes commonly contain day and time but omit month/year. Reported date spans use available file rotations and line prefixes; do not infer a per-event full date where the line omits it.",
+  "hosts": {
+    "S1": {
+      "ez_manage_ang": {
+        "files": 13,
+        "bytes": 26693858,
+        "vec_tag_or_shadow_lines": 41581,
+        "top_tags": {
+          "VEC_EXACT_HEARTBEAT": 8946,
+          "VEC_EXACT": 8184,
+          "VEC_EXACT_STALE_FLATTEN": 6309,
+          "VEC_EXACT_CONVERGE": 6172,
+          "VEC_EXACT_EXIT_OWED": 4096,
+          "VEC_DRIVEN_SHADOW": 2372,
+          "VEC_DRIVEN_LIVE": 1302,
+          "VEC_DRIVEN_EMERGENCY_NATIVE": 419,
+          "VEC_EXACT_EXPIRED": 309,
+          "VEC_EXACT_LEGACY_ADOPTED": 280,
+          "VEC_DRIVEN_EXEC": 126,
+          "VEC_DICTATE_ONLY_BLOCK": 108,
+          "VEC_PENDING_CONFIRM": 86,
+          "VEC_LAST_REFUSE": 65
+        },
+        "strict_shadow_would_block": {
+          "QUICK_OPEN_GOOD:QUICK_OPEN": 66,
+          "QUICK_BB_RECOVERY_EXIT:REDUCE": 46,
+          "RATIO_CLOSE:REDUCE": 31,
+          "QUICK_REDUCE:REDUCE": 23,
+          "QUICK_PEAK_GIVEBACK:CLOSE": 23,
+          "QUICK_DC4:CLOSE": 10,
+          "RATIO_REDUCE:REDUCE": 4,
+          "QUICK_WT_CROSS:REDUCE": 1
+        },
+        "strict_shadow_allow": {
+          "FIXED_STOP:CLOSE": 528,
+          "OPEN_STRONG_BUY:QUICK_OPEN": 296,
+          "WT_4H_VEL_EXIT:QUICK_CLOSE": 36,
+          "OPEN_STRONG_BUY:QUICK_REENTRY": 26,
+          "GOLDEN_RULE_LONG_MULT:OPEN": 13,
+          "OPEN_STRONG_SELL:QUICK_OPEN": 10
+        },
+        "vec_driven_open_reason_families": {
+          "PURE_BOARD_BOARD_HOLDS_LIVE_FLAT": 932,
+          "B14": 7
+        },
+        "observed_prefix_dates": [
+          "10-20",
+          "10-21",
+          "10-22",
+          "10-23",
+          "10-24",
+          "10-25",
+          "10-30",
+          "10-31"
+        ],
+        "observed_timestamp_span_raw_prefix": {
+          "first": "10-20 (month/year inferred from rotation)",
+          "last": "10-31 01:30:31 (line timestamp)",
+          "latest_file_line_sample": "[10-31 01:30:31] [ang] WOULD-BLOCK source=... action=QUICK_OPEN reason=QUICK_OPEN_GOOD... (reason truncated in logger)"
+        },
+        "latest_family_spans_raw_prefix": {
+          "QUICK_OPEN_GOOD:QUICK_OPEN": {
+            "count": 66,
+            "first": "10-30 23:31:40",
+            "last": "10-31 01:31:17"
+          },
+          "QUICK_BB_RECOVERY_EXIT:REDUCE": {
+            "count": 46,
+            "first": "10-30 21:10:43",
+            "last": "10-30 21:17:59"
+          },
+          "RATIO_CLOSE:REDUCE": {
+            "count": 31,
+            "first": "10-24 20:33:50",
+            "last": "10-25 21:28:08"
+          },
+          "QUICK_REDUCE:REDUCE": {
+            "count": 23,
+            "first": "10-24 20:33:02",
+            "last": "10-25 21:56:53"
+          },
+          "QUICK_PEAK_GIVEBACK:CLOSE": {
+            "count": 23,
+            "first": "10-24 20:36:02",
+            "last": "10-25 20:42:18"
+          },
+          "QUICK_DC4:CLOSE": {
+            "count": 10,
+            "first": "10-24 20:36:29",
+            "last": "10-25 20:49:49"
+          },
+          "RATIO_REDUCE:REDUCE": {
+            "count": 4,
+            "first": "10-25 02:15:12",
+            "last": "10-25 20:36:06"
+          },
+          "QUICK_WT_CROSS:REDUCE": {
+            "count": 1,
+            "first": "10-30 21:17:22",
+            "last": "10-30 21:17:22"
+          }
+        },
+        "provenance_note": "The 10-31 01:30\u201301:31 1000PEPE rows are from native replay, not confirmed active production. Native manager was stopped; replay may write to default ~/logs unless EZ_LOG_DIR is set. Treat these rows as replay-contaminated/unknown provenance, not production execution evidence. Original log files remain unchanged."
+      },
+      "ez_manage_inf": {
+        "files": 3,
+        "bytes": 15265872,
+        "vec_tag_or_shadow_lines": 23495,
+        "top_tags": {
+          "VEC_DRIVEN_LIVE": 4030,
+          "VEC_DRIVEN_EXEC": 1813,
+          "VEC_DECIDED_DEDUP_ALLOW": 1624,
+          "VEC_EXACT_LEGACY_ADOPTED": 178,
+          "VEC_LAST_OVERRIDE": 142,
+          "VEC_DRIVEN_FLOOR": 124,
+          "VEC_DRIVEN_EMERGENCY_NATIVE": 81,
+          "VEC_EXACT": 56,
+          "VEC_EXACT_OWNED": 54,
+          "VEC_DICTATE_ONLY_BLOCK": 25
+        },
+        "strict_shadow_would_block": {
+          "QUICK_PEAK_GIVEBACK:CLOSE": 26,
+          "RATIO_CLOSE:REDUCE": 3,
+          "QUICK_DC4:CLOSE": 2,
+          "BB_BOUNCE_ENTRY:OPEN": 2,
+          "RATIO_REDUCE:REDUCE": 1,
+          "QUICK_REDUCE:REDUCE": 1
+        },
+        "vec_driven_open_reason_families": {
+          "PURE_BOARD_BOARD_HOLDS_LIVE_FLAT": 12905,
+          "B_EMA20SLOPE": 202,
+          "RNTRY_HIGHER_LOW": 191,
+          "B_KZONE": 144,
+          "B14": 132,
+          "B12": 80,
+          "B_SRS_ENTRY": 73,
+          "GOLDEN_RULE_ENTRY": 72,
+          "B15": 19
+        },
+        "observed_prefix_dates": [
+          "10-06",
+          "10-21",
+          "10-22",
+          "10-23",
+          "10-24",
+          "10-25"
+        ],
+        "observed_timestamp_span_raw_prefix": {
+          "first": "10-06 (month/year inferred from rotation)",
+          "last": "10-25 19:55:05 (latest strict-shadow family sample)"
+        },
+        "latest_family_spans_raw_prefix": {
+          "QUICK_PEAK_GIVEBACK:CLOSE": {
+            "count": 26,
+            "first": "10-22 09:27:19",
+            "last": "10-25 19:55:05"
+          },
+          "RATIO_CLOSE:REDUCE": {
+            "count": 3,
+            "first": "10-25 18:32:50",
+            "last": "10-25 18:51:29"
+          },
+          "QUICK_DC4:CLOSE": {
+            "count": 2,
+            "first": "10-22 07:26:26",
+            "last": "10-22 07:33:47"
+          },
+          "BB_BOUNCE_ENTRY:OPEN": {
+            "count": 2,
+            "first": "10-22 07:59:11",
+            "last": "10-22 08:01:49"
+          },
+          "RATIO_REDUCE:REDUCE": {
+            "count": 1,
+            "first": "10-25 17:27:20",
+            "last": "10-25 17:27:20"
+          },
+          "QUICK_REDUCE:REDUCE": {
+            "count": 1,
+            "first": "10-25 19:44:17",
+            "last": "10-25 19:44:17"
+          }
+        }
+      },
+      "ez_positions_quick_ang": {
+        "files": 1,
+        "bytes": 7332474,
+        "scored_recommendation_lines": 10212,
+        "score_tier_lines": {
+          "20": 5248,
+          "25": 2375,
+          "30": 2100,
+          "22": 308,
+          "-5": 51,
+          "-10": 32
+        },
+        "reason_family_lines": {
+          "RZ": 4947,
+          "DC_BREAKOUT": 3671,
+          "LH": 874,
+          "WR_PULLBACK": 296,
+          "REDUCE": 176,
+          "VOL": 116,
+          "REENTRY": 62,
+          "TIER1": 55,
+          "STDEV_RETEST": 5,
+          "STDEV": 3
+        },
+        "observed_prefix_dates": [
+          "10-20",
+          "10-21",
+          "10-22",
+          "10-23",
+          "10-24",
+          "10-25",
+          "10-30",
+          "10-31"
+        ],
+        "interpretation": "Recommendation-screen rows, not order/fill counts.",
+        "observed_timestamp_span_raw_prefix": {
+          "first": "10-20",
+          "last": "10-31 01:30:31"
+        }
+      },
+      "ez_positions_quick_inf": {
+        "files": 1,
+        "bytes": 31681,
+        "scored_recommendation_lines": 43,
+        "reason_family_lines": {
+          "RZ": 13,
+          "LH": 12,
+          "DC_BREAKOUT": 10,
+          "REDUCE": 7,
+          "WR_PULLBACK": 1
+        },
+        "observed_prefix_dates": [
+          "10-22",
+          "10-24",
+          "10-25"
+        ],
+        "interpretation": "Recommendation-screen rows, not order/fill counts.",
+        "observed_timestamp_span_raw_prefix": {
+          "first": "10-22",
+          "last": "10-25"
+        }
+      },
+      "tradier_manage_trb": {
+        "files": 3,
+        "bytes": 14867166,
+        "strict_shadow_would_block": {
+          "LR_BAND_LADDER_PARITY_TARGET:OPEN": 20
+        },
+        "observed_prefix_date": "10-24",
+        "interpretation": "Historical rotated logs; current local parity gate now has LR_BAND_LADDER_PARITY_TARGET_ token and v12 has its ladder path. Treat these as historical mismatch evidence, not a confirmed current missing predicate.",
+        "observed_timestamp_span_raw_prefix": {
+          "first": "10-24 02:50",
+          "last": "10-24 07:52"
+        }
+      }
+    },
+    "S5": {
+      "available_logs": [
+        "/home/niels/logs/tradier_manage_trb.log"
+      ],
+      "ez_manage_and_ez_positions_quick_logs": "No files found at the requested paths on S5.",
+      "tradier_manage_trb": {
+        "bytes": 545075,
+        "vec_backstop_import_failure_occurrences": 463,
+        "vec_exact_tag_occurrences": 2,
+        "strict_shadow_would_block": {
+          "TRADIER_B12_WT_MOM_L:OPEN": 5,
+          "WT_15M_BOUNCE_OPEN_L:OPEN": 1,
+          "TRADIER_DC_BREAKOUT_L:OPEN": 7
+        },
+        "time_span_in_lines": "2026-10-30 19:45:10 through 21:07:25",
+        "vec_backstop_failure": {
+          "observed_error": "cannot import name 'vec_backstop' from 'live_twins'",
+          "observed_location": "/home/niels/binance-sandbox/live_twins/__init__.py",
+          "read_only_check": "The module file exists and `from live_twins import vec_backstop` succeeds in a fresh shell from ~/binance-sandbox; the running-process failure was not reproduced. Do not assert missing file as root cause.",
+          "status": "runtime import failure confirmed in log; underlying process-state cause unresolved",
+          "runtime_details_needed": "Log proves import exception in process, but does not log process executable, sys.path, module __file__/hash, or full traceback. Fresh-shell import success is not runtime proof. Keep root cause unresolved pending process-context capture."
+        },
+        "parity_gate_version": {
+          "S5_sandbox_md5": "b1d721a9af0d56d5ce4a9f19f6d84d9e",
+          "Mac_current_md5": "8b34eae72bda5e3719dad2c27e73c6b7",
+          "observed_s5_sandbox_tokens": "No matches for the three logged entry aliases in vec_paths/vec_parity_gate.py.",
+          "interpretation": "The three producer families exist in the inspected v12 source, and two tokens are present in the current Mac allowlist. S5's shadow refusals therefore point to an old/mismatched matcher snapshot or loaded module; they do not prove missing vector predicates."
+        },
+        "latest_family_spans": {
+          "TRADIER_B12_WT_MOM_L:OPEN": {
+            "count": 5,
+            "first": "2026-10-30 21:06:43",
+            "last": "2026-10-30 21:07:06"
+          },
+          "WT_15M_BOUNCE_OPEN_L:OPEN": {
+            "count": 1,
+            "first": "2026-10-30 21:06:50",
+            "last": "2026-10-30 21:06:50"
+          },
+          "TRADIER_DC_BREAKOUT_L:OPEN": {
+            "count": 7,
+            "first": "2026-10-30 21:06:44",
+            "last": "2026-10-30 21:07:25"
+          }
+        }
+      }
+    }
+  },
+  "top_live_families_and_engine_status": [
+    {
+      "family": "QUICK_OPEN_GOOD / WR_PULLBACK",
+      "evidence": {
+        "ang_shadow_would_block": 61,
+        "ang_screen_recommendations": 296,
+        "inf_screen_recommendations": 1
+      },
+      "live_source": "ez_positions_quick.py:30830-30915; WR/LR candidate gets score>=22 and directly sets should_trade.",
+      "vector_source": "v12_quick_engine.py:10609-10626 contains a WR_PULLBACK mask, scored at :12177. Existing mask/module does not establish full QUICK_GOOD aggregate reachability.",
+      "current_gap": "Account-specific WR/LR membership and full scoring context remain requirements. v12 has a WR_PULLBACK mask/score component, but that does not prove the full QUICK_OPEN_GOOD aggregate is reachable or equivalent. The gate lacks an obvious WR/QUICK_OPEN_GOOD alias in the inspected local version, so matcher false-negative is a candidate explanation only; these log rows do not provide exact vector bar/action/side/quantity comparison.",
+      "data_requirement": "Account identity and historical per-account membership from data/wr_lists_history.jsonl; unavailable membership must fail closed."
+    },
+    {
+      "family": "QUICK_OPEN_GOOD / STDEV_RETEST",
+      "evidence": {
+        "ang_screen_recommendations": 5,
+        "other_STDEV_recommendations": 3
+      },
+      "live_source": "ez_positions_quick.py:22084-22213 stateful breakout/retest detector; direct entry at :30970+.",
+      "vector_source": "v12 compute_entry_signals calls the STDEV breakout twin, but exact stateful retest count/arm/window equivalence must be proven on a paired replay.",
+      "current_gap": "The live detector is stateful and the vector has a STDEV breakout twin; exact retest count/arming/window equivalence and same-bar evaluation must be demonstrated on paired replay. The EPQ recommendation rows do not contain action, quantity, or a matched vector bar."
+    },
+    {
+      "family": "PEAK_GIVEBACK",
+      "evidence": {
+        "ang_shadow_would_block": 23,
+        "inf_shadow_would_block": 26
+      },
+      "live_source": "ez_positions_quick.py:27394-27437.",
+      "vector_source": "vec_paths/peak_giveback_be_erosion.py and v12_quick_engine.py:18205+ / 21407+.",
+      "current_gap": "A vector predicate exists and the local gate lacks an obvious PEAK_GIVEBACK alias. This is a candidate matcher gap only: exact bar, action, side, and quantity parity have not been checked from these log records."
+    },
+    {
+      "family": "BB_RECOVERY_EXIT_TRADIER_LONG",
+      "evidence": {
+        "ang_shadow_would_block": 46
+      },
+      "live_source": "ez_positions_quick.py:26487-26530.",
+      "vector_source": "v12_quick_engine.py:13522+ and :24088+; vec_decisions/twin_p0_crypto_a.py contains the associated entry-side twin.",
+      "current_gap": "Predicate exists at source level, but native emits partial REDUCE while v12 simulation appears to use a full-exit path. Nearby live logs record POSITIONS_ZERO_QTY_REFUSED for this reason. Treat as action/quantity execution parity concern, not a matcher-only issue; exact vector bar and quantity match are unproven."
+    },
+    {
+      "family": "QUICK_DC4_HIGH/LOW_3M_GAIN_EROSION_STOP",
+      "evidence": {
+        "ang_shadow_would_block": 10,
+        "inf_shadow_would_block": 2
+      },
+      "live_source": "Source is the live quick position-exit chain; the reason encodes 3m DC4 data.",
+      "vector_source": "No exact QUICK_DC4_* producer match found in v12_quick_engine.py/vec_decisions during this census.",
+      "current_gap": "No exact QUICK_DC4 producer match found. Source reason encodes native 3m fields; paired 3m/5m-to-15m policy is required in LTF-off mode. Do not fabricate missing 3m data. Exact bar/side/quantity match remains untested."
+    },
+    {
+      "family": "QUICK_REDUCE scorer exits",
+      "evidence": {
+        "ang_shadow_would_block": 23,
+        "inf_shadow_would_block": 1,
+        "ang_screen_recommendations": 176,
+        "inf_screen_recommendations": 7
+      },
+      "live_source": "ez_positions_quick.py:27856-28292 AdvancedSignalRater.rate(exit=True) and reduce/close mapping.",
+      "vector_source": "v12 compute_reduce_signals, quick_reduce_strong and quick_reduce_sources cover named subsets, not the aggregate scorer reduction.",
+      "current_gap": "Named vector reductions cover subsets, not the full native aggregate scorer. Source has many score mutations; exact scorer aggregate and thresholds need implementation or explicit paired replay. Preserve QUICK_REDUCE_TECHNICAL_ONLY suppression semantics until parity is established."
+    },
+    {
+      "family": "RATIO_CLOSE / RATIO_REDUCE",
+      "evidence": {
+        "ang_shadow_would_block": 31,
+        "ang_ratio_reduce_would_block": 4,
+        "inf_ratio_close_would_block": 3,
+        "inf_ratio_reduce_would_block": 1
+      },
+      "live_source": "ez_manage.py:43531+ and account ratio rebalance/trim loops.",
+      "vector_source": "Not representable by the current single-symbol simulate_one inputs; vec_decisions.vec_parity_gates explicitly treats ratio reductions/augments as portfolio actions.",
+      "current_gap": "Requires frozen account holdings/exposure and synchronized account-level replay; not representable by current single-symbol simulate_one inputs. Logged shadow blocks are portfolio-action evidence, not proof of missing per-symbol indicators."
+    },
+    {
+      "family": "Tradier B12 / WT_15M_BOUNCE / DC_BREAKOUT",
+      "evidence": {
+        "S5_shadow_would_block": 13
+      },
+      "live_source": "tradier_manage.py:22933-23054 and :64269+.",
+      "vector_source": "v12 includes B12 at :10703+, WT_15M_BOUNCE at :13066+, and DC breakout sources in the existing entry pipeline; current local vec parity gate includes WT_15M_BOUNCE_OPEN_ and TRADIER_DC_BREAKOUT_.",
+      "current_gap": "Logs demonstrate S5 matcher/runtime version divergence, plus missing TRADIER_B12_WT_MOM alias in current matcher. Do not duplicate predicates until the runtime version is reconciled."
+    },
+    {
+      "family": "LR_BAND_LADDER_PARITY_TARGET",
+      "evidence": {
+        "S1_historical_shadow_would_block": 20
+      },
+      "live_source": "tradier_manage.py:20648+.",
+      "vector_source": "v12_quick_engine.py:19498+, backed by vec_decisions/band_ladder_mult_vec.py.",
+      "current_gap": "S1 rows are historical. Current local predicate/allowlist presence does not establish the loaded S1 runtime version or per-row parity; do not classify these as current missing engine paths."
+    }
+  ],
+  "important_limits": [
+    "Counts are log records/recommendations, not unique trades or fills.",
+    "VEC_EXACT_HEARTBEAT, stale flatten, converge and exit-owed counts describe state reconciliation; they are not missing signal predicates.",
+    "S5 has no EZ/EPQ logs at the requested paths, so S5 coverage is Tradier-only.",
+    "The report is a snapshot of available logs and inspected local source. It makes no claim that current live processes loaded the current local source.",
+    "Strict shadow WOULD-BLOCK rows do not include enough paired vector metadata to prove alias-only mismatch. For each family, exact timestamp/bar, action, side, and quantity must be checked before relabeling the issue as matcher-only.",
+    "S1 EZ manage 10-31 01:30\u201301:31 1000PEPE rows are replay-contaminated/unknown provenance: native manager was stopped and replay output may use default ~/logs unless EZ_LOG_DIR is explicitly set. Do not interpret these as active production actions; originals were preserved."
+  ],
+  "supporting_inventory": "vec_decisions/quick_missing_path_inventory.json",
+  "representative_rows": [
+    {
+      "family": "QUICK_OPEN_GOOD / WR_PULLBACK",
+      "host": "S1",
+      "log": "ez_positions_quick_ang.log; ez_manage_ang.log",
+      "timestamp_raw": "10-31 01:30:31",
+      "row": "[ang] GOOD_BUY ... ang:1000PEPEUSDC_LONG ... Sc:22 WR_PULLBACK_k4=35_k1h=38_k15=4_k3=4_k1m=5",
+      "paired_execution_observation": "At same timestamp, manager log reports ZERO_PASS_ALLOW then KINDERGARTEN_EMA_GATE BLOCKED QUICK_OPEN with QUICK_OPEN_GOOD reason. No exact vector bar/action/side/quantity match is logged.",
+      "provenance": "replay-contaminated or unknown; do not attribute to active production"
+    },
+    {
+      "family": "QUICK_OPEN_GOOD / WR_PULLBACK strict shadow",
+      "host": "S1",
+      "log": "ez_manage_ang.log",
+      "timestamp_raw": "10-31 01:31:17",
+      "row": "WOULD-BLOCK ... action=QUICK_OPEN reason=QUICK_OPEN_GOOD..._WR_PULLBACK_k4=90...",
+      "paired_execution_observation": "Reason is truncated; no exact vector bar/action/side/quantity match is logged.",
+      "provenance": "replay-contaminated or unknown; do not attribute to active production"
+    },
+    {
+      "family": "STDEV_RETEST recommendation",
+      "host": "S1",
+      "log": "ez_positions_quick_ang.log",
+      "timestamp_raw": "10-24 05:17:31",
+      "row": "ang:RAYSOLUSDT_LONG ... Sc:22 STDEV_RETEST2_15m_pctb=0.912_orig=STDEV_RETEST1_BUY_15m_pctb=0.912",
+      "paired_execution_observation": "Five STDEV_RETEST rows span 05:17:31\u201305:17:42; screen rows do not prove order/fill or vector parity."
+    },
+    {
+      "family": "BB_RECOVERY_EXIT_TRADIER_LONG strict shadow",
+      "host": "S1",
+      "log": "ez_manage_ang.log",
+      "timestamp_raw": "10-30 21:10:43\u201321:17:59",
+      "row": "46 WOULD-BLOCK records for ang:1000PEPEUSDC_LONG; action=REDUCE; reason prefix QUICK_BB_RECOVERY_EXIT_TRADIER_LONG",
+      "paired_execution_observation": "Nearby POSITIONS_ZERO_QTY_REFUSED logs show qty=0.0 for same reason. Native action is partial REDUCE; vector appears full-exit. Exact vector bar/quantity match is unproven."
+    },
+    {
+      "family": "S5 vec_backstop import",
+      "host": "S5",
+      "log": "tradier_manage_trb.log",
+      "timestamp_raw": "2026-10-30 19:45:10\u201320:56:58",
+      "row": "10-30 19:45:10 - [VEC_BACKSTOP] trb:BNO_LONG import failed: cannot import name 'vec_backstop' from 'live_twins' (/home/niels/binance-sandbox/live_twins/__init__.py)",
+      "paired_execution_observation": "Module exists and fresh-shell import succeeds; process executable, sys.path, module path/hash, full traceback were absent from log, so cause unresolved."
+    }
+  ]
+}

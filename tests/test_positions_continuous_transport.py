@@ -37,3 +37,22 @@ def test_atomic_book_replacement_is_detected(monkeypatch, tmp_path):
     replacement.write_text('{"qty":2}')
     replacement.replace(path)
     assert transport.book_fingerprint("crypto") != before
+
+
+def test_record_and_source_timestamp_use_same_open_file(monkeypatch, tmp_path):
+    import json
+    import os
+    path = tmp_path / "book.json"
+    path.write_text('{"old":1}')
+    os.utime(path, (100, 100))
+    original = json.load
+    def replacing_load(source):
+        replacement = path.with_suffix(".new")
+        replacement.write_text('{"new":2}')
+        os.utime(replacement, (200, 200))
+        replacement.replace(path)
+        return original(source)
+    monkeypatch.setattr(transport.json, "load", replacing_load)
+    doc, error, epoch = transport.read_book(path)
+    assert doc == {"old": 1} and error is None and epoch == 100
+    assert path.stat().st_mtime == 200

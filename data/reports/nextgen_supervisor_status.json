@@ -436,5 +436,34 @@
       "production_deployed": false
     },
     "next_baseline_step": "Minimal accepted reader-input projection plus explicit neutral new keys, then assert full effective config/ledger/result against independent prior oracle; canonical local pilot still unchanged."
+  },
+  "latest_verified_progress": {
+    "updated_at": "2026-10-31T01:29:36.092104+00:00",
+    "candidate_baseline": {
+      "status": "ONE_SIDE_ACTUAL_BASELINE_PARITY_PASS_NO_OPTIMIZER",
+      "sym_side": "1INCHUSDT_SHORT",
+      "evaluated_at": "2026-10-31T01:27:19.954437Z",
+      "evidence_dir": "data/reports/nextgen_pinned_baseline_review_20261030/s2_candidate_attempt01",
+      "qualification": "Pair wrapper unnecessarily prepared LONG and swallowed string SystemExit; LONG had no engine baseline. Fix pending. SHORT parity independently matches previous oracle."
+    },
+    "expanded_training": {
+      "status": "RUN04_TERMINAL_DISK_RESERVE_STOP_AFTER_FEATURES",
+      "next": "Fresh original-sorter retry being prepared after disk recovery; no completed expanded model"
+    },
+    "quartets": {
+      "status": "PRECHECK_FAILED_RESOURCE_FLOOR_BEFORE_WORKER",
+      "attempt": "prospective_quartets_20261031_02",
+      "checkpoint_resource_values": "not recorded; supervisor reporting fix required"
+    },
+    "preservation": {
+      "receipt": "data/reports/experience_restore_reclamation_20261031T012834Z.json",
+      "reclaimed_bytes": 4804077979,
+      "member_bytes_verified": true,
+      "qualification": "Deletion occurred before requested member-content verification; subsequent full checks passed."
+    },
+    "rollout": "NOT_PROMOTED",
+    "gain_improvement": "UNPROVEN",
+    "speed_reduction": "UNPROVEN",
+    "retirement": "NOT_AUTHORIZED_BY_READINESS_PROOF"
   }
 }

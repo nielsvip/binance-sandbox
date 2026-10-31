@@ -522,7 +522,7 @@ def atomic_write(path: Path, text: str) -> None:
     os.replace(tmp, path)
 
 
-def metric_chart_name(symside: str, metrics: dict, historical: bool = False) -> str | None:
+def metric_chart_name(symside: str, metrics: dict, historical: bool = False, gain_delta: float | None = None) -> str | None:
     try:
         bh = float(metrics["bh_pct"])
         gain = float(metrics["gain_pct"])
@@ -533,12 +533,17 @@ def metric_chart_name(symside: str, metrics: dict, historical: bool = False) -> 
         return None
     def token(value):
         return ("m" if value < 0 else "") + f"{abs(value):.2f}".replace(".", "p")
-    vintage = "_historical" if historical else ""
-    return f"{symside}_bh{token(bh)}_gain{token(gain)}_trades{trades}{vintage}_30d_daily.html"
+    if historical:
+        suffix = "_historical"
+    elif gain_delta is not None and math.isfinite(float(gain_delta)):
+        suffix = "_up" + token(gain_delta) + "pp" if gain_delta > 1e-9 else "_down" + token(-gain_delta) + "pp" if gain_delta < -1e-9 else "_flat"
+    else:
+        suffix = "_uncompared"
+    return f"{symside}_bh{token(bh)}_gain{token(gain)}_trades{trades}{suffix}_30d_daily.html"
 
 
-def metric_chart_alias(canonical: Path, symside: str, metrics: dict, historical: bool = False) -> str:
-    name = metric_chart_name(symside, metrics, historical)
+def metric_chart_alias(canonical: Path, symside: str, metrics: dict, historical: bool = False, gain_delta: float | None = None) -> str:
+    name = metric_chart_name(symside, metrics, historical, gain_delta)
     if name is None:
         return canonical.name
     alias = CHARTS / name
@@ -607,7 +612,9 @@ def publish(boards: dict, results: list, run_id: str, started: str, partial: boo
                 if parse_chart_metrics(text).get("gain_pct") != res["metrics"]["gain_pct"]:
                     raise AssertionError("final file gain differs from worker result")
                 atomic_write(out, text)
-                entry["chart"] = metric_chart_alias(out, symside, res["metrics"])
+                original_gain = (board.get("orig_metrics") or {}).get("gain_pct")
+                gain_delta = float(res["metrics"]["gain_pct"]) - float(original_gain) if original_gain is not None else None
+                entry["chart"] = metric_chart_alias(out, symside, res["metrics"], gain_delta=gain_delta)
                 o = board.get("orig_metrics") or {}
                 deltas = {k: (float(res["metrics"][k]) - float(o[k])) if res["metrics"].get(k) is not None and o.get(k) is not None else None for k in ("gain_pct", "bh_pct", "delta_vs_bh", "trades", "tim_pct", "max_dd_pct", "wr_pct")}
                 entry.update({"status": "OK", "host": res["host"], "calculated_utc": res["calculated_utc"], "board_age_at_calc": age_text(parse_iso(board.get("cells_vintage")), parse_iso(res["calculated_utc"])), "metrics": res["metrics"], "deltas": deltas, "npz": res["npz"], "window": res.get("window"), "engine_md5": res.get("engine_md5")})
@@ -641,7 +648,16 @@ def index_page(manifest: dict) -> str:
         chart_head = chart_path.open(encoding="utf-8", errors="replace").read(1200) if chart_path.is_file() else ""
         title_match = re.search(r"<title>(.*?)</title>", chart_head, re.S | re.I)
         chart_title = _html.unescape(title_match.group(1)) if title_match else e["symside"]
-        link = f"<a href='{_html.escape(e['chart'])}' title='{_html.escape(chart_title, quote=True)}'>{_html.escape(chart_title)}</a>"
+        gain_delta = d.get("gain_pct") if e["status"] == "OK" else None
+        if gain_delta is None:
+            direction, title_color = "uncompared", "#a3a3a3"
+        elif float(gain_delta) > 1e-9:
+            direction, title_color = f"↑ +{float(gain_delta):.2f} pp since board", "#4ade80"
+        elif float(gain_delta) < -1e-9:
+            direction, title_color = f"↓ {float(gain_delta):.2f} pp since board", "#fb7185"
+        else:
+            direction, title_color = "= unchanged since board", "#d1d5db"
+        link = f"<a href='{_html.escape(e['chart'])}' title='{_html.escape(chart_title + ' · ' + direction, quote=True)}' style='color:{title_color}'>{_html.escape(chart_title)}</a> <span style='color:{title_color}'>{_html.escape(direction)}</span>"
         if e["status"] == "OK":
             halt = e.get("deterioration")
             rows.append(f"<tr><td>{link}</td><td{' style=color:#ef4444 title=' + chr(34) + _html.escape('; '.join(halt)) + chr(34) if halt else ''}>{'HALTED' if halt else 'OK'}</td><td>{_fmt(m.get('gain_pct'))}</td><td>{_fmt(o.get('gain_pct'))}</td><td>{_fmt(d.get('gain_pct'), 2, True)}</td><td>{_fmt(m.get('bh_pct'))}</td><td>{m.get('trades')}</td><td>{_fmt(m.get('max_dd_pct'))}</td><td>{_fmt(m.get('tim_pct'))}</td><td>{e.get('board_cells_vintage') or 'UNAVAILABLE'}</td><td>{e.get('board_age_at_calc')}</td><td>{e.get('calculated_utc')}</td></tr>")
@@ -651,6 +667,7 @@ def index_page(manifest: dict) -> str:
         "<!doctype html><html><head><meta charset=utf-8><title>V15 daily 30D charts</title>"
         "<style>body{font-family:system-ui,monospace;margin:12px;background:#0a0a0a;color:#e5e5e5}a{color:#93c5fd}table{border-collapse:collapse;font-size:11px}th{background:#1f2937;padding:4px}td{border:1px solid #333;padding:3px}</style></head><body>"
         f"<h2>V15 daily 30D charts — run {manifest['run_id']}</h2><p>started {manifest['started_utc']} · finished {manifest['finished_utc']} · {manifest['ok']}/{manifest['sym_sides']} OK · {manifest['fail']} FAIL{' · COMPLETE' if manifest['complete'] else ' · INCOMPLETE'} · {len((manifest.get('enforcement') or {}).get('halted') or [])} sym_sides HALTED (no open/augment; exits follow the board) — rules: " + _html.escape(", ".join(f"{k} {w} >= {v}" for k, w, v in DETERIORATION_RULES)) + ", gain turning non-positive</p>"
+        "<p><span style='color:#4ade80'>↑ higher gain</span> · <span style='color:#fb7185'>↓ lower gain</span> · <span style='color:#d1d5db'>= unchanged</span> · <span style='color:#a3a3a3'>uncompared</span>. Percentage-point change from the original published board using the same settings on the latest rolling 30-day window.</p>"
         "<table><thead><tr><th>sym_side</th><th>status</th><th>gain % today</th><th>gain % board</th><th>Δ gain</th><th>B&H %</th><th>trades</th><th>max DD %</th><th>TIM %</th><th>board cells calculated</th><th>board age at recalc</th><th>recalculated</th></tr></thead><tbody>"
         + "".join(rows)
         + "</tbody></table></body></html>\n"

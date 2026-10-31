@@ -17,6 +17,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) in sys.path:
+    sys.path.remove(str(ROOT))
+sys.path.insert(0, str(ROOT))
 PPL_FIELDS = (
     "PARTIAL_PROFIT_LOCK_ENABLED",
     "PARTIAL_PROFIT_LOCK_GAIN_PCT",
@@ -143,14 +146,19 @@ def summarize_run(result: dict, round_trip_fee_pct: float, window_days: int) -> 
     }
 
 
-def run_side(ss: str, loss_count: int, meta: dict, prepared, window_days: int) -> dict:
+def run_side(ss: str, loss_count: int, meta: dict, prepared, window_days: int, npz_dir: Path | None) -> dict:
     from tools.opt import evaluate_v12 as engine
 
     base = meta["full_config"]
     base_cfg = prepared.get("base_cfg_dict") or {}
     round_trip_fee = float(base.get("CRYPTO_ROUND_TRIP_COMMISSION_PCT", base_cfg.get("CRYPTO_ROUND_TRIP_COMMISSION_PCT", 0.08)) or 0.0)
-    fee_floor = max(round_trip_fee, float(base.get("COMMISSION_BUFFER_PCT", base_cfg.get("COMMISSION_BUFFER_PCT", 0.08)) or 0.0))
+    commission_buffer = float(base.get("COMMISSION_BUFFER_PCT", base_cfg.get("COMMISSION_BUFFER_PCT", 0.08)) or 0.0)
+    fee_floor = max(round_trip_fee, commission_buffer)
     variants = candidate_configs(base, fee_floor)
+    sym = str(prepared.get("sym") or ss.rsplit("_", 1)[0])
+    source_npz = engine._npz_path_for(sym)
+    npz_path = (npz_dir / f"{sym}.npz") if npz_dir else source_npz
+    npz_sha_before = sha256_file(npz_path) if npz_path and npz_path.exists() else None
     keep = summarize_run(engine.evaluate_prepared(prepared, dict(base), include_ledger=True), round_trip_fee, window_days)
     rows = [{"variant": "KEEP", "overrides": {}, "result": keep}]
     for variant in variants:
@@ -168,19 +176,23 @@ def run_side(ss: str, loss_count: int, meta: dict, prepared, window_days: int) -
         rows.append({"variant": variant["label"], "template_values": variant["overrides"],
                      "theoretical_gross_lifecycle_floor_pct": variant["theoretical_gross_lifecycle_floor_pct"],
                      "required_fee_floor_pct": fee_floor, "result": res})
-    sym = str(prepared.get("sym") or ss.rsplit("_", 1)[0])
-    npz_path = engine._npz_path_for(sym)
     npz = prepared.get("npz_prepared") or {}
     ts = npz.get("timestamps")
     return {
         "sym_side": ss, "inventory_confirmed_losing_fixed_stop_fill_count": loss_count,
         "active_set": {k: meta[k] for k in ("cat_side", "updated_at", "winning_tag", "template_md5", "published_overrides_sha256", "published_full_config_sha256")},
         "active_ppl_settings": {k: base.get(k) for k in PPL_FIELDS},
-        "fee_policy": {"engine_round_trip_commission_pct": round_trip_fee, "commission_buffer_pct": fee_floor},
+        "fee_policy": {"engine_round_trip_commission_pct": round_trip_fee,
+                        "commission_buffer_pct": commission_buffer,
+                        "effective_fee_floor_pct": fee_floor},
         "real_engine": "tools.opt.evaluate_v12.evaluate_prepared -> v12_quick_engine.simulate_one",
         "evaluation_api_sha256": sha256_file(Path(engine.__file__)),
         "quick_engine_sha256": sha256_file(ROOT / "v12_quick_engine.py"),
-        "npz_file": str(npz_path), "npz_file_sha256": sha256_file(npz_path),
+        "npz_file": str(npz_path) if npz_path else None, "npz_file_sha256_before": npz_sha_before,
+        "npz_file_sha256_after": sha256_file(npz_path) if npz_path and npz_path.exists() else None,
+        "npz_file_unchanged_during_side": bool(npz_sha_before and npz_sha_before == sha256_file(npz_path)),
+        "npz_source_file": str(source_npz) if source_npz else None,
+        "npz_provenance": prepared.get("npz_provenance") or {},
         "npz_rows": int(len(ts)) if ts is not None else 0,
         "npz_first_ts": float(ts[0]) if ts is not None and len(ts) else None,
         "npz_last_ts": float(ts[-1]) if ts is not None and len(ts) else None,
@@ -197,6 +209,7 @@ def main():
     ap.add_argument("--window-days", type=int, default=7)
     ap.add_argument("--min-losing-stop-fills", type=int, default=3)
     ap.add_argument("--symsides", default="", help="optional comma-list intersected with inventory selection")
+    ap.add_argument("--npz-dir", default="", help="immutable copied NPZ directory passed to v12_quick_engine.load_npz")
     args = ap.parse_args()
     if args.window_days not in (7, 30, 365):
         ap.error("--window-days must be 7, 30 or 365")
@@ -212,6 +225,25 @@ def main():
         raise ValueError("no sym_sides meet the minimum confirmed losing stop-fill count")
     active = active_configs(db_path, list(selected))
     from tools.opt import evaluate_v12 as engine
+    npz_dir = Path(args.npz_dir).resolve() if args.npz_dir else None
+    if npz_dir:
+        from v12_quick_engine import load_npz
+        missing_npz = [ss.rsplit("_", 1)[0] for ss in selected if not (npz_dir / f"{ss.rsplit('_', 1)[0]}.npz").is_file()]
+        if missing_npz:
+            raise FileNotFoundError(f"frozen NPZ snapshot missing: {sorted(set(missing_npz))}")
+        snapshot_store = {}
+
+        def _store_from_snapshot(sym, mode, start):
+            key = (sym, mode, start)
+            if key not in snapshot_store:
+                stores = load_npz(mode, [sym], start, npz_dir=str(npz_dir))
+                data = stores.get(sym) if isinstance(stores, dict) else stores
+                if data is None and isinstance(stores, dict) and stores:
+                    data = next(iter(stores.values()))
+                snapshot_store[key] = data
+            return snapshot_store[key]
+
+        engine._store = _store_from_snapshot
 
     sides, errors = {}, {}
     started = dt.datetime.now(dt.timezone.utc).isoformat()
@@ -226,7 +258,7 @@ def main():
             if not prepared:
                 errors[ss] = "ENGINE_PREPARE_FAILED"
                 continue
-            sides[ss] = run_side(ss, loss_count, active[ss], prepared, args.window_days)
+            sides[ss] = run_side(ss, loss_count, active[ss], prepared, args.window_days, npz_dir)
         except Exception as exc:
             errors[ss] = f"{type(exc).__name__}:{exc}"
         if index % 5 == 0 or index == len(selected):
@@ -237,6 +269,7 @@ def main():
                 "inventory": str(inventory_path), "inventory_sha256": sha256_file(inventory_path),
                 "db": str(db_path), "db_file_sha256": db_hash, "window_days": args.window_days,
                 "selected_sym_sides": selected, "completed_sym_sides": sorted(sides),
+                "frozen_npz_dir": str(npz_dir) if npz_dir else None,
                 "errors": errors, "sides": sides,
             }, indent=2))
             print(f"[gain-protection-lab] checkpoint sides={len(sides)} errors={len(errors)}", flush=True)
@@ -246,6 +279,7 @@ def main():
         "inventory": str(inventory_path), "inventory_sha256": sha256_file(inventory_path),
         "db": str(db_path), "db_file_sha256": db_hash, "window_days": args.window_days,
         "selected_sym_sides": selected, "completed_sym_sides": sorted(sides),
+        "frozen_npz_dir": str(npz_dir) if npz_dir else None,
         "errors": errors, "sides": sides,
     }, indent=2))
     print(f"[gain-protection-lab] COMPLETE sides={len(sides)}/{len(selected)} errors={len(errors)} out={out_path}", flush=True)

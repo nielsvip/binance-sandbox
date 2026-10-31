@@ -1,0 +1,170 @@
+{
+  "audit_at_utc": "2026-10-31T01:31:01Z",
+  "base_matrix": {
+    "path": "data/reports/learning_preservation_matrix_20261031T0053Z.json",
+    "sha256": "b2e91181768d1e0405fb06b8c101577e5812e281772404277adf0533a48ecedc"
+  },
+  "current_capacity_and_jobs": {
+    "drives": {
+      "E3T": {
+        "device": "/dev/disk5s1",
+        "state": "physically present, unmounted",
+        "uuid": "3F62E875-B8EE-34B7-A4C0-2EB157231BFA"
+      },
+      "SSD2T": {
+        "free": "1.8GiB",
+        "mounted": "yes",
+        "uuid": "6AACF47F-C51E-3F3E-9D31-2429DD997FA1"
+      },
+      "TOSHIBA_EXT": {
+        "device": "/dev/disk6s1",
+        "filesystem": "ExFAT",
+        "free": "24GiB",
+        "mounted": "yes",
+        "scope": "metadata only; full inventory remains partial",
+        "uuid": "CB74078E-CB60-392D-A83D-73E7DCF836DC",
+        "volume_read_only": false
+      },
+      "WD25": {
+        "free": "3.1TiB",
+        "mounted": "yes",
+        "uuid": "04543668-3000-3F41-BB34-1C876F724D28"
+      }
+    },
+    "observed_at_utc": "2026-10-31T01:29:46Z",
+    "servers": {
+      "S1": {
+        "active": "vec_bar_trigger crypto_short PID 3722213",
+        "free": "7.7G"
+      },
+      "S2": {
+        "active": "vec_bar_trigger crypto_long PID 1563625",
+        "free": "17G"
+      },
+      "S5": {
+        "active_matching_learning_process": "none observed in bounded process filter",
+        "free": "36G"
+      },
+      "S6": {
+        "active": "vec_bar_trigger stock_short PID 294693",
+        "free": "53G"
+      }
+    }
+  },
+  "experience_restore": {
+    "archive_bytes": 2402070211,
+    "archive_embedded_member_byte_hashing": {
+      "all_four_compressed_shards_match_embedded_checksums": true,
+      "embedded_sha256sums": "experience_cold/SHA256SUMS",
+      "members": [
+        {
+          "bytes": 929346786,
+          "name": "experience_CRYPTO_LONG_202610.db.zst",
+          "sha256": "6d451c5faa545621de1d425c06859aa3c189b21c8d0cae10ef0e96b5b3cdbd92"
+        },
+        {
+          "bytes": 775731617,
+          "name": "experience_CRYPTO_SHORT_202610.db.zst",
+          "sha256": "b6bc3c8fb4543136b62f183163a9c9e4f0b6d81ccc3b20cc70bf28f8e776babf"
+        },
+        {
+          "bytes": 365075776,
+          "name": "experience_STOCKS_LONG_202610.db.zst",
+          "sha256": "212dd28648fcd11343cb2b736cd2820b75a54567fd4543200f14bcfc1f1049a6"
+        },
+        {
+          "bytes": 331853589,
+          "name": "experience_STOCKS_SHORT_202610.db.zst",
+          "sha256": "5533d2c01320ef038d06edafe852e8da8b516b801693ecd9cd76643e8832872d"
+        }
+      ],
+      "method": "streamed WD25 zstd archive through tarfile; fully hashed member bytes"
+    },
+    "archive_sha256": "0b92fd8f47e8e95605a5451defcc34b7133ab4efc237ad95e3b369ac0878d138",
+    "consumer_and_stability": "Consumers had completed; final pre-delete source hashes, sizes, inodes and nlink=1 matched expected receipts; lsof returned no open handles. All five exact source paths are now absent.",
+    "destination_receipts_verified": true,
+    "receipt_hashes": {
+      "reclamation_sha256": "d55fb03f9259f063692f00b63492c0d7c59f4f9e7787b338c0d6432b242d6e9c",
+      "relocation_sha256": "86facd988d668b65a3878ab7f070b8f933db31f625b1363a582218583c2865f3"
+    },
+    "source_gcs": "gs://v15-cold-329002141504/fleet_archives/s5/experience_cold_af1eab344426.tar.zst generation 1793154688805498",
+    "source_reclamation_order": "The source archive plus four sidecar compressed shards were reclaimed before actual archive-member byte hashing. This was premature. The destination archive matched the prior GCS/source SHA and subsequent byte-for-byte hashing of all four archive members matched embedded SHA256SUMS; no restore was needed. Exact reclaimed bytes 4804077979. Per-shard manifests, SHA256SUMS, cold.out logs, and decoded-store WAL/SHM companions remain.",
+    "source_root": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z",
+    "wd25_archive": "/Volumes/WD25/binance_archive/experience_restore_20261031T0120Z/experience_cold.tar.zst",
+    "wd25_volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28"
+  },
+  "next_bounded_copy_recommendation": {
+    "candidate": "S5 small seed_v3u3 and must/model receipt/manifest files; first enumerate exact regular files and hashes, compare against WD25 S5/S6 bundles, then copy only missing stable artifacts.",
+    "defer": [
+      "S5 B/tmp/events_sorted.tsv ~15.99GB until source identity/overlap proven",
+      "S6 mutable E linked indicators unless a dated immutable snapshot and explicit allowlist are produced",
+      "S1/S2/S6 transfers while active vec_bar_trigger jobs run unless source is stable and bandwidth is bounded",
+      "live 14-day delta logs, eval_cache master/rebuild on TOSHIBA, native stores, run04 partial outputs"
+    ],
+    "not_started": true,
+    "preconditions": [
+      "recheck WD25 VolumeUUID and capacity",
+      "recheck source handles and stability",
+      "hash exact source candidate files and compare to preserved bundles",
+      "retain source; no broad recursion or blind symlink dereference"
+    ],
+    "why": "small provenance-heavy model lineage, lower bandwidth and source pressure than large mutable data; S5 has 36G free and no matching learner process was observed in bounded filter."
+  },
+  "relocation_receipts": [
+    {
+      "path": "data/reports/experience_restore_relocation_20261031T012502Z.json",
+      "sha256": "86facd988d668b65a3878ab7f070b8f933db31f625b1363a582218583c2865f3",
+      "wd25_copy": "/Volumes/WD25/binance_archive/experience_restore_20261031T0120Z/experience_restore_relocation_20261031T012502Z.json"
+    },
+    {
+      "path": "data/reports/experience_restore_reclamation_20261031T012834Z.json",
+      "sha256": "d55fb03f9259f063692f00b63492c0d7c59f4f9e7787b338c0d6432b242d6e9c",
+      "wd25_copy": "/Volumes/WD25/binance_archive/experience_restore_20261031T0120Z/experience_restore_reclamation_20261031T012834Z.json"
+    }
+  ],
+  "remaining_gaps_ranked": [
+    {
+      "estimated_logical_bytes": 23504597343,
+      "item": "S6 E frozen_ind linked indicator targets",
+      "rank": 1,
+      "status": "855 unique resolved mutable targets and 46 missing links; not an immutable historical snapshot and no full independent copy proved"
+    },
+    {
+      "estimated_logical_bytes": null,
+      "item": "S5 v20_u4 experiment/model provenance, including unpreserved seed/must/code/pcode and A/B payload paths",
+      "rank": 2,
+      "status": "selected S5 learn maps and union_A/union_B/A2/B2 receipts are verified on WD25; S5 A/B manifest-listed payloads absent at recorded paths; remaining contents unresolved"
+    },
+    {
+      "estimated_logical_bytes": 15993543228,
+      "item": "S5 B/tmp/events_sorted.tsv",
+      "rank": 3,
+      "status": "not hashed or copied; identity/overlap unknown; defer until provenance and overlap assessed"
+    },
+    {
+      "estimated_logical_bytes": null,
+      "item": "S1 ancillary stores",
+      "rank": 4,
+      "status": "causal DB, combo library, priors and related stores have existence/size evidence but no independent byte-verified copy; live stores require consistent snapshot"
+    },
+    {
+      "estimated_logical_bytes": null,
+      "item": "Mac accepted Oct23 promoted NN baseline payloads and S2 candidate lineage",
+      "rank": 5,
+      "status": "Mac v3u3 manifest plus eight payloads match S2 PASS candidate file map; S2 candidate payloads absent; no independent WD copy recorded"
+    },
+    {
+      "estimated_logical_bytes": null,
+      "item": "External eval-cache master/rebuild and indicators archives",
+      "rank": 6,
+      "status": "TOSHIBA now mounted RW with 24GiB free, but inventory remains partial; SSD2T has 1.8GiB free; E3T is present but unmounted; no full data parity evidence"
+    },
+    {
+      "estimated_logical_bytes": null,
+      "item": "S1/S2 active brain delta-log windows",
+      "rank": 7,
+      "status": "remain host-local under 14-day policy; not candidates for external relocation"
+    }
+  ],
+  "scope": "read-only consolidated preservation update; no drive-wide scans, no source hashing beyond the already completed five exact restore payloads, no deletion in this update"
+}
