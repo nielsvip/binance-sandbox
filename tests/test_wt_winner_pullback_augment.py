@@ -6,6 +6,7 @@ import pytest
 
 import v12_quick_engine as v12
 from vec_decisions.wt_winner_pullback_augment import final_gate, producer
+from vec_decisions.aug_gain_gate import latest_reduction_price, passes as shared_gain_gate_passes
 
 
 @pytest.mark.parametrize(
@@ -26,7 +27,7 @@ def test_winner_producer_and_native_final_gate_predicates(is_long, aligned_wt, o
 @pytest.mark.parametrize("switch_enabled", [False, True])
 def test_simulate_one_books_hard_wt_augment_only_when_selected_ltf_and_15m_align(is_long, ltf_enabled, switch_enabled):
     n = 5
-    prices = np.full(n, 104.0 if is_long else 96.0)
+    prices = np.full(n, 105.0 if is_long else 93.0)
     prices[0] = 100.0
     data = {
         "timestamps": np.arange(n, dtype=float) * 900.0 + 1700000000.0,
@@ -96,7 +97,7 @@ def test_simulate_one_books_hard_wt_augment_only_when_selected_ltf_and_15m_align
         assert "WINNER_WT_AUGMENT" in augments[0]["reason"]
         assert len(augments) == 1
     else:
-        assert not augments
+        assert not any("WINNER_WT_AUGMENT" in row.get("reason", "") or "BOUNCE_AUGMENT" in row.get("reason", "") for row in augments)
 
 
 @pytest.mark.parametrize("is_long", [True, False])
@@ -257,9 +258,19 @@ def test_simulate_one_books_bounce_family_after_peak_pullback():
     cfg._PARITY_PREFIX_EVAL = True
     result = v12.simulate_one(data, "WT_BOUNCE_AUG_TEST", True, cfg, force_initial_seed=True)
     bounces = [row for row in result["ledger"] if row.get("type") == "AUGMENT" and "BOUNCE_AUGMENT" in row.get("reason", "")]
-    assert bounces
-    assert bounces[0]["bar"] == 2
-    assert 1.5 <= float(bounces[0]["reason"].split("_")[-1].rstrip("%")) < 3.0
+    assert not bounces
+    assert producer(True, 2.2, 3.0, 3.0, 2.0, 1.0, 2.0, 1.0, 0.0, 0.0) == (True, "BOUNCE_AUGMENT")
+    assert not shared_gain_gate_passes(cfg, True, 102.2, 2.2, 500.0, 0.0, 1.0, 0.0, 0.0, 0.0)
+
+
+def test_augment_gate_uses_latest_partial_reduction_or_closed_trade_price():
+    trades = [{"type": "CLOSE", "ts": 10, "exit_price": 105.0}]
+    events = [{"type": "REDUCE", "ts": 20, "price": 110.0}]
+    assert latest_reduction_price(trades, events) == 110.0
+    events.append({"type": "AUGMENT", "ts": 30, "price": 120.0})
+    assert latest_reduction_price(trades, events) == 110.0
+    trades.append({"type": "CLOSE", "ts": 40, "exit_price": 115.0})
+    assert latest_reduction_price(trades, events) == 115.0
 
 
 def test_simulate_one_wt_hard_source_is_not_limited_by_ladder_cooldown():

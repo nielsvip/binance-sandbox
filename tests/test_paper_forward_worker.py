@@ -186,3 +186,35 @@ def test_source_journal_experiment_window_selects_bounds_and_completes(tmp_path,
     assert final is None and reason == "SOURCE_WINDOW_COMPLETE"
     assert session._window_complete
     journal.close()
+
+
+def test_immutable_window_missing_required_timeframe_terminates_data_gap(tmp_path, monkeypatch):
+    now = 1_800_000_000.0
+    monkeypatch.setattr("tools.paper_forward_worker.time.time", lambda: now)
+    source_path = tmp_path / "native.sqlite3"
+    source = _connect(source_path)
+    source_ts = now - 60
+    indicators = {"timestamp_1m": datetime.fromtimestamp(source_ts, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")}
+    raw = json.dumps(indicators, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    digest = hashlib.sha256(raw).hexdigest()
+    compressed = zlib.compress(raw)
+    source.execute("INSERT INTO payloads(input_hash,payload_encoding,payload_blob,raw_bytes,compressed_bytes) VALUES(?,?,?,?,?)", (digest, "zlib", compressed, len(raw), len(compressed)))
+    source.execute("INSERT INTO frame_index(sequence,observed_ts,source_ts,symbol,venue,host,timeframe,source_sha256,input_hash) VALUES(?,?,?,?,?,?,?,?,?)", (1, now, source_ts, "BTCUSDT", "crypto", "s1", "1m", "e" * 64, digest))
+    source.commit()
+    source.close()
+    output = tmp_path / "run"
+    output.mkdir()
+    journal = FrameJournal(output / "receipts.sqlite3", {"scenario_id": "fixture", "settings_sha256": "a" * 64, "code_sha256": "b" * 64})
+    session = ContinuousJournalForwardSession(
+        journal, {}, lambda *_: None, code_path=tmp_path / "engine.py", mode="crypto",
+        snapshot_path=tmp_path / "unused.json", receipt_path=tmp_path / "unused.receipt.json",
+        source_journal_path=source_path, experiment_window={"window_id": "fixed-gap", "source_timeframe": "1m", "start_source_ts": source_ts, "end_source_ts": source_ts},
+        symbol="BTCUSDT", expected_host="s1", frame_timeframe="1m", required_timeframes=["1m", "3m"],
+        poll_seconds=0.5, max_age_seconds=180, run_root=output,
+    )
+    frame = asyncio.run(session.prime_first_frame())
+    assert frame is None
+    assert session.wait_reason == "DATA_GAP_MISSING_TF_3m"
+    status = json.loads((output / "worker.status.json").read_text())
+    assert status["status"] == "DATA_GAP"
+    journal.close()

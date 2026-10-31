@@ -25,6 +25,7 @@ if str(ROOT) not in sys.path:
 from tools.paper_frame_stream import FrameJournal
 from tools.paper_journal_session import JournalForwardSession
 from tools.paper_snapshot_store import PaperSnapshotStore
+from tools.paper_forward_window import resolve_source_window, validate_window
 
 MAX_FRAMES = 1440
 MAX_INPUT_BYTES = 32 * 1024 * 1024
@@ -290,6 +291,11 @@ class ContinuousJournalForwardSession(JournalForwardSession):
         source_ts = float(source_ts)
         if source_ts > observed_ts + 5 or time.time() < observed_ts - 5:
             raise RuntimeError("SOURCE_JOURNAL_TIMESTAMP_INVALID")
+        conflicts = database.execute("SELECT reason FROM source_conflicts WHERE host=? AND venue=? AND symbol=? AND timeframe=? AND source_ts=? LIMIT 1",
+            (self.expected_host, "crypto" if self.mode == "crypto" else "stocks", self.symbol, self.frame_timeframe, source_ts)).fetchone()
+        if conflicts:
+            self._window_complete = bool(self.experiment_window)
+            return None, "DATA_GAP_SOURCE_CONFLICT:" + str(conflicts[0])
         try:
             indicator_source_ts = _utc_epoch(indicators.get(f"timestamp_{self.frame_timeframe}"))
         except (TypeError, ValueError, OverflowError) as exc:
@@ -300,9 +306,9 @@ class ContinuousJournalForwardSession(JournalForwardSession):
             try:
                 timeframe_ts = _utc_epoch(indicators.get(f"timestamp_{timeframe}"))
             except (TypeError, ValueError, OverflowError):
-                return None, f"WAITING_MISSING_TF_{timeframe}"
+                return None, f"DATA_GAP_MISSING_TF_{timeframe}" if self.experiment_window else (None, f"WAITING_MISSING_TF_{timeframe}")
             if timeframe_ts > observed_ts + 5 or observed_ts - timeframe_ts > max(self.max_age_seconds, 2 * TIMEFRAME_SECONDS[timeframe]):
-                return None, f"WAITING_STALE_TF_{timeframe}"
+                return None, f"DATA_GAP_STALE_OR_FUTURE_TF_{timeframe}" if self.experiment_window else (None, f"WAITING_STALE_TF_{timeframe}")
         frame = {
             "ts": source_ts,
             "indicators": indicators,
@@ -335,8 +341,12 @@ class ContinuousJournalForwardSession(JournalForwardSession):
                 self._status("RUNNING", "FIRST_FRESH_SOURCE_FRAME")
                 return frame
             self.wait_reason = reason
+            if reason.startswith("DATA_GAP_"):
+                self._status("DATA_GAP", reason)
+                return None
             if reason == "SOURCE_WINDOW_COMPLETE":
-                raise RuntimeError("experiment source window contains no frames")
+                self._status("DATA_GAP", "SOURCE_WINDOW_EMPTY")
+                return None
             self._status("WAITING_FRESH_INPUT", reason)
             await asyncio.sleep(self.poll_seconds)
 
@@ -361,6 +371,10 @@ class ContinuousJournalForwardSession(JournalForwardSession):
                 break
             frame, reason = self._read_source_journal_frame() if self.source_journal_path else self._read_source_frame()
             if frame is None:
+                if reason.startswith("DATA_GAP_"):
+                    self.wait_reason = reason
+                    self._status("DATA_GAP", reason)
+                    break
                 if reason == "SOURCE_WINDOW_COMPLETE":
                     self.wait_reason = reason
                     self._status("WINDOW_COMPLETE", reason)
@@ -428,7 +442,7 @@ class ContinuousJournalForwardSession(JournalForwardSession):
         await super().finish()
         if self._source_db is not None:
             self._source_db.close()
-        status = "STOPPED_BY_REQUEST" if self.stop_requested else ("STOPPED_RESOURCE_LIMIT" if self.wait_reason == "RESOURCE_LIMIT_MAX_FRAMES" else "COMPLETED")
+        status = "DATA_GAP" if self.wait_reason.startswith("DATA_GAP_") else ("STOPPED_BY_REQUEST" if self.stop_requested else ("STOPPED_RESOURCE_LIMIT" if self.wait_reason == "RESOURCE_LIMIT_MAX_FRAMES" else "COMPLETED"))
         self._status(status, self.wait_reason)
 
 CHILD = r'''
@@ -542,6 +556,7 @@ result_manifest = {
     "execution_mode": "V12_REAL_EXECUTE=1; real manager execute_now path with process-local broker/network I/O denial",
     "source_time_semantics": "native source timeframe timestamp; observed_at_utc is separate; closed-bar status unverified",
     "experiment_window": manifest.get("experiment_window"),
+    "experiment_window_resolution": manifest.get("experiment_window_resolution"),
     "source_journal": request.get("source_journal") or None,
     "effective_settings_file": effective_settings_path.name,
     "base_settings_file": base_settings_path.name,
@@ -609,6 +624,24 @@ session = ContinuousJournalForwardSession(
 )
 if not first_frame:
     first_frame = asyncio.run(session.prime_first_frame())
+    if first_frame is None:
+        session._snapshot_sqlite()
+        result = {
+            "status": "DATA_GAP", "evidence_kind": "independent_forward",
+            "run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"],
+            "scenario_id": manifest["scenario_id"], "sym_side": symside,
+            "mode": mode, "reason": session.wait_reason,
+            "settings_sha256": settings_hash, "code_sha256": code_hash,
+            "source_time_semantics": "native source timeframe timestamp; closed-bar status unverified",
+            "promotion_eligible": False,
+        }
+        _atomic_json(root / "result.json", result)
+        result_manifest.update(status="DATA_GAP", finished=True, ended_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"), reason=session.wait_reason, frame_count=0, committed_receipts=0)
+        _atomic_json(result_manifest_path, result_manifest)
+        journal.close()
+        engine._run_one_restore_overrides(override_snapshot, mode)
+        engine._run_one_set_precedence_off(precedence_state)
+        raise SystemExit(0)
     stores[symbol] = PaperSnapshotStore([{"ts": first_frame["ts"], "indicators": first_frame["indicators"]}])
     session.stores = stores
 else:
@@ -712,7 +745,7 @@ try:
     if int(receipts[0]) != int(receipts[1] or 0):
         raise RuntimeError("engine returned without committing every source-frame receipt")
     result = {
-        "status": "STOPPED_BY_REQUEST" if session.stop_requested else ("STOPPED_RESOURCE_LIMIT" if session.wait_reason == "RESOURCE_LIMIT_MAX_FRAMES" else "COMPLETED"),
+        "status": "DATA_GAP" if session.wait_reason.startswith("DATA_GAP_") else ("STOPPED_BY_REQUEST" if session.stop_requested else ("STOPPED_RESOURCE_LIMIT" if session.wait_reason == "RESOURCE_LIMIT_MAX_FRAMES" else "COMPLETED")),
         "evidence_kind": "independent_forward", "run_id": manifest["run_id"],
         "epoch_id": manifest["epoch_id"], "scenario_id": manifest["scenario_id"],
         "sym_side": symside, "mode": mode, "frame_count": int(receipts[0]),
@@ -888,19 +921,19 @@ def main(argv=None):
     if timeframe not in TIMEFRAME_SECONDS or not isinstance(required_tfs, list) or not required_tfs or any(tf not in TIMEFRAME_SECONDS for tf in required_tfs):
         parser.error("manifest has invalid frame_timeframe/required_timeframes")
     experiment_window = manifest.get("experiment_window")
+    experiment_window_resolution = None
     if experiment_window is not None:
-        if not isinstance(experiment_window, dict) or experiment_window.get("source_timeframe") != timeframe or not str(experiment_window.get("window_id", "")).strip():
-            parser.error("experiment_window requires window_id and matching source_timeframe")
         try:
-            start_source_ts = float(experiment_window["start_source_ts"])
-            end_source_ts = float(experiment_window["end_source_ts"])
-        except (KeyError, TypeError, ValueError):
-            parser.error("experiment_window requires numeric start_source_ts and end_source_ts")
-        if not (start_source_ts > 0 and end_source_ts >= start_source_ts and end_source_ts < float("inf")):
-            parser.error("experiment_window bounds must be finite, positive, and increasing")
+            experiment_window = validate_window(experiment_window, timeframe)
+        except (TypeError, ValueError) as exc:
+            parser.error(f"experiment_window is invalid: {exc}")
         if not source_journal_path:
             parser.error("experiment_window requires --source-journal")
-        experiment_window = {**experiment_window, "start_source_ts": start_source_ts, "end_source_ts": end_source_ts}
+        if experiment_window["window_mode"] == "first_available_after":
+            experiment_window_resolution = resolve_source_window(source_journal_path, manifest["host"], args.venue, symbol, experiment_window)
+            if experiment_window_resolution.get("status") != "SOURCE_WINDOW_READY":
+                parser.error("source journal window is not ready: " + str(experiment_window_resolution.get("status")))
+            experiment_window = {**experiment_window, "start_source_ts": experiment_window_resolution["start_source_ts"], "end_source_ts": experiment_window_resolution["end_source_ts"]}
     poll_seconds = float(args.poll_seconds if args.poll_seconds is not None else manifest.get("poll_seconds", 5))
     max_age_seconds = float(args.max_age_seconds if args.max_age_seconds is not None else manifest.get("max_age_seconds", 2 * TIMEFRAME_SECONDS[timeframe]))
     max_frames = int(manifest.get("max_frames", MAX_FRAMES))
@@ -913,6 +946,7 @@ def main(argv=None):
     manifest["required_timeframes"] = required_tfs
     manifest["max_frames"] = max_frames
     manifest["experiment_window"] = experiment_window
+    manifest["experiment_window_resolution"] = experiment_window_resolution
     manifest["paper_mask_release"] = manifest.get("paper_mask_release", [])
     if not isinstance(manifest["paper_mask_release"], list) or any(not isinstance(key, str) for key in manifest["paper_mask_release"]):
         parser.error("paper_mask_release must be a list of candidate key names")
@@ -984,7 +1018,7 @@ def main(argv=None):
         result = _read_json(result_path)
         result["run_dir"] = str(run_dir)
     print(json.dumps(result, sort_keys=True, allow_nan=False))
-    return 0 if result.get("status") in {"STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT", "COMPLETED"} else 1
+    return 0 if result.get("status") in {"STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT", "COMPLETED", "DATA_GAP"} else 1
 
 
 if __name__ == "__main__":

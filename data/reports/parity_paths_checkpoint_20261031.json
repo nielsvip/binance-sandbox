@@ -347,7 +347,7 @@
       "status": "Disclosed by agent; no retroactive backup claimed"
     }
   ],
-  "checkpoint_updated_at": "2026-10-31T04:21:18.501569+00:00",
+  "checkpoint_updated_at": "2026-10-31T04:55:16.261598+00:00",
   "replay_clock": {
     "signal_clock": "NPZ bar-open timestamp",
     "decision_clock": "bar-open +900seconds when V12_COMPLETED_BAR_SECONDS=900",
@@ -409,5 +409,49 @@
     "initial_state": "Flat broker is shared with actual vector_direct.plan_account convergence test; model prehistory recorded separately",
     "coverage": "Expected and visited bar count/hash retained; capped/skipped/shifted runs incomplete",
     "latest_tests": "22 coverage/ownership/clock/WT/seed tests passed"
+  },
+  "formation_parity_fix": {
+    "status": "LOCAL_TESTED_FULL_REPLAY_PENDING",
+    "causes": [
+      "float32 vector threshold accepted score 0.6499999761581421 while scalar rejected it at 0.65",
+      "formation cache ignored selected timeframes and did not retain source identity"
+    ],
+    "files": [
+      "classic_formations.py",
+      "vec_decisions/formation_entry_live.py",
+      "vec_decisions/formation_exit_live.py"
+    ],
+    "proof": "14 focused tests passed including actual simulate_one OPEN bar13 vs rejected bar12, long/short and family switch OFF",
+    "broader_suite": "24 passed, 4 failed due stale loader patch, obsolete reduce return fixture and absent _tradier_signal_score_family; not claimed green"
+  },
+  "published_selection_repair": {
+    "sha256": "691703857ec1ff3d505aa251bc866a5c18610b2e665fb522dc9c0b6c9c3c1c2e",
+    "targets": [
+      "Mac",
+      "S1 main",
+      "S1 sandbox",
+      "S5 sandbox"
+    ],
+    "original_cell_vintage_preserved": true,
+    "reported_by": "ez_paths; actual native PEPE board gate passes",
+    "disabled_combined_apply_cron": "still paused"
+  },
+  "latest_independent_review_tests": {
+    "ownership_coverage_board_filter_cadence": "28 passed",
+    "wt_comparator_account": "30 passed; subsequent review found missing WT shared gain gate, correction in progress"
+  },
+  "candidate11": {
+    "status": "FROZEN_DIAGNOSTIC_RUNS_STARTING",
+    "npz_sha256": "a9324ed1f07621a2b1f724166d654b9c137646742a503d62b924595109c934d8",
+    "last_bar_ts": 1793414700,
+    "last_bar_utc": "2026-10-31T02:45:00Z",
+    "scored_bars": 1344,
+    "timestamp_correction": "Earlier 02:30 tail description was wrong; hash is unchanged",
+    "settings_scope": "retrospective frozen current settings, not historical as-traded"
+  },
+  "disk_recovery": {
+    "manifest": "backups/parity_backup_offload_manifest.jsonl",
+    "method": "four inactive DB snapshots copied to WD25, source and destination SHA256 verified, original paths preserved as symlinks",
+    "bytes_archived": 6200942592
   }
 }

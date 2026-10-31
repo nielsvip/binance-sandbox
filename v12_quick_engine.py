@@ -22580,8 +22580,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 )
                 if not _hw_fire:
                     _hw_reason = ""
-            except Exception:
-                _hw_fire, _hw_reason = False, ""
+            except Exception as exc:
+                raise RuntimeError("WT winner/pullback augment evaluation failed") from exc
         _uag_src_ok = (
             _hq_fire
             or _dd_fire
@@ -22618,14 +22618,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         if (
             _uag_src_ok
             and _agg_on
-            and (_gl_fire or bool(augment_sig[i]) or _fr_fire)
+            and (_gl_fire or bool(augment_sig[i]) or _fr_fire or _hw_fire)
             and not (_hq_fire or _dd_fire or _n4_fire or _aal_fire)
             and not (
                 _fx_src
                 and _fxm.aug_exempt(_fx_aug, _fx_src, "AUG_GAIN_GATE_LIVE_TWIN_ENABLED")
             )
         ):
-            _agg_exit = float(trades[-1].get("exit_price", 0) or 0) if trades else 0.0
+            _agg_exit = vec_decisions.aug_gain_gate.latest_reduction_price(trades, events)
             if not vec_decisions.aug_gain_gate.passes(
                 cfg,
                 is_long,

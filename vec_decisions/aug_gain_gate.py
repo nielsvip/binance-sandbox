@@ -39,3 +39,30 @@ def passes(cfg, is_long: bool, px: float, raw_gain_pct: float, pos_value: float,
     if raw_gain_pct < 0.0:
         return False
     return raw_gain_pct >= threshold(cfg, is_long, px, last_exit_px, wt1_1h, wt2_1h, trough_15m, peak_15m)
+
+def latest_reduction_price(trades, events) -> float:
+    candidates = []
+    for rows, event_types, price_keys in (
+        (trades, {"CLOSE"}, ("exit_price", "price")),
+        (events, {"REDUCE"}, ("price", "exit_price")),
+    ):
+        for row in reversed(rows):
+            if str(row.get("type", "")).upper() not in event_types:
+                continue
+            price = 0.0
+            for key in price_keys:
+                try:
+                    price = float(row.get(key, 0) or 0)
+                except (TypeError, ValueError):
+                    price = 0.0
+                if price > 0:
+                    break
+            try:
+                timestamp = float(row.get("ts", row.get("exit_ts", 0)) or 0)
+            except (TypeError, ValueError):
+                timestamp = 0.0
+            if price > 0:
+                candidates.append((timestamp, 1 if rows is events else 0, price))
+            break
+    return max(candidates)[2] if candidates else 0.0
+

@@ -41,3 +41,47 @@ def test_cached_fields_follow_timeframe_selection_and_retain_source_identity(mon
     assert calls == [('15m',), ('1h',)]
     assert next(iter(module._CACHE.values()))[0] is arrays
     module._CACHE.clear()
+
+@pytest.mark.parametrize('is_long', [True, False])
+def test_actual_engine_formation_open_matches_native_boundary_bar(is_long):
+    import v12_quick_engine as engine
+    n = 110
+    timestamps = np.arange(n, dtype=np.int64) * 900 + 1800000000
+    data = {'timestamps': timestamps, 'timestamp_15m': timestamps}
+    for field in ('open', 'high', 'low', 'close'):
+        data[f'{field}_15m'] = np.full(n, 100.)
+    for timeframe in ('15m', '1h', '4h', 'D'):
+        data[f'wt1_{timeframe}'] = np.zeros(n)
+        data[f'wt2_{timeframe}'] = np.zeros(n)
+        data[f'stoch_k_{timeframe}'] = np.full(n, 50.)
+        data[f'dc_low_{timeframe}'] = np.full(n, 80.)
+        data[f'dc_high_{timeframe}'] = np.full(n, 120.)
+    direction = 'bull' if is_long else 'bear'
+    scores = np.zeros(n, dtype=np.float32)
+    scores[12:14] = [.65, .8]
+    data["formation_direction_15m"] = np.sign(scores) * (1 if is_long else -1)
+    data[f'formation_wedge_{direction}_score_15m'] = scores
+    config = engine.QuickConfig()
+    config.apply_cat_side_defaults('CRYPTO_LONG' if is_long else 'CRYPTO_SHORT')
+    for name in vars(config):
+        if name.endswith('_ENABLED'):
+            setattr(config, name, False)
+    config.MODE = 'crypto'
+    config.BASE_TF = '15m'
+    config.FORMATION_WEDGE_ENTRY_ENABLED = True
+    config.FORMATION_TFS = '15m'
+    config.FORMATION_MIN_SCORE = .65
+    config.STRENGTH_FILTER_ENABLED = True
+    config.STRENGTH_MIN_SCORE = 5.
+    config.ENTRY_ISOLATE_FAMILY = 'FORMATION_ENTRY'
+    config.START_POSITION_SIZE = 100.
+    config.MAX_ORDER_VALUE = 500.
+    config.COOLDOWN_BARS = 0
+    native_bars = [i for i in range(n) if formations.select_latest_formation({key: value[i] for key, value in data.items()}, is_long=is_long, action='ENTRY', config=config)]
+    assert native_bars == [13]
+    result = engine.simulate_one(data, 'FORMATIONUSDC', is_long, config)
+    open_bars = [row['bar'] for row in result['ledger'] if row.get('type') == 'OPEN']
+    assert open_bars == native_bars
+    config.FORMATION_WEDGE_ENTRY_ENABLED = False
+    disabled = engine.simulate_one(data, 'FORMATIONUSDC', is_long, config)
+    assert not any(row.get('type') == 'OPEN' for row in disabled['ledger'])

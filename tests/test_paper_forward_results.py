@@ -196,14 +196,15 @@ def _accounting_artifact(journal_path, manifest):
     for sequence, ts, input_hash, receipt_json in rows:
         receipt = json.loads(receipt_json)
         for event_index, event in enumerate(receipt["events"]):
-            if event.get("type") not in {"eta", "webhook"}:
+            recording_client_fill = isinstance(event.get("params"), dict) and bool(event.get("position_key")) and event.get("position_before") is not None and event.get("position_after") is not None and float(event.get("price", 0) or 0) > 0 and float(event.get("quantity", 0) or 0) > 0
+            if str(event.get("status", "")).upper() != "FILLED" or event.get("decision_only") or (str(event.get("type", "")).lower() not in {"eta", "webhook"} and not recording_client_fill):
                 continue
             close = event["action"] == "CLOSE"
             trades.append({
                 "source_frame_sequence": sequence, "source_event_index": event_index,
                 "source_frame_input_hash": input_hash,
                 "source_event_sha256": hashlib.sha256(json.dumps(event, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
-                "source_event": event, "event_type": event["type"], "status": "FILLED",
+                "source_event": event, "event_type": event.get("type") or "recording_client", "status": "FILLED",
                 "timestamp": "1970-01-01T00:03:20.000000Z" if ts == 200 else "1970-01-01T00:01:40.000000Z",
                 "position_key": event["position_key"], "action": event["action"], "position_side": "LONG",
                 "price": event["price"], "quantity": event["quantity"],
@@ -276,4 +277,25 @@ def test_accounting_rejects_modified_artifact_hash_and_missing_fills(tmp_path):
         assert "hash" in str(exc)
     else:
         raise AssertionError("expected accounting hash rejection")
+    db.close()
+
+
+def test_accounting_accepts_filled_recording_client_event_without_type(tmp_path):
+    import sqlite3
+
+    db, journal, manifest = _fixture(tmp_path)
+    connection = sqlite3.connect(journal)
+    row = connection.execute("SELECT receipt_json FROM frames WHERE sequence=1").fetchone()
+    receipt = json.loads(row[0])
+    event = receipt["events"][0]
+    event.pop("type")
+    event["params"] = {"type": "MARKET"}
+    body = json.dumps(receipt, sort_keys=True, separators=(",", ":"))
+    connection.execute("UPDATE frames SET receipt_hash=?,receipt_json=? WHERE sequence=1", (hashlib.sha256(body.encode()).hexdigest(), body))
+    connection.commit()
+    connection.close()
+    artifact = _accounting_artifact(journal, manifest)
+    _write_accounting(journal.parent, manifest, artifact)
+    result = ingest(db, journal, manifest, journal.parent)
+    assert result["accounting_fills"] == 2
     db.close()

@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T04:52:40Z",
+ "ts": "2026-10-31T04:57:57Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 1,
    "open_positions": 1,
-   "unrealised_usd": -0.03,
+   "unrealised_usd": -0.04,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 72,
    "open_positions": 12,
-   "unrealised_usd": 0.38,
+   "unrealised_usd": 0.4,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 135,
    "open_positions": 14,
-   "unrealised_usd": 0.37,
+   "unrealised_usd": 0.56,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 40,
    "open_positions": 7,
-   "unrealised_usd": 0.17,
+   "unrealised_usd": 0.2,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,71 +127,79 @@
     "67204"
    ],
    "starts_30m": 1,
-   "log_age_s": 3213.0
+   "log_age_s": 3527.0
   },
   "men": {
    "pids": [
     "92430"
    ],
    "starts_30m": 1,
-   "log_age_s": 2223.0
+   "log_age_s": 2537.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 22.0
+   "log_age_s": 28.0
   },
   "inf": {
    "pids": [
     "68362"
    ],
    "starts_30m": 1,
-   "log_age_s": 45.0
+   "log_age_s": 189.0
   },
   "flz": {
    "pids": [
     "78871"
    ],
    "starts_30m": 1,
-   "log_age_s": 125.0
+   "log_age_s": 24.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 625.0
+   "log_age_s": 939.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 941.0
+   "log_age_s": 1255.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T04:52:45Z",
+   "ts": "2026-10-31T04:57:58Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "flz:BTCUSDC_LONG",
+   "evidence": "31 04:56:31 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:BTCUSDC_LONG: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $2000 \u2014 restoring $67 on bounce (prior max 0.0160)"
+  },
+  {
+   "ts": "2026-10-31T04:57:58Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 3213s"
+   "evidence": "ez_manage_fin.log not written for 3527s"
   },
   {
-   "ts": "2026-10-31T04:52:45Z",
+   "ts": "2026-10-31T04:57:58Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 2223s"
+   "evidence": "ez_manage_men.log not written for 2537s"
   },
   {
-   "ts": "2026-10-31T04:52:45Z",
+   "ts": "2026-10-31T04:57:58Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
-   "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 125s"
+   "key": "inf",
+   "evidence": "ez_manage_inf.log not written for 189s"
   }
  ],
  "alert_counts": {
+  "CAP_BYPASS": 1,
   "STALE_LOG": 3
  },
  "active_interventions": {
@@ -245,5 +253,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 5.43
+ "sweep_s": 1.52
 }

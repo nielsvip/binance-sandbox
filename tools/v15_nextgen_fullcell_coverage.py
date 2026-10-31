@@ -71,7 +71,7 @@ def catalog(template_sources, output):
     return dict(schema='every_row_every_filter_catalog/1',sources=template_sources,counts=counts,catalog=dict(path=str(output),sha256=sha(output)),yellow_restriction=False,unwired_or_grey_exclusion=False,promotion_min_distinct_proven_results=101,all_cells_measured=False)
 
 
-def iter_cells(catalog_path,wanted_category=None):
+def iter_cells(catalog_path,wanted_category=None,ordering='row-major'):
     if str(catalog_path).endswith('.gz'):
         with gzip.open(catalog_path,'rt') as stream:
             for line in stream:
@@ -81,12 +81,18 @@ def iter_cells(catalog_path,wanted_category=None):
     for category,part in document['categories'].items():
         if wanted_category is not None and category!=wanted_category:
             continue
-        for row in part['rows']:
-            for header,columns in sorted(part['headers'].items()):
-                field,option=header.split('=',1)
-                record=dict(cat_side=category,template_sha256=part['source']['sha256'],**row,filter=field,opt=option,header=header,filter_column_refs=columns,physical_cell_present=any(item['tab']==row['tab'] for item in columns))
-                record['catalog_cell_id']=guard.fingerprint(record)
-                yield record
+        headers=sorted(part['headers'].items())
+        if ordering=='diagonal':
+            combinations=((row,headers[(number+round_index)%len(headers)]) for round_index in range(len(headers)) for number,row in enumerate(part['rows']))
+        elif ordering=='row-major':
+            combinations=((row,item) for row in part['rows'] for item in headers)
+        else:
+            raise ValueError('explicit supported catalog ordering required')
+        for row,(header,columns) in combinations:
+            field,option=header.split('=',1)
+            record=dict(cat_side=category,template_sha256=part['source']['sha256'],**row,filter=field,opt=option,header=header,filter_column_refs=columns,physical_cell_present=any(item['tab']==row['tab'] for item in columns))
+            record['catalog_cell_id']=guard.fingerprint(record)
+            yield record
 
 
 def work(cell):
@@ -158,7 +164,7 @@ def work(cell):
     return result
 
 
-def run(prepared,settings,config,pilot,context,capture,catalog_path,output,workers,limit=0,shard=(0,1),maximum_seconds=0,start_index=0):
+def run(prepared,settings,config,pilot,context,capture,catalog_path,output,workers,limit=0,shard=(0,1),maximum_seconds=0,start_index=0,ordering='row-major',skip_attempts=()):
     global PREPARED,SETTINGS,CONFIG,PILOT,CONTEXT,CAPTURE
     PREPARED,SETTINGS,CONFIG,PILOT,CONTEXT,CAPTURE=prepared,settings,config,pilot,dict(context),capture
     if maximum_seconds:
@@ -172,15 +178,27 @@ def run(prepared,settings,config,pilot,context,capture,catalog_path,output,worke
     receipt={}
     started=time.monotonic()
     tasks_staged=0
+    skip_ids=set()
+    for source in skip_attempts:
+        if sha(source['path'])!=source['sha256']:
+            raise ValueError('prior attempt source hash mismatch')
+        with Path(source['path']).open() as stream:
+            for line in stream:
+                old=json.loads(line)
+                if old.get('proven_actual_result') and old.get('engine_proof',{}).get('input_cutoff_sha256')==context['input_cutoff_sha256']:
+                    skip_ids.add(old['cell']['catalog_cell_id'])
     def tasks():
         index=0
-        for ordinal,cell in enumerate(iter_cells(catalog_path,context['cat_side'])):
+        for ordinal,cell in enumerate(iter_cells(catalog_path,context['cat_side'],ordering=ordering)):
             stop=os.environ.get('V15_COVERAGE_STOP_FILE')
             if (stop and Path(stop).exists()) or (maximum_seconds and time.monotonic()-started>=maximum_seconds):
                 break
             if ordinal<start_index:
                 continue
             cell['catalog_ordinal']=ordinal
+            if cell['catalog_cell_id'] in skip_ids:
+                counts['verified_prior_trial_not_reexecuted']+=1
+                continue
             if cell['cat_side']!=context['cat_side']:
                 continue
             if int(cell['catalog_cell_id'][:16],16)%shard[1]!=shard[0]:
@@ -203,7 +221,7 @@ def run(prepared,settings,config,pilot,context,capture,catalog_path,output,worke
             sink.write(json.dumps(result,separators=(',',':'))+'\n')
             sink.flush()
             ledger.commit()
-            receipt=dict(schema='fullcell_actual_coverage_progress/1',observed_at=datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),counts=dict(counts),source_context=context,catalog_sha256=catalog_digest,workers=workers,partial=True,promotion_threshold=101,promotion_enabled=False,scope='breadth-first single frozen context; repeated same trial never increases evidence; failed/skipped/not-applied never zero')
+            receipt=dict(schema='fullcell_actual_coverage_progress/1',observed_at=datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),counts=dict(counts),source_context=context,catalog_sha256=catalog_digest,workers=workers,ordering=ordering,prior_attempt_sources=list(skip_attempts),partial=True,promotion_threshold=101,promotion_enabled=False,scope='breadth-first single frozen context; repeated same trial never increases evidence; failed/skipped/not-applied never zero')
             (output/'progress.json').write_text(json.dumps(receipt,indent=2))
     ledger.close()
     return receipt

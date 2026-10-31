@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-31T04:50:10.731659+00:00",
+  "ts": "2026-10-31T04:55:06.757854+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 6,
-  "pending_sym_sides": 59,
+  "fleet_published_last_60m": 8,
+  "pending_sym_sides": 58,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -14,31 +14,47 @@
       "boards_running": 1,
       "workers": 3,
       "workers_vs_law_28": "3/28",
-      "mem_avail_mb": 6006,
+      "mem_avail_mb": 5322,
       "disk_free_gb": 10,
-      "load1": 15.3,
-      "dispatch_idle_why": "mem 6119MB < 8500",
+      "load1": 14.2,
+      "dispatch_idle_why": "mem 6442MB < 8500",
       "published_ss": []
     },
     "s2": {
-      "unreachable": true
+      "published_last_60m": 2,
+      "published_last_3h": 4,
+      "boards": {
+        "AGI_SHORT": 7,
+        "AWEUSDT_LONG": 7,
+        "ZCSH_SHORT": 7
+      },
+      "boards_running": 3,
+      "workers": 21,
+      "workers_vs_law_28": "21/28",
+      "mem_avail_mb": 10828,
+      "disk_free_gb": 23,
+      "load1": 20.3,
+      "dispatch_idle_why": "mem 9723MB < 8500+3000 owed by 1 ramping",
+      "published_ss": [
+        "MSTR_LONG",
+        "QNTUSDT_LONG"
+      ]
     },
     "s5": {
       "published_last_60m": 3,
       "published_last_3h": 7,
       "boards": {
         "1MBABYDOGEUSDT_SHORT": 0,
-        "ARUSDT_LONG": 7,
         "ENJUSDT_SHORT": 6,
-        "PTBUSDT_SHORT": 0
+        "PTBUSDT_SHORT": 7
       },
-      "boards_running": 4,
+      "boards_running": 3,
       "workers": 13,
       "workers_vs_law_28": "13/28",
-      "mem_avail_mb": 16445,
-      "disk_free_gb": 11,
-      "load1": 6.5,
-      "dispatch_idle_why": "HOLD until 2026-10-31T06:33Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
+      "mem_avail_mb": 17591,
+      "disk_free_gb": 10,
+      "load1": 10.7,
+      "dispatch_idle_why": "no pending work anywhere (or none that fits memory)",
       "published_ss": [
         "CHILLGUYUSDT_SHORT",
         "GRTUSDT_LONG",
@@ -50,17 +66,17 @@
       "published_last_3h": 7,
       "boards": {
         "1000XECUSDT_SHORT": 0,
-        "1INCHUSDT_SHORT": 7,
+        "CHILLGUYUSDT_SHORT": 7,
         "EDUUSDT_SHORT": 0,
         "KAVAUSDT_LONG": 0
       },
       "boards_running": 4,
       "workers": 7,
       "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 19742,
+      "mem_avail_mb": 19890,
       "disk_free_gb": 18,
-      "load1": 8.2,
-      "dispatch_idle_why": "HOLD until 2026-10-31T06:33Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
+      "load1": 6.0,
+      "dispatch_idle_why": "spacing 27s < 120",
       "published_ss": [
         "BBUSDT_LONG",
         "FIDAUSDT_SHORT",
@@ -69,14 +85,15 @@
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=mem 6119MB < 8500)",
+    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=mem 6442MB < 8500)",
     "DISK_FLOOR:s1:10GB<40",
-    "UNREACHABLE:s2",
-    "LOW_THROUGHPUT:s5:3/h<12 (idle_why=HOLD until 2026-10-31T06:33Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))",
-    "DISK_FLOOR:s5:11GB<40",
-    "STUCK_BOARD:s5:ENJUSDT_SHORT:151min",
-    "LOW_THROUGHPUT:s6:3/h<12 (idle_why=HOLD until 2026-10-31T06:33Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))",
+    "LOW_THROUGHPUT:s2:2/h<12 (idle_why=mem 9723MB < 8500+3000 owed by 1 ramping)",
+    "DISK_FLOOR:s2:23GB<40",
+    "LOW_THROUGHPUT:s5:3/h<12 (idle_why=no pending work anywhere (or none that fits memory))",
+    "DISK_FLOOR:s5:10GB<40",
+    "STUCK_BOARD:s5:ENJUSDT_SHORT:156min",
+    "LOW_THROUGHPUT:s6:3/h<12 (idle_why=spacing 27s < 120)",
     "DISK_FLOOR:s6:18GB<40"
   ],
-  "repair": "DISK_REPAIR:s1:10GB->11G (eval_cache_v1.db + rebuild_scratch_* deleted); DISK_REPAIR:s5:11GB->25G (eval_cache_v1.db + rebuild_scratch_* deleted)"
+  "repair": "DISK_REPAIR:s1:10GB->11G (eval_cache_v1.db + rebuild_scratch_* deleted); DISK_REPAIR:s5:10GB->24G (eval_cache_v1.db + rebuild_scratch_* deleted)"
 }

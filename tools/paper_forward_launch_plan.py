@@ -4,6 +4,7 @@ import hashlib
 import json
 import sqlite3
 import tempfile
+import time
 from pathlib import Path
 
 try:
@@ -33,6 +34,7 @@ def write_once(path, value):
 
 def build(root):
     root = Path(root)
+    anchor = int(time.time())
     catalog = resolve_catalog(inventory(root), root / "SPREADSHEETS/TEMPLATE_FINAL_NORM")
     database = root / "data/hourly_reconfig/per_sym_store.db"
     groups, missing = [], []
@@ -58,7 +60,7 @@ def build(root):
             groups.append({"sym_side": sym_side, "venue": venue, "side": side, "host": stable_host(venue, symbol, side), "settings_updated_at": updated_at, "settings_sha256": settings_hash, "effective_settings": settings, "scenario_ids": selected, "scenario_count": len(selected), "status": "AWAITING_ADMISSION", "epoch_id": digest({"sym_side": sym_side, "settings": settings_hash, "sources": catalog["file_sha256"]})})
     allowed = json.loads((root / "data/v15_best_first.json").read_text())["allowed"]
     missing.extend({"sym_side": symbol, "reason": "NO_ACTIVE_SETTINGS"} for symbol in sorted(set(allowed) - set(universe)))
-    return {"schema_version": 1, "planned_at": utc_now(), "status": "PLAN_ONLY", "running_scenarios": 0, "promotion_enabled": False, "catalog": catalog, "universe_sha256": digest(universe), "universe_source": str(database) + "#per_sym_active/all", "settings_source": str(database), "groups": groups, "uncovered": missing}
+    return {"schema_version": 1, "experiment_window": {"window_id": "prospective-six-hour-" + str(anchor), "source_timeframe": "1m", "anchor": "first_available_after", "not_before_source_ts": anchor, "duration_seconds": 21600}, "planned_at": utc_now(), "status": "PLAN_ONLY", "running_scenarios": 0, "promotion_enabled": False, "catalog": catalog, "universe_sha256": digest(universe), "universe_source": str(database) + "#per_sym_active/all", "settings_source": str(database), "groups": groups, "uncovered": missing}
 
 def export(plan, destination, remote_root, engine_root):
     destination = Path(destination)
