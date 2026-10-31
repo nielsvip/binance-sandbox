@@ -29,7 +29,7 @@ def fingerprint(value):
     return hashlib.sha256(json.dumps(normalized(value), sort_keys=True, separators=(',', ':'), allow_nan=False).encode()).hexdigest()
 
 
-def load_pin(path, sym_side, defaults, npz, window_days):
+def load_pin(path, sym_side, defaults, npz, window_days, supported_fields=None, global_fields=()):
     pin = json.loads(Path(path).read_text())
     if pin.get('schema') != 'v15_pinned_baseline/1' or pin.get('sym_side') != sym_side or pin.get('window_days') != window_days:
         raise PinnedBaselineError('baseline pin scope mismatch')
@@ -63,23 +63,31 @@ def load_pin(path, sym_side, defaults, npz, window_days):
         previous_source = previous_source[key]
     if fingerprint(previous_source) != fingerprint(previous):
         raise PinnedBaselineError('previous effective defaults differ from anchored source')
-    settings = dict(pin.get('accepted_full_settings', {}))
-    if not previous or not settings or not set(previous).issubset(settings):
-        raise PinnedBaselineError('complete previous defaults and accepted full settings required')
-    known_previous = set(previous) | set(settings)
-    new = set(defaults) - known_previous
+    accepted_settings = dict(pin.get('accepted_full_settings', {}))
+    configs = proof.get('effective_config_values')
+    if not accepted_settings or not isinstance(configs, list) or len(configs) != 1 or fingerprint(configs) != proof.get('effective_config_sha256'):
+        raise PinnedBaselineError('independent previous actual effective config required; raw SQL/default key counts are not a configuration oracle')
+    previous_config = configs[0]
+    supported = set(supported_fields) if supported_fields is not None else set(defaults)
+    managed = set(global_fields) & supported
+    per_sym = supported - managed
+    retired = set(previous_config) - supported
+    if retired:
+        raise PinnedBaselineError(f'previous effective engine fields disappeared: {sorted(retired)}')
+    new = supported - set(previous_config)
     neutral = pin.get('neutral_new_keys', {})
     if set(neutral) != new:
-        raise PinnedBaselineError('every new key requires explicit previous-behavior neutral manifest')
-    if known_previous - set(defaults):
-        raise PinnedBaselineError('previous baseline keys disappeared')
+        raise PinnedBaselineError('every new key/engine field requires explicit previous-behavior neutral manifest')
     for key in new:
         entry = neutral[key]
         if 'value' not in entry or not entry.get('previous_behavior') or not entry.get('evidence_sha256'):
             raise PinnedBaselineError('neutral new key lacks explicit previous-behavior evidence')
-        settings[key] = entry['value']
-    if set(settings) != set(defaults):
-        raise PinnedBaselineError('incomplete effective baseline key coverage')
+    settings = {key: value for key, value in previous_config.items() if key in per_sym}
+    settings.update({key: entry['value'] for key, entry in neutral.items() if key in per_sym})
+    if set(settings) != per_sym:
+        raise PinnedBaselineError('incomplete supported per-sym effective configuration')
+    pin['global_context'] = {key: value for key, value in previous_config.items() if key in managed}
+    pin['reader_transformations'] = {'raw_accepted_keys_not_engine_fields': sorted(set(accepted_settings) - supported), 'globally_managed_keys_not_per_sym_overrides': sorted(managed), 'prior_defaults_keys_not_engine_fields': sorted(set(previous) - supported), 'source': 'previous actual evaluator coercion/dependencies/template/market-mode context; effective config independently measured'}
     pin['settings'] = settings
     return pin
 
@@ -91,7 +99,7 @@ def assert_settings(pin, settings):
 
 
 RESULT_FIELDS = frozenset('symside offset_days gain_pct gain_per_mo bh_pct bh_per_mo delta_vs_bh delta_per_mo max_dd_pct net_gain_dollars max_invested_dollars avg_invested_dollars flat_gain_pct sizing_lift_pct size_return_corr lifecycles engine_max_dd_pct_RAW tim_pct wr_pct engine_wr_RAW pool_sharpe trades ledger execution_ledger peak_notional exposure_series equity_curve seeded gain_dollars mean_deployed spike_trades_dropped spike_frac behavior_fingerprint htf_align years bars window_days data_days favorable_capture_pct adverse_exposure_pct directional_precision_pct slope_size_alignment valid invalid_reason beats_bh beats_bh_10x score binding'.split())
-RESULT_SEPARATE_IDENTITY = frozenset(['overrides', 'npz_provenance'])
+RESULT_SEPARATE_IDENTITY = frozenset(['overrides', 'npz_provenance', 'dropped_retired_keys', 'dep_forced'])
 
 
 def result_fields(result):
@@ -121,7 +129,7 @@ def capture_actual(prepared, settings, evaluate, window_days):
     if timestamps is None:
         raise PinnedBaselineError('actual prepared input cutoff identity required')
     cutoff = fingerprint({'timestamps': timestamps, 'window_days': prepared.get('window_days'), 'offset_days': prepared.get('offset_days', 0)})
-    return result, {'input_cutoff_sha256': cutoff, 'effective_config_sha256': fingerprint(configs), 'effective_config_values': normalized(configs), 'execution_ledger_sha256': fingerprint(ledger), 'result_sha256': fingerprint(result_fields(result))}
+    return result, {'reader_transformations': {key: normalized(result.get(key)) for key in ['dropped_retired_keys', 'dep_forced']}, 'input_cutoff_sha256': cutoff, 'effective_config_sha256': fingerprint(configs), 'effective_config_values': normalized(configs), 'execution_ledger_sha256': fingerprint(ledger), 'result_sha256': fingerprint(result_fields(result))}
 
 
 def enforce_actual(pin, prepared, settings, evaluate, window_days):

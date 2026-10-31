@@ -76,3 +76,30 @@ def test_push_preserves_actual_source_time(tmp_path, monkeypatch):
     row = accounts["ang"]["TESTUSDT_LONG"]
     assert row["source_file_epoch"] == path.stat().st_mtime
     assert row["last_updated"] == "2020-01-01T00:00:00Z"
+
+
+def test_crypto_augment_cannot_exceed_market_mode_position_cap(monkeypatch):
+    monkeypatch.setattr(trader, "MAX_OPEN_NOTIONAL", 80.0)
+    monkeypatch.setattr(trader, "ENTRY_NOTIONAL_CEILING_USD", 20.0)
+    broker = trader.Binance.__new__(trader.Binance)
+    broker.exchange_info = lambda: {"QNTUSDT": {"step": 0.1, "min_qty": 0.1, "min_notional": 5.0}}
+    quantity, why = broker.size({"ss": "QNTUSDT_LONG", "act": "AUGMENT", "qty": 0.04}, 0.4, 199.0)
+    assert quantity == 0 and "market-mode cap" in why
+    assert broker.size({"ss": "QNTUSDT_LONG", "act": "AUGMENT", "qty": 0.04}, 0.3, 199.0) == (0.1, "")
+    assert broker.size({"ss": "QNTUSDT_LONG", "act": "CLOSE"}, 1.1, 199.0) == (1.1, "")
+
+
+def test_crypto_open_rounding_still_respects_position_cap(monkeypatch):
+    monkeypatch.setattr(trader, "MAX_OPEN_NOTIONAL", 80.0)
+    monkeypatch.setattr(trader, "ENTRY_NOTIONAL_CEILING_USD", 100.0)
+    broker = trader.Binance.__new__(trader.Binance)
+    broker.exchange_info = lambda: {"TESTUSDT": {"step": 1.0, "min_qty": 1.0, "min_notional": 80.0}}
+    quantity, why = broker.size({"ss": "TESTUSDT_LONG", "act": "OPEN", "notional": 80.0}, 0, 21.0)
+    assert quantity == 0
+
+
+def test_crypto_order_ceiling_comes_from_venue_config(monkeypatch):
+    import config
+    monkeypatch.setattr(trader, "ENTRY_NOTIONAL_CEILING_USD", 3200.0)
+    trader.apply_venue_sizing("crypto")
+    assert trader.ENTRY_NOTIONAL_CEILING_USD == config.Config().MAX_ORDER_VALUE

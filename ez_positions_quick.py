@@ -30156,6 +30156,26 @@ async def check_entry_candidates_for_account(
                             logger.info(
                                 f"[REENTRY_PENDING] {position_key}: {_min_since_exit_epq:.0f}min since exit at {_reentry_px:.6f}, waiting for signal. k3m={_px_k3m:.0f}"
                             )
+                if not should_trade and pos_amt <= _pos_min_qty_entry:
+                    try:
+                        import vec_decisions.reentry_triggers as _reentry_triggers
+                        from live_twins.reentry_augment import epoch as _reentry_epoch
+                        _rt_saved = (getattr(trade_manager, "reentry_data", {}) or {}).get(position_key) or {}
+                        _rt_exit_px = safe_fetch_float(getattr(position, "last_reduction_price", 0) or _rt_saved.get("reentry_level") or (tracker_manager.last_exit_prices or {}).get(position_key) or 0, 0.0)
+                        _rt_exit_ts = _reentry_epoch(getattr(position, "last_reduction_time", None)) or _reentry_epoch(_rt_saved.get("timestamp")) or _reentry_epoch((tracker_manager.last_exit_times or {}).get(position_key)) or 0.0
+                        _rt_cfg = lambda key, default: _sw_get(symbol, position_side, key, default)
+                        if _rt_exit_ts > 0 and _reentry_triggers.any_enabled(_rt_cfg):
+                            _rt_path = Path(getattr(config, "BASE_PATH", ".")) / "klines_cache" / f"{symbol}_15m.json"
+                            _rt_name = _reentry_triggers.fire_live(_rt_cfg, is_long, current_price, indicators, _rt_exit_px, _rt_exit_ts, _rt_path, asof_ts=now)
+                            if _rt_name:
+                                should_trade = True
+                                _dc_breakout_entry = True
+                                score = max(score, 20.0)
+                                reason = _rt_name
+                                rec = "STRONG_BUY" if is_long else "STRONG_SELL"
+                                logger.warning(f"[{_rt_name}] {position_key}: flat re-entry trigger fired at {current_price:.6f}")
+                    except Exception as _rt_error:
+                        logger.warning(f"[REENTRY_TRIGGERS] {position_key}: flat path error: {_rt_error}")
                 # == EVALUATE_REENTRY (ported from ez_manage.py:16010) — 7-block per-symbol reentry evaluator ==
                 # Runs as fallback when TIER1/TIER2 did NOT fire. Reuses SAME MIN_GAP + SYMGATE + RALLY_K15M guards.
                 # 2026-04-28: gated by EZ_REENTRY_INLINE_EVAL_EPQ_ENABLED.

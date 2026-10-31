@@ -94,7 +94,7 @@ def apply_venue_sizing(venue: str) -> dict:
     below also refuses a value that arrived from the wrong class. A read failure is fatal — the trader
     must not guess a position size.
     """
-    global START_POSITION_SIZE, MAX_OPEN_NOTIONAL, STOCK_ONE_SHARE_MAX
+    global START_POSITION_SIZE, MAX_OPEN_NOTIONAL, STOCK_ONE_SHARE_MAX, ENTRY_NOTIONAL_CEILING_USD
     v = "stocks" if str(venue).lower().startswith("stock") else "crypto"
     if v == "crypto":
         import config as _m
@@ -120,6 +120,10 @@ def apply_venue_sizing(venue: str) -> dict:
         raise SystemExit(f"REFUSED: {src} gives START_POSITION_SIZE={start} MAX_POSITION_SIZE={maxpos} — refusing to trade on a non-positive size")
     START_POSITION_SIZE = start
     MAX_OPEN_NOTIONAL = maxpos
+    if v == "crypto":
+        ENTRY_NOTIONAL_CEILING_USD = float(getattr(_inst, "MAX_ORDER_VALUE"))
+        if not math.isfinite(ENTRY_NOTIONAL_CEILING_USD) or ENTRY_NOTIONAL_CEILING_USD <= 0:
+            raise SystemExit(f"REFUSED: {src} MAX_ORDER_VALUE must be positive and finite")
     # stocks-only: one whole share is allowed up to the venue's own max position, never a third number
     STOCK_ONE_SHARE_MAX = maxpos if v == "stocks" else 0.0
     rep = {"venue": v, "config": src, "pinned": [],
@@ -778,6 +782,8 @@ class Binance:
                 q = self._floor(notional / price + step, step)
             if q * price > ENTRY_NOTIONAL_CEILING_USD:
                 return 0.0, f"entry ${q * price:.0f} > ${ENTRY_NOTIONAL_CEILING_USD:.0f} ceiling (skip)"
+            if (held + q) * price > MAX_OPEN_NOTIONAL + 1e-8:
+                return 0.0, f"position ${(held + q) * price:.2f} > ${MAX_OPEN_NOTIONAL:.2f} market-mode cap (skip)"
             return (q, "") if q >= mq else (0.0, f"qty {q} < minQty {mq}")
         if o["act"] == "AUGMENT":
             q = self._floor(max(float(o["qty"]), mn * 1.02 / price), step)
@@ -786,6 +792,8 @@ class Binance:
                 q = self._floor(mn * 1.02 / price + step, step)
             if q * price > ENTRY_NOTIONAL_CEILING_USD:
                 return 0.0, f"augment ${q * price:.0f} > ${ENTRY_NOTIONAL_CEILING_USD:.0f} ceiling (skip)"
+            if (held + q) * price > MAX_OPEN_NOTIONAL + 1e-8:
+                return 0.0, f"position ${(held + q) * price:.2f} > ${MAX_OPEN_NOTIONAL:.2f} market-mode cap (skip)"
             return (q, "") if q >= mq else (0.0, f"qty {q} < minQty {mq}")
         q = self._floor(min(float(o["qty"]), held), step)
         if q < mq or q <= 0:

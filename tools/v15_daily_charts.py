@@ -492,8 +492,8 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict], equity: dict |
 def fail_page(symside: str, board: dict, error: str, now: str) -> str:
     source = Path(board.get("board_html") or "")
     historical = source.is_file() and source.parent == CELL
-    original = board.get("orig_metrics") or {}
-    title = f"{symside} — ORIGINAL board"
+    original = board.get("orig_metrics") or (parse_chart_metrics(source.read_text(encoding="utf-8", errors="replace")) if historical else {})
+    title = f"{symside} — {'ORIGINAL board' if historical else 'source chart unavailable'}"
     if historical:
         title += f" · B&H {_fmt(original.get('bh_pct'))}% · {original.get('trades') or '?'} vector trades · gain {_fmt(original.get('gain_pct'))}%"
     source_url = "../V15_V16_CELL_BY_CELL/" + source.name if historical else ""
