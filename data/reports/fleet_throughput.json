@@ -1,8 +1,8 @@
 {
-  "ts": "2026-10-31T17:20:06.600217+00:00",
+  "ts": "2026-10-31T17:30:05.484444+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
-  "fleet_published_last_60m": 1,
+  "fleet_published_last_60m": 0,
   "pending_sym_sides": 56,
   "hosts": {
     "s1": {
@@ -12,9 +12,9 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 26587,
+      "mem_avail_mb": 26656,
       "disk_free_gb": 0,
-      "load1": 15.9,
+      "load1": 15.2,
       "dispatch_idle_why": "disk 0MB < 3000",
       "published_ss": []
     },
@@ -25,14 +25,14 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 19261,
+      "mem_avail_mb": 18873,
       "disk_free_gb": 23,
-      "load1": 3.4,
+      "load1": 4.9,
       "dispatch_idle_why": "HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": []
     },
     "s5": {
-      "published_last_60m": 1,
+      "published_last_60m": 0,
       "published_last_3h": 1,
       "boards": {
         "WIFUSDC_SHORT": 7
@@ -40,13 +40,11 @@
       "boards_running": 1,
       "workers": 7,
       "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 23608,
+      "mem_avail_mb": 23360,
       "disk_free_gb": 52,
-      "load1": 1.2,
+      "load1": 1.4,
       "dispatch_idle_why": "HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
-      "published_ss": [
-        "BCHUSDC_SHORT"
-      ]
+      "published_ss": []
     },
     "s6": {
       "published_last_60m": 0,
@@ -55,9 +53,9 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 28182,
+      "mem_avail_mb": 27924,
       "disk_free_gb": 47,
-      "load1": 0.8,
+      "load1": 1.1,
       "dispatch_idle_why": "HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": []
     }
@@ -67,7 +65,7 @@
     "DISK_FLOOR:s1:0GB<40",
     "LOW_THROUGHPUT:s2:0/h<12 (idle_why=HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))",
     "DISK_FLOOR:s2:23GB<40",
-    "LOW_THROUGHPUT:s5:1/h<12 (idle_why=HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))",
+    "LOW_THROUGHPUT:s5:0/h<12 (idle_why=HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))",
     "LOW_THROUGHPUT:s6:0/h<12 (idle_why=HOLD until 2026-10-31T11:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))"
   ],
   "repair": "DISK_REPAIR:s1:0GB->0G (eval_cache_v1.db + rebuild_scratch_* deleted)"
