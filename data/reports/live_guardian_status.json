@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T13:36:34Z",
+ "ts": "2026-10-31T13:41:46Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 21,
    "open_positions": 22,
-   "unrealised_usd": 0.63,
+   "unrealised_usd": 0.31,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 25,
    "open_positions": 5,
-   "unrealised_usd": -0.38,
+   "unrealised_usd": -0.43,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 5,
    "open_positions": 5,
-   "unrealised_usd": -0.33,
+   "unrealised_usd": -0.41,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,58 +127,66 @@
     "43587"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 28.0
   },
   "men": {
    "pids": [
     "7492"
    ],
    "starts_30m": 1,
-   "log_age_s": -0.0
+   "log_age_s": 9.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 27.0
+   "log_age_s": 41.0
   },
   "inf": {
    "pids": [
     "11994"
    ],
    "starts_30m": 1,
-   "log_age_s": 9.0
+   "log_age_s": 8.0
   },
   "flz": {
    "pids": [
     "73791"
    ],
    "starts_30m": 1,
-   "log_age_s": 11.0
+   "log_age_s": 209.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 32056.0
+   "log_age_s": 32368.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 32372.0
+   "log_age_s": 32684.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T13:36:34Z",
+   "ts": "2026-10-31T13:41:46Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:FLUXUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T11:14:33Z bar=2026-10-31T10:45:00Z: no fill in 1800s and no refusal logged"
+  },
+  {
+   "ts": "2026-10-31T13:41:48Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 209s"
   }
  ],
  "alert_counts": {
-  "VEC_DECISION_NOT_FILLED": 1
+  "VEC_DECISION_NOT_FILLED": 1,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -231,5 +239,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.37
+ "sweep_s": 1.99
 }
