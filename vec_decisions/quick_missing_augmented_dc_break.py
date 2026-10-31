@@ -16,6 +16,16 @@ def augmented_dc_break_channel(indicators, is_long, ltf_enabled):
     return value if np.isfinite(value) and value > 0.0 else 0.0
 
 
+def augmented_dc_break_price_breached(price, dc_level, is_long):
+    try:
+        px, level = float(price), float(dc_level)
+    except (TypeError, ValueError, OverflowError):
+        return False
+    if not np.isfinite(px) or not np.isfinite(level) or px <= 0.0 or level <= 0.0:
+        return False
+    return px < level if is_long else px > level
+
+
 def augmented_dc_break_pos_min_qty(symbol, price, min_position_usd):
     """Mirror EPQ's max(2 * MIN_POSITION_SIZE / price, exchange minQty)."""
     try:
@@ -46,7 +56,7 @@ def augmented_dc_break_fires(position_qty, pos_min_qty, price, dc_level, gain_pc
         return False
     if qty <= 1.2 * min_qty:
         return False
-    return (px < level) if is_long else (px > level)
+    return augmented_dc_break_price_breached(px, level, is_long)
 
 
 def augmented_dc_break_reduce_qty(position_qty, pos_min_qty, gain_pct, min_profit_pct, low_frac, med_frac, high_frac):

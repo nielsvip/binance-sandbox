@@ -51,10 +51,13 @@ def test_catchup_reserves_one_slot_per_host_worst_first():
 
 def test_catchup_relaunches_only_for_new_chart_run():
     doc = {"run_id": "new", "rows": [{"symside": "AAPL_LONG", "drop_pp": 22.0}, {"symside": "BTCUSDT_SHORT", "drop_pp": 12.0}]}
-    data = fleet4(s5=host(launches={"AAPL_LONG": {"mode": "catchup", "catchup_run_id": "new"}}))
-    assert F.unlaunched_catchup(doc, data) == ["BTCUSDT_SHORT"]
+    data = fleet4(s5=host(launches={"AAPL_LONG": {"mode": "catchup", "catchup_run_id": "new", "ts": NOW - 20, "n": 1}}))
+    assert F.unlaunched_catchup(doc, data, now=NOW) == ["BTCUSDT_SHORT"]
+    assert F.unlaunched_catchup(doc, data, now=NOW + F.RETRY_S + 1) == ["AAPL_LONG", "BTCUSDT_SHORT"]
+    data["s5"]["progress"] = {"AAPL_LONG": {"complete": True, "mtime": NOW + 10}}
+    assert F.unlaunched_catchup(doc, data, now=NOW + F.RETRY_S + 1) == ["BTCUSDT_SHORT"]
     doc["run_id"] = "next"
-    assert F.unlaunched_catchup(doc, data) == ["AAPL_LONG", "BTCUSDT_SHORT"]
+    assert F.unlaunched_catchup(doc, data, now=NOW) == ["AAPL_LONG", "BTCUSDT_SHORT"]
 
 
 def test_overflow_when_home_exhausted_follows_priority():

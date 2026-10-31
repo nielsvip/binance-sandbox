@@ -25,9 +25,10 @@ from __future__ import annotations
 
 import glob
 import json
+import math
 import os
 import time
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 CACHE_NAME = "fee_model.json"
@@ -105,10 +106,38 @@ def _quote_asset(row: dict) -> str:
 
 
 def _timestamp_ms(row: dict) -> int:
-    try:
-        return int(row.get("time") or row.get("timestamp_ms") or 0)
-    except (TypeError, ValueError):
+    stamp = _finite_float(row.get("time") or row.get("timestamp_ms") or 0)
+    if stamp is None:
         return 0
+    try:
+        return int(stamp)
+    except (TypeError, ValueError, OverflowError):
+        return 0
+
+
+def _maker_liquidity(row: dict) -> str:
+    value = row.get("maker")
+    if isinstance(value, bool):
+        return "MAKER" if value else "TAKER"
+    if isinstance(value, int) and value in (0, 1):
+        return "MAKER" if value == 1 else "TAKER"
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in ("true", "1"):
+            return "MAKER"
+        if normalized in ("false", "0"):
+            return "TAKER"
+    return "UNVERIFIED"
+
+
+def _finite_float(value):
+    try:
+        number = float(value)
+        if math.isfinite(number):
+            return number
+    except (TypeError, ValueError, OverflowError):
+        pass
+    return None
 
 
 def _candle_time_ms(row) -> int:
@@ -125,7 +154,16 @@ def _candle_time_ms(row) -> int:
             return int(stamp) // 60000 * 60000
         stamp = row.get("timestamp")
         if stamp:
-            return int(datetime.fromisoformat(str(stamp).replace("Z", "+00:00")).timestamp() * 1000) // 60000 * 60000
+            return (
+                int(
+                    datetime.fromisoformat(
+                        str(stamp).replace("Z", "+00:00")
+                    ).timestamp()
+                    * 1000
+                )
+                // 60000
+                * 60000
+            )
     except (TypeError, ValueError, OverflowError):
         return 0
     return 0
@@ -193,10 +231,25 @@ def measure_execution_rates(
     Missing historical BNB minutes make the affected rate group UNVERIFIED.
     """
     root = Path(base_path) if base_path else _base_path()
-    cutoff_ms = (float(now_ms) if now_ms is not None else time.time() * 1000.0) - window_days * 86400.0 * 1000.0
-    candles = bnb_minute_candles if bnb_minute_candles is not None else _load_bnb_minute_candles(root)
+    upper_bound_ms = (
+        _finite_float(now_ms) if now_ms is not None else time.time() * 1000.0
+    )
+    if upper_bound_ms is None:
+        raise ValueError("now_ms must be a finite timestamp")
+    days = _finite_float(window_days)
+    if days is None or days <= 0:
+        raise ValueError("window_days must be a positive finite number")
+    cutoff_ms = upper_bound_ms - days * 86400.0 * 1000.0
+    candles = (
+        bnb_minute_candles
+        if bnb_minute_candles is not None
+        else _load_bnb_minute_candles(root)
+    )
     groups = {}
     missing = {}
+    unknown_liquidity = {}
+    seen_trade_ids = set()
+    duplicate_fill_count = 0
     fill_count = fee_bearing_count = 0
     unknown_quote_count = 0
     for path in glob.glob(str(root / "data" / "exchange_fills" / "*" / "*.json")):
@@ -207,34 +260,77 @@ def measure_execution_rates(
         for row in rows:
             try:
                 ts = _timestamp_ms(row)
-                if not ts or ts < cutoff_ms:
+                if not ts or ts < cutoff_ms or ts > upper_bound_ms:
                     continue
-                notional = abs(float(row.get("quoteQty") or 0.0))
+                notional_value = _finite_float(row.get("quoteQty") or 0.0)
+                if notional_value is None:
+                    continue
+                notional = abs(notional_value)
                 if notional <= 0:
                     continue
-                commission = abs(float(row.get("commission") or 0.0))
-            except (TypeError, ValueError):
+                commission_value = _finite_float(row.get("commission") or 0.0)
+                if commission_value is None:
+                    unknown_quote_count += 1
+                    continue
+                commission = abs(commission_value)
+            except (TypeError, ValueError, OverflowError):
                 continue
+            account = str(Path(path).parent.name)
+            symbol = str(row.get("symbol") or row.get("pair") or "").upper()
+            trade_id = row.get("id") or row.get("tradeId")
+            if trade_id is not None:
+                identity = (account, symbol, str(trade_id))
+                if identity in seen_trade_ids:
+                    duplicate_fill_count += 1
+                    continue
+                seen_trade_ids.add(identity)
             quote = _quote_asset(row)
             if quote not in ("USDT", "USDC"):
                 unknown_quote_count += 1
                 continue
-            liquidity = "MAKER" if bool(row.get("maker")) else "TAKER"
-            order_type = str(row.get("orderType") or row.get("type") or "UNSPECIFIED").upper()
-            client_id = str(row.get("clientOrderId") or row.get("client_order_id") or "")
-            prefix = "vds" if client_id.startswith("vds") else "vd" if client_id.startswith("vd") else client_id[:2] or "UNSPECIFIED"
-            keys = (("quote", quote), ("liquidity", quote, liquidity), ("execution", quote, order_type, liquidity), ("prefix", quote, prefix, liquidity))
+            liquidity = _maker_liquidity(row)
+            if liquidity == "UNVERIFIED":
+                unknown_liquidity[quote] = unknown_liquidity.get(quote, 0) + 1
+            order_type = str(
+                row.get("orderType") or row.get("type") or "UNSPECIFIED"
+            ).upper()
+            client_id = str(
+                row.get("clientOrderId") or row.get("client_order_id") or ""
+            )
+            prefix = (
+                "vds"
+                if client_id.startswith("vds")
+                else (
+                    "vd"
+                    if client_id.startswith("vd")
+                    else client_id[:2] or "UNSPECIFIED"
+                )
+            )
+            keys = (
+                ("quote", quote),
+                ("liquidity", quote, liquidity),
+                ("execution", quote, order_type, liquidity),
+                ("prefix", quote, prefix, liquidity),
+            )
             fill_count += 1
             if commission > 0:
                 fee_bearing_count += 1
             converted = None
-            bnb_fee = commission if str(row.get("commissionAsset") or "").upper() == "BNB" else 0.0
+            bnb_fee = (
+                commission
+                if str(row.get("commissionAsset") or "").upper() == "BNB"
+                else 0.0
+            )
             asset = str(row.get("commissionAsset") or "").upper()
             if commission > 0 and asset == "BNB":
                 minute = ts // 60000 * 60000
                 candle = (candles.get("BNB" + quote) or {}).get(minute)
                 if candle:
-                    bounds = _candle_bounds({"low": candle[0], "high": candle[1]}) if isinstance(candle, (list, tuple)) else _candle_bounds(candle)
+                    bounds = (
+                        _candle_bounds({"low": candle[0], "high": candle[1]})
+                        if isinstance(candle, (list, tuple))
+                        else _candle_bounds(candle)
+                    )
                     if bounds:
                         converted = commission * bounds[0], commission * bounds[1]
                 if converted is None:
@@ -246,7 +342,17 @@ def measure_execution_rates(
             if converted is None:
                 converted = (0.0, 0.0)
             for key in keys:
-                stats = groups.setdefault(key, {"fills": 0, "fee_bearing_fills": 0, "notional": 0.0, "bnb_fee": 0.0, "fee_low": 0.0, "fee_high": 0.0})
+                stats = groups.setdefault(
+                    key,
+                    {
+                        "fills": 0,
+                        "fee_bearing_fills": 0,
+                        "notional": 0.0,
+                        "bnb_fee": 0.0,
+                        "fee_low": 0.0,
+                        "fee_high": 0.0,
+                    },
+                )
                 stats["fills"] += 1
                 stats["fee_bearing_fills"] += int(commission > 0)
                 stats["notional"] += notional
@@ -257,8 +363,10 @@ def measure_execution_rates(
         "window_days": window_days,
         "fills": fill_count,
         "fee_bearing_fills": fee_bearing_count,
+        "duplicate_fill_rows_skipped": duplicate_fill_count,
         "unconverted_bnb_fee_fills": sum(missing.values()),
         "unconverted_by_pair": missing,
+        "unknown_liquidity_fills_by_quote": unknown_liquidity,
         "unknown_quote_or_fee_asset_fills": unknown_quote_count,
         "conversion_method": "same-minute, quote-specific BNB candle low/high; no live mark fallback",
         "by_quote": {},
@@ -270,25 +378,51 @@ def measure_execution_rates(
         kind = key[0]
         if kind == "quote":
             quote = key[1]
-            complete = missing.get("BNB" + quote, 0) == 0 and unknown_quote_count == 0
+            complete = (
+                missing.get("BNB" + quote, 0) == 0
+                and unknown_quote_count == 0
+                and unknown_liquidity.get(quote, 0) == 0
+            )
             result["by_quote"][quote] = _rates_from_stats(stats, complete)
         elif kind == "liquidity":
             _, quote, liquidity = key
-            complete = missing.get("BNB" + quote, 0) == 0 and unknown_quote_count == 0
-            result["by_quote_liquidity"].setdefault(quote, {})[liquidity] = _rates_from_stats(stats, complete)
+            complete = (
+                missing.get("BNB" + quote, 0) == 0
+                and unknown_quote_count == 0
+                and unknown_liquidity.get(quote, 0) == 0
+            )
+            result["by_quote_liquidity"].setdefault(quote, {})[liquidity] = (
+                _rates_from_stats(stats, complete)
+            )
         elif kind == "execution":
             _, quote, order_type, liquidity = key
-            complete = missing.get("BNB" + quote, 0) == 0 and unknown_quote_count == 0
-            result["by_quote_execution_type"].setdefault(quote, {}).setdefault(order_type, {})[liquidity] = _rates_from_stats(stats, complete)
+            complete = (
+                missing.get("BNB" + quote, 0) == 0
+                and unknown_quote_count == 0
+                and unknown_liquidity.get(quote, 0) == 0
+            )
+            result["by_quote_execution_type"].setdefault(quote, {}).setdefault(
+                order_type, {}
+            )[liquidity] = _rates_from_stats(stats, complete)
         else:
             _, quote, prefix, liquidity = key
-            complete = missing.get("BNB" + quote, 0) == 0 and unknown_quote_count == 0
-            result["by_quote_client_prefix"].setdefault(quote, {}).setdefault(prefix, {})[liquidity] = _rates_from_stats(stats, complete)
-    result["conversion_complete"] = not missing and unknown_quote_count == 0
+            complete = (
+                missing.get("BNB" + quote, 0) == 0
+                and unknown_quote_count == 0
+                and unknown_liquidity.get(quote, 0) == 0
+            )
+            result["by_quote_client_prefix"].setdefault(quote, {}).setdefault(
+                prefix, {}
+            )[liquidity] = _rates_from_stats(stats, complete)
+    result["conversion_complete"] = (
+        not missing and unknown_quote_count == 0 and not unknown_liquidity
+    )
     return result
 
 
-def round_trip_pct_for_execution(measurement: dict, quote: str, execution_type: str) -> float:
+def round_trip_pct_for_execution(
+    measurement: dict, quote: str, execution_type: str
+) -> float:
     """Select an observed quote-specific rate; MARKET is charged at observed taker rate."""
     quote = str(quote or "").upper()
     execution_type = str(execution_type or "").upper()
@@ -298,8 +432,14 @@ def round_trip_pct_for_execution(measurement: dict, quote: str, execution_type: 
         liquidity = "MAKER"
     else:
         raise ValueError("LIMIT execution needs its actual maker/taker outcome")
-    row = ((measurement.get("by_quote_liquidity") or {}).get(quote) or {}).get(liquidity)
-    if not row or not row.get("conversion_complete") or "round_trip_pct_high" not in row:
+    row = ((measurement.get("by_quote_liquidity") or {}).get(quote) or {}).get(
+        liquidity
+    )
+    if (
+        not row
+        or not row.get("conversion_complete")
+        or "round_trip_pct_high" not in row
+    ):
         raise ValueError(f"historical {quote} {liquidity} fee rate is unverified")
     return float(row["round_trip_pct_high"])
 

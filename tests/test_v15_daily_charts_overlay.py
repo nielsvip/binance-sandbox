@@ -2,7 +2,7 @@ import datetime
 import json
 import re
 
-from tools.v15_daily_charts import discrepancy_overlay
+from tools.v15_daily_charts import catchup_rows, discrepancy_overlay
 
 
 def _epoch(label):
@@ -76,3 +76,12 @@ def test_confirmed_protective_stop_is_counted_as_live_close_at_fill_bar():
     assert fills[0]["action"] == "CLOSE (protective stop)"
     assert fills[0]["i"] == 1
     assert not any(row["action"] == "CLOSE" for row in discrepancies["orange"])
+
+
+def test_catchup_orders_negative_gain_and_skips_superseded_boards(monkeypatch):
+    monkeypatch.setattr("tools.v15_daily_charts.latest_publish", lambda ss: "2026-10-31T00:00:00Z" if ss == "OLD_LONG" else "2026-10-30T00:00:00Z")
+    entries = []
+    for ss, delta in (("SMALL_LONG", -4.0), ("LARGE_LONG", -22.0), ("OLD_LONG", -50.0), ("UP_LONG", 3.0)):
+        entries.append({"symside": ss, "status": "OK", "deltas": {"gain_pct": delta}, "calculated_utc": "2026-10-30T20:00:00Z", "set_md5": "abc", "board_published_utc": "2026-10-29T00:00:00Z"})
+    rows = catchup_rows({"entries": entries})
+    assert [(r["symside"], r["drop_pp"]) for r in rows] == [("LARGE_LONG", 22.0), ("SMALL_LONG", 4.0)]

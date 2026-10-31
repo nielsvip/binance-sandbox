@@ -162,19 +162,23 @@ def summarize_run(result: dict, round_trip_fee_pct: float, window_days: int) -> 
         "ppl_remainder_close_count": len(ppl_closes),
         "ppl_remainder_close_losing_count": sum(float(e.get("pnl_dollars") or 0) <= 0 for e in ppl_closes),
         "all_losing_close_count": sum(float(e.get("pnl_dollars") or 0) < 0 for e in trades),
-        "max_dd_pct_engine": result.get("max_dd_pct"),
         "metric_guard_sample_status": "DIAGNOSTIC_ONLY" if guarded_diagnostic else "VALIDATED",
         "trade_rows": rows,
         "trade_lifecycle_sha256": sha256_json([{k: r.get(k) for k in ("bar_entry", "bar_exit", "entry_price", "exit_price", "net_pnl_engine", "exit_reason")} for r in rows]),
     }
 
 
-def run_side(ss: str, loss_count: int, meta: dict, prepared, window_days: int, npz_dir: Path | None) -> dict:
+def run_side(ss: str, loss_count: int, meta: dict, prepared, window_days: int, npz_dir: Path | None,
+             market_fee_override: float | None = None) -> dict:
     from tools.opt import evaluate_v12 as engine
 
-    base = meta["full_config"]
+    published_base = dict(meta["full_config"])
+    base = dict(published_base)
     base_cfg = prepared.get("base_cfg_dict") or {}
     round_trip_fee = float(base.get("CRYPTO_ROUND_TRIP_COMMISSION_PCT", base_cfg.get("CRYPTO_ROUND_TRIP_COMMISSION_PCT", 0.08)) or 0.0)
+    if market_fee_override is not None:
+        round_trip_fee = float(market_fee_override)
+        base["CRYPTO_ROUND_TRIP_COMMISSION_PCT"] = round_trip_fee
     commission_buffer = float(base.get("COMMISSION_BUFFER_PCT", base_cfg.get("COMMISSION_BUFFER_PCT", 0.08)) or 0.0)
     fee_floor = max(round_trip_fee, commission_buffer)
     variants = candidate_configs(base, fee_floor)
@@ -204,6 +208,8 @@ def run_side(ss: str, loss_count: int, meta: dict, prepared, window_days: int, n
     return {
         "sym_side": ss, "inventory_confirmed_losing_fixed_stop_fill_count": loss_count,
         "active_set": {k: meta[k] for k in ("cat_side", "updated_at", "winning_tag", "template_md5", "published_overrides_sha256", "published_full_config_sha256")},
+        "active_full_config_snapshot": published_base,
+        "engine_base_config_snapshot": base,
         "active_ppl_settings": {k: base.get(k) for k in PPL_FIELDS},
         "fee_policy": {"engine_round_trip_commission_pct": round_trip_fee,
                         "commission_buffer_pct": commission_buffer,
@@ -233,6 +239,8 @@ def main():
     ap.add_argument("--min-losing-stop-fills", type=int, default=3)
     ap.add_argument("--symsides", default="", help="optional comma-list intersected with inventory selection")
     ap.add_argument("--npz-dir", default="", help="immutable copied NPZ directory passed to v12_quick_engine.load_npz")
+    ap.add_argument("--market-fee-usdt", type=float, default=None, help="research-only crypto RT fee override for USDT-quoted symbols")
+    ap.add_argument("--market-fee-usdc", type=float, default=None, help="research-only crypto RT fee override for USDC-quoted symbols")
     args = ap.parse_args()
     if args.window_days not in (7, 30, 365):
         ap.error("--window-days must be 7, 30 or 365")
@@ -281,7 +289,11 @@ def main():
             if not prepared:
                 errors[ss] = "ENGINE_PREPARE_FAILED"
                 continue
-            sides[ss] = run_side(ss, loss_count, active[ss], prepared, args.window_days, npz_dir)
+            quote = ss.rsplit("_", 1)[0]
+            fee_override = args.market_fee_usdc if quote.endswith("USDC") else args.market_fee_usdt if quote.endswith("USDT") else None
+            if fee_override is None:
+                raise ValueError(f"no market fee override configured for quote in {ss}")
+            sides[ss] = run_side(ss, loss_count, active[ss], prepared, args.window_days, npz_dir, fee_override)
         except Exception as exc:
             errors[ss] = f"{type(exc).__name__}:{exc}"
         if index % 5 == 0 or index == len(selected):
@@ -293,6 +305,9 @@ def main():
                 "db": str(db_path), "db_file_sha256": db_hash, "window_days": args.window_days,
                 "selected_sym_sides": selected, "completed_sym_sides": sorted(sides),
                 "frozen_npz_dir": str(npz_dir) if npz_dir else None,
+                "research_fee_overlay": {"market_taker_round_trip_pct_usdt": args.market_fee_usdt,
+                                          "market_taker_round_trip_pct_usdc": args.market_fee_usdc,
+                                          "basis": "conservative rounded observed MARKET/taker fees; historical exact strategy fee-setting unknown"},
                 "errors": errors, "sides": sides,
             }, indent=2))
             print(f"[gain-protection-lab] checkpoint sides={len(sides)} errors={len(errors)}", flush=True)
@@ -303,6 +318,9 @@ def main():
         "db": str(db_path), "db_file_sha256": db_hash, "window_days": args.window_days,
         "selected_sym_sides": selected, "completed_sym_sides": sorted(sides),
         "frozen_npz_dir": str(npz_dir) if npz_dir else None,
+        "research_fee_overlay": {"market_taker_round_trip_pct_usdt": args.market_fee_usdt,
+                                  "market_taker_round_trip_pct_usdc": args.market_fee_usdc,
+                                  "basis": "conservative rounded observed MARKET/taker fees; historical exact strategy fee-setting unknown"},
         "errors": errors, "sides": sides,
     }, indent=2))
     print(f"[gain-protection-lab] COMPLETE sides={len(sides)}/{len(selected)} errors={len(errors)} out={out_path}", flush=True)

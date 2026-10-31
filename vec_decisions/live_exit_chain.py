@@ -89,6 +89,8 @@ def prepare(npz, n, is_long, cfg, close, safe, symbol=None):
         P["augmented_dc_lvl"] = _shift(
             safe(npz, "dc_low4_15m" if is_long else "dc_high4_15m", n, 0.0)
         )
+        if n:
+            P["augmented_dc_lvl"][0] = 0.0
     P["crack"] = np.zeros(n, dtype=bool)
     # Master 1 is the existing 1m/3m/5m vector-forward lane. Keep sub-15m
     # inputs inert unless that lane is explicitly enabled; live WT veto stays live-owned.

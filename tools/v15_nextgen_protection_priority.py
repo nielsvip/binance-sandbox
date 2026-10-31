@@ -1,6 +1,8 @@
 """Review-only finite-quota allocation from an existing evaluation budget; no defaults or execution hook."""
 import copy
+import math
 from pathlib import Path
+import re
 
 try:
     import v15_nextgen_interaction_executor as evidence
@@ -8,9 +10,47 @@ except ModuleNotFoundError:
     from tools import v15_nextgen_interaction_executor as evidence
 
 
+class VerifiedEpoch(dict):
+    pass
+
+
+def bind_epoch(sources):
+    if not sources:
+        raise ValueError('explicit current wiring sources required')
+    checked = {}
+    for source in sources:
+        asset, path, expected = source['asset'], Path(source['path']), source['sha256']
+        if asset in checked or Path(asset).is_absolute() or '..' in Path(asset).parts or path.name != Path(asset).name or evidence.sha(path) != expected:
+            raise ValueError('wiring source identity/content mismatch')
+        checked[asset] = expected
+    identity = evidence.guard.fingerprint(sorted(checked.items()))
+    result = VerifiedEpoch(schema='verified_wiring_sources/1', id=identity, sources=copy.deepcopy(sources))
+    result.bound_id = identity
+    return result
+
+
+def scientific_identity(context):
+    epoch = context.get('current_epoch')
+    if not isinstance(epoch, VerifiedEpoch) or epoch.get('id') != getattr(epoch, 'bound_id', None):
+        raise ValueError('current epoch must be source-bound, never None or an unchecked dictionary')
+    raw = context.get('scientific_identity') or {}
+    keys = ('engine_sha256', 'npz_sha256', 'accepted_chain_sha256', 'wiring_epoch_sha256', 'sym_side')
+    if any(key not in raw for key in keys) or raw['wiring_epoch_sha256'] != epoch['id']:
+        raise ValueError('explicit engine/NPZ/window/accepted-chain/era identity required')
+    if any(not re.fullmatch('[a-f0-9]{64}', str(raw[key])) for key in keys if key != 'sym_side'):
+        raise ValueError('scientific identity hashes must be full SHA256')
+    if not any(source['asset'] == 'v12_quick_engine.py' and source['sha256'] == raw['engine_sha256'] for source in epoch['sources']):
+        raise ValueError('scientific engine hash is not bound to current engine source')
+    window = raw.get('window') or {}
+    if not {'window_days', 'offset_days', 'input_cutoff_sha256'} <= set(window) or not re.fullmatch('[a-f0-9]{64}', str(window['input_cutoff_sha256'])):
+        raise ValueError('actual prepared window identity required')
+    return dict({key: raw[key] for key in keys}, window={key: window[key] for key in ('window_days', 'offset_days', 'input_cutoff_sha256')})
+
+
 def allocate(experiments, state, context, evaluation_budget, current_domain, selection_contract, measured=(), quotas=None, baseline_guard_cost=1):
     if context.get('phase') != 'post_kg_post_worst_first':
         raise ValueError('pinpoint allocation requires retained KG best and completed first worst-first pass')
+    scientific = scientific_identity(context)
     quotas = dict(quotas or {'protection': 1, 'recovery': 1, 'unknown': 1})
     if set(quotas) != {'protection', 'recovery', 'unknown'} or any(type(value) is not int or value < 1 for value in quotas.values()):
         raise ValueError('explicit positive protection, recovery and unknown quotas required')
@@ -34,7 +74,7 @@ def allocate(experiments, state, context, evaluation_budget, current_domain, sel
         for source in domain.get('evidence_refs', []):
             if evidence.sha(Path(source['path'])) != source['sha256']:
                 raise ValueError('priority evidence source changed')
-        identity = evidence.guard.fingerprint({'pair': evidence.pair_identity(proposal['x'], proposal['y']), 'context': context})
+        identity = evidence.guard.fingerprint({'pair': evidence.pair_identity(proposal['x'], proposal['y']), 'scientific_context': scientific})
         if identity in eligible:
             eligible[identity]['mirrored_source_ids'].append(proposal['id'])
             continue
@@ -80,10 +120,11 @@ def allocate(experiments, state, context, evaluation_budget, current_domain, sel
     return {'schema': 'protection_recovery_test_allocation/1', 'status': 'review_only_allocation_not_execution', 'context': context, 'existing_evaluation_budget': evaluation_budget, 'baseline_guard_cost': baseline_guard_cost, 'quad_evaluation_cost': 4, 'allocated_evaluation_cost': baseline_guard_cost + 4 * len(selected) if selected else 0, 'requested_quotas': quotas, 'fulfilled_quotas': fulfilled, 'deferred_quota_debt': dict(debts), 'eligible_catalog_size': len(eligible), 'eligible_unknown_count': sum(row['unknown'] for row in eligible.values()), 'selected': selected, 'deferred': list(remaining.values()), 'rejected': rejected, 'next_state': next_state, 'baseline_modified': False, 'production_hooked': False, 'scope': 'finite caller-supplied current-domain catalog; no all-pairs claim; old pos_sym/model scores never remove eligible tests; source-valid same-context marginals only', 'coverage_contract': 'unknown quota uses least-recently-allocated order; positive quota debt carries across budget-limited rounds; allocation does not assert successful measurement'}
 
 
-def first_pass_yellows(cells, row_identity, state, context, evaluation_budget, classify_cell, new_row_quota=2):
+def first_pass_yellows(cells, row_identity, state, context, evaluation_budget, classify_cell, new_row_coverage_target=1.0):
     if context.get('phase') != 'post_kg_first_worst_pass' or context.get('row_order') != 'worst_first':
         raise ValueError('ordinary exploration belongs inside the post-KG worst-first pass')
-    if type(evaluation_budget) is not int or evaluation_budget < 0 or type(new_row_quota) is not int or new_row_quota < 1:
+    scientific = scientific_identity(context)
+    if type(evaluation_budget) is not int or evaluation_budget < 0 or not 0 < new_row_coverage_target <= 1:
         raise ValueError('explicit existing cell budget and positive exploration quota required')
     next_state = copy.deepcopy(state)
     last = next_state.setdefault('last_yellow_allocated', {})
@@ -98,14 +139,14 @@ def first_pass_yellows(cells, row_identity, state, context, evaluation_budget, c
         actual_row = {name: resolved.get(name) for name in ('tab', 'row', 'switch', 'cand')}
         if evidence.guard.fingerprint(actual_row) != evidence.guard.fingerprint(row_identity):
             raise ValueError('first-pass yellow allocator cannot change or rerank the current row')
-        identity = evidence.guard.fingerprint({'row': actual_row, 'filter': cell['filter'], 'opt': cell['opt'], 'epoch': context.get('current_epoch')})
+        identity = evidence.guard.fingerprint({'row': actual_row, 'filter': cell['filter'], 'opt': cell['opt'], 'scientific_context': scientific})
         eligible.setdefault(identity, {'cell': cell, 'identity': identity, 'current_epoch_measured': resolved.get('current_epoch_measured') is True})
     if eligible and evaluation_budget == 0:
         raise ValueError('mandatory yellow exploration has no existing budget; row remains incomplete, never a measured zero')
     new_row = context.get('row_status') in ('new', 'newly_wired', 'unobserved')
     unknown = [row for row in eligible.values() if not row['current_epoch_measured']]
     pool = unknown or list(eligible.values())
-    quota = min(len(pool), new_row_quota if new_row else 1)
+    quota = math.ceil(len(pool) * new_row_coverage_target) if new_row else min(1, len(pool))
     ordered = sorted(pool, key=lambda row: (int(last.get(row['identity'], 0)), row['identity']))
     selected = ordered[:min(quota, evaluation_budget)]
     selected_ids = {row['identity'] for row in selected}
@@ -114,4 +155,4 @@ def first_pass_yellows(cells, row_identity, state, context, evaluation_budget, c
     for row in selected:
         last[row['identity']] = turn
     next_state['yellow_round'] = turn
-    return {'schema': 'first_worst_pass_yellow_allocation/1', 'status': 'review_only_allocation_not_measurement', 'row_identity': dict(row_identity), 'row_order_changed': False, 'requires_naked_row_before_yellows': True, 'mandatory_exploration_quota': quota, 'mandatory_quota_deferred': max(0, quota - evaluation_budget), 'selected': selected, 'deferred': [row for row in eligible.values() if row['identity'] not in {item['identity'] for item in selected}], 'rejected': rejected, 'next_state': next_state, 'allocated_evaluations': len(selected), 'baseline_modified': False, 'production_hooked': False, 'scope': 'same actual row only; new/newly-wired rows receive more mandatory yellow exploration; skipped/masked/unknown cells never become measured zero labels'}
+    return {'schema': 'first_worst_pass_yellow_allocation/1', 'status': 'review_only_allocation_not_measurement', 'row_identity': dict(row_identity), 'row_order_changed': False, 'requires_naked_row_before_yellows': True, 'new_row_coverage_target': new_row_coverage_target, 'eligible_cells': len(eligible), 'current_epoch_measured_cells': len(eligible) - len(unknown), 'allocation_fraction': len(selected) / len(eligible) if eligible else None, 'measured_coverage_fraction': (len(eligible) - len(unknown)) / len(eligible) if eligible else None, 'planned_rounds_to_target_at_current_budget': math.ceil(quota / evaluation_budget) if quota and evaluation_budget else None, 'mandatory_exploration_quota': quota, 'mandatory_quota_deferred': max(0, quota - evaluation_budget), 'budget_provenance': 'caller-bound existing budget; no savings assumed from historical zeros, masks or skips', 'selected': selected, 'deferred': [row for row in eligible.values() if row['identity'] not in {item['identity'] for item in selected}], 'rejected': rejected, 'next_state': next_state, 'allocated_evaluations': len(selected), 'baseline_modified': False, 'production_hooked': False, 'scope': 'same actual row only; new/newly-wired cold-domain breadth targets all eligible cells by default; deferred allocation is not measured completion; no speed-reduction claim'}

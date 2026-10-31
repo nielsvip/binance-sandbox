@@ -8,6 +8,7 @@ from vec_decisions.quick_missing_augmented_dc_break import (
     augmented_dc_break_channel,
     augmented_dc_break_fires,
     augmented_dc_break_pos_min_qty,
+    augmented_dc_break_price_breached,
     augmented_dc_break_reduce_qty,
 )
 
@@ -164,6 +165,7 @@ def test_native_adapter_uses_causal_previous_channel_and_matches_vector_each_bar
         (False, "dc_low4_15m_prev", "dc_high4_15m_prev", "dc_high4_15m"),
     ):
         prepared = lec.prepare(npz, n, is_long, _config(True), npz["close"], safe, symbol="1000PEPEUSDC")
+        assert prepared["augmented_dc_lvl"][0] == 0.0
         for i in range(1, n):
             native = augmented_dc_break_channel(
                 {low_key: npz["dc_low4_15m"][i - 1], high_key: npz["dc_high4_15m"][i - 1]},
@@ -176,6 +178,11 @@ def test_native_adapter_uses_causal_previous_channel_and_matches_vector_each_bar
     assert augmented_dc_break_channel(indicators, True, True) == 98.0
     assert augmented_dc_break_channel(indicators, False, True) == 102.0
     assert augmented_dc_break_channel(indicators, True, False) == 0.0
+    assert augmented_dc_break_channel(indicators, False, False) == 0.0
+    assert not augmented_dc_break_price_breached(99.0, 0.0, True)
+    assert not augmented_dc_break_price_breached(99.0, 0.0, False)
+    assert not augmented_dc_break_price_breached(99.0, np.nan, True)
+    assert not augmented_dc_break_price_breached(99.0, np.nan, False)
     indicators.update({"dc_low4_15m_prev": 97.0, "dc_high4_15m_prev": 103.0})
     assert augmented_dc_break_channel(indicators, True, False) == 97.0
     assert augmented_dc_break_channel(indicators, False, False) == 103.0

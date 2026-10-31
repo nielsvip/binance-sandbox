@@ -1,0 +1,93 @@
+{
+  "bytes": 101423592,
+  "created_at_utc": "2026-10-31T02:26:02.657105+00:00",
+  "destination_root": "/Volumes/WD25/binance_archive/s1_mustpos_snapshot_20261031T022428Z",
+  "destination_volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+  "file_count": 9,
+  "files": [
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_mustpos_snapshot_20261031T022428Z/data/learn/must_pos_CRYPTO_LONG.json",
+      "mtime_ns": 1793412057832425268,
+      "name": "must_pos_CRYPTO_LONG.json",
+      "sha256": "bab309e589aa4f39f2f85165abb572b9a489f906f5c6b9b80d5f07e6f306aff1",
+      "size": 19139026,
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_mustpos_snapshot_20261031T022428Z/data/learn/must_pos_CRYPTO_SHORT.json",
+      "mtime_ns": 1793412058343435588,
+      "name": "must_pos_CRYPTO_SHORT.json",
+      "sha256": "e2975c73c00b98b4ef6c1bed418d0b45bd41a225171a0b1340b95211bd59fdda",
+      "size": 17370386,
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_mustpos_snapshot_20261031T022428Z/data/learn/must_pos_STOCKS_LONG.json",
+      "mtime_ns": 1793412058763444070,
+      "name": "must_pos_STOCKS_LONG.json",
+      "sha256": "505f21d31c5a5ca377a3075fba75a3afe567bab323faec6334bb48da4b307ca1",
+      "size": 6504536,
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_mustpos_snapshot_20261031T022428Z/data/learn/must_pos_STOCKS_SHORT.json",
+      "mtime_ns": 1793412059054449947,
+      "name": "must_pos_STOCKS_SHORT.json",
+      "sha256": "52853af74e2ae7db617c617c05de0e07e8ee442840641a7362827fb35336b582",
+      "size": 8365488,
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_mustpos_snapshot_20261031T022428Z/data/learn/must_pos_state_CRYPTO_LONG.json",
+      "mtime_ns": 1793412046468195714,
+      "name": "must_pos_state_CRYPTO_LONG.json",
+      "sha256": "0d70894bca52aa42ae390dc6486c853ef36f12944f8ea5afe15b1b6700ea7825",
+      "size": 18097154,
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_mustpos_snapshot_20261031T022428Z/data/learn/must_pos_state_CRYPTO_SHORT.json",
+      "mtime_ns": 1793412047590218382,
+      "name": "must_pos_state_CRYPTO_SHORT.json",
+      "sha256": "63738eec6c4a332dffef55089f20007bd377809df8d17445ca5bf301c5f5e852",
+      "size": 18862494,
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_mustpos_snapshot_20261031T022428Z/data/learn/must_pos_state_STOCKS_LONG.json",
+      "mtime_ns": 1793412048462235999,
+      "name": "must_pos_state_STOCKS_LONG.json",
+      "sha256": "0d507e1acc4597f8060b7e28e29a6ce6d9c2bef2711230ae0b7b9d2caabc2d58",
+      "size": 5811745,
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_mustpos_snapshot_20261031T022428Z/data/learn/must_pos_state_STOCKS_SHORT.json",
+      "mtime_ns": 1793412048817243171,
+      "name": "must_pos_state_STOCKS_SHORT.json",
+      "sha256": "48e3d75aadcfa2b80a703d6ca4360347e59f40f6531234f2e45293dbb9b012bf",
+      "size": 6977914,
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_mustpos_snapshot_20261031T022428Z/data/learn/must_pos_watermarks.json",
+      "mtime_ns": 1793412049312253172,
+      "name": "must_pos_watermarks.json",
+      "sha256": "86ed4737e6f2921704b3127a19a4def556e7e87d87db9aa931556a95a329a9b5",
+      "size": 294849,
+      "source_pre_post_stable": true
+    }
+  ],
+  "selection": "All nine regular files named must_pos_*.json; point-in-time snapshots, not a transactionally coherent SQLite snapshot. Source directory had no open handles, each file source stat+SHA stable before/after transfer and destination SHA verified.",
+  "source_host": "s1-int",
+  "source_root": "/home/niels/binance-sandbox/data/learn"
+}

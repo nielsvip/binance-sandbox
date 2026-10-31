@@ -63,11 +63,21 @@ def catchup_queue(now):
         return {}
 
 
-def unlaunched_catchup(doc, fleet_data, holds=()):
+def unlaunched_catchup(doc, fleet_data, holds=(), now=None):
     run_id = doc.get("run_id")
+    now = time.time() if now is None else now
     running = {ss for data in fleet_data.values() for ss in (data.get("running") or {})}
-    launched = {ss for data in fleet_data.values() for ss, rec in (data.get("launches") or {}).items() if rec.get("mode") == "catchup" and rec.get("catchup_run_id") == run_id}
-    blocked = running | launched | set(holds)
+    blocked = running | set(holds)
+    for data in fleet_data.values():
+        for ss, rec in (data.get("launches") or {}).items():
+            if rec.get("mode") != "catchup" or rec.get("catchup_run_id") != run_id:
+                continue
+            progress = (data.get("progress") or {}).get(ss) or {}
+            complete_after_launch = progress.get("complete") and float(progress.get("mtime") or 0) >= float(rec.get("ts") or 0)
+            cooling = now - float(rec.get("ts") or 0) < RETRY_S
+            exhausted = int(rec.get("n") or 0) >= MAX_ATTEMPTS and int((data.get("tails") or {}).get(ss.rsplit("_", 1)[0]) or 0) <= int(rec.get("tail") or 0)
+            if complete_after_launch or cooling or exhausted:
+                blocked.add(ss)
     return [str(r["symside"]).upper() for r in doc.get("rows") or [] if str(r["symside"]).upper() not in blocked]
 
 
@@ -831,7 +841,7 @@ def tick(args):
         refresh = refresh_by_cat(universe, view, now, pend)
         promote_priority_reruns(pend, refresh, prio)
         catchup_doc = catchup_queue(now)
-        catchup = unlaunched_catchup(catchup_doc, view, holds)
+        catchup = unlaunched_catchup(catchup_doc, view, holds, now)
         picks, why_not, orphans = plan(pend, partial, data, now, orphan_since, frozenset(prio), refresh, catchup)
         rec["pending"] = {c: len(v) for c, v in pend.items()}
         rec["rerun"] = {c: len(v) for c, v in refresh.items()}

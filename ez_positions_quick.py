@@ -27452,12 +27452,10 @@ async def check_exit_candidates_for_account(
                     ):
                         hard_augment = True
                 is_augmented = position.positionAmt > 1.2 * pos_min_qty
-                from vec_decisions.quick_missing_augmented_dc_break import augmented_dc_break_channel
+                from vec_decisions.quick_missing_augmented_dc_break import augmented_dc_break_channel, augmented_dc_break_price_breached
                 _aug_ltf_enabled = bool(_psym_get(symbol, position_side, "LIVE_5m_trading_ENABLED", getattr(config, "LIVE_5m_trading_ENABLED", False)))
                 _aug_dc_level = augmented_dc_break_channel(indicators, is_long, _aug_ltf_enabled)
-                dc_broken = (is_long and current_price < _aug_dc_level) or (
-                    not is_long and current_price > _aug_dc_level
-                )
+                dc_broken = augmented_dc_break_price_breached(current_price, _aug_dc_level, is_long)
                 is_h_acc = is_hedge_account(config, account_key)
                 already_hedged = False
                 if is_h_acc:
