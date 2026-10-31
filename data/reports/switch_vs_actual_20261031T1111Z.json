@@ -1,0 +1,115 @@
+{
+ "window_from": "10-31 10:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 336,
+  "status_OK": 21,
+  "EXTRA": 8
+ },
+ "rows": [
+  {
+   "acct": "men",
+   "sym_side": "AAVEUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 10:12",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793412000, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "ARBUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 10:12",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793338200, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "AXSUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 10:12",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793318400, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "CHILLGUYUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 10:12",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793311200, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "COTIUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 10:12",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793318400, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "FIDAUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 10:12",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793318400, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "HMSTRUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 10:12",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793435400, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "ZECUSDC_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 10:12",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793410200, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}
