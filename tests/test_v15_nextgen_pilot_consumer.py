@@ -1,0 +1,123 @@
+import ast
+import copy
+import json
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from tools import v15_nextgen_pilot_consumer as C
+
+
+PILOT = Path('data/reports/nextgen_consumer_integration_20261031/v15_pilot.py')
+
+
+def extract(name, namespace):
+    tree = ast.parse(PILOT.read_text())
+    node = next(item for item in ast.walk(tree) if isinstance(item, ast.FunctionDef) and item.name == name)
+    module = ast.Module(body=[node], type_ignores=[])
+    exec(compile(ast.fix_missing_locations(module), str(PILOT), 'exec'), namespace)
+    return namespace[name]
+
+
+def fixture(tmp_path):
+    import openpyxl
+    path = tmp_path / 'v12_quick_engine.py'
+    path.write_text('source fixture only')
+    digest = C.priority.evidence.sha(path)
+    row = dict(tab='EXIT', row=3, switch='FLAG', cand=True)
+    workbook = openpyxl.Workbook()
+    workbook.active.title = 'EXIT'
+    workbook.active.append(['title'])
+    workbook.active.append(['Switch', 'cand', 'AVG_DELTA'])
+    workbook.active.append(['FLAG', True, -1])
+    template = tmp_path / 'TEMPLATE_FIXTURE.xlsx'
+    workbook.save(template)
+    workbook.close()
+    order = C.bind_row_order(dict(path=str(template), sha256=C.priority.evidence.sha(template)), ['EXIT'])
+    epoch = C.priority.bind_epoch([dict(asset=path.name, path=str(path), sha256=digest), dict(asset=template.name, path=str(template), sha256=C.priority.evidence.sha(template))])
+    contexts = []
+    def context(chain):
+        result = dict(phase='post_kg_first_worst_pass', row_order='worst_first', row_order_proof=order, current_epoch=epoch, scientific_identity=dict(engine_sha256=digest, npz_sha256='b'*64, accepted_chain_sha256=C.priority.evidence.guard.fingerprint(chain), wiring_epoch_sha256=epoch['id'], sym_side='FIXTURE_LONG', window=dict(window_days=30, offset_days=0, input_cutoff_sha256='d'*64)))
+        contexts.append(result)
+        return result
+    reservations = []
+    def reserve(allocation, current):
+        identity = C.priority.evidence.guard.fingerprint(dict(allocation=allocation, scientific_identity=C.priority.scientific_identity(current)))
+        target = tmp_path / ('reservation_' + str(len(reservations)) + '.json')
+        receipt = dict(status='reserved', allocation_sha256=identity)
+        target.write_text(json.dumps(receipt))
+        reservations.append(target)
+        return json.loads(target.read_text())
+    classify = lambda cell, current: dict(row, eligible=True, current_epoch_measured=True, pos_sym=0)
+    consumer = C.FirstPassConsumer(context, classify, reserve, {}, lambda row, current: 2, lambda row, current: 'newly_wired', lambda *args: {})
+    consumer.begin_batch({'FLAG': False})
+    return row, consumer, contexts, reservations
+
+
+def test_actual_row_disc_captures_exact_legal_domain_before_sampling(tmp_path):
+    row, consumer, _, _ = fixture(tmp_path)
+    legal = dict(yellow={'FILTER=15m'}, hdrs=['FILTER=15m'], h2f={'FILTER=15m': dict(filter='FILTER', opt='15m')}, excluded_tab_level=[], excluded_unwired=[], type_skipped=[], mand_notes=[])
+    ns = dict(_nextgen_consumer=consumer, _nextgen_capture_legal=C.capture_legal, os=SimpleNamespace(environ={}), _header_disc_cache={}, tab_level_filters=lambda *args: [], map_key_for_symside=lambda *args: 'FIXTURE', new_symside='FIXTURE_LONG', mandatory_bases_for_tab=lambda *args: [], _header_disc_precompute=lambda *args: {}, header_maps={'EXIT': {}}, defaults={}, ever_yellow_cells=lambda *args: set(), WT_CORE_MANDATORY_BASES=set(), _header_disc_combine=lambda *args: copy.deepcopy(legal), _mandatory_note=lambda *args: None)
+    info = dict(kind='eval')
+    extract('_row_disc', ns)(info, 'EXIT', 'FLAG', True)
+    info['hdrs'].clear()
+    assert info['nextgen_legal']['hdrs'] == ('FILTER=15m',)
+    assert tuple(info['nextgen_legal']['h2f']) == ('FILTER=15m',)
+    with pytest.raises(TypeError):
+        info['nextgen_legal']['h2f']['FILTER=15m']['opt'] = 'D'
+
+
+def test_actual_row_plan_restores_low_frequency_new_yellow_without_static_measurement_cache(tmp_path):
+    row, consumer, contexts, reservations = fixture(tmp_path)
+    legal = C.capture_legal(dict(hdrs=['FILTER=15m', 'FILTER=1h'], h2f={'FILTER=15m': dict(filter='FILTER', opt='15m'), 'FILTER=1h': dict(filter='FILTER', opt='1h')}))
+    sampled = dict(kind='skip', reason='BRAIN_SAMPLED_OUT', hdrs=[], h2f={}, nextgen_legal=legal)
+    ns = dict(_nextgen_consumer=consumer, _row_static=lambda *args: sampled, cumulative_overrides={'FLAG': False}, defaults={}, _parse_opt_value=lambda value, default: value, _switch_overrides=lambda switch, cand: {switch: cand}, _same_val=lambda a,b:a==b, sanitize_overrides=lambda value, defaults:(value, {}), initial_overrides={'FLAG': False}, _v17_on=True, _SETTLED_NAKED_ON=False)
+    plan = extract('_row_plan', ns)
+    first = plan('EXIT', 3, 'FLAG', True)
+    assert first['items'][0][0] == 'naked'
+    assert {label for label, settings in first['items']} == {'naked', 'FILTER=15m', 'FILTER=1h'}
+    assert sampled['hdrs'] == [] and sampled['kind'] == 'skip'
+    ns['cumulative_overrides'] = {'FLAG': True, 'OTHER_WINNER': '15m'}
+    second = plan('EXIT', 3, 'FLAG', True)
+    assert all(settings['OTHER_WINNER'] == '15m' for label, settings in second['items'])
+    assert all(label != 'naked' for label, settings in second['items'])
+    assert len(reservations) == 2
+    assert contexts[-2]['scientific_identity']['accepted_chain_sha256'] != contexts[-1]['scientific_identity']['accepted_chain_sha256']
+    assert second['static']['nextgen_allocation']['current_epoch_measured_cells'] == 0
+
+
+def test_resume_or_print_cannot_claim_first_pass_completion(tmp_path):
+    row, consumer, _, _ = fixture(tmp_path)
+    result = C.first_pass_completion([row], [dict(row=row, status='evaluated')], [])
+    assert result['accounting_complete'] and not result['complete']
+    assert not C.first_pass_completion([row], [], [])['accounting_complete']
+    with pytest.raises(ValueError, match='source-bound'):
+        consumer.require_first_pass_complete([row], {'done': {'old': {'delta': 0}}, 'printed_workbook_complete': True}, {'FLAG': True})
+
+
+def test_review_patch_defers_research_and_preserves_exact_phase_source():
+    source = PILOT.read_text()
+    assert source.index('if _nextgen_consumer is None:\n        if _v18_phases_on:') < source.index('for qi, (sname, rr, switch, cand) in enumerate(pending_queue):')
+    assert source.index('require_first_pass_complete(queue, progress, cumulative_overrides)') > source.index('for qi, (sname, rr, switch, cand) in enumerate(pending_queue):')
+    assert 'queue = [(sname, rr, sw, cand) for sname in tabs for (rr, sw, cand) in per_tab_rows[sname]]' in source
+    assert 'kindergarten_first_contract' in source
+
+
+def test_stale_actual_measurement_remains_unknown_and_batch_end_detects_source_drift(tmp_path):
+    row, consumer, contexts, _ = fixture(tmp_path)
+    old = C.priority.scientific_identity(contexts[-1])
+    old['accepted_chain_sha256'] = 'f' * 64
+    identity = C.priority.evidence.guard.fingerprint(dict(row=row, filter='FILTER', opt='15m', scientific_context=old))
+    path = tmp_path / 'old_measurement.json'
+    path.write_text(json.dumps(dict(schema='current_yellow_measurement/1', cell_identity=identity, scientific_identity=old, evaluation_status='evaluated_valid', engine_proof=dict(effective_config_sha256='1'*64, execution_ledger_sha256='2'*64, result_sha256='3'*64, input_cutoff_sha256='d'*64))))
+    proof = C.priority.bind_measurement(dict(path=str(path), sha256=C.priority.evidence.sha(path)))
+    consumer.classify = lambda cell, context: dict(row, eligible=True, measurement_proof=proof)
+    legal = C.capture_legal(dict(hdrs=['FILTER=15m'], h2f={'FILTER=15m': dict(filter='FILTER', opt='15m')}))
+    result = consumer.apply(dict(kind='eval', hdrs=[], h2f={}), legal, row, {'FLAG': True})
+    assert result['nextgen_allocation']['current_epoch_measured_cells'] == 0
+    assert result['hdrs'] == ['FILTER=15m']
+    assert result['nextgen_allocation']['selected'][0]['measurement_status'] == 'different_cell_or_scientific_context'
+    (tmp_path / 'v12_quick_engine.py').write_text('changed during batch')
+    with pytest.raises(ValueError, match='changed during'):
+        consumer.end_batch()

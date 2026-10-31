@@ -307,8 +307,22 @@ def stage(ss, res, day):
                 " result_done_utc TEXT, cumulative_gain REAL, baseline_gain REAL, impossible_reasons TEXT, source_30d_updated_at TEXT,"
                 " full_config_sha256 TEXT)")
     values = dict(row)
+    # The row is built from its 30D base, so the base's meta_json used to ride along unchanged and every genuine 7D row
+    # was LABELLED window_days 30 (USER 2026-10-31 "make sure 7D and 30D and 60D are makred correctly in the sql's so
+    # nothing can use the wrong one"). Declare 7 explicitly and keep the base visible instead of inheriting its label.
+    # The store's guard trigger (tools/per_sym_window_identity.py) now REFUSES a row declaring another window.
+    try:
+        meta = json.loads(values.get("meta_json") or "{}")
+    except ValueError:
+        meta = {}
+    meta = meta if isinstance(meta, dict) else {}
+    if meta.get("window_days") not in (None, 7):
+        meta.setdefault("base_window_days", meta["window_days"])
+    if meta.get("source") is not None:
+        meta.setdefault("base_source", meta["source"])
+    meta.update(window_days=7, source="v15_trc_7d_run", run_day=day)
     values.update(overrides_json=json.dumps(cum, sort_keys=True, default=str), full_config_json=json.dumps(full, sort_keys=True, default=str),
-                  updated_at=now_iso())
+                  updated_at=now_iso(), meta_json=json.dumps(meta, sort_keys=True, default=str))
     con.execute("DELETE FROM per_sym_active WHERE sym_side=?", (ss,))
     con.execute(f"INSERT INTO per_sym_active ({', '.join(cols)}) VALUES ({', '.join('?' * len(cols))})", [values[c] for c in cols])
     con.execute("INSERT INTO trc7d_provenance VALUES (?,?,?,?,?,?,?,?,?,?,?)",

@@ -1,5 +1,5 @@
 {
-  "computed_at": "2026-10-31T02:52:40.703261+00:00",
+  "computed_at": "2026-10-31T03:09:29.351000+00:00",
   "status": "IN_PROGRESS_ONE_FROZEN_ENTRY_EXIT_FIXTURE_PASS_FULL_PARITY_UNPROVEN",
   "fleet_deployed": "PARTIAL_AUTO_PUSH_DISCOVERED; NOT_A_REVIEWED_FLEET_BATCH",
   "log_text_preserved": true,
@@ -125,7 +125,7 @@
   ],
   "latest_crypto_replay": {
     "report": "/tmp/parity_1000pepe_8of8_20261031T025132.json",
-    "computed_at": "2026-10-31T02:51:32Z",
+    "computed_at": "2026-10-31T02:51:33Z",
     "symbol_side": "1000PEPEUSDC_LONG",
     "frozen_npz_md5": "88b03db6b7ace4203ae899f65b40f30c",
     "window_days": 7,
@@ -135,7 +135,15 @@
     "matched_entries": 8,
     "matching_exits": 8,
     "roundtrip_verdict": "PASS",
-    "full_order_quantity_and_error_verdict": "NOT_VERIFIED"
+    "full_order_quantity_and_error_verdict": "Quantity equality NOT REQUIRED; runtime errors remain unresolved",
+    "action_order_diagnostic": {
+      "report": "/tmp/parity_1000pepe_action_bars_20261031.json",
+      "verdict": "PASS",
+      "vector_executed_orders": 15,
+      "native_executed_orders": 15,
+      "final_MTM_excluded": true,
+      "scope": "same7daystaticfrozenfixture, not14dayrollingacceptance"
+    }
   },
   "reviewed_test_evidence": {
     "affected_suite": {
@@ -288,14 +296,13 @@
     "window": "last14calendarDays",
     "data": "same frozen15m kline and NPZ bars with causal warmup",
     "order_fields": [
-      "bar",
-      "symbol",
-      "side",
-      "action",
-      "quantity",
-      "position_after"
+      "exact bar",
+      "sym_side",
+      "OPEN/AUGMENT/REDUCE/CLOSE sequence"
     ],
     "accounts": "all tradeable sym_sides; compare ang/inf commonkeys overmatchingeligibility",
-    "errors": "zero unexplained runtimeerrors and VEC discrepancies; preserve messages"
+    "errors": "zero unexplained runtimeerrors and VEC discrepancies; preserve messages",
+    "quantities": "User explicitly permits differences; diagnostic only unless changes action presence/timing",
+    "reference": "Actual rolling forward vector pipeline on each identical historical 15m bar"
   }
 }

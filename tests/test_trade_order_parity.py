@@ -11,13 +11,14 @@ def ledger():
 def test_exact_partial_order_sequence_passes():
     assert compare_orders(ledger(), ledger())["verdict"] == "PASS"
 
-def test_same_entry_exit_bars_but_different_partial_quantities_fail():
+def test_same_action_bars_with_different_partial_quantities_pass_user_contract():
     actual = ledger()
     actual[1].update(qty=3, position_after=7)
     actual[2].update(qty=7)
     report = compare_orders(ledger(), actual)
-    assert report["verdict"] == "FAIL"
-    assert len(report["differences"]) == 2
+    assert report["verdict"] == "PASS"
+    assert len(report["quantity_differences_diagnostic"]) == 2
+    assert compare_orders(ledger(), actual, require_quantity_parity=True)["verdict"] == "FAIL"
 
 def test_one_bar_late_is_not_matched_by_tolerance():
     actual = ledger()

@@ -3209,15 +3209,20 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                                   positionAmt=0, quantity=0, price=0, side="",
                                   position_side="", unique_id="", is_full_close=False,
                                   reason="", **kw):
-        executed_trades.append({
+        pos = trade_manager.positions.get(position_key)
+        before_amt = abs(float(getattr(pos, "positionAmt", 0) or 0)) if pos else 0.0
+        is_long = position_key.endswith("_LONG") if position_key else True
+        before_row = {
             "timestamp": _sim_ts[0], "type": "webhook", "position_key": position_key,
             "side": side, "quantity": quantity, "price": price, "reason": reason,
             "is_full_close": is_full_close,
-        })
+            "position_before": before_amt,
+            "position_before_signed": before_amt if is_long else -before_amt,
+            "position_state_found": bool(pos),
+            "sym_side": position_key.split(":", 1)[-1] if position_key else "",
+        }
         # Apply the trade to positions (what Finandy would do)
-        pos = trade_manager.positions.get(position_key)
         if pos and quantity > 0:
-            is_long = position_key.endswith("_LONG") if position_key else True
             is_reduce = (side == "SELL" and is_long) or (side == "BUY" and not is_long)
             if is_reduce:
                 pos.positionAmt = max(0.0, abs(pos.positionAmt) - abs(quantity))
@@ -3236,6 +3241,18 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             # Always ensure opened_at is datetime
             if not isinstance(getattr(pos, 'opened_at', None), datetime):
                 pos.opened_at = _sim_datetime_now(timezone.utc)
+            after_amt = abs(float(getattr(pos, "positionAmt", 0) or 0))
+            before_row["action"] = (("CLOSE" if after_amt <= 1e-12 else "REDUCE") if is_reduce
+                                     else ("OPEN" if before_amt < 0.0001 else "AUGMENT"))
+            before_row["position_after"] = after_amt
+            before_row["position_after_signed"] = after_amt if is_long else -after_amt
+            before_row["status"] = "FILLED"
+        else:
+            before_row["action"] = "UNKNOWN"
+            before_row["position_after"] = before_amt
+            before_row["position_after_signed"] = before_amt if is_long else -before_amt
+            before_row["status"] = "NO_POSITION_STATE" if not pos else "NO_QUANTITY"
+        executed_trades.append(before_row)
         return True
     trade_manager.send_webhook = _recording_webhook
     # parity-loop-crypto (iso copy only, proposed to lane A): V12_REAL_EXECUTE maker-order I/O stub = immediate fill at the
@@ -11542,7 +11559,14 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     start_ts_filter = int(datetime.strptime(start_date, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp())
     _end_date_str_tr = V8_BACKTEST_END_DATE
     end_ts_filter_tr = int(datetime.strptime(_end_date_str_tr, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()) if _end_date_str_tr else 0
-    all_ts = sorted(set(int(t) for s in stores.values() for t in s.timestamps if int(t) >= start_ts_filter and (not end_ts_filter_tr or int(t) <= end_ts_filter_tr)))
+    all_ts_set = set()
+    for store in stores.values():
+        _decision_start_tr = float(getattr(store, "decision_start_ts", start_ts_filter - 1))
+        for _t_tr in store.timestamps:
+            _t_int_tr = int(_t_tr)
+            if _t_int_tr >= start_ts_filter and _t_int_tr > _decision_start_tr and (not end_ts_filter_tr or _t_int_tr <= end_ts_filter_tr):
+                all_ts_set.add(_t_int_tr)
+    all_ts = sorted(all_ts_set)
     _research_adapter_t = None
     _research_audit_t = None
     _research_spec_path_t = os.environ.get("V8_RESEARCH_TOP_EXIT_SPEC", "").strip()

@@ -1,0 +1,570 @@
+{
+  "audit_at_utc": "2026-10-31T03:09:47.780314+00:00",
+  "coverage": "incomplete. S5 code/pcode and must regular-file content now have complete bounded preservation maps, A/B manifest-matched model JSON payloads are on WD, S6 A/B training-state PKLs are preserved as S6-only sources, and the unique 15.99GB S5 sorted-events temp is gzip-archived with full byte verification. Remaining S5 symlink targets and complete S5 server-image coverage, S1 live DBs, other external corpora and worker sources remain unresolved; no retirement criteria met.",
+  "current_capacity_and_active_jobs": {
+    "drives": {
+      "E3T": {
+        "device": "/dev/disk5s1",
+        "state": "physically present, unmounted",
+        "uuid": "3F62E875-B8EE-34B7-A4C0-2EB157231BFA"
+      },
+      "SSD2T": {
+        "free": "1.8GiB",
+        "mounted": "yes",
+        "uuid": "6AACF47F-C51E-3F3E-9D31-2429DD997FA1"
+      },
+      "TOSHIBA_EXT": {
+        "device": "/dev/disk6s1",
+        "filesystem": "ExFAT",
+        "free": "24GiB",
+        "mounted": "yes",
+        "scope": "metadata only; full inventory remains partial",
+        "uuid": "CB74078E-CB60-392D-A83D-73E7DCF836DC",
+        "volume_read_only": false
+      },
+      "WD25": {
+        "free": "3.1TiB",
+        "mounted": "yes",
+        "uuid": "04543668-3000-3F41-BB34-1C876F724D28"
+      }
+    },
+    "observed_at_utc": "2026-10-31T01:29:46Z",
+    "servers": {
+      "S1": {
+        "active": "vec_bar_trigger crypto_short PID 3722213",
+        "free": "7.7G"
+      },
+      "S2": {
+        "active": "vec_bar_trigger crypto_long PID 1563625",
+        "free": "17G"
+      },
+      "S5": {
+        "active_matching_learning_process": "none observed in bounded process filter",
+        "free": "36G"
+      },
+      "S6": {
+        "active": "vec_bar_trigger stock_short PID 294693",
+        "free": "53G"
+      }
+    }
+  },
+  "external_drive_visibility": [
+    {
+      "current_visibility": "mounted at /Volumes/WD25, ExFAT, writable; UUID revalidated during relocation and receipts verified",
+      "device": "/dev/disk7s1",
+      "limitations": "point-in-time identity/capacity; revalidate VolumeUUID before future writes",
+      "name": "WD25",
+      "uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+      "verified_content": "S6 preservation trees, A/B model bundle, selected S5 learn/must bundles, and verified experience_cold archive with byte-hashed members"
+    },
+    {
+      "current_visibility": "mounted at /Volumes/SSD2T, ExFAT, writable",
+      "device": "/dev/disk4s1",
+      "limitations": "01:29Z free space ~1.8GiB; unsuitable for large transfer without new capacity check",
+      "name": "SSD2T",
+      "uuid": "6AACF47F-C51E-3F3E-9D31-2429DD997FA1",
+      "verified_content": "no source-family byte verification in this audit"
+    },
+    {
+      "current_visibility": "physical /dev/disk5s1 mounted at /Volumes/E3T; OS reports Volume Read-Only=no",
+      "device": "/dev/disk5s1",
+      "limitations": "another find PID 44845 was scanning script_vault, so no unmount/remount attempt; 2.81GB free, no large transfers; inventory remains partial",
+      "name": "E3T",
+      "uuid": "3F62E875-B8EE-34B7-A4C0-2EB157231BFA",
+      "verified_content": "targeted metadata only: registered 7.5MiB legacy eval cache exists; klines and vision manifests exist; no payload hash checks"
+    },
+    {
+      "current_visibility": "mounted at /Volumes/TOSHIBA_EXT, ExFAT, volume Read-Only=no",
+      "device": "/dev/disk6s1",
+      "limitations": "01:29Z free space ~24GiB; this refresh checked metadata only, not full inventory",
+      "name": "TOSHIBA_EXT",
+      "uuid": "CB74078E-CB60-392D-A83D-73E7DCF836DC",
+      "verified_content": "partial known-directory inventory only; no actual read-only mount established"
+    }
+  ],
+  "largest_remaining_unique_evidence_at_risk": [
+    {
+      "estimated_logical_bytes": 23504597343,
+      "item": "S6 E frozen_ind linked indicator targets",
+      "rank": 1,
+      "status": "855 unique resolved mutable targets and 46 missing links; not an immutable historical snapshot and no full independent copy proved"
+    },
+    {
+      "estimated_logical_bytes": null,
+      "item": "S1 ancillary stores",
+      "rank": 4,
+      "status": "causal DB, combo library, priors and related stores have existence/size evidence but no independent byte-verified copy; live stores require consistent snapshot"
+    },
+    {
+      "estimated_logical_bytes": null,
+      "item": "S5 code symlink targets and complete server-image coverage",
+      "rank": 2,
+      "status": "code/pcode regular files archived, but code/SPREADSHEETS and code/data/learn/_cache literal symlink targets were not followed; no complete S5 retirement proof."
+    },
+    {
+      "estimated_logical_bytes": null,
+      "item": "S5 A/B state provenance attribution",
+      "rank": 3,
+      "status": "S6 PKLs preserved; S5 manifests do not hash PKLs and S5 A/B brain_state dirs were empty, so no S5-side checkpoint equivalence claim."
+    },
+    {
+      "estimated_logical_bytes": null,
+      "item": "TOSHIBA eval_cache master/rebuild and 14-day local logs",
+      "rank": 4,
+      "status": "Master/rebuild remain live on TOSHIBA; current 14-day logs remain host-local by policy."
+    }
+  ],
+  "matrix": [
+    {
+      "current_source_locations": [
+        "S1 and S2 host-local active brain delta-log windows (consumer policy: 14 days; do not move off host)"
+      ],
+      "evidence_receipts": [
+        "SELF_LEARNING_DATA.md and tools/data_locations.py policy; prior preservation audit scope"
+      ],
+      "family": "brain_delta_logs_14d",
+      "independent_verified_copy": [],
+      "preservation_rule": "Keep rolling 14-day window on each consuming host.",
+      "unresolved_source": "Current log contents were not freshly enumerated in this audit; policy requires active window remain local. Older logs/experience are separately archived, but not a substitute for current logs."
+    },
+    {
+      "current_source_locations": [
+        "Mac data/learn/v3u3_20261022/MANIFEST.json and 8 payload files; S2 PASS candidate meta at /home/niels/v15_bench/gate/candidates/20261022T235810Z/meta.json"
+      ],
+      "evidence_receipts": [
+        "data/learn/v3u3_20261022/MANIFEST.json",
+        "S2 candidate meta.json",
+        "learning_preservation_audit_20261030T200206Z.json:last_promoted_nn_baseline"
+      ],
+      "family": "promoted_nn_brain_and_digest_baseline",
+      "independent_verified_copy": [
+        {
+          "location": "Mac data/learn/v3u3_20261022/",
+          "proof": "data/reports/learning_preservation_audit_20261030T200206Z.json:last_promoted_nn_baseline",
+          "verification": "recomputed sizes+MD5 for all 8 payloads match preserved manifest and S2 PASS candidate file map"
+        },
+        {
+          "location": "WD25 /Volumes/WD25/binance_archive/nn_baseline_pass_20261023_20261022T235810Z/",
+          "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+          "verification": "8 payload MD5s match Mac manifest and S2 Oct23 PASS candidate; source/destination SHA256 verified"
+        }
+      ],
+      "preservation_rule": "Retain immutable promoted baseline manifest and payloads; do not treat live mutable worker files as baseline.",
+      "unresolved_source": "S2 candidate payload files are absent; mutable current S1/S5/S6 worker brain/digest files differ from the Oct23 promoted baseline and must not be attributed to it."
+    },
+    {
+      "current_source_locations": [
+        "GCS gs://v15-cold-329002141504/fleet_archives/s5/experience_cold_af1eab344426.tar.zst generation 1793154688805498",
+        "WD25 /Volumes/WD25/binance_archive/experience_restore_20261031T0120Z/experience_cold.tar.zst; full archive SHA and each compressed DB member SHA verified",
+        "S6 /home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/ retains manifests, SHA256SUMS, cold.out logs and WAL/SHM companions; five duplicate compressed payloads relocated/reclaimed",
+        "Mac backups/before_remove_swing_switch_20261026/per_sym_store.db.zst; Mac offload experience_STOCKS_SHORT_202609.db.zst"
+      ],
+      "evidence_receipts": [
+        "data/reports/gcs_cold_store.jsonl",
+        "data/reports/mac_offload_20261028/trickle.jsonl",
+        "learning_preservation_audit_20261030T200206Z.json:gcs_experience_restore"
+      ],
+      "family": "experience_store_and_cold_shards",
+      "independent_verified_copy": [
+        {
+          "bytes": 2402070211,
+          "location": "GCS experience_cold archive",
+          "proof": "data/reports/gcs_cold_store.jsonl event push_verified at 2026-10-26T22:41:49Z; learning_preservation_audit_20261030T200206Z.json:gcs_experience_restore",
+          "sha256": "0b92fd8f47e8e95605a5451defcc34b7133ab4efc237ad95e3b369ac0878d138",
+          "verification": "GCS receipt and generation-pinned GCS-to-S6 download matched size, MD5 and SHA256; 14-member tar inspected, 2,402,037,760 decoded bytes, no traversal/link members"
+        },
+        {
+          "bytes": 180378629,
+          "location": "GCS mac/offload_20261028/backups/before_remove_swing_switch_20261026/per_sym_store.db.zst",
+          "proof": "data/reports/mac_offload_20261028/trickle.jsonl and data/reports/gcs_cold_store.jsonl",
+          "sha256": "560e67010f3efbc282a118bf0649dc57a30bf05eb846ef67488270a43f50d421",
+          "verification": "server and GCS verified receipts agree"
+        },
+        {
+          "bytes": 13212025,
+          "location": "GCS mac/offload_20261028/experience/experience_STOCKS_SHORT_202609.db.zst",
+          "proof": "data/reports/gcs_cold_store.jsonl event 2026-10-28T01:45:02Z",
+          "sha256": "f1c105352605111ecac68191859f59d52f7e458f75606c55c9519925d94d9597",
+          "verification": "GCS push_verified receipt"
+        },
+        {
+          "bytes": 331853589,
+          "location": "/Volumes/WD25/binance_archive/research_native_20261031T0042Z/experience_STOCKS_SHORT_202610.db.zst",
+          "sha256": "5533d2c01320ef038d06edafe852e8da8b516b801693ecd9cd76643e8832872d",
+          "source": "/home/niels/v20_candidate_review_20261030/experience_restore_20261030T2030Z/store/experience_cold/experience_STOCKS_SHORT_202610.db.zst",
+          "verification": "/Volumes/WD25/binance_archive/research_native_20261031T0042Z/copy_receipt.json receipt SHA256 52efde50f6fe9ec11015f23906e86c439ad25a0db32710f4c0b45db36216137d; source pre/post and destination SHA matched"
+        },
+        {
+          "bytes": 3277758464,
+          "location": "/Volumes/WD25/binance_archive/research_native_20261031T0042Z/experience_STOCKS_SHORT_202610.db",
+          "sha256": "db36705e6681ae8deca9ac73a5e99b72245428212acc3f4f045977158a53a602",
+          "source": "SHA-verified compressed S6 restore from S5 manifest-listed STOCKS_SHORT source",
+          "verification": "/Volumes/WD25/binance_archive/research_native_20261031T0042Z/native_decode_receipt.json receipt SHA256 45ae2a57d4187c455ba61336ad47793b6ab5d5e908f37493e0133c30e177ce47; decoded DB SHA/size exactly match adjacent source manifest; compressed original retained"
+        },
+        {
+          "bytes": 2402070211,
+          "location": "WD25 /Volumes/WD25/binance_archive/experience_restore_20261031T0120Z/experience_cold.tar.zst",
+          "sha256": "0b92fd8f47e8e95605a5451defcc34b7133ab4efc237ad95e3b369ac0878d138",
+          "verification": "copied from isolated S6 restore by rsync; full destination SHA matches GCS generation-pinned receipt; streamed the archive and hashed all four compressed shard member bytes against embedded SHA256SUMS; local and WD receipts match SHA256: d55fb03f9259f063692f00b63492c0d7c59f4f9e7787b338c0d6432b242d6e9c",
+          "verified_at_utc": "2026-10-31T01:31:01Z"
+        }
+      ],
+      "preservation_rule": "Retain GCS cold archive and independently verified WD25 archive with all embedded compressed shard bytes. S6 exact duplicate archive and four zst payload files were reclaimed only after destination archive verification and subsequent byte-by-byte member SHA confirmation; nonpayload receipts and sidecars remain. Never move the active 14-day host-local delta-log window.",
+      "unresolved_source": "S5 original rebuild_scratch_s5/experience_cold path is absent. The GCS archive and WD25 archive contain four compressed shards whose actual member bytes were hashed and matched embedded SHA256SUMS; GCS object generation and outer SHA are verified. All four decoded DBs were consumed sequentially and released; strict ctxjoin yielded zero verified contexts. Other Mac experience pack entries are not all confirmed offloaded; only recorded 202609 STOCKS_SHORT and per_sym_store cold copies have receipts. The separate WD25 STOCKS_SHORT 202610 shard and decoded DB are retained; its read-only 20k native-explicit query found no eligible interaction quartet. Full experience-store coverage remains incomplete."
+    },
+    {
+      "current_source_locations": [
+        "S5 and S6 /home/niels/v20_u4/A, B; S6 also /home/niels/v20_u4/spills, /full/data/learn, E and rebuild_scratch_s6"
+      ],
+      "evidence_receipts": [
+        "learning_preservation_audit_20261030T200206Z.json:s6_v20_u4_spills_copy",
+        "...:s6_v20_u4_full_data_learn_copy",
+        "...:wd25_s6_rebuild_scratch_copy",
+        "...:s6_v20_u4_E_selected"
+      ],
+      "family": "S5_S6_v20_u4_experiments_spills_and_models",
+      "independent_verified_copy": [
+        {
+          "bytes": 1651762046,
+          "location": "WD25 /Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/",
+          "verification": "rsync checksum dry-run: 171 entries, 161 files, 10 dirs, 0 differences"
+        },
+        {
+          "bytes": 1743943276,
+          "location": "WD25 /Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/full_data_learn/",
+          "verification": "rsync checksum dry-run: 214 entries, 202 files, 12 dirs, 0 differences"
+        },
+        {
+          "bytes": 1331992053,
+          "location": "WD25 /Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_rebuild_scratch/",
+          "verification": "rsync checksum dry-run: 243 entries, 207 files, 36 dirs, 0 differences"
+        },
+        {
+          "bytes": 161422481,
+          "inventory": "34 entries: 28 regular files, 6 directories; A=8 manifest-listed brain/must_pos files plus MANIFEST/train receipt; B=9 manifest-listed code/brain/must_pos files plus AUC/training/guard/stage receipts.",
+          "location": "WD25 /Volumes/WD25/binance_archive/learning_preserve_20261030T231425Z/s6_v20_u4_AB_model_receipts/",
+          "scope_note": "Only selected model/code and small provenance receipt files; this is not a full A/B tree archive.",
+          "source": "S6 /home/niels/v20_u4/{A,B}/",
+          "verification": "rsync -nrc --itemize-changes --stats -rt --relative from S6 to WD25; exit 0, 0 created/changed/deleted, 0 bytes transferred; all 8 A and 9 B manifest-listed artifacts were separately observed MD5-matching the S6 manifests before transfer; the dry-run checksum comparison verified all copied files against current S6 sources.",
+          "verified_at_utc": "2026-10-30T23:22:36Z",
+          "wd25_current_state_at_verify": "mounted ExFAT, about 3.47TB free",
+          "wd25_uuid": "04543668-3000-3F41-BB34-1C876F724D28"
+        },
+        {
+          "bytes": 9319345,
+          "location": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/learn_maps",
+          "source": "S5 /home/niels/v20_u4/learn/binding_map_*.json",
+          "verification": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/learn_maps/verification_receipt.json SHA256 182f245db06f773cbfd45b7c860efc511d878a4e0d9b2c8d5515d583310a62d6"
+        },
+        {
+          "bytes": 64032059,
+          "location": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A",
+          "source": "S5 /home/niels/v20_u4/must/union_A plus union_A.out",
+          "verification": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/verification_receipt.json SHA256 edabf09cc819d6b2302d5f49e68f2637fbbb13cc87aa5f53ef5e4527674c7885"
+        },
+        {
+          "bytes": 53648190,
+          "location": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B",
+          "source": "S5 /home/niels/v20_u4/must/union_B plus union_B.out",
+          "verification": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/verification_receipt.json SHA256 45c1ab651ea8f3e65262161a8d09ade5872c463a65e2ab1a44108187fe384b08"
+        },
+        {
+          "bytes": 51230881,
+          "location": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2",
+          "source": "S5 /home/niels/v20_u4/must/A2 regular files",
+          "verification": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json SHA256 89d696eeb8608dea61c979b151b05cd4d50c23e51b8bd89ae2f838e7612d0b31"
+        },
+        {
+          "bytes": 51230881,
+          "location": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2",
+          "source": "S5 must/B2 regular files",
+          "verification": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json SHA256 142f0c7b820d9e23bd8f121ea305a1c49f08eb4733c431233f8f94d494290233; bytewise unique against copied A2/union_A/union_B and S6 bundle by basename"
+        },
+        {
+          "location": "WD25 /Volumes/WD25/binance_archive/learning_preserve_20261031T0131Z/s5_v20_u4/",
+          "proof": "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+          "verification": "31 selected regular files (93,846,258 bytes) including seed_v3u3 and must/model receipts; per-file SHA256 source/destination verified; partial only"
+        },
+        {
+          "location": "WD25 /Volumes/WD25/binance_archive/s5_code_provenance_20261031T0212Z/",
+          "proof": "/Users/niels/Documents/binance/data/reports/s5_must_code_pcode_provenance_20261031T0216Z.json",
+          "verification": "Four selected small code/pcode provenance files source-stable and SHA256 verified; S5 A/B manifests and A2/B2 build_stats plus union reports verified in prior WD receipts; literal external symlink targets recorded, not followed"
+        }
+      ],
+      "preservation_rule": "Keep originals on S5/S6; do not retire either until every required unique tree is inventoried, copied and file-verified.",
+      "unresolved_source": "S5 and S6 A/B manifest files match each other, but S5 manifest-listed payload files were absent at their recorded paths; S6 A/B payloads are now independently preserved on WD25. S5 v20_u4/learn,must,code,pcode,prec and other contents still lack a complete independent copy. WD25 can later become unavailable when unmounted; verification was point-in-time. Additional selected S5 learn maps and union_A/B state outputs are now copied to WD25; this is partial only. Remaining S5 must/A,A2,B,B2,seed_v3u3,hosts, code, pcode, other learning sources and B/tmp/events_sorted.tsv (~15,993,543,228B; not hashed/copied) are unresolved. S5 prec archive was excluded as SHA-identical to existing WD25 S6 precision/extract copy. S5 learn binding maps, union_A, union_B, and A2 regular files now have verified WD25 copies; other S5 must variants, hosts, code, pcode, and B/tmp/events_sorted.tsv remain unverified/unpreserved. The precision archive was excluded as an exact SHA duplicate of existing WD25 S6 precision/extract. Current selective S5 verified copies: learn binding maps, must union_A, union_B, A2 and B2. No exact-hash duplicates in these copied candidate sets; S5 A/B, seed_v3u3, hosts, code, pcode, other content, and B/tmp remain unresolved. Exact duplicate S5 precision archive was excluded. Seed_v3u3 and selected must/model receipts now have verified WD25 copies; other S5 A/B payloads, hosts, code/pcode, remaining must variants, and B/tmp/events_sorted.tsv (~15.99GB) remain unresolved. S5 A/B MANIFEST.json are exact duplicates of preserved S6 receipts; A2/B2 build_stats and union_A/B reports are already hash-verified on WD25. Four selected code/pcode provenance files now also have copies. No generated standalone manifest was found in bounded code/pcode paths; full S5 code/pcode trees and mutable symlink targets remain unresolved."
+    },
+    {
+      "current_source_locations": [
+        "S6 /home/niels/v20_u4/E/; 9,715 literal symlinks mapped; frozen_ind links resolve into mutable /home/niels/binance-sandbox/backtest_v8/indicators"
+      ],
+      "evidence_receipts": [
+        "learning_preservation_audit_20261030T200206Z.json:s6_v20_u4_E_selected"
+      ],
+      "family": "S6_E_symlinks_and_frozen_ind_targets",
+      "independent_verified_copy": [
+        {
+          "coverage": "partial E only; not full target materialization",
+          "location": "WD25 selected E regular artifacts, bench snapshot, v18 model data/modules and literal link map",
+          "verification": "selected trees checksum-matched at point of copy; literal link map SHA256 2857efb67bcd8bca37c7e718e26eda279c443dac76327639fb45f01b51ed1b2e"
+        }
+      ],
+      "preservation_rule": "Preserve literal symlink map and provenance; only materialize allowlisted targets from sandbox after explicit enumeration and snapshot identity checks.",
+      "unresolved_source": "Metadata resolution found 855 unique final regular frozen_ind targets (~23,504,597,343B) plus 46 missing links; targets had recent mtimes and are mutable. They cannot be represented as historical frozen bytes. Remaining E content and full code_E are unresolved."
+    },
+    {
+      "current_source_locations": [
+        "S2 live /home/niels/binance-sandbox/data/eval_cache_v1.db (3,633,602,560B at recorded stat; recent mtime)",
+        "TOSHIBA_EXT documented eval-cache master/rebuild; E3T /Volumes/E3T/mac_backup_20261014/data/eval_cache_v1.db (7,864,320B; docs say 657 rows merged; no current hash/identity check)",
+        "SSD2T documented archive, current capacity not refreshed in this audit"
+      ],
+      "evidence_receipts": [
+        "SELF_LEARNING_DATA.md",
+        "tools/data_locations.py",
+        "S2 bounded stat recorded in preservation audit context",
+        "external storage device inventory below",
+        "data/reports/e3t_targeted_inventory_20261031T0154Z.json"
+      ],
+      "family": "eval_cache_master_rebuild_and_legacy_inputs",
+      "independent_verified_copy": [],
+      "preservation_rule": "Do not infer SQLite integrity or identity from names/sizes; preserve master/rebuild lineage and source manifests before movement.",
+      "unresolved_source": "TOSHIBA master/rebuild bytes and manifest lineage remain unverified; E3T legacy 657-row input remains present but row/hash identity against master was not rechecked. S2 DB is live and must remain intact. SSD2T storage is full/near-full per prior receipt; no source-family byte verification recorded."
+    },
+    {
+      "current_source_locations": [
+        "S1/S2 worker-local backtest_v8/indicators; external-drive archives described by data_locations registry and SELF_LEARNING_DATA.md; E frozen_ind symlinks resolve to mutable sandbox targets"
+      ],
+      "evidence_receipts": [
+        "SELF_LEARNING_DATA.md",
+        "tools/data_locations.py",
+        "learning_preservation_audit_20261030T200206Z.json:s6_v20_u4_E_selected"
+      ],
+      "family": "npz_indicators_and_backtest_evidence",
+      "independent_verified_copy": [],
+      "preservation_rule": "No full-volume scan; retain host-local source and establish immutable snapshot/provenance before claiming archive equivalence.",
+      "unresolved_source": "No whole-corpus hash inventory in this audit. Historical docs list external NPZ archives but actual byte verification is not recorded here. E symlink targets are mutable, not historical snapshots."
+    },
+    {
+      "current_source_locations": [
+        "S1 /home/niels/binance-sandbox/data: priors JSON 5,135,572B; causal learner DB 2,743,435,264B; combo library 937,172,992B; knowledge graph 8,651,212B; endgame 599,793B; per_trade_returns directory",
+        "S1 /home/niels/binance-sandbox/data/per_trade_returns (78 direct JSONL files; 10,957,608B at bounded inventory)",
+        "S1 /home/niels/binance-sandbox/data/causal (flat-file reports/maps in addition to the live causal learner DB)"
+      ],
+      "evidence_receipts": [
+        "bounded S1 stat recorded in preservation audit context",
+        "tools/data_locations.py registry"
+      ],
+      "family": "S1_ancillary_learning_stores",
+      "independent_verified_copy": [
+        {
+          "location": "WD25 /Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/",
+          "proof": "/Users/niels/Documents/binance/data/reports/s1_ancillary_copy_receipt_20261031T0210Z.json",
+          "verification": "99 direct regular files, 59,087,602B across causal JSON/MD/CSV, encyclopedia_v2 JSON/MD/CSV, endgame JSON and all per_trade_returns JSONL; each source hash stable pre/post rsync and WD SHA256 exact"
+        }
+      ],
+      "preservation_rule": "S1 is protected; preserve current stores and their lineage, do not treat size/existence as backup proof.",
+      "unresolved_source": "Small S1 flat-file learning/provenance set and all 78 per_trade_returns files have verified WD25 copies. Top-level priors/graph/endgame copies are exact duplicates by SHA. The live 2.74GB causal_learner.db and 937MB v17_combo_library.sqlite remain uncopied; no transaction-consistent snapshot or independent byte-verified copy exists. Current 14-day delta logs remain host-local. S1 is protected and must not be retired."
+    },
+    {
+      "current_source_locations": [
+        "S2 /home/niels/v15_bench/.preservation_archive_20261030T222913Z/"
+      ],
+      "evidence_receipts": [
+        "learning_preservation_audit_20261030T200206Z.json:s2_generated_scratch_archive_reclaim; source archive SHA256 0199bb9bcc07b1664972e2be3850b2a12c87934cdb5e0c67b00247478ed42bd5; receipt SHA256 2d4d2828f57a878fe0d8560497260529cc4c25fe19a351768896c27f54122c76"
+      ],
+      "family": "S2_gate_candidate_archive_and_probe_receipts",
+      "independent_verified_copy": [
+        {
+          "bytes": 346208309,
+          "location": "S2 /home/niels/v15_bench/.preservation_archive_20261030T232000Z_code_copies/source_payload.tar.gz",
+          "manifest": "S2 /home/niels/v15_bench/.preservation_archive_20261030T232000Z_code_copies/source_manifest.json",
+          "manifest_sha256": "89afa558c11671378077cd35f525ba1f61a87ba3185646ea293c4db7202ab9ba",
+          "receipt": "S2 /home/niels/v15_bench/.preservation_archive_20261030T232000Z_code_copies/verification_receipt.json",
+          "receipt_sha256": "d41b9223e5451ed7230ae5a7097ae9fc591fe3102e2dffa0edcc52ba46c172f8",
+          "sha256": "27867403dc988d50013cf7d9626490f32612cd51a16f471397f342ccca332b08",
+          "verification": "All 8,927 regular files SHA256-verified within archive; modes/types/directories/symlinks checked; source hashes and metadata stable; no active cwd/fd handles immediately before exact-path reclaim. This is a same-host preservation archive, not an independent/offsite copy."
+        }
+      ],
+      "preservation_rule": "Retain archive, manifest, receipt and extracted tiny probe receipts; no blanket cleanup.",
+      "unresolved_source": "Exact generated code trees were reclaimed only after the archive/manifest/receipt verified; archive remains on S2 and preserves their differing diagnostic lineage. This is not independent/offsite preservation."
+    },
+    {
+      "current_source_locations": [
+        "Mac data/reports/position_chain_20261031/inventory/ and gain_protection_variation_lab/",
+        "Mac data/reports/ang_investigation_20261031/"
+      ],
+      "evidence_receipts": [
+        "data/reports/gain_protection_evidence_preservation_20261031T0147Z.json",
+        "data/reports/neural_builder_handoff_preservation_20261031T0200Z.json"
+      ],
+      "family": "gain_protection_observation_and_builder_handoff",
+      "independent_verified_copy": [
+        {
+          "location": "WD25 /Volumes/WD25/binance_archive/gain_protection_evidence_20261031T0147Z/",
+          "verification": "selected observation files plus neural_builder_handoff copied with source/destination SHA256 matches; receipts preserved; one active fills-fetch output excluded at copy time"
+        }
+      ],
+      "preservation_rule": "Keep observations, original timestamps and source attribution distinct from NN promotion evidence; retain source originals.",
+      "unresolved_source": "The active fills-fetch output and full position-chain tree were not copied; observation files have attribution gaps and are not model-promotion proof."
+    },
+    {
+      "current_source_locations": [
+        "S1 /home/niels/binance-sandbox/data/learn (59 direct regular files; 108,115,368 bytes at census)"
+      ],
+      "evidence_receipts": [
+        "data/reports/s1_historical_learning_receipt_20261031T022235Z.json"
+      ],
+      "family": "s1_historical_learning_flatfiles",
+      "independent_verified_copy": [
+        {
+          "location": "/Volumes/WD25/binance_archive/s1_learn_historical_20261031T022235Z/data/learn",
+          "proof": "data/reports/s1_historical_learning_receipt_20261031T022235Z.json",
+          "verification": "48 selected historical regular files, 6,677,151 bytes; source pre/post SHA+mtime stable; every WD destination SHA matched"
+        }
+      ],
+      "preservation_rule": "Historical daily bt_leg JSON excluding incomplete .tmp, dated insights JSON/MD excluding insights_latest alias, shadowed digest snapshots and proof_insights were copied. No live must_pos state/watermark snapshots copied.",
+      "unresolved_source": "11 omitted items include 8 must_pos current snapshots/watermarks, insights_latest alias and incomplete bt_leg temp; exact preservation policy for current mutable S1 learning state not resolved. The four active brain delta-log windows remain host-local by policy."
+    },
+    {
+      "current_source_locations": [
+        "S1 /home/niels/binance-sandbox/data/learn/must_pos_*.json (9 regular files)"
+      ],
+      "evidence_receipts": [
+        "data/reports/s1_mustpos_snapshot_receipt_20261031T022428Z.json"
+      ],
+      "family": "s1_must_pos_point_in_time_snapshots",
+      "independent_verified_copy": [
+        {
+          "location": "/Volumes/WD25/binance_archive/s1_mustpos_snapshot_20261031T022428Z/data/learn",
+          "proof": "data/reports/s1_mustpos_snapshot_receipt_20261031T022428Z.json",
+          "verification": "9 files, 101,423,592 bytes; source pre/post hashes and mtimes stable, all WD file hashes match; no open source handles observed before copy"
+        }
+      ],
+      "preservation_rule": "Point-in-time copy only. The nine independently written files are not a transactionally coherent cross-file snapshot; source files remain untouched.",
+      "unresolved_source": "No claim of simultaneous generation/atomicity. Source can change later; fresh copies need new receipts. S1 live databases and 14-day host-local logs remain unresolved/local by policy."
+    },
+    {
+      "current_source_locations": [
+        "S5 /home/niels/v20_u4/code",
+        "S5 /home/niels/v20_u4/pcode"
+      ],
+      "evidence_receipts": [
+        "data/reports/s5_code_pcode_full_closure_20261031T022850Z.json",
+        "data/reports/s5_must_code_pcode_provenance_20261031T0216Z.json"
+      ],
+      "family": "s5_code_pcode_tree_snapshot",
+      "independent_verified_copy": [
+        {
+          "location": "/Volumes/WD25/binance_archive/s5_code_pcode_full_20261031T022850Z/s5_code_pcode.tar.gz",
+          "proof": "data/reports/s5_code_pcode_full_closure_20261031T022850Z.json",
+          "verification": "31 regular files (1546419 bytes), 2 literal symlinks, all tar member SHA/length/mode/target checks matched pre-capture manifest; source pre/post manifests identical; compressed archive SHA 1e5d774605b3f3c5936d5d43b00269a9dfb531d75f46beff94001d0bf1a2161e"
+        }
+      ],
+      "preservation_rule": "Archive preserves exact current regular-file bytes and literal symlink targets; no symlink target dereferenced and no source changed. Four files are exact hash duplicates of earlier individual WD copies; full archive intentionally remains a self-contained snapshot.",
+      "unresolved_source": "This closes only code/pcode trees. S5 must, seed, A/B, and other v20_u4 trees are not fully preserved; their separate receipts cover selected payloads only."
+    },
+    {
+      "current_source_locations": [
+        "S5 /home/niels/v20_u4/must (117 regular files; 598,245,671 logical bytes; no symlinks)"
+      ],
+      "evidence_receipts": [
+        "data/reports/s5_must_unique_closure_20261031T024429Z.json",
+        "data/reports/s5_seed_and_oct23_nn_preservation_20261031T0131Z.json",
+        "prior union_A/union_B/A2/B2 verification_receipts under WD25 learning_preserve_20261031T0011Z"
+      ],
+      "family": "s5_v20_u4_must_tree_content_closure",
+      "independent_verified_copy": [
+        {
+          "location": "/Volumes/WD25/binance_archive/s5_must_unique_20261031T024429Z/must/ plus prior verified WD copies mapped per source path",
+          "proof": "data/reports/s5_must_unique_closure_20261031T024429Z.json",
+          "verification": "Complete 117-path map; prior verified copies cover 61 paths, one additional identical-content path maps to a dedup representative, and 55 missing unique files (252,757,726 bytes) were copied and SHA-verified."
+        }
+      ],
+      "preservation_rule": "Preserve source content without deletion; deduplicate only by exact SHA256 and retain every source-path mapping.",
+      "unresolved_source": "Content is distributed across earlier WD folders plus the new unique-content directory; reconstruct source tree using the receipt map. This does not prove every S5 v20_u4 tree outside must/code/pcode."
+    },
+    {
+      "current_source_locations": [
+        "S6 /home/niels/v20_u4/A/brain_union and B/brain_union; S5 A/B manifests record these S6 origins"
+      ],
+      "evidence_receipts": [
+        "data/reports/s5_model_payload_copy_receipt_20261031T023652Z.json",
+        "S5 A/MANIFEST.json SHA256 3cbb2295bbfbb3502af4f7a1382b261b37e9a1019653838f92aab9e03ab52c0b",
+        "S5 B/MANIFEST.json SHA256 47d873fd7c6b015f734f90317b2e7954538c6b9eeca6605750b230fec4a51a2d"
+      ],
+      "family": "v20_u4_ab_brain_model_json_payloads",
+      "independent_verified_copy": [
+        {
+          "location": "/Volumes/WD25/binance_archive/s5_model_payloads_20261031T023652Z/A and B/brain_union",
+          "proof": "data/reports/s5_model_payload_copy_receipt_20261031T023652Z.json",
+          "verification": "Eight JSON model files, 78,917,651 bytes; each S6 SHA256 remained stable pre/post transfer and every S5 A/B manifest MD5+size matched."
+        }
+      ],
+      "preservation_rule": "Treat as S6 model payloads linked by exact manifest checks; no new acceptance or performance claim.",
+      "unresolved_source": "S5 A/B brain_union directories were empty at inventory; lineage ties S5 manifests to S6 outputs, not files physically present on S5."
+    },
+    {
+      "current_source_locations": [
+        "S6 /home/niels/v20_u4/A/brain_state/v18_brain_state.pkl",
+        "S6 /home/niels/v20_u4/B/brain_state/v18_brain_state.pkl"
+      ],
+      "evidence_receipts": [
+        "data/reports/s6_ab_training_state_copy_receipt_20261031T024827Z.json",
+        "S5 A/B manifests for adjacent model payload outputs"
+      ],
+      "family": "s6_ab_training_state_checkpoints",
+      "independent_verified_copy": [
+        {
+          "location": "/Volumes/WD25/binance_archive/s5_ab_training_states_20261031T024827Z/A and B/brain_state",
+          "proof": "data/reports/s6_ab_training_state_copy_receipt_20261031T024827Z.json",
+          "verification": "Two PKLs, 1,409,458,298 bytes total; source pre/post SHA256+mtime stable and WD hashes exact."
+        }
+      ],
+      "preservation_rule": "Label these S6 training-state checkpoints.",
+      "unresolved_source": "S5 A/B manifests do not list or hash PKL files; S5 A/B brain_state directories were empty. Do not claim these as S5-side checkpoint bytes."
+    },
+    {
+      "current_source_locations": [
+        "S5 /home/niels/v20_u4/B/tmp/events_sorted.tsv (15,993,543,228 bytes)"
+      ],
+      "evidence_receipts": [
+        "data/reports/s5_b_events_sorted_gzip_receipt_20261031T030014Z.json",
+        "data/reports/s5_b_sorted_events_provenance_audit_20261031T0251Z.json",
+        "data/reports/learning_preservation_audit_20261030T200206Z.json:s6_v20_u4_spills_copy"
+      ],
+      "family": "s5_b_sorted_events_temp",
+      "independent_verified_copy": [
+        {
+          "location": "/Volumes/WD25/binance_archive/s5_b_events_sorted_gzip_20261031T030014Z/events_sorted.tsv.gz",
+          "proof": "data/reports/s5_b_events_sorted_gzip_receipt_20261031T030014Z.json",
+          "verification": "Gzip archive SHA256 and full decompressed source SHA256/size match; source metadata and inode stable pre/during/post stream."
+        }
+      ],
+      "preservation_rule": "Retain exact temporary sort bytes as gzip evidence; do not treat it as proof of the accepted model run input.",
+      "unresolved_source": "B MANIFEST enumerates 97 S6 copied spills, while run_train.sh points at S5 staging directories; exact generation-to-model linkage remains unresolved. The compressed source spills and trainer source are preserved, enabling a regeneration path but not byte-for-byte training attribution."
+    }
+  ],
+  "next_concrete_bounded_preservation_transfer": {
+    "candidate": "S1 live SQLite ancillary DBs: first identify authoritative writer/transaction state and supported consistent read-only snapshot method for causal_learner.db and v17_combo_library.sqlite, then hash-verify a bounded snapshot before any copy.",
+    "not_started": true,
+    "preconditions": [
+      "Keep S1 service and source DBs intact",
+      "No raw multi-GB copy while writers are active without a consistent SQLite snapshot",
+      "Check target UUID/capacity immediately before each copy",
+      "Preserve all source files and provenance receipts"
+    ],
+    "why": "The small files are safely preserved; the remaining S1 causal-learning DB and combo library are the largest directly registered ancillary learning stores without independent verified copies."
+  },
+  "purpose": "Consolidated manifest/receipt-backed preservation status; refreshed with exact WD25 relocation, full archive-member hash proof, exact S6 source reclamation order, current bounded server/drive state, and ranked remaining gaps.",
+  "source_audit": "/Users/niels/Documents/binance/data/reports/learning_preservation_increment_20261031T0217Z.json",
+  "source_audit_sha256": "ec856c053d2c4b096ff4f4f7875db12bf534b9a498bc2bd04591252256fae345",
+  "source_backup": "/Users/niels/Documents/binance/data/reports/learning_preservation_matrix_20261031T0154Z.json",
+  "supersedes": [
+    "/Users/niels/Documents/binance/data/reports/learning_preservation_matrix_20261031T0154Z.json"
+  ],
+  "timestamp_correction": {
+    "basis": "receipt timestamps and current source/destination hash evidence; source computation timestamps retained",
+    "refresh_time_utc": "2026-10-31T02:17:01Z",
+    "superseded_prior_matrix": "/Users/niels/Documents/binance/data/reports/learning_preservation_matrix_20261031T0154Z.json"
+  }
+}

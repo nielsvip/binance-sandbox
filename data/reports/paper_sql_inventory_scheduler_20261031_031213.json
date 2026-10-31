@@ -1,0 +1,122 @@
+{
+  "verified_at": "2026-10-31T03:12:13.752151+00:00",
+  "master": "s1-pub:/home/niels/binance-sandbox/data/paper_forward_lab/scenarios.db",
+  "local_snapshot": "/Users/niels/Documents/binance/data/paper_forward_lab/scenarios.s1.db",
+  "release": {
+    "release": "edf3b337b37af318",
+    "hashes": {
+      "paper_inventory.py": "2fde3aca4814d042ef1797b31a13f879740558728f80e6fe55c073ccd5b29454",
+      "paper_inventory_evidence.py": "000bc59a3fb0f974d577c4cdf9001d6ce90930814538daba67810b8efc071c8c",
+      "paper_scenario_db.py": "5eabf6e28e03c691dff47c0022b470615f47bf0a4508fe0876811f8fa59e3882",
+      "paper_forward_lab.py": "151ccb21099bc1449379a33ead9adabb54d9504d38b8be823b4e5f74ad13f7c2",
+      "paper_scenario_catalog.py": "d40009a603d9134d855149b2d124b0786fe83cb803a4fb77cc3217bf21f73185",
+      "paper_fleet_budget.py": "4b7ee1a013418e3960bd4db714876217998607b249f63dc827aca66f4f8fda6c"
+    }
+  },
+  "counts": {
+    "paths": 2894,
+    "scenarios": 3274,
+    "runs": 33272,
+    "decisions": 17014,
+    "trades": 0,
+    "results": 2140,
+    "settings_snapshots": 200,
+    "source_code_snapshots": 1,
+    "forward_receipts": 0,
+    "inventory_gaps": 3
+  },
+  "evidence_counts": [
+    {
+      "evidence_kind": "catalog_only",
+      "status": "PENDING_PARAMETERS",
+      "count": 8928
+    },
+    {
+      "evidence_kind": "catalog_only",
+      "status": "PENDING_VALIDATED_EXECUTION",
+      "count": 18608
+    },
+    {
+      "evidence_kind": "observational",
+      "status": "OBSERVATIONAL_ONLY",
+      "count": 2140
+    },
+    {
+      "evidence_kind": "timing_shadow",
+      "status": "OBSERVATIONAL_ONLY",
+      "count": 3596
+    }
+  ],
+  "result_source_times": [
+    "2026-10-31T02:46:53.043793+00:00"
+  ],
+  "catalog_scenarios": 568,
+  "catalog_switch_paths": [
+    {
+      "venue": "crypto",
+      "classification": "low_tf_candidate",
+      "count": 59
+    },
+    {
+      "venue": "crypto",
+      "classification": "verified_mask",
+      "count": 47
+    },
+    {
+      "venue": "stocks",
+      "classification": "low_tf_candidate",
+      "count": 62
+    },
+    {
+      "venue": "stocks",
+      "classification": "verified_mask",
+      "count": 18
+    }
+  ],
+  "integrity": "ok",
+  "foreign_key_errors": [],
+  "gaps": [
+    {
+      "sym_side": "ICXUSDT_SHORT",
+      "reason": "NO_ACTIVE_SETTINGS"
+    },
+    {
+      "sym_side": "KAITOUSDT_SHORT",
+      "reason": "NO_ACTIVE_SETTINGS"
+    },
+    {
+      "sym_side": "RUNEUSDT_LONG",
+      "reason": "NO_ACTIVE_SETTINGS"
+    }
+  ],
+  "tests": "21 passed",
+  "refresh_interval_seconds": 600,
+  "resource_limits": {
+    "CPUQuota": "25%",
+    "MemoryMax": "512M",
+    "Nice": 19,
+    "CPUWeight": 1,
+    "IOWeight": 1
+  },
+  "independent_execution_validated": false,
+  "promotion_enabled": false,
+  "limitations": [
+    "Existing scores are observational and configuration provenance is UNRECORDED.",
+    "Catalog slots are planned; independent forward workers are not running.",
+    "Nonboolean candidates need authoritative parameter values.",
+    "SQL upload uses existing Mac paper evidence and requires Mac availability.",
+    "No ten-day causal bad-trade replay has passed."
+  ],
+  "query_example": "sqlite3 data/paper_forward_lab/scenarios.s1.db < tools/paper_inventory_queries.sql",
+  "scheduler": {
+    "kind": "user_crontab",
+    "schedule": "*/10 * * * *",
+    "previous_lines_preserved": 218,
+    "launcher": "/opt/anaconda3/envs/binance_env/bin/python3.11",
+    "local_nice": 10,
+    "log_directory": "/Users/niels/Library/Logs/PaperSQLInventory",
+    "launchd_attempt": "disabled after process stalled before Python startup; root cause unverified",
+    "first_scheduled_tick_verified": false
+  },
+  "snapshot_measured_at": "2026-10-31T03:09:28.050398+00:00"
+}

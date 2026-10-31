@@ -1,0 +1,35 @@
+{
+  "attribution_boundary": "Unique retained temporary sort artifact; no claim that manifest proves this exact file was the input to the recorded A/B model run. See s5_b_sorted_events_provenance_audit_20261031T0251Z.json for manifest/run-script source discrepancy.",
+  "created_at_utc": "2026-10-31T03:09:02.646303+00:00",
+  "decompressed_matches_source_full_stream": true,
+  "destination_compressed_sha256": "8f84a9c0a2c7c9e5420213b2a88567a8fc65d47db4a5eb70105eec3570b05107",
+  "destination_compressed_size": 1717057543,
+  "destination_decompressed_sha256": "fe4611a6998957e6e4e4943cd1039c40fc0d833f3d834357c9966ce57b177d50",
+  "destination_decompressed_size": 15993543228,
+  "destination_path": "/Volumes/WD25/binance_archive/s5_b_events_sorted_gzip_20261031T030014Z/events_sorted.tsv.gz",
+  "destination_volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+  "gzip_compresslevel": 1,
+  "no_source_deletion_or_mutation": true,
+  "source_full_stream_sha256": "fe4611a6998957e6e4e4943cd1039c40fc0d833f3d834357c9966ce57b177d50",
+  "source_full_stream_size": 15993543228,
+  "source_host": "s5",
+  "source_metadata_post_stream": {
+    "inode": 5062507,
+    "mtime_ns": 1793141147681362035,
+    "size": 15993543228
+  },
+  "source_metadata_pre_stream": {
+    "inode": 5062507,
+    "mtime_ns": 1793141147681362035,
+    "size": 15993543228
+  },
+  "source_metadata_stream_pre_post": {
+    "inode_post": 5062507,
+    "inode_pre": 5062507,
+    "mtime_ns_post": 1793141147681362035,
+    "mtime_ns_pre": 1793141147681362035,
+    "size_post": 15993543228
+  },
+  "source_path": "/home/niels/v20_u4/B/tmp/events_sorted.tsv",
+  "source_stable_pre_post": true
+}

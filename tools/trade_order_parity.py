@@ -53,11 +53,12 @@ def validate_ledger(rows, initial_positions=None):
             errors.append({"row": index, "error": str(error), "event": row})
     return indexed, positions, errors
 
-def compare_orders(vector, native, initial_positions=None, quantity_tolerances=None):
+def compare_orders(vector, native, initial_positions=None, quantity_tolerances=None, require_quantity_parity=False):
     vector_index, vector_final, vector_errors = validate_ledger(vector, initial_positions)
     native_index, native_final, native_errors = validate_ledger(native, initial_positions)
     tolerances = quantity_tolerances or {}
     differences = []
+    quantity_differences = []
     for key in sorted(set(vector_index) | set(native_index)):
         expected, actual = vector_index.get(key, []), native_index.get(key, [])
         if len(expected) != len(actual):
@@ -68,16 +69,21 @@ def compare_orders(vector, native, initial_positions=None, quantity_tolerances=N
             raise ValueError("quantity_tolerance must be nonnegative")
         for order_index, (left, right) in enumerate(zip(expected, actual)):
             fields = []
+            quantity_fields = []
             if left["action"] != right["action"]:
                 fields.append("action")
             for field in ("qty", "position_after"):
                 if not math.isclose(left[field], right[field], rel_tol=0, abs_tol=tolerance):
-                    fields.append(field)
+                    quantity_fields.append(field)
+            if quantity_fields:
+                quantity_differences.append({"key": key, "order_index": order_index, "fields": quantity_fields, "vector": left, "native": right})
+                if require_quantity_parity:
+                    fields.extend(quantity_fields)
             if fields:
                 differences.append({"key": key, "order_index": order_index, "kind": "ORDER_FIELDS", "fields": fields, "vector": left, "native": right})
     invalid = vector_errors or native_errors
     verdict = "INVALID" if invalid else "FAIL" if differences else "PASS" if vector or native else "NO_EVENTS"
-    return {"verdict": verdict, "vector_orders": len(vector), "native_orders": len(native), "timestamp_tolerance_seconds": 0, "quantity_tolerances": tolerances, "differences": differences, "vector_errors": vector_errors, "native_errors": native_errors, "vector_final": {"|".join(k): v for k, v in vector_final.items()}, "native_final": {"|".join(k): v for k, v in native_final.items()}}
+    return {"verdict": verdict, "criterion": "exact action sequence and bars", "quantity_parity_required": require_quantity_parity, "vector_orders": len(vector), "native_orders": len(native), "timestamp_tolerance_seconds": 0, "quantity_tolerances": tolerances, "differences": differences, "quantity_differences_diagnostic": quantity_differences, "vector_errors": vector_errors, "native_errors": native_errors, "vector_final": {"|".join(k): v for k, v in vector_final.items()}, "native_final": {"|".join(k): v for k, v in native_final.items()}}
 
 def audit_replay_logs(paths):
     findings = []
@@ -111,8 +117,9 @@ def main():
     parser.add_argument("--native", required=True)
     parser.add_argument("--output", required=True)
     parser.add_argument("--log", action="append", default=[])
+    parser.add_argument("--require-quantity-parity", action="store_true")
     args = parser.parse_args()
-    report = compare_orders(json.loads(Path(args.vector).read_text()), json.loads(Path(args.native).read_text()))
+    report = compare_orders(json.loads(Path(args.vector).read_text()), json.loads(Path(args.native).read_text()), require_quantity_parity=args.require_quantity_parity)
     report["validation_scope"] = "Supplied executed-order ledgers and logs only; data coverage and all-path completeness are separate requirements"
     report["log_audit"] = audit_replay_logs(args.log)
     report["order_and_log_verdict"] = "PASS" if report["verdict"] == "PASS" and report["log_audit"]["verdict"] == "PASS" else "NOT_ACCEPTED"

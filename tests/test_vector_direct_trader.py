@@ -465,17 +465,46 @@ def test_held_file_carries_per_side_notional_summed_over_accounts(tmp_path):
     assert doc["notional"] == {"XUSDT_LONG": 30.0, "YUSDT_SHORT": 5.0} and doc["total_notional"] == 35.0
 
 
-def test_deterioration_halt_closes_and_never_reenters(tmp_path):
+def test_deterioration_halt_waits_for_fresh_wt15_against_and_never_reenters(tmp_path):
     halted = {"XUSDT_LONG": {"halted_utc": "2026-10-30T04:00:00Z"}}
     orders, notes = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(True, eq=75.0, oq=100.0)}, {}, BAR, set(), ALLOW, halted=halted)
     assert orders == [] and notes[0][1] == "DETERIORATED_NO_REENTRY"
     acts = [{"type": "REDUCE", "qty": 25.0, "qty_before": 100.0, "qty_frac": 0.25}, {"type": "AUGMENT", "qty": 50.0, "qty_before": 75.0}]
-    orders, notes = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(True, acts=acts)}, {"XUSDT_LONG": {"qty": 8.0}}, BAR, set(), ALLOW, halted=halted)
+    held = {"XUSDT_LONG": {"qty": 8.0}}
+    with_wt = lambda ss: {"bar_ts": BAR, "wt1_15m": 2.0, "wt2_15m": 1.0}
+    orders, notes = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(True, acts=acts)}, held, BAR, set(), ALLOW, wt15=with_wt, halted=halted)
+    assert [o["act"] for o in orders] == ["REDUCE"]
+    assert any("DETERIORATION_HOLD_WAIT_WT15" in n for _, n in notes)
+    assert any("DETERIORATION_HALT_NO_AUGMENT" in n for _, n in notes)
+    stale_wt = lambda ss: {"bar_ts": BAR - 3600, "wt1_15m": -2.0, "wt2_15m": 1.0}
+    orders, notes = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(True)}, held, BAR, set(), ALLOW, wt15=stale_wt, halted=halted)
+    assert orders == [] and any("stale/unavailable" in n for _, n in notes)
+    prior_bar_wt = lambda ss: {"bar_ts": BAR - 900, "wt1_15m": -2.0, "wt2_15m": 1.0}
+    orders, _ = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(True)}, held, BAR, set(), ALLOW, wt15=prior_bar_wt, halted=halted)
+    assert orders == []
+    against_wt = lambda ss: {"bar_ts": BAR, "wt1_15m": -2.0, "wt2_15m": 1.0}
+    orders, _ = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(True)}, held, BAR, set(), ALLOW, wt15=against_wt, halted=halted)
     assert [o["act"] for o in orders] == ["CLOSE"] and orders[0]["reason"] == "DETERIORATED_CLOSE"
-    orders, _ = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(False)}, {"XUSDT_LONG": {"qty": 12.0}}, BAR, set(), ALLOW, halted=halted)
-    assert [(o["act"], o["qty"]) for o in orders] == [("CLOSE", 12.0)]
+    assert str(BAR) in orders[0]["key"]
+    orders, _ = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(False)}, {"XUSDT_LONG": {"qty": 12.0}}, BAR, set(), ALLOW, wt15=with_wt, halted=halted)
+    assert [(o["act"], o["qty"]) for o in orders] == [("CLOSE", 12.0)] and orders[0].get("reason") != "DETERIORATED_CLOSE"
     (tmp_path / "data").mkdir()
     (tmp_path / "data" / "deterioration_halt.json").write_text('{"halts": {"xusdt_long": {"halted_utc": "x"}}}')
     assert set(V.deterioration_halts(tmp_path)) == {"XUSDT_LONG"}
     (tmp_path / "data" / "deterioration_halt.json").write_text("{broken")
     assert V.deterioration_halts(tmp_path) == {}
+
+
+def test_deterioration_short_requires_bullish_wt15_and_rejects_future_bar():
+    ss = "XUSDT_SHORT"
+    args = ("ang", "crypto", [ss], {ss: st(True)}, {ss: {"qty": 2.0}}, BAR, set(), ALLOW)
+    halted = {ss: {"halted_utc": "now"}}
+    future = lambda _: {"bar_ts": BAR + 900, "wt1_15m": 2.0, "wt2_15m": 1.0}
+    orders, _ = V.plan_account(*args, wt15=future, halted=halted)
+    assert orders == []
+    with_trade = lambda _: {"bar_ts": BAR, "wt1_15m": -2.0, "wt2_15m": 1.0}
+    orders, _ = V.plan_account(*args, wt15=with_trade, halted=halted)
+    assert orders == []
+    against = lambda _: {"bar_ts": BAR, "wt1_15m": 2.0, "wt2_15m": 1.0}
+    orders, _ = V.plan_account(*args, wt15=against, halted=halted)
+    assert len(orders) == 1 and orders[0]["reason"] == "DETERIORATED_CLOSE"

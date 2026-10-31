@@ -50,8 +50,10 @@ def ingest_plan(db, plan):
         token = "plan-" + digest({"codes": code_hash, "groups": plan["groups"], "uncovered": plan["uncovered"], "universe_sha256": plan["universe_sha256"]})
         if not db.query("SELECT 1 FROM imports WHERE import_id=?", (token,)):
             db.record_import(import_id=token, source_path=plan["universe_source"], source_hash=plan["universe_sha256"], imported_at=now(), source_computed_at=None)
-            for gap in plan["uncovered"]:
-                db.add_inventory_gap(gap_id="gap-" + digest([token, gap]), sym_side=gap["sym_side"], reason=gap["reason"], observed_at=plan["planned_at"], source_hash=plan["universe_sha256"], payload=gap)
+        for gap in plan["uncovered"]:
+            gap_id = "gap-" + digest([token, gap])
+            if not db.query("SELECT 1 FROM inventory_gaps WHERE gap_id=?", (gap_id,)):
+                db.add_inventory_gap(gap_id=gap_id, sym_side=gap["sym_side"], reason=gap["reason"], observed_at=plan["planned_at"], source_hash=plan["universe_sha256"], payload=gap)
     return {"groups": len(plan["groups"]), "uncovered": plan["uncovered"]}
 
 def variant(db, parent, overrides, note):

@@ -241,6 +241,27 @@ def stage(queue_path: Path, result_dir: Path, source_db: Path, source_sets_path:
                  float(metrics.get("pool_sharpe") or 0), float(metrics.get("max_dd_pct") or 0),
                  json.dumps(result["overrides"], sort_keys=True), json.dumps(result["defaults"], sort_keys=True),
                  json.dumps(result["full_config"], sort_keys=True), json.dumps(meta, sort_keys=True), ss))
+        # A 7D store holds 7D sets ONLY. The backup above clones the WHOLE 30D store and the loop overwrites just the
+        # staged sides, so every other row would be a 30D set sitting in a file called per_sym_store_7d.db — readable as
+        # 7D by anything pointed at it (USER 2026-10-31 "make sure 7D and 30D and 60D are makred correctly in the sql's
+        # so nothing can use the wrong one"). Drop every row that was not 7D-staged, drop the cloned 30D history, and
+        # stamp the store's identity so its window is stated, not inferred from the filename.
+        staged = sorted(results)
+        if not staged:
+            raise ValueError("no 7D side staged — refusing to publish a 7D store with no 7D sets in it")
+        dst.execute(f"DELETE FROM per_sym_active WHERE sym_side NOT IN ({','.join('?' * len(staged))})", staged)
+        if dst.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='per_sym_history'").fetchone():
+            dst.execute("DELETE FROM per_sym_history")
+        if dst.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='kv_json'").fetchone():
+            now = dt.datetime.now(dt.timezone.utc)
+            dst.execute("INSERT OR REPLACE INTO kv_json (key, value_json, updated_at, epoch) VALUES (?,?,?,?)",
+                        ("store_identity", json.dumps({"window_days": 7, "kind": "7d_fin", "account": "fin", "book": "men",
+                                                       "stamped_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "day": today,
+                                                       "contract": "this store holds ONLY these settings; never read it as another window"},
+                                                      sort_keys=True), now.strftime("%Y-%m-%dT%H:%M:%SZ"), now.timestamp()))
+        leftover = dst.execute("SELECT COUNT(*) FROM per_sym_active").fetchone()[0]
+        if leftover != len(staged):
+            raise ValueError(f"7D store holds {leftover} rows for {len(staged)} staged sides — refusing")
         dst.commit()
         if dst.execute("PRAGMA integrity_check").fetchone()[0] != "ok":
             raise ValueError("staged 7D SQLite integrity check failed")

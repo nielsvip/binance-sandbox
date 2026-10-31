@@ -1,0 +1,128 @@
+{
+ "window_from": "10-31 02:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 345,
+  "status_OK": 9,
+  "EXTRA": 9
+ },
+ "rows": [
+  {
+   "acct": "men",
+   "sym_side": "1000SATSUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 02:15",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793412000, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "1000XECUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 02:15",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793412000, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "AWEUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 02:15",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793412000, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "AWEUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 03:00",
+   "actual": "CLOSE",
+   "actual_reason": "board flat, broker holds 213.0",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "BOMEUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 02:15",
+   "actual": "REDUCE",
+   "actual_reason": "engine REDUCE frac 0.2500 (CYCLE_TP_TIERED_T2_0.50pct_gain0.62)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "BOMEUSDC_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 02:30",
+   "actual": "REDUCE",
+   "actual_reason": "engine REDUCE frac 0.2500 (CYCLE_TP_TIERED_T3_0.70pct_gain0.71)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "EGLDUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 02:15",
+   "actual": "CLOSE",
+   "actual_reason": "board flat, broker holds 4.5",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "EIGENUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 02:20",
+   "actual": "CLOSE",
+   "actual_reason": "DETERIORATED_CLOSE: same-settings 30D gain fell by at least 15 pp",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  },
+  {
+   "acct": "men",
+   "sym_side": "NOTUSDT_SHORT",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 02:15",
+   "actual": "OPEN",
+   "actual_reason": "board holds since 1793412000, broker flat (engine qty ratio 1.000)",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}

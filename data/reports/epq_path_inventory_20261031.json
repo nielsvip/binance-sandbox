@@ -23,16 +23,16 @@
       "predicate": "Long k_1m > 90 and k_1m < k_1m_prev; short k_1m < 10 and k_1m > k_1m_prev. Existing shared scalar/vector predicate is vec_decisions/check_exit_candidates_crypto__k1m_extreme_reverse.py:42-89.",
       "inputs": "Native indicator keys k_1m (default 50) and k_1m_prev (default current); gain, grace, hedge, and trend-veto are runtime state. Frozen 1000PEPE NPZ has no stoch_k_1m or k_1m_prev arrays, but has stoch_k_15m and stoch_k_15m_prev.",
       "paired_timeframe_policy": "SWITCH_WIRING_GUIDE.md:117-124 defines 15m as floor, maps 3m/5m reads to 15m, and says sub-15m micro-trigger is ported at 15m when LTF is off. Root review treats 1m similarly; native/vector should both consume paired 15m current/previous arrays in LTF-off mode.",
-      "engine": "live_exit_chain.py:12,52-56 currently declares unsupported due to absent native 1m predecessor state; shared pure predicate exists but is not a reachable simulate_one exit. No K1M-specific ledger parity proof.",
+      "engine": "v12_quick_engine.py:20992-21090 uses the shared live_exit_chain K1M predicate. A pre-BB_RECOVERY check preserves EPQ order; the normal shared chain books the event once.",
       "switches": [
         "K1M_EXTREME_REVERSE_ENABLED",
         "K1M_EXTREME_HIGH",
         "K1M_EXTREME_LOW"
       ],
-      "templates": "K1M_EXTREME_REVERSE_ENABLED and thresholds must be verified against current template row/domain before promotion.",
-      "status": "Implementable on paired 15m lane if LTF-off; presently missing reachable engine hook and paired native adapter. LTF-on requires actual 1m series.",
-      "proof": "Remote read-only frozen NPZ key check on S1; source predicate lines and paired-timeframe policy cited above.",
-      "limitations": "Trend-veto uses multi-timeframe WT alignment and gain/grace are position state; these require existing engine masks/state inputs, not fabricated defaults."
+      "templates": "K1M_EXTREME_REVERSE_ENABLED was added through tools/v15_switch_add.py to EXIT_STRUCTURAL in TEMPLATE_CRYPTO_LONG/SHORT with False bold default and True as second option. It is crypto-only because EPQ is crypto-only; VEC_PARITY_STATUS remains a status row, not a control row.",
+      "status": "IMPLEMENTED native and vector paired lane; default remains False; LTF-on requires real 1m arrays.",
+      "proof": "tests/test_k1m_extreme_reverse_pairing.py executes the actual extracted EPQ K1M branch for both sides and checks original log strings, then exercises shared vector state gates, gain/grace/trend, NaN/zero/equal predecessor, and LTF-on missing-input refusal. tests/test_bb_recovery_parity.py exercises simulate_one and confirms same-bar K1M REDUCE wins over BB_RECOVERY. Frozen 1000PEPE key check confirms k_15m/k_15m_prev present and 1m arrays absent.",
+      "limitations": "K1M+BB ordering is proven in simulate_one with the native default switch retained False. Per-symbol enabling can be evaluated only in the crypto templates. LTF-on cannot be replayed on this frozen NPZ because 1m arrays are absent; validation refuses that case."
     },
     {
       "path": "PARABOLIC_EXIT",
@@ -247,8 +247,9 @@
     }
   ],
   "recent_verification": {
-    "pytest": "54 passed across reentry filters/triggers, frozen reentry mask parity, filter gate parity, B04, and WR/LR scalar parity; 3 external websockets deprecation warnings only.",
-    "py_compile": "Passed for modified Python modules and new native-branch test harness.",
-    "deployment": "No production sync, order placement, service restart, or template write performed."
+    "pytest": "77 passed across K1M pairing/precedence, reentry filters/triggers, frozen reentry mask parity, filter gate parity, B04, and WR/LR scalar parity; 6 external websockets deprecation warnings only.",
+    "py_compile": "Passed for modified native/vector modules and tests.",
+    "deployment": "No production sync, order placement, service restart, or template write performed.",
+    "template": "K1M_EXTREME_REVERSE_ENABLED present only in crypto EXIT_STRUCTURAL: False bold + True option in both long/short books; row intake queued/pushed to S1. No fleet template sync."
   }
 }

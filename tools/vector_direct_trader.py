@@ -519,13 +519,22 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
         held = float((positions.get(ss) or {}).get("qty") or 0.0)
         if venue == "crypto" and ss in halted:
             if held > 0:
-                orders.append({"acct": acct, "ss": ss, "act": "CLOSE", "qty": held,
-                               "key": f"{acct}|{ss}|{bar}|DETERIORATED_CLOSE",
-                               "why": f"DETERIORATED_CLOSE: {str((halted[ss] or {}).get('reason') or '30D gain deterioration')[:160]}",
-                               "reason": "DETERIORATED_CLOSE"})
+                wt = (wt15(ss) or {}) if wt15 is not None else {}
+                wt_bar = int(wt.get("bar_ts") or 0)
+                if wt_bar == bar:
+                    against, detail = wt15_against(ss, wt)
+                else:
+                    against, detail = None, "wt15 stale/unavailable"
+                if against:
+                    orders.append({"acct": acct, "ss": ss, "act": "CLOSE", "qty": held,
+                                   "key": f"{acct}|{ss}|{wt_bar}|DETERIORATED_CLOSE",
+                                   "why": f"DETERIORATED_CLOSE_WT15_AGAINST: {detail}; {str((halted[ss] or {}).get('reason') or '30D gain deterioration')[:120]}",
+                                   "reason": "DETERIORATED_CLOSE"})
+                    continue
+                notes.append((ss, f"DETERIORATION_HOLD_WAIT_WT15 {detail}"))
             else:
                 notes.append((ss, "DETERIORATED_NO_REENTRY"))
-            continue
+                continue
         # OPERATOR 2026-10-28 (verbatim): "EVERY tradeable sym_side needs to have a verdict with a quantity from a NEW kline right
         # then and there or a position needs to be closed and declared untradeable and sounding all bells and whistles".
         # tools/s1_bar_guarantee.py declares a side UNTRADEABLE (data/vector_direct/untradeable_<venue>.json) once its repair
