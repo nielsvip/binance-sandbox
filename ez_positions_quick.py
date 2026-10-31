@@ -4627,7 +4627,9 @@ class AdvancedSignalRater:
                         ),
                     )
                     _delta_z = (
-                        _delta_sig.bull_speed_z if is_long else _delta_sig.bear_speed_z
+                        getattr(_delta_sig, "bull_speed_z", 0.0)
+                        if is_long
+                        else getattr(_delta_sig, "bear_speed_z", 0.0)
                     )
                     _rza = getattr(_delta_sig, "zone_action", "") or ""
                     _py_l = getattr(_delta_sig, "pyramid_long", False)

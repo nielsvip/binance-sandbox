@@ -37,6 +37,7 @@ ENV_KEEP_PREFIX = ("V15_", "V12_")
 ALLOWED_WINDOWS = (1, 7, 30, 365)  # evaluate_v12._exact_30d_slice accepts these windows
 MIN_WINDOW_COVERAGE = 0.80  # tools/opt/metrics.py: a board whose NPZ covers less of the window is INVALID
 ENV_DROP = {"V15_PROGRESS_DIR", "V15_OUT_DIR", "V15_START_OVERRIDES", "V15_ISOLATED_PROOF", "V15_EVAL_CACHE_DB", "V15_FILL_SLICE_S", "V15_V17_CARRY_DIR"}
+PYTHON_DETERMINISM_ENV = {"PYTHONHASHSEED": "0", "V8_HASHSEED_LOCKED": "1"}
 CRYPTO_SUFFIX = ("USDT", "USDC", "BUSD", "FDUSD", "TUSD")
 MODEL_ARTIFACT_RE = re.compile(r"(?:v18_brain_[A-Za-z0-9_]+|(?:digest|needed_filters|switch_profile|positives_all|binding_map|linknet_proposals|must_pos)_[A-Za-z0-9_]+)\.json(?:\.gz)?$")
 MODEL_CATEGORIES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
@@ -57,6 +58,24 @@ def sha256_file(path, chunk=1 << 20):
         for block in iter(lambda: fh.read(chunk), b""):
             h.update(block)
     return h.hexdigest()
+
+
+def canonical_pilot_env(env):
+    """Require the deterministic Python settings before the pilot interpreter starts."""
+    effective = dict(env)
+    conflicts = {
+        key: effective[key]
+        for key, value in PYTHON_DETERMINISM_ENV.items()
+        if key in effective and str(effective[key]) != value
+    }
+    if conflicts:
+        detail = ", ".join(
+            f"{key}={value!r} (required {PYTHON_DETERMINISM_ENV[key]!r})"
+            for key, value in sorted(conflicts.items())
+        )
+        raise ValueError(f"conflicting deterministic pilot environment: {detail}")
+    effective.update(PYTHON_DETERMINISM_ENV)
+    return effective
 
 
 def sym_of(ss):
@@ -602,8 +621,6 @@ def cleanup_aborted_run(run_dir, running, pre_existing, grace_s=60.0):
 
 def _cmd_run_body(args, snap, man, run_dir):
     code = Path(args.code or SRC)
-    root = build_root(snap, run_dir, code, args.model_bundle)
-    pmd5 = md5(root / "v15_pilot.py")
     env_base = {k: v for k, v in os.environ.items() if not k.startswith(ENV_KEEP_PREFIX)}
     if args.clear_nn_env:
         env_base = {k: v for k, v in env_base.items() if not k.startswith(("V18_", "V20_"))}
@@ -614,6 +631,10 @@ def _cmd_run_body(args, snap, man, run_dir):
     for kv in args.set or []:
         k, _, v = kv.partition("=")
         env_base[k] = v
+    env_base = canonical_pilot_env(env_base)
+    root = build_root(snap, run_dir, code, args.model_bundle)
+    pmd5 = md5(root / "v15_pilot.py")
+    python_determinism_env = {key: env_base[key] for key in PYTHON_DETERMINISM_ENV}
     nn_env = {k: v for k, v in env_base.items() if k.startswith(("V18_", "V20_"))}
     nn_env_sha256 = hashlib.sha256(json.dumps(nn_env, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     # 2026-10-15: V15_HOLDOUT_DAYS truncates the NPZ in memory at (last bar - H d), so a 30 d fit window on a ~31 d
@@ -699,8 +720,40 @@ def _cmd_run_body(args, snap, man, run_dir):
             results[ss] = m
             del running[ss]
             print(f"[bench] done {ss} rc={rc} wall={m['wall_s']} gain={m.get('final_gain')}", flush=True)
-            _write_json_atomic(run_dir / "results.json", {"snap": args.snap, "label": args.label, "code": str(code), "pilot_md5": pmd5, "set": args.set or [], "window_days_fit": fit_days, "holdout_days": _ho, "nn_env_sha256": nn_env_sha256, "board_wall_s": round(time.time() - board_started, 1) if board_started else None, "retry_count": retry_count, "results": results})
-    summary = {"snap": args.snap, "label": args.label, "code": str(code), "pilot_md5": pmd5, "set": args.set or [], "window_days_fit": fit_days, "holdout_days": _ho, "nn_env_sha256": nn_env_sha256, "board_wall_s": round(time.time() - board_started, 1) if board_started else None, "retry_count": retry_count, "wall_total_s": round(time.time() - t_all, 1), "results": results}
+            _write_json_atomic(
+                run_dir / "results.json",
+                {
+                    "snap": args.snap,
+                    "label": args.label,
+                    "code": str(code),
+                    "pilot_md5": pmd5,
+                    "set": args.set or [],
+                    "window_days_fit": fit_days,
+                    "holdout_days": _ho,
+                    "nn_env_sha256": nn_env_sha256,
+                    "python_determinism_env": python_determinism_env,
+                    "board_wall_s": round(time.time() - board_started, 1)
+                    if board_started
+                    else None,
+                    "retry_count": retry_count,
+                    "results": results,
+                },
+            )
+    summary = {
+        "snap": args.snap,
+        "label": args.label,
+        "code": str(code),
+        "pilot_md5": pmd5,
+        "set": args.set or [],
+        "window_days_fit": fit_days,
+        "holdout_days": _ho,
+        "nn_env_sha256": nn_env_sha256,
+        "python_determinism_env": python_determinism_env,
+        "board_wall_s": round(time.time() - board_started, 1) if board_started else None,
+        "retry_count": retry_count,
+        "wall_total_s": round(time.time() - t_all, 1),
+        "results": results,
+    }
     _write_json_atomic(run_dir / "results.json", summary)
     print(json.dumps({k: v for k, v in summary.items() if k != "results"}))
     return 0

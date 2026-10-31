@@ -19,19 +19,21 @@ LIVE SOURCE (read-only reference): ez_manage.py::process_single_reentry_evaluati
 TWIN (loop-called, N3 obligatory-style): Prepared caches arrays; fires_all() tries the
 four pathways in live order with (exit_px, min_since_exit) from the sim loop and carries
 the invalidation flag across bars. All five knobs default False in vec.
-APPROXIMATIONS (documented): (1) NO 3M DATA — every 3m term uses its 15m proxy
-(atr_15m/k_15m/d_15m/dc_*_15m/basis_15m cross; K3M_FLOOR precedent); the 3m stoch halves
-of K_DC collapse onto the 15m halves. (2) Delta gate: pass-through at default
+DIVERGENCES (documented): (1) When LTF is OFF, the shared paired-timeframe policy
+  hydrates 3m aliases from real 15m values/events; when LTF is ON, missing 3m fields
+  do not fall back to 15m. No price-vs-current-band crossover approximation is used.
+  (2) Delta gate: pass-through at default
 (DELTA_REENTRY_FILTER_ENABLED False); when ON, 4h-WT-alignment part only (live
 delta_tracker unmodelable in vec). (3) QR/loop-amount size caps need the loop amount —
 twinned as mult 1.0 (DCB keeps the 1.5 boost). (4) Invalidation updates on evaluated
-(flat) bars only. (5) Short-side K_DC trigger defs mirrored from long per :43105-43160.
+  (flat) bars only. (5) Short-side K_DC trigger defs mirrored from long per :43105-43160.
 DIVERGENCES: QR/FULL_DC/DC_BOUNCE live True, vec False until promotion.
 BIBLE: §43 parity gate; §17 (divergences noted); §18 honest-0.
 """
 from __future__ import annotations
 
 import numpy as np
+from vec_decisions.asr_input_adapter import paired_npz_view
 
 
 def _col(npz, key, n, default=0.0):
@@ -51,11 +53,27 @@ class Prepared:
     def __init__(self, npz, n, is_long, cfg, safe=None):
         self.n = n
         self.is_long = is_long
-        g = (lambda k, d=0.0: safe(npz, k, n, d)) if safe is not None else (lambda k, d=0.0: _col(npz, k, n, d))
+        self.use_ltf = bool(getattr(cfg, 'USE_1M_3M_SIGNALS_ENABLED', False))
+        selected_npz = paired_npz_view(npz, self.use_ltf)
+        g = (lambda k, d=0.0: safe(selected_npz, k, n, d)) if safe is not None else (lambda k, d=0.0: _col(selected_npz, k, n, d))
         self.k = g('k_15m', 50.0)
         self.d = g('d_15m', 50.0)
         self.kp = _prev(self.k)
         self.dp = _prev(self.d)
+        self.k3 = g('k_3m', float('nan'))
+        self.d3 = g('d_3m', float('nan'))
+        self.k3p = g('k_3m_prev', float('nan'))
+        self.d3p = g('d_3m_prev', float('nan'))
+        if not self.use_ltf:
+            self.k3p = _prev(self.k3) if not np.isfinite(np.asarray(self.k3p, dtype=np.float64)).all() else self.k3p
+            self.d3p = _prev(self.d3) if not np.isfinite(np.asarray(self.d3p, dtype=np.float64)).all() else self.d3p
+        else:
+            if not np.isfinite(np.asarray(self.k3p, dtype=np.float64)).all():
+                self.k3p = _prev(self.k3)
+            if not np.isfinite(np.asarray(self.d3p, dtype=np.float64)).all():
+                self.d3p = _prev(self.d3)
+        self.dc_basis_cross_up3 = g('dc_basis_crossover_3m', 0.0)
+        self.dc_basis_cross_down3 = g('dc_basis_crossunder_3m', 0.0)
         self.px = g('close_15m', 0.0)
         self.lo15 = g('dc_low_15m', 0.0)
         self.hi15 = g('dc_high_15m', 0.0)
@@ -70,7 +88,7 @@ class Prepared:
         self.w1_4h = g('wt1_4h', 50.0)
         self.w2_4h = g('wt2_4h', 50.0)
         # 2026-10-17 speed: per-bar scalar reads from Python lists (same float values as float(arr[i])), cfg reads cached per sim
-        for _a in ("k", "d", "kp", "dp", "px", "lo15", "hi15", "lo1h", "hi1h", "lo15p", "hi15p", "lo1hp", "hi1hp", "basis15", "atr", "w1_4h", "w2_4h"):
+        for _a in ("k", "d", "kp", "dp", "k3", "d3", "k3p", "d3p", "dc_basis_cross_up3", "dc_basis_cross_down3", "px", "lo15", "hi15", "lo1h", "hi1h", "lo15p", "hi15p", "lo1hp", "hi1hp", "basis15", "atr", "w1_4h", "w2_4h"):
             setattr(self, _a, np.asarray(getattr(self, _a), dtype=np.float64).tolist())
         self._cfc = (None, {})
 
@@ -176,7 +194,7 @@ def fires_kdc(P, i, px, inv_in, cfg):
 
 
 def fires_fulldc(P, i, inv_in, cfg):
-    """(ok, mult). Notional gate vacuous at entry (pos None -> 0 < START)."""
+    """(ok, mult), using the native selected timeframe's stoch and DC-cross events."""
     if not bool(_cf(P, cfg, 'LEGACY_REENTRY_PSR_FULL_DC', False)):
         return False, 1.0
     if inv_in:
@@ -184,13 +202,11 @@ def fires_fulldc(P, i, inv_in, cfg):
     px = float(P.px[i])
     b = float(P.basis15[i])
     beyond = (b > 0) and ((px > b) if P.is_long else (px < b))
-    cond1 = bool(_stoch_cross(P, i) and beyond)
-    # dc_basis_crossover_3m proxy: price crosses the 15m basis favourably
-    pxp = float(P.px[i - 1]) if i > 0 else px
-    if P.is_long:
-        cond2 = bool(b > 0 and pxp <= b and px > b)
-    else:
-        cond2 = bool(b > 0 and pxp >= b and px < b)
+    k3, d3, k3p, d3p = (float(P.k3[i]), float(P.d3[i]), float(P.k3p[i]), float(P.d3p[i]))
+    stoch_cross3 = ((k3 > d3) and (k3p <= d3p)) if P.is_long else ((k3 <= d3) and (k3p > d3p))
+    cond1 = bool(stoch_cross3 and beyond)
+    event = P.dc_basis_cross_up3 if P.is_long else P.dc_basis_cross_down3
+    cond2 = bool(float(event[i]) == 1.0)
     return bool(cond1 or cond2), 1.0
 
 
@@ -247,6 +263,8 @@ def fires_dcbounce(P, i, px, last_red_px, hours_since, cfg):
 
 def fires_all(P, i, px, exit_px, min_since, inv_in, cfg):
     """Live order QR -> KDC -> FULLDC -> DCB. Returns (fired, mult, inv_out)."""
+    if not bool(_cf(P, cfg, 'REENTRY2_STOCH_CROSS_ENABLED', False)) and not (float(exit_px or 0.0) > 0.0):
+        return False, 1.0, bool(inv_in)
     ok, m = fires_qr(P, i, px, exit_px, min_since, cfg)
     if ok:
         return True, m, bool(inv_in)

@@ -73,3 +73,48 @@ def test_disabled_delta_engine_needs_no_tracker_state():
     score, masks = apply_asr_post_late_entry_array({}, Disabled(), False, {}, [3])
     assert score.tolist() == [38]
     assert not masks["MARKET_QUALITY_SCORE"].any()
+
+
+def test_native_delta_signal_without_speed_z_keeps_entry_flag():
+    import ast
+    import time
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    from wt_dc_delta import DeltaSignal
+
+    tree = ast.parse(Path("ez_positions_quick.py").read_text())
+    rate = next(
+        node for node in ast.walk(tree)
+        if isinstance(node, ast.AsyncFunctionDef) and node.name == "rate" and node.lineno == 3616
+    )
+    branch = next(
+        node for node in ast.walk(rate)
+        if isinstance(node, ast.If) and isinstance(node.test, ast.Name)
+        and node.test.id == "_delta_sig"
+        and any(
+            isinstance(child, ast.Assign)
+            and any(isinstance(target, ast.Name) and target.id == "_delta_active_tfs" for target in child.targets)
+            for child in node.body
+        )
+    )
+    signal = DeltaSignal()
+    signal.entry_long = True
+    signal.zone_action = "BUY"
+    signal.bull_tf_count = 1
+    env = {
+        "_delta_sig": signal,
+        "_delta_active_tfs": 0,
+        "_delta_z": 0.0,
+        "_delta_entry_ok": False,
+        "_delta_exit_ok": False,
+        "is_long": True,
+        "position_key": "ang:FIXTURE_LONG",
+        "tracker_manager": SimpleNamespace(_rate_delta_sig_cache={}),
+        "time": time,
+    }
+    block = ast.Module(body=branch.body, type_ignores=[])
+    exec(compile(block, "ez_positions_quick.py", "exec"), env)
+    assert env["_delta_entry_ok"] is True
+    assert env["_delta_active_tfs"] == 1
+    assert env["_delta_z"] == 0.0
