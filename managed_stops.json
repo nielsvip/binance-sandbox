@@ -1,23 +1,16 @@
 {
-  "flz:XRPUSDC_LONG": {
-    "orderId": "1000002656196640",
-    "stopPrice": 1.2306,
-    "entry_sig": "2026-10-31 00:00:46.104000+00:00",
-    "symbol": "XRPUSDC",
+  "ang:ZROUSDT_LONG": {
+    "orderId": "4000002013249512",
+    "stopPrice": 1.6441,
+    "entry_sig": "2026-10-30 23:30:40.355000+00:00",
+    "symbol": "ZROUSDT",
     "side": "LONG"
   },
-  "flz:DASHUSDT_LONG": {
-    "orderId": "1000002656151831",
-    "stopPrice": 47.6,
-    "entry_sig": "2026-10-30 23:25:52.245000+00:00",
-    "symbol": "DASHUSDT",
+  "ang:QNTUSDT_LONG": {
+    "orderId": "4000002014153852",
+    "stopPrice": 190.98,
+    "entry_sig": "2026-10-31 06:45:44.037000+00:00",
+    "symbol": "QNTUSDT",
     "side": "LONG"
-  },
-  "flz:ETHUSDC_SHORT": {
-    "orderId": "1000002656633838",
-    "stopPrice": 2257.49,
-    "entry_sig": "2026-10-31 05:01:30.892369+00:00",
-    "symbol": "ETHUSDC",
-    "side": "SHORT"
   }
 }

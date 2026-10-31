@@ -93,6 +93,10 @@ def entry_masks(npz, n, is_long, cfg, close):
     raw_dc = entry_mask(npz, n, is_long, cfg, close, apply_gr=False)
     dc = raw_dc.copy()
     force = np.zeros(n, dtype=bool)
+    if str(getattr(cfg, "MODE", "crypto")).lower() == "tradier":
+        from vec_decisions.wt_force_open_stock import force_open_mask
+
+        return dc, force_open_mask(npz, n, is_long, cfg, close)
     if str(getattr(cfg, "MODE", "crypto")) != "crypto" or not bool(getattr(cfg, "TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED", True)):
         return dc, force
     arrays = paired_npz_view(npz, bool(getattr(cfg, "USE_1M_3M_SIGNALS_ENABLED", False)))

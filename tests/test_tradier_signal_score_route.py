@@ -639,10 +639,19 @@ def test_htf_score_only_setup_uses_per_evaluation_retry_book():
     cfg.BB_BREAKOUT_ENTRY_TF = "4h"
     cfg.HTF_SIGNAL_CONSUME_ENABLED = True
     cfg.ENTRY_SCORE_THRESHOLD = 0.0
-    entry_sig = V.compute_entry_signals(npz, n, True, cfg, "SYNTH")
+    memo_calls = []
+    def build_entry():
+        memo_calls.append(1)
+        return V.compute_entry_signals(npz, n, True, cfg, "SYNTH")
+    entry_sig = V._setup_memo("tradier_score_htf_provenance_test", None, cfg, npz, n, True, build_entry)
+    score_htf = np.asarray(cfg._tradier_signal_score_htf_mask, dtype=bool).copy()
+    score_nonhtf = np.asarray(cfg._tradier_signal_score_mask, dtype=bool).copy()
+    entry_sig2 = V._setup_memo("tradier_score_htf_provenance_test", None, cfg, npz, n, True, build_entry)
+    assert len(memo_calls) == 2
+    assert np.array_equal(entry_sig, entry_sig2)
+    assert np.array_equal(score_htf, cfg._tradier_signal_score_htf_mask)
+    assert np.array_equal(score_nonhtf, cfg._tradier_signal_score_mask)
     assert entry_sig[bar]
-    score_htf = np.asarray(cfg._tradier_signal_score_htf_mask, dtype=bool)
-    score_nonhtf = np.asarray(cfg._tradier_signal_score_mask, dtype=bool)
     assert score_htf[bar] and not score_nonhtf[bar]
     ts = np.asarray(npz["timestamps"], dtype=float)
     blocks = V.compute_reentry_blocks(npz, n, True, cfg)
