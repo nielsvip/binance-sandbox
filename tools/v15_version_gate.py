@@ -514,6 +514,85 @@ def stage_model_bundle(source, destination):
     return pin
 
 
+def stage_common_champion_model_bundle(champion_tree, champion, destination):
+    champion_tree, destination = Path(champion_tree), Path(destination)
+    manifest = champion_tree / MODEL_BUNDLE_PATH
+    if manifest.is_symlink():
+        raise ValueError("champion model bundle declaration is symlinked")
+    if not manifest.is_file():
+        return None
+    pin = model_bundle_pin(champion_tree)
+    resolver_env = result_env(champion.get("env"))
+    resolver_env.update(champion.get("flags") or {})
+    resolved = champion_resolved_model_inventory(champion_tree, resolver_env)
+    for name, record in resolved.items():
+        relative = f"data/brain/{name}" if name.startswith("v18_brain_") else f"data/learn/{name}"
+        if record.get("path") != relative or record.get("sha256") != pin["artifact_sha256"].get(relative):
+            raise ValueError(f"champion resolver output is not the declared model bundle: {name}")
+    staged_pin = stage_model_bundle(champion_tree, destination)
+    if staged_pin != pin:
+        raise ValueError("common champion model bundle changed while it was staged")
+    return {"pin": pin, "bundle_path": str(destination.resolve()), "source_path": str(champion_tree.resolve()), "resolver_artifacts": resolved}
+
+
+def common_champion_model_bundle_for_run(cd, meta, champion):
+    binding = meta.get("common_champion_model_bundle")
+    if not binding:
+        return None
+    expected = binding.get("pin") or {}
+    source = Path(binding.get("source_path") or CHAMP / "tree")
+    staged = Path(binding.get("bundle_path") or "")
+    if source.resolve() != (CHAMP / "tree").resolve():
+        raise ValueError("common model pin source is not the current champion tree")
+    if model_bundle_pin(source) != expected:
+        raise ValueError("current champion model bundle changed after code-only candidate submission")
+    if model_bundle_pin(staged) != expected:
+        raise ValueError("staged common champion model bundle changed after submission")
+    resolver_env = result_env(champion.get("env"))
+    resolver_env.update(champion.get("flags") or {})
+    resolved = champion_resolved_model_inventory(source, resolver_env)
+    if resolved != binding.get("resolver_artifacts"):
+        raise ValueError("current champion model resolver output changed after code-only candidate submission")
+    candidate_manifest = Path(cd) / "tree" / MODEL_BUNDLE_PATH
+    if not candidate_manifest.is_file() or candidate_manifest.is_symlink() or sha256(candidate_manifest) != expected.get("manifest_sha256"):
+        raise ValueError("code-only candidate no longer carries the pinned champion model declaration")
+    return staged
+
+
+def apply_common_champion_model_acceptance(cd, meta, decision):
+    binding = meta.get("common_champion_model_bundle")
+    if not binding:
+        return decision
+    reasons = []
+    expected = binding.get("pin") or {}
+    try:
+        champion = json.loads((CHAMP / "meta.json").read_text()) if (CHAMP / "meta.json").is_file() else {}
+        staged = common_champion_model_bundle_for_run(cd, meta, champion)
+    except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+        staged = None
+        reasons.append(f"common champion model pin changed before finalization: {exc}")
+    run_pins = {}
+    receipts_verified = True
+    for label, arm in ((f"gate_{meta['id']}_champ", "baseline"), (f"gate_{meta['id']}_cand", "candidate")):
+        run_dir = BENCH / "runs" / f"{SNAP}__{label}"
+        try:
+            run_root_pin = model_bundle_pin(run_dir / "root")
+            receipt = json.loads((run_dir / "model_bundle_receipt.json").read_text())
+            receipt_pin = {"bundle_id": receipt.get("bundle_id"), "manifest_sha256": receipt.get("manifest_sha256"), "artifact_sha256": receipt.get("artifact_sha256")}
+            if run_root_pin != expected or receipt_pin != expected:
+                reasons.append(f"{arm} run root did not consume the pinned common champion model bundle")
+                receipts_verified = False
+            run_pins[arm] = run_root_pin
+        except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+            reasons.append(f"{arm} run-root common model bundle verification failed: {exc}")
+            receipts_verified = False
+    decision["common_champion_model_bundle_acceptance"] = {"bundle_id": expected.get("bundle_id"), "manifest_sha256": expected.get("manifest_sha256"), "run_root_pins_verified": len(run_pins) == 2 and all(pin == expected for pin in run_pins.values()), "bundle_receipts_verified": receipts_verified, "champion_pin_revalidated": staged is not None}
+    if reasons:
+        decision["PASS"] = False
+        decision.setdefault("reasons", []).extend(f"COMMON_CHAMPION_MODEL: {reason}" for reason in reasons)
+    return decision
+
+
 def now():
     return dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -614,6 +693,7 @@ def cmd_submit(a):
         flags[k] = v
     has_model_assets = MODEL_BUNDLE_PATH in files or any(GATED_DATA_RE.fullmatch(rel) for rel in files)
     model_overlay = None
+    common_champion_model_bundle = None
     if has_model_assets:
         if MODEL_BUNDLE_PATH not in files or not a.nn_baseline_bundle or not a.nn_comparison_spec:
             print("[gate] model submission requires tools/v18_model_bundle.json, --nn-baseline-bundle, and --nn-comparison-spec pinning both arm declarations", file=sys.stderr)
@@ -634,6 +714,13 @@ def cmd_submit(a):
         print("[gate] NN bundle/spec arguments require candidate model bundle assets", file=sys.stderr)
         shutil.rmtree(cd)
         return 2
+    else:
+        try:
+            common_champion_model_bundle = stage_common_champion_model_bundle(CHAMP / "tree", champ, cd / "nn_common_champion_bundle")
+        except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+            print(f"[gate] current champion model bundle cannot be safely pinned for code-only candidate: {exc}", file=sys.stderr)
+            shutil.rmtree(cd)
+            return 2
     # Launch env (what the scheduler/autotune export at dispatch) is benched like code: candidate env = champion env + changes.
     env = champ_env(champ)
     if a.env_from_production:
@@ -652,7 +739,7 @@ def cmd_submit(a):
     env = result_env(env)
     if model_overlay:
         model_overlay["common_env_sha256"] = hashlib.sha256(json.dumps(env, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
-    meta = {"id": cid, "submitted": now(), "note": a.note or "", "priority": int(a.priority or 0), "files": files, "flags": flags, "env": env, "env_changes": env_diff(champ_env(champ), env), "champion_pilot_md5": champ.get("pilot_md5"), "model_overlay": model_overlay, "state": "pending"}
+    meta = {"id": cid, "submitted": now(), "note": a.note or "", "priority": int(a.priority or 0), "files": files, "flags": flags, "env": env, "env_changes": env_diff(champ_env(champ), env), "champion_pilot_md5": champ.get("pilot_md5"), "model_overlay": model_overlay, "common_champion_model_bundle": common_champion_model_bundle, "state": "pending"}
     if not files and not a.set and not meta["env_changes"] and not a.allow_identical:
         print("[gate] nothing to bench: no files, no --set, launch env identical to the champion's — refused", file=sys.stderr)
         shutil.rmtree(cd)
@@ -969,6 +1056,7 @@ def cmd_run(a):
     cd = pend[0]
     meta = read_meta(cd) or {}
     model_overlay = meta.get("model_overlay")
+    common_model_bundle = None
     if model_overlay:
         try:
             candidate_pin = model_bundle_pin(cd / "tree")
@@ -994,6 +1082,12 @@ def cmd_run(a):
         if (meta.get("flags") or {}) != model_overlay.get("candidate_flags") or comparison_spec_pin.get("reference_flags") != model_overlay.get("reference_flags") or comparison_spec_pin.get("candidate_flags") != model_overlay.get("candidate_flags") or common_env_sha != model_overlay.get("common_env_sha256"):
             print(f"[gate] REFUSED model overlay candidate {meta.get('id')}: common runtime settings changed after submit", file=sys.stderr)
             return 2
+    elif meta.get("common_champion_model_bundle"):
+        try:
+            common_model_bundle = common_champion_model_bundle_for_run(cd, meta, champ)
+        except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
+            print(f"[gate] REFUSED code-only candidate {meta.get('id')}: common champion model pin changed: {exc}", file=sys.stderr)
+            return 2
     meta["state"] = "running"
     meta["started"] = now()
     write_json_atomic(cd / "meta.json", meta)
@@ -1003,8 +1097,8 @@ def cmd_run(a):
         p1 = bench(lc, CHAMP / "tree", model_overlay["reference_flags"], common_env, Path(model_overlay["baseline_bundle_path"]))
         p2 = bench(la, cd / "tree", model_overlay["candidate_flags"], common_env, cd / "tree")
     else:
-        p1 = bench(lc, CHAMP / "tree", champ.get("flags") or {}, champ_env(champ))
-        p2 = bench(la, cd / "tree", meta.get("flags") or {}, result_env(meta["env"]) if meta.get("env") is not None else champ_env(champ))
+        p1 = bench(lc, CHAMP / "tree", champ.get("flags") or {}, champ_env(champ), common_model_bundle)
+        p2 = bench(la, cd / "tree", meta.get("flags") or {}, result_env(meta["env"]) if meta.get("env") is not None else champ_env(champ), common_model_bundle)
     p1.wait()
     p2.wait()
     decision = decide(*truth_rescore(lc, la, results(lc), results(la)))
@@ -1240,6 +1334,7 @@ def validate_model_run_evidence(run_dir, label, run_root, expected_sides, overla
 def finalize(cd, meta, d):
     """The single PASS/deploy/record path, shared by run and redecide so the criterion can never diverge."""
     d = apply_model_overlay_acceptance(cd, meta, d)
+    d = apply_common_champion_model_acceptance(cd, meta, d)
     meta["decision"] = d
     meta["finished"] = now()
     meta["state"] = "PASS" if d["PASS"] else "FAIL"
@@ -1301,6 +1396,7 @@ def cmd_redecide(a):
     d = decide(*truth_rescore(lc, la, results(lc), results(la)))
     if a.dry_run:
         d = apply_model_overlay_acceptance(cd, meta, d)
+        d = apply_common_champion_model_acceptance(cd, meta, d)
         print(json.dumps({"id": a.id, "would_be": "PASS" if d["PASS"] else "FAIL", "dry_run": True, **{k: v for k, v in d.items() if k != "rows"}}, indent=1))
         return 0
     return finalize(cd, meta, d)

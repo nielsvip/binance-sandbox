@@ -2,11 +2,13 @@ import hashlib
 import json
 import shutil
 import tempfile
+from types import SimpleNamespace
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
 from tools import v15_version_gate as gate
+from tools import v15_npz_bench as bench
 
 
 TRAINED_AT = "2026-10-16T16:45:00Z"
@@ -108,6 +110,98 @@ def full_decision(sides, candidate_oos=120.0, candidate_wall=80.0, initial_pass=
 
 
 class V15VersionGateModelOverlayTests(unittest.TestCase):
+    def test_code_only_gate_overlays_pinned_champion_bundle_over_different_snapshot_models(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            champion = base / "champion" / "tree"
+            write_bundle(champion, "champion")
+            make_champion_tree(champion, champion)
+            settings = {"flags": BASE_FLAGS, "env": {}}
+            cd = base / "candidate"
+            candidate_tree = cd / "tree"
+            shutil.copytree(champion, candidate_tree)
+            binding = gate.stage_common_champion_model_bundle(champion, settings, cd / "nn_common_champion_bundle")
+            self.assertIsNotNone(binding)
+            snapshot = base / "snapshot_models"
+            snapshot_pin = write_bundle(snapshot, "snapshot")
+            self.assertNotEqual(snapshot_pin, binding["pin"])
+            meta = {"id": "code-only", "common_champion_model_bundle": binding}
+            with patch.object(gate, "CHAMP", champion.parent):
+                self.assertEqual(gate.common_champion_model_bundle_for_run(cd, meta, settings), Path(binding["bundle_path"]))
+            arm_pins = []
+            for arm in ("reference", "candidate"):
+                label = f"gate_{meta['id']}_{'champ' if arm == 'reference' else 'cand'}"
+                run_dir = base / "bench" / "runs" / f"snapshot__{label}"
+                run_root = run_dir / "root"
+                run_root.mkdir(parents=True)
+                shutil.copytree(snapshot / "data", run_root / "data")
+                receipt = bench.apply_model_bundle(run_root, Path(binding["bundle_path"]))
+                (run_dir / "model_bundle_receipt.json").write_text(json.dumps(receipt))
+                arm_pins.append(gate.model_bundle_pin(run_root))
+                self.assertEqual(receipt["manifest_sha256"], binding["pin"]["manifest_sha256"])
+            self.assertEqual(arm_pins, [binding["pin"], binding["pin"]])
+            champion.parent.mkdir(parents=True, exist_ok=True)
+            (champion.parent / "meta.json").write_text(json.dumps(settings))
+            decision = {"PASS": True, "reasons": []}
+            with patch.object(gate, "CHAMP", champion.parent), patch.object(gate, "BENCH", base / "bench"), patch.object(gate, "SNAP", "snapshot"):
+                gate.apply_common_champion_model_acceptance(cd, meta, decision)
+            self.assertTrue(decision["PASS"], decision.get("reasons"))
+            self.assertTrue(decision["common_champion_model_bundle_acceptance"]["run_root_pins_verified"])
+            self.assertTrue(decision["common_champion_model_bundle_acceptance"]["bundle_receipts_verified"])
+
+    def test_code_only_common_model_pin_rejects_champion_drift(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            champion = base / "champion" / "tree"
+            write_bundle(champion, "champion")
+            make_champion_tree(champion, champion)
+            settings = {"flags": BASE_FLAGS, "env": {}}
+            cd = base / "candidate"
+            shutil.copytree(champion, cd / "tree")
+            binding = gate.stage_common_champion_model_bundle(champion, settings, cd / "nn_common_champion_bundle")
+            manifest = json.loads((champion / gate.MODEL_BUNDLE_PATH).read_text())
+            path = champion / "data" / "learn" / "digest_CRYPTO_LONG.json"
+            path.write_text(json.dumps({"meta": {"era_cut": TRAINED_AT}, "changed_after_submit": True}))
+            manifest["expected_sha256_by_filename"]["digest_CRYPTO_LONG.json"] = gate.sha256(path)
+            (champion / gate.MODEL_BUNDLE_PATH).write_text(json.dumps(manifest))
+            with patch.object(gate, "CHAMP", champion.parent):
+                with self.assertRaisesRegex(ValueError, "current champion model bundle changed"):
+                    gate.common_champion_model_bundle_for_run(cd, {"common_champion_model_bundle": binding}, settings)
+
+    def test_legacy_champion_without_bundle_declaration_keeps_unpinned_path(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "legacy" / "tree"
+            root.mkdir(parents=True)
+            self.assertIsNone(gate.stage_common_champion_model_bundle(root, {}, root.parent / "staged"))
+
+    def test_code_only_run_passes_same_common_bundle_to_both_bench_arms(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            champion_tree = base / "gate" / "champion" / "tree"
+            write_bundle(champion_tree, "champion")
+            make_champion_tree(champion_tree, champion_tree)
+            settings = {"flags": BASE_FLAGS, "env": {}}
+            candidates = base / "gate" / "candidates"
+            candidate = candidates / "20261031T000000Z"
+            shutil.copytree(champion_tree, candidate / "tree")
+            binding = gate.stage_common_champion_model_bundle(champion_tree, settings, candidate / "nn_common_champion_bundle")
+            meta = {"id": candidate.name, "state": "pending", "files": {"tools/example.py": "abc"}, "flags": {**BASE_FLAGS, "V22_CODE_ONLY_TEST": "1"}, "env": {}, "common_champion_model_bundle": binding}
+            (candidate / "meta.json").write_text(json.dumps(meta))
+            bench_calls = []
+
+            class Process:
+                def wait(self):
+                    return 0
+
+            def capture_bench(*args):
+                bench_calls.append(args)
+                return Process()
+
+            with patch.object(gate, "CHAMP", base / "gate" / "champion"), patch.object(gate, "CANDS", candidates), patch.object(gate, "GATE", base / "gate"), patch.object(gate, "BENCH", base / "bench"), patch.object(gate, "MIN_FREE_MB", 1), patch.object(gate, "ensure_champion", return_value=settings), patch.object(gate, "requeue_stale"), patch.object(gate.shutil, "disk_usage", return_value=shutil._ntuple_diskusage(100000000000, 1, 100000000000)), patch.object(gate, "bench", side_effect=capture_bench), patch.object(gate, "results", return_value={}), patch.object(gate, "truth_rescore", side_effect=lambda lc, la, ch, ca: (ch, ca)), patch.object(gate, "decide", return_value={"PASS": False, "harness_fail": False, "scored": [], "rows": [], "reasons": []}), patch.object(gate, "finalize", return_value=0):
+                self.assertEqual(gate.cmd_run(SimpleNamespace()), 0)
+            self.assertEqual(len(bench_calls), 2)
+            self.assertEqual([call[4] for call in bench_calls], [Path(binding["bundle_path"]), Path(binding["bundle_path"])])
+
     def test_comparison_spec_pins_current_resolver_arm_flags_and_rejects_conflict(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
