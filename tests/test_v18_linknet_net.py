@@ -87,6 +87,19 @@ def test_independent_fresh_cell_net_survives_unknown_naked_without_fabricated_R(
     assert list(builder.ex.c["kind"]) == [1, 1]
     assert list(builder.ex.c["y"]) == [1, 0]
 
+def test_source_cached_running_naked_does_not_hide_independently_measured_cells():
+    value = event()
+    value["raw_reason"] = "RUNNING_IDENTITY"
+    value["n"][0], value["n"][-1] = 0.0, 0
+    value["eval_provenance"]["naked"]["cached"] = True
+    value["nz"][0][1] = 0.0
+    cell(value, "COUNTER_TREND_ADD_BLOCK_ENABLED=True", -0.00397, -0.00397)
+    cell(value, "HTF_DIRECTION_GATE_ENABLED=False", -0.03838, -0.03838)
+    result = net.net_event(value, Counter())
+    assert result["n"] is None
+    assert len(result["y"]) == 2
+    assert [candidate[1] for candidate in result["y"]] == [-0.00397, -0.03838]
+
 @pytest.mark.parametrize("case", ["baseline", "cached", "invalid", "identity", "dead", "npz", "source", "market"])
 def test_unproven_rows_are_excluded(case):
     value = event()
