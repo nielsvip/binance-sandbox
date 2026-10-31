@@ -1,7 +1,7 @@
 {
-  "coverage_status": "Partial shared implementation only. These hooks preserve native score/reason order and have source-AST differential tests; no v12 consumer/entry threshold wiring yet. Other 393 native score mutations (including initialization) remain in rate() and the full aggregate is incomplete. Account/tracker, time, global ranking and early-return semantics remain explicit gaps.",
-  "current_native_score_mutations_including_initialization": 394,
-  "current_native_sha256": "71a781c2757a18ecaeba1007b649ef54f5f70bbeea22326c31816c360d0f08a9",
+  "coverage_status": "Partial shared implementation only. Native scalar hooks and source-AST differential tests exist for listed pure score slices. NumPy components are not yet consumed by v12 and the overall score aggregate/entry threshold path is incomplete. Current rate() still contains other score mutations; account/tracker, regime, MTS, historical/global ranking, time-dependent return gates, multiplier ordering and return semantics remain gaps.",
+  "current_native_score_mutations_including_initialization": 354,
+  "current_native_sha256": "fc283e675dc88d15f654873e0b751213b6268c8ce4e4874538a6d6e6a7685fe4",
   "existing_vector_related_modules": [
     "vec_decisions/quick_missing_entry_score.py (partial, no v12 caller found)",
     "vec_paths/live_entry_engine.py (separate LIVE_ENTRY_ENGINE score, not AdvancedSignalRater aggregate)",
@@ -388,6 +388,7 @@
     ]
   },
   "pre_wire_source_sha256": "7634c897c67a28dbbfcbf99f39cabc1e564084bf82d07f632b6042267399d1a8",
+  "remaining_native_score_mutations_including_initialization": 354,
   "score_updates": [
     {
       "expr": "8",
@@ -8476,19 +8477,59 @@
   ],
   "shared_score_components": [
     {
-      "baseline_source_lines": "4696-4822",
-      "description": "WT composite tier/structure/divergence/cross bonuses, DC moment, WT composite delta; ordered scalar adapter and NumPy prefix.",
-      "native_hook_line": 4695
+      "baseline_blocks": [
+        "4696-4822",
+        "4826-4854",
+        "R-S3/R-S7/R-S4/R-S5 before regime"
+      ],
+      "module": "vec_decisions/asr_score_core.py",
+      "native_hook_lines": [
+        4695,
+        4710,
+        4725
+      ],
+      "vector_api": [
+        "apply_score_prefix_vec",
+        "apply_15m_momentum_vec",
+        "apply_structure_score_vec"
+      ]
     },
     {
-      "baseline_source_lines": "4826-4854",
-      "description": "WT15M against penalty and 3m cross-price bypass.",
-      "native_hook_line": 4710
+      "baseline_block": "RANK_CONVICTION block before WT+K",
+      "input_gap": "per-bar key absence cannot be recovered from dense NPZ NaN without producer presence mask",
+      "module": "vec_decisions/asr_score_core.py",
+      "native_hook_line": 4802,
+      "vector_api": [
+        "apply_rank_conviction_vec"
+      ]
     },
     {
-      "baseline_source_lines": "R-S3 divergence stack, R-S7 HH/LL, R-S4 HA streak, R-S5 sentiment velocity through the pre-regime block",
-      "description": "Pure indicator/config structural score components; ordered scalar adapter and NumPy twin.",
-      "native_hook_line": 4725
+      "baseline_block": "SMA500 1h and EMA20 4h price-distance scoring",
+      "module": "vec_decisions/asr_score_core.py",
+      "native_hook_line": 4946,
+      "vector_api": [
+        "apply_ma_distance_score_vec"
+      ]
+    },
+    {
+      "baseline_block": "side-specific channel recovery, K-zone and DC-basis cross scoring before MA position bonuses",
+      "module": "vec_decisions/asr_score_core.py",
+      "native_hook_lines": [
+        5028,
+        5066
+      ],
+      "vector_api": [
+        "apply_channel_k_cross_score_vec"
+      ]
+    },
+    {
+      "baseline_block": "native final overbought multiplier, round/clamp and recommendation tail",
+      "module": "vec_decisions/asr_score_tail.py",
+      "native_hook_line": 8622,
+      "owner": "root",
+      "vector_api": [
+        "finish_array"
+      ]
     }
   ],
   "source_file": "ez_positions_quick.py",

@@ -145,11 +145,11 @@ class Mover:
         return True
 
 
-def move_remote_batch(host, rdir, patterns, settle_s, dry=False, max_gb=0.0):
+def move_remote_batch(host, rdir, patterns, settle_s, dry=False, max_gb=0.0, min_bytes=0):
     """One sha256 manifest computed ON the server, one rsync, every file verified here, one removal of the verified.
     A file that is missing, short or mismatched on the drive is never removed from the server."""
     mover = Mover(f"servers/{host}", dry)
-    files = list(list_remote(host, rdir, patterns, settle_s))
+    files = list(list_remote(host, rdir, patterns, settle_s, min_bytes))
     if max_gb:
         keep, total = [], 0
         for size, path in files:
@@ -207,10 +207,12 @@ def move_remote_batch(host, rdir, patterns, settle_s, dry=False, max_gb=0.0):
     return mover
 
 
-def iter_local(src_dir, patterns, settle_s):
+def iter_local(src_dir, patterns, settle_s, min_bytes=0):
     now = time.time()
     for p in sorted(Path(src_dir).rglob("*")):
         if not p.is_file() or p.name.endswith(".offload_tmp"):
+            continue
+        if min_bytes and p.stat().st_size < min_bytes:
             continue
         if patterns and not any(fnmatch.fnmatch(p.name, pat) for pat in patterns):
             continue
@@ -219,10 +221,11 @@ def iter_local(src_dir, patterns, settle_s):
         yield p
 
 
-def list_remote(host, src_dir, patterns, settle_s):
+def list_remote(host, src_dir, patterns, settle_s, min_bytes=0):
     names = " -o ".join(f"-name {shlex.quote(x)}" for x in patterns) if patterns else ""
     clause = ("\\( " + names + " \\) ") if names else ""   # built outside the f-string: no backslash in an expression (py3.11)
-    cmd = (f"cd ~ && find {shlex.quote(src_dir)} -type f {clause}"
+    size_clause = f"-size +{int(min_bytes // 1024)}k " if min_bytes else ""
+    cmd = (f"cd ~ && find {shlex.quote(src_dir)} -type f {clause}{size_clause}"
            f"-mmin +{max(1, int(settle_s // 60))} -printf '%s\\t%p\\n'")
     out = subprocess.run(SSH + [host, cmd], capture_output=True, text=True, timeout=300).stdout
     for line in out.splitlines():
@@ -238,13 +241,14 @@ def main(argv=None):
     ap.add_argument("--pattern", action="append", default=[], help="filename glob; repeat for several")
     ap.add_argument("--settle-min", type=float, default=15.0, help="leave files modified more recently than this")
     ap.add_argument("--max-gb", type=float, default=0.0, help="stop after moving this much (0 = no limit)")
+    ap.add_argument("--min-mb", type=float, default=0.0, help="only files at least this large")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args(argv)
     started = time.time()
     if a.mode == "local":
         src = Path(a.src) if Path(a.src).is_absolute() else ROOT / a.src
         mover = Mover("mac", a.dry_run)
-        for p in iter_local(src, a.pattern, a.settle_min * 60):
+        for p in iter_local(src, a.pattern, a.settle_min * 60, int(a.min_mb * 1024 * 1024)):
             rel = p.relative_to(ROOT) if str(p).startswith(str(ROOT)) else Path(*p.parts[1:])
             if not mover.move_local(p, rel):
                 break
@@ -252,7 +256,7 @@ def main(argv=None):
                 break
     else:
         host, _, rdir = a.src.partition(":")
-        mover = move_remote_batch(host, rdir, a.pattern, a.settle_min * 60, a.dry_run, a.max_gb)
+        mover = move_remote_batch(host, rdir, a.pattern, a.settle_min * 60, a.dry_run, a.max_gb, int(a.min_mb * 1024 * 1024))
     report = {"mode": a.mode, "src": a.src, "moved": mover.moved, "kept": mover.kept, "gb": round(mover.bytes / 1024 ** 3, 2),
               "minutes": round((time.time() - started) / 60, 1), "problems": mover.problems[:20], "dry_run": a.dry_run}
     log(json.dumps(report))

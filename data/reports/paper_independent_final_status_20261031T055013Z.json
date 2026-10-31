@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "captured_at_utc": "2026-10-31T05:50:13Z",
+  "evidence_kind": "read_only_operational_receipt",
+  "scope": "Coordinator, native journal, SQL execution tables; no workers launched and no state changed.",
+  "services": {
+    "s1": {
+      "coordinator": {"state": "active/running", "started_at_utc": "2026-10-31T05:30:58Z", "heartbeat_at_utc": "2026-10-31T05:48:43Z", "heartbeat_status": "RUNNING"},
+      "native_journal": {"state": "activating/auto-restart", "restarts": 3, "latest_log_status": "DISK_RESERVE_BLOCKED", "latest_log_at_utc": "2026-10-31T05:49:14Z", "free_bytes": 6630125568, "required_free_bytes": 8589934592},
+      "native_feed": {"state": "activating/start"},
+      "central_collector": {"state": "active/running", "started_at_utc": "2026-10-31T05:28:05Z"}
+    },
+    "s2": {
+      "coordinator": {"state": "active/running", "started_at_utc": "2026-10-31T05:31:00Z", "heartbeat_at_utc": "2026-10-31T05:48:11Z", "heartbeat_status": "RUNNING"},
+      "native_journal": {"state": "active/running", "latest_log_status": "NO_FRESH_FRAMES", "latest_log_at_utc": "2026-10-31T05:48:57Z"},
+      "native_feed": {"state": "inactive/dead"},
+      "central_collector": {"state": "inactive/dead", "expected_on": "s1"}
+    },
+    "s5": {
+      "coordinator": {"state": "active/running", "started_at_utc": "2026-10-31T05:31:00Z", "heartbeat_at_utc": "2026-10-31T05:48:15Z", "heartbeat_status": "RUNNING"},
+      "native_journal": {"state": "active/running", "latest_log_status": "NO_FRESH_FRAMES", "latest_log_at_utc": "2026-10-31T05:48:54Z"},
+      "native_feed": {"state": "inactive/dead"},
+      "central_collector": {"state": "inactive/dead", "expected_on": "s1"}
+    },
+    "s6": {
+      "coordinator": {"state": "active/running", "started_at_utc": "2026-10-31T05:31:00Z", "heartbeat_at_utc": "2026-10-31T05:48:04Z", "heartbeat_status": "RUNNING"},
+      "native_journal": {"state": "active/running", "latest_log_status": "NO_FRESH_FRAMES", "latest_log_at_utc": "2026-10-31T05:49:12Z"},
+      "native_feed": {"state": "inactive/dead"},
+      "central_collector": {"state": "inactive/dead", "expected_on": "s1"}
+    }
+  },
+  "source_archives": {
+    "s1": {"venue": "crypto", "status": "OK (last persisted); latest poll blocked by disk reserve", "rows": 85, "timeframes": {"3m": 85}, "oldest_sequence": 1, "latest_sequence": 85, "retention_floor_sequence": 0, "source_conflicts": 0, "latest_poll_blocked_timeframes": ["1m", "5m"]},
+    "s2": {"venue": "crypto", "status": "SOURCE_CONFLICT (sticky; latest poll NO_FRESH_FRAMES)", "rows": 662, "timeframes": {"3m": 662}, "oldest_sequence": 1, "latest_sequence": 662, "retention_floor_sequence": 0, "source_conflicts": 80, "latest_poll_blocked_timeframes": ["1m", "5m"]},
+    "s5": {"venue": "stocks", "status": "NO_FRESH_FRAMES", "rows": 0, "database_present": false, "poll_observed_at_utc": "2026-10-31T05:48:54Z", "eligible_timeframes": ["3m", "5m"], "blocked_timeframes": ["1m"], "provenance_gaps": ["1m"], "invalid_count": 253, "stale_count": 125},
+    "s6": {"venue": "stocks", "status": "NO_FRESH_FRAMES", "rows": 0, "database_present": false, "poll_observed_at_utc": "2026-10-31T05:49:12Z", "eligible_timeframes": ["3m", "5m"], "blocked_timeframes": ["1m"], "provenance_gaps": ["1m"], "invalid_count": 253, "stale_count": 125}
+  },
+  "coordinator": {
+    "schema_inspected": ["jobs", "events", "coordinator_heartbeat"],
+    "total_jobs": 108444,
+    "status_counts": {"PENDING_PARAMETERS": 32921, "WAITING_FOR_SOURCE_WINDOW": 75523},
+    "by_host": {
+      "s1": {"jobs": 31476, "PENDING_PARAMETERS": 8235, "WAITING_FOR_SOURCE_WINDOW": 23241},
+      "s2": {"jobs": 29928, "PENDING_PARAMETERS": 7830, "WAITING_FOR_SOURCE_WINDOW": 22098},
+      "s5": {"jobs": 25320, "PENDING_PARAMETERS": 9073, "WAITING_FOR_SOURCE_WINDOW": 16247},
+      "s6": {"jobs": 21720, "PENDING_PARAMETERS": 7783, "WAITING_FOR_SOURCE_WINDOW": 13937}
+    },
+    "current_running_jobs": 0
+  },
+  "sql_execution_evidence": {
+    "database": "/home/niels/binance-sandbox/data/paper_forward_lab/scenarios.db",
+    "schema_inspected": ["runs", "results", "trades", "forward_receipts", "paper_coordinator_jobs", "paper_coordinator_heartbeats"],
+    "coordinator_jobs": 108444,
+    "coordinator_status_counts": {"PENDING_PARAMETERS": 32921, "WAITING_FOR_SOURCE_WINDOW": 75523},
+    "independent_forward_runs": 0,
+    "independent_forward_results": 0,
+    "forward_receipts": 0,
+    "trades": 0,
+    "run_status_events": 0,
+    "accounting_fills_table": "not present",
+    "other_existing_results": {"count": 2140, "classified_run_evidence": "OBSERVATIONAL_ONLY; not independent forward execution"},
+    "paper_coordinator_heartbeats": {"count": 4, "status": "RUNNING"}
+  },
+  "interpretation": "All four coordinators are active and all jobs remain pending parameters or source-window coverage; no production worker is currently running. Crypto 3m archives have rows, but S1 capture is disk-reserve blocked and S2 has source conflicts. Stock collectors report no fresh weekend frames and no journal database rows. SQL contains zero independent-forward runs/results/receipts/trades; existing observational results are not forward execution evidence.",
+  "performance_claims_emitted": false
+}

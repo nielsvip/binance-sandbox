@@ -54,3 +54,19 @@ def test_explicit_native_mode_overrides_only_ownership_key_in_per_symbol_resolve
         asyncio.run(simulate())
     assert owner._cfg_auto is original
     assert owner._cfg_auto("VEC_DICTATE_ONLY_ENABLED") is True
+
+@pytest.mark.parametrize("native_mode", [False, True])
+def test_vec_driven_native_suppression_is_ownership_not_a_risk_gate(monkeypatch, native_mode):
+    monkeypatch.setenv("V12_REPLAY_NATIVE_OWNERSHIP", "1" if native_mode else "0")
+    config = SimpleNamespace(VEC_DICTATE_ONLY_ENABLED=True, VEC_DRIVEN_ENABLED=True, MIN_GAIN=3.0, FIXED_STOP_ENABLED=True)
+    @replay_ownership_scope
+    async def simulate():
+        report = configure_replay_ownership(config, "crypto")
+        assert config.VEC_DRIVEN_ENABLED is not native_mode
+        assert config.MIN_GAIN == 3.0 and config.FIXED_STOP_ENABLED
+        assert report["effective_ownership_flags"]["VEC_DRIVEN_ENABLED"] is not native_mode
+        raise RuntimeError("expected failure")
+    with pytest.raises(RuntimeError, match="expected failure"):
+        asyncio.run(simulate())
+    assert config.VEC_DRIVEN_ENABLED and config.VEC_DICTATE_ONLY_ENABLED
+    assert config.MIN_GAIN == 3.0 and config.FIXED_STOP_ENABLED

@@ -10,11 +10,6 @@ from pathlib import Path
 from typing import Any, Mapping
 from contextlib import contextmanager
 
-try:
-    from .paper_scenario_db import ScenarioDB
-except ImportError:
-    from paper_scenario_db import ScenarioDB
-
 
 KNOWN_FINDINGS = (
     {
@@ -183,6 +178,7 @@ KNOWN_FINDINGS = (
 
 SOURCE_RUNTIME_ID = "259e13fdcf88a81ca1d091b3fa102be04ca87a727c4339897be0b806aaf79f82"
 SOURCE_RUNTIME_RELATIVE = Path("data/paper_forward_lab/runtime") / SOURCE_RUNTIME_ID
+_SOURCE_HASH_CACHE: dict[tuple[str, str, int, int], str] = {}
 
 
 def _canonical(value: Any) -> str:
@@ -204,7 +200,11 @@ def _source_hashes(root: Path, refs: list[str]) -> dict[str, str]:
         name = ref.split(":", 1)[0]
         path = runtime_root / name
         if path.is_file():
-            output[name] = hashlib.sha256(path.read_bytes()).hexdigest()
+            stat = path.stat()
+            cache_key = (str(runtime_root), name, stat.st_mtime_ns, stat.st_size)
+            if cache_key not in _SOURCE_HASH_CACHE:
+                _SOURCE_HASH_CACHE[cache_key] = hashlib.sha256(path.read_bytes()).hexdigest()
+            output[name] = _SOURCE_HASH_CACHE[cache_key]
     return output
 
 
@@ -279,7 +279,7 @@ def _ensure_schema(connection) -> None:
     """)
 
 
-def refresh_path_coverage(db: ScenarioDB, *, root: str | Path | None = None, findings=KNOWN_FINDINGS) -> dict:
+def refresh_path_coverage(db: Any, *, root: str | Path | None = None, findings=KNOWN_FINDINGS) -> dict:
     """Materialize known source findings; all other catalog paths remain UNVERIFIED."""
     root_path = Path(root).resolve() if root is not None else Path(__file__).resolve().parents[1]
     now = _utc_now()

@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tools.v22_bench_prepare import prepare, verify_pilot_root
+from tools.v22_bench_prepare import overlay_bundle, prepare, read_bundle, verify_pilot_root
 
 
 CATEGORIES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
@@ -100,6 +100,8 @@ class V22BenchPrepareTests(unittest.TestCase):
         self.temp.cleanup()
 
     def test_prepare_creates_pinned_private_snapshots_and_resolves_after_data_overlay(self):
+        parent_manifest_bytes = (self.parent / "manifest.json").read_bytes()
+        parent_manifest_inode = (self.parent / "manifest.json").stat().st_ino
         report_path, report = prepare(self.parent, self.spec_path, self.codes["reference"], self.codes["candidate"], self.output, self.bench)
         self.assertTrue(report_path.is_file())
         self.assertFalse(report["launch_started"])
@@ -107,6 +109,14 @@ class V22BenchPrepareTests(unittest.TestCase):
         ref = Path(report["arms"]["reference"]["snapshot_path"])
         cand = Path(report["arms"]["candidate"]["snapshot_path"])
         self.assertNotEqual(ref, cand)
+        self.assertEqual((self.parent / "manifest.json").read_bytes(), parent_manifest_bytes)
+        self.assertEqual((self.parent / "manifest.json").stat().st_ino, parent_manifest_inode)
+        ref_manifest_bytes = (ref / "manifest.json").read_bytes()
+        ref_manifest_inode = (ref / "manifest.json").stat().st_ino
+        cand_manifest_inode = (cand / "manifest.json").stat().st_ino
+        self.assertNotEqual(ref_manifest_inode, parent_manifest_inode)
+        self.assertNotEqual(cand_manifest_inode, parent_manifest_inode)
+        self.assertNotEqual(ref_manifest_inode, cand_manifest_inode)
         self.assertEqual((ref / "starts" / f"{SIDES[0]}_autopsy_base.json").read_bytes(), (self.parent / "starts" / f"{SIDES[0]}_autopsy_base.json").read_bytes())
         self.assertEqual((self.parent / "data/live_baseline_snapshots/manifest.json").read_text(), '{"anchor":"frozen"}')
         for arm, snapshot in (("reference", ref), ("candidate", cand)):
@@ -118,6 +128,10 @@ class V22BenchPrepareTests(unittest.TestCase):
             for name, expected_sha in expected.items():
                 rel = ("brain/" if name.startswith("v18_brain_") else "learn/") + name
                 self.assertEqual(digest((snapshot / "data" / rel).read_bytes()), expected_sha)
+        overlay_receipt = overlay_bundle(read_bundle(self.bundles["candidate"]), cand / "data")
+        self.assertEqual(len(overlay_receipt), 32)
+        self.assertEqual((ref / "manifest.json").read_bytes(), ref_manifest_bytes)
+        self.assertEqual((ref / "manifest.json").stat().st_ino, ref_manifest_inode)
         self.assertEqual(report["arms"]["reference"]["shared_inputs_match_parent"], True)
         self.assertEqual(report["arms"]["candidate"]["shared_inputs_match_parent"], True)
         self.assertIn("--min-disk-mb 20000 --min-free-mb 7000", report["arms"]["candidate"]["command"])

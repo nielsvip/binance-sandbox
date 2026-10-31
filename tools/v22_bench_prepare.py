@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import tempfile
 
 
@@ -115,6 +116,28 @@ def hardlink_copy(source, destination):
         os.link(source, destination)
     else:
         raise ValueError(f"unsupported snapshot entry: {source}")
+
+
+def atomic_write(path, payload):
+    path = Path(path)
+    before_mode = path.stat().st_mode if path.exists() else None
+    descriptor, temporary = tempfile.mkstemp(prefix=".v22_atomic_", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "wb") as stream:
+            stream.write(payload)
+            stream.flush()
+            os.fsync(stream.fileno())
+        if before_mode is not None:
+            os.chmod(temporary, stat.S_IMODE(before_mode))
+        os.replace(temporary, path)
+        dirfd = os.open(path.parent, os.O_RDONLY)
+        try:
+            os.fsync(dirfd)
+        finally:
+            os.close(dirfd)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
 
 
 def overlay_bundle(bundle, snapshot_data):
@@ -289,7 +312,7 @@ def prepare(parent_snapshot, spec_path, reference_code, candidate_code, output_d
         manifest = json.loads((destination / "manifest.json").read_text())
         manifest["v22_derived_snapshot"] = {"schema": "v22_derived_snapshot/1", "comparison_id": spec.get("comparison_id"), "arm": name, "parent_snapshot": str(parent), "parent_manifest_sha256": parent_manifest_sha, "model_bundle_manifest_sha256": arm["bundle"]["manifest_sha256"], "model_artifact_sha256": overlay_receipt, "shared_snapshot_inventory_sha256": hashlib.sha256(json.dumps(original_shared, sort_keys=True, separators=(",", ":")).encode()).hexdigest()}
         manifest_path = destination / "manifest.json"
-        manifest_path.write_text(json.dumps(manifest, indent=1))
+        atomic_write(manifest_path, json.dumps(manifest, indent=1).encode())
         if json.loads(manifest_path.read_text())["v22_derived_snapshot"]["parent_manifest_sha256"] != parent_manifest_sha:
             raise ValueError("derived snapshot manifest failed parent pin round-trip")
         resolved = verify_after_build_root(destination, arm["code"], arm["flags"], arm["bundle"]["artifacts"], output_dir, verifier_path, name == "candidate")

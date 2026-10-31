@@ -74,3 +74,9 @@ def test_patterns_select_only_matching_files(tmp_path):
     a = old_file(tmp_path / "s" / "before_h2h_crypto_1.db.zst", b"1")
     old_file(tmp_path / "s" / "keep_me.py", b"2")
     assert list(X.iter_local(tmp_path / "s", ["before_h2h_*.db.zst"], 0)) == [a]
+
+
+def test_the_size_filter_leaves_small_per_edit_backups_local(tmp_path):
+    big = old_file(tmp_path / "s" / "big.tar", b"b" * 2_000_000)
+    old_file(tmp_path / "s" / "before_edit.py", b"tiny")
+    assert list(X.iter_local(tmp_path / "s", [], 0, min_bytes=1_000_000)) == [big]

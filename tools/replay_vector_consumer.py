@@ -113,6 +113,7 @@ def replay(args):
         target.write_bytes(Path(source).read_bytes())
     code_root = Path(args.code_root).resolve()
     sys.path.insert(0, str(code_root))
+    os.environ["BASE_PATH"] = str(code_root)
     os.environ["V12_BASE_PATH"] = str(code_root)
     os.environ["V12_NPZ_DIR"] = str(Path(args.npz).resolve().parent)
     os.environ["VD_MAC_POSITIONS"] = "1"
@@ -181,6 +182,9 @@ def replay(args):
                 "sym_side": sym_side, "active_set_sha256": _sha(args.active_set), "npz_sha256": _sha(args.npz),
                 "state_stream_sha256": _sha(args.state_stream),
                 "code_manifest_sha256": args.code_manifest_sha,
+                "consumer_script_sha256": _sha(__file__),
+                "vector_direct_trader_sha256": _sha(code_root / "tools" / "vector_direct_trader.py"),
+                "vector_direct_stops_sha256": _sha(code_root / "tools" / "vector_direct_stops.py"),
                 "exchange_info_sha256": _sha(args.exchange_info), "exchange_ticks_sha256": _sha(args.exchange_ticks),
                 "start_position": "flat", "consumer": "actual Trader.send_orders + in-memory broker",
                 "sizing": {"start_position_size": trader_module.START_POSITION_SIZE,
@@ -188,6 +192,7 @@ def replay(args):
                            "config_start_position_size": float(config.START_POSITION_SIZE),
                            "config_max_position_size": float(config.MAX_POSITION_SIZE),
                            "config_max_order_value": float(config.MAX_ORDER_VALUE),
+                           "config_base_path": str(config.BASE_PATH),
                            "market_mode": getattr(config, "MARKET_MODE", None),
                            "market_mode_file": str(config.MARKET_MODE_FILE),
                            "market_mode_file_exists": Path(config.MARKET_MODE_FILE).exists()},

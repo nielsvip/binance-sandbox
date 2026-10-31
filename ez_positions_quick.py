@@ -5025,63 +5025,11 @@ class AdvancedSignalRater:
                 )
 
         if is_long:
-            if (
-                dc_w1h > 5.0
-                and current_price < (dc_high_1h * 0.97)
-                and current_price > dc_basis_1h
-            ):
-                score += 25
-                reasons.append("JUMP_PULLBACK(+25)")
-            if (
-                dc_wD > 6.0
-                and current_price < (dc_high_D * 0.95)
-                and current_price > dc_basis_D
-            ):
-                score += 35
-                reasons.append("JUMP_PB_D(+35)")
-            if (
-                dc_w4h > 4.0
-                and current_price < (dc_high_4h * 0.96)
-                and current_price > dc_basis_4h
-            ):
-                score += 30
-                reasons.append("JUMP_PB_4H(+30)")
-            if k_15m < 20:
-                score += 10
-                reasons.append("LOW_K15(+10)")
-            if k_1h < 20:
-                score += 15
-                reasons.append("LOW_K1H(+15)")
-            if k_4h < 25:
-                score += 20
-                reasons.append("LOW_K4H(+20)")
-            if k_D < 30:
-                score += 25
-                reasons.append("LOW_KD(+25)")
-            if dc_basis_crossover_3m:
-                score += 30
-                reasons.append("DCB_CO_3M(+30)")
-            if dc_basis_crossover_15m:
-                score += 25
-                reasons.append("DCB_CO_15M(+25)")
-            if dc_basis_crossover_1h:
-                score += 20
-                reasons.append("DCB_CO_1H(+20)")
-            if dc_basis_crossover_4h:
-                score += 15
-                reasons.append("DCB_CO_4H(+15)")
-            if dc_basis_crossover_D:
-                score += 10
-                reasons.append("DCB_CO_D(+10)")
-            if dc_basis_crossunder_3m:
-                score -= 30
-                reasons.append("DCB_CU_3M_BAD(-30)")
-            if dc_basis_crossunder_15m:
-                score -= 25
-                reasons.append("DCB_CU_15M_BAD(-25)")
-            if dc_basis_crossunder_1h:
-                score -= 20
-                reasons.append("DCB_CU_1H_BAD(-20)")
+            from vec_decisions.asr_score_core import apply_channel_k_cross_score_scalar
+
+            score, reasons = apply_channel_k_cross_score_scalar(
+                score, reasons, ind, current_price, True
+            )
             if current_price > ema_50_15m:
                 score += 10
                 reasons.append("AB_E50_15M(+10)")
@@ -5115,63 +5063,11 @@ class AdvancedSignalRater:
                 score += 10
                 reasons.append("RSI_OS_4H(+10)")
         else:
-            if (
-                dc_w1h > 5.0
-                and current_price > (dc_low_1h * 1.03)
-                and current_price < dc_basis_1h
-            ):
-                score += 25
-                reasons.append("DROP_RECOVERY(+25)")
-            if (
-                dc_wD > 6.0
-                and current_price > (dc_low_D * 1.05)
-                and current_price < dc_basis_D
-            ):
-                score += 35
-                reasons.append("DROP_REC_D(+35)")
-            if (
-                dc_w4h > 4.0
-                and current_price > (dc_low_4h * 1.04)
-                and current_price < dc_basis_4h
-            ):
-                score += 30
-                reasons.append("DROP_REC_4H(+30)")
-            if k_15m > 80:
-                score += 10
-                reasons.append("HIGH_K15(+10)")
-            if k_1h > 80:
-                score += 15
-                reasons.append("HIGH_K1H(+15)")
-            if k_4h > 75:
-                score += 20
-                reasons.append("HIGH_K4H(+20)")
-            if k_D > 70:
-                score += 25
-                reasons.append("HIGH_KD(+25)")
-            if dc_basis_crossunder_3m:
-                score += 30
-                reasons.append("DCB_CU_3M(+30)")
-            if dc_basis_crossunder_15m:
-                score += 25
-                reasons.append("DCB_CU_15M(+25)")
-            if dc_basis_crossunder_1h:
-                score += 20
-                reasons.append("DCB_CU_1H(+20)")
-            if dc_basis_crossunder_4h:
-                score += 15
-                reasons.append("DCB_CU_4H(+15)")
-            if dc_basis_crossunder_D:
-                score += 10
-                reasons.append("DCB_CU_D(+10)")
-            if dc_basis_crossover_3m:
-                score -= 30
-                reasons.append("DCB_CO_3M_BAD(-30)")
-            if dc_basis_crossover_15m:
-                score -= 25
-                reasons.append("DCB_CO_15M_BAD(-25)")
-            if dc_basis_crossover_1h:
-                score -= 20
-                reasons.append("DCB_CO_1H_BAD(-20)")
+            from vec_decisions.asr_score_core import apply_channel_k_cross_score_scalar
+
+            score, reasons = apply_channel_k_cross_score_scalar(
+                score, reasons, ind, current_price, False
+            )
             if current_price < ema_50_15m:
                 score += 10
                 reasons.append("BE_E50_15M(+10)")

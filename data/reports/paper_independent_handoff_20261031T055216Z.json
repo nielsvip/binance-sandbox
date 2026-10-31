@@ -1,0 +1,36 @@
+{
+  "recorded_at_utc": "2026-10-31T05:52:16.388211+00:00",
+  "operational_receipt": "data/reports/paper_independent_final_status_20261031T055013Z.json",
+  "deployment_receipt": "data/reports/paper_independent_deployment_20261031T053556Z.json",
+  "journal_retry_policy": "Restart=always,60 seconds; all four units verified; disk reserve unchanged",
+  "path_audit": {
+    "host": "s1",
+    "path_rows": 285,
+    "status_counts": {
+      "DEPENDENCY_UNVERIFIED": 13,
+      "NO_OP": 2,
+      "UNREACHABLE": 3,
+      "UNVERIFIED": 267
+    },
+    "coverage_proven": 0,
+    "sqlite_quick_check": "ok",
+    "tool_sha256": "b7e94bd45b39591dd27f8f878cb2fd7ad9a4c0ac9e1642b24929e2632d4e126b"
+  },
+  "additional_validation": {
+    "coordinator_journal_collector_context_tests": 45,
+    "campaign_helper_tests": 3,
+    "path_coverage_tests": 3
+  },
+  "not_deployed": [
+    "automatic campaign rollover",
+    "account-context helper integration"
+  ],
+  "limitations": [
+    "No production independent workers had executed at operational receipt capture",
+    "1m and some 3m/5m source coverage unavailable",
+    "32921 pending parameter jobs",
+    "S1 disk reserve pauses journal and worker admission",
+    "Scalp, hedge opener and account-specific path coverage unresolved"
+  ],
+  "promotion_enabled": false
+}

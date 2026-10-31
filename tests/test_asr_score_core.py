@@ -6,6 +6,7 @@ from vec_decisions.asr_score_core import (
     apply_15m_momentum_scalar, apply_15m_momentum_vec,
     apply_ma_distance_score_scalar, apply_ma_distance_score_vec,
     apply_rank_conviction_scalar, apply_rank_conviction_vec,
+    apply_channel_k_cross_score_scalar, apply_channel_k_cross_score_vec,
 )
 
 
@@ -307,3 +308,46 @@ def test_15m_previous_uses_wt2_only_when_whole_npz_column_is_absent():
     )
     assert not present_nan_fire[0]
     assert present_nan[0] == 0.0
+
+
+def test_channel_k_cross_matches_sha_verified_pre_edit_native_ast_and_numpy():
+    import ast
+    import hashlib
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[1]
+    candidates = sorted((root / "backups").glob("before_asr_channel_k_cross_wire_retry_ez_positions_quick_*.py"))
+    reference = next(path for path in candidates if hashlib.sha256(path.read_bytes()).hexdigest() == "6b531e499a15d716f25f0feed85b68fb928eeba6f914c02b3b012b4b294af500")
+    rate = next(node for node in ast.walk(ast.parse(reference.read_text())) if isinstance(node, ast.AsyncFunctionDef) and node.name == "rate" and node.lineno == 3616)
+    original = next(node for node in rate.body if isinstance(node, ast.If) and "JUMP_PULLBACK" in ast.unparse(node) and "DROP_RECOVERY" in ast.unparse(node))
+    long_end = next(i for i, node in enumerate(original.body) if isinstance(node, ast.If) and "current_price > ema_50_15m" in ast.unparse(node))
+    short_end = next(i for i, node in enumerate(original.orelse) if isinstance(node, ast.If) and "current_price < ema_50_15m" in ast.unparse(node))
+    native = ast.fix_missing_locations(ast.If(test=original.test, body=original.body[:long_end], orelse=original.orelse[:short_end]))
+    rows = []
+    for j in range(8):
+        row = {"close": 110.0 + j, "k_15m": 10.0 + j * 10, "k_1h": 10.0 + j * 10, "k_4h": 20.0 + j * 10, "k_D": 25.0 + j * 10}
+        for tf, gap in (("1h",20.0),("D",30.0),("4h",15.0)):
+            row[f"dc_low_{tf}"] = 100.0
+            row[f"dc_high_{tf}"] = 100.0 + gap
+            row[f"dc_basis_{tf}"] = 105.0
+        for tf in ("3m","15m","1h","4h","D"):
+            row[f"dc_basis_crossover_{tf}"] = int((j + len(tf)) % 2 == 0)
+            row[f"dc_basis_crossunder_{tf}"] = int((j + len(tf)) % 3 == 0)
+        rows.append(row)
+    arrays = {key: np.asarray([row.get(key, 0.0) for row in rows]) for key in set().union(*(row.keys() for row in rows))}
+    for is_long in (True, False):
+        vector, _ = apply_channel_k_cross_score_vec(arrays, len(rows), is_long)
+        for j, indicators in enumerate(rows):
+            env = {"is_long": is_long, "current_price": indicators["close"], "score": 0.0, "reasons": []}
+            for key in ("dc_high_1h","dc_low_1h","dc_high_D","dc_low_D","dc_high_4h","dc_low_4h","dc_basis_1h","dc_basis_D","dc_basis_4h","k_15m","k_1h","k_4h","k_D"):
+                env[key] = indicators.get(key, 50.0 if key.startswith("k_") else 0.0)
+            for tf in ("3m","15m","1h","4h","D"):
+                env[f"dc_basis_crossover_{tf}"] = indicators[f"dc_basis_crossover_{tf}"]
+                env[f"dc_basis_crossunder_{tf}"] = indicators[f"dc_basis_crossunder_{tf}"]
+            env["dc_w1h"] = ((env["dc_high_1h"]-env["dc_low_1h"])/env["dc_low_1h"])*100 if env["dc_low_1h"]>0 else 0
+            env["dc_wD"] = ((env["dc_high_D"]-env["dc_low_D"])/env["dc_low_D"])*100 if env["dc_low_D"]>0 else 0
+            env["dc_w4h"] = ((env["dc_high_4h"]-env["dc_low_4h"])/env["dc_low_4h"])*100 if env["dc_low_4h"]>0 else 0
+            exec(compile(ast.Module(body=[native], type_ignores=[]), str(reference), "exec"), env)
+            scalar, reasons = apply_channel_k_cross_score_scalar(0.0, [], indicators, indicators["close"], is_long)
+            assert scalar == env["score"] == vector[j]
+            assert reasons == env["reasons"]

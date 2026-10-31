@@ -22,6 +22,11 @@ DEFAULT_SIDES = (
     "COIN_SHORT",
     "CDE_SHORT",
 )
+BASELINE_HARNESS_FILES = (
+    "v15_nextgen_baseline_oracle.py",
+    "v15_nextgen_baseline_guard.py",
+    "v15_nextgen_bench_isolation.py",
+)
 CRYPTO_SYMBOLS = {"1000PEPEUSDC", "AAVEUSDC", "1000BONKUSDC", "1INCHUSDT"}
 
 
@@ -243,7 +248,9 @@ def copy_tree_by_hardlink(
         raise ValueError("materialized previous runtime contains symlinks")
 
 
-def materialize_side(snapshot, source_base, output_root, sym_side, verified_sources):
+def materialize_side(
+    snapshot, source_base, output_root, sym_side, harness_root, verified_sources
+):
     snapshot, source_base, output_root = map(Path, (snapshot, source_base, output_root))
     source_root, source_side = source_base / "reference", source_base / "side"
     source_request_path = source_side / "oracle_request.json"
@@ -470,17 +477,23 @@ def materialize_side(snapshot, source_base, output_root, sym_side, verified_sour
     )
     request_path = side / "oracle_request.json"
     write_json(request_path, request)
-    source_harness = source_base / "harness"
+    source_harness = Path(harness_root) if harness_root else source_base / "harness"
     harness = side / "harness"
-    shutil.copytree(source_harness, harness, copy_function=os.link)
+    harness.mkdir()
+    harness_hashes = {}
+    for name in BASELINE_HARNESS_FILES:
+        source_file = source_harness / name
+        if source_file.is_symlink() or not source_file.is_file():
+            raise ValueError(
+                f"frozen current oracle harness file missing: {source_file}"
+            )
+        target_file = harness / name
+        os.link(source_file, target_file)
+        harness_hashes[name] = sha(target_file)
     runner = harness / "v15_nextgen_baseline_oracle.py"
     baseline_guard = harness / "v15_nextgen_baseline_guard.py"
     isolation = harness / "v15_nextgen_bench_isolation.py"
-    if (
-        not runner.is_file()
-        or not baseline_guard.is_file()
-        or not isolation.is_file()
-    ):
+    if not runner.is_file() or not baseline_guard.is_file() or not isolation.is_file():
         raise ValueError("copied baseline-oracle runner changed")
     expected_prefix = source_request["expected_environment"].get("sys_prefix")
     executable = source_request["expected_environment"].get("executable")
@@ -529,6 +542,7 @@ def materialize_side(snapshot, source_base, output_root, sym_side, verified_sour
         "runner_sha256": sha(runner),
         "baseline_guard_sha256": sha(baseline_guard),
         "isolation_helper_sha256": sha(isolation),
+        "harness_files": harness_hashes,
     }
 
 
@@ -537,6 +551,7 @@ def main():
     parser.add_argument("--snapshot", required=True)
     parser.add_argument("--source-base", required=True)
     parser.add_argument("--output-root", required=True)
+    parser.add_argument("--harness-root")
     parser.add_argument("--sides", default=",".join(DEFAULT_SIDES))
     parser.add_argument("--run", action="store_true")
     args = parser.parse_args()
@@ -558,7 +573,12 @@ def main():
         try:
             results.append(
                 materialize_side(
-                    snapshot, source_base, output_root, sym_side, verified_sources
+                    snapshot,
+                    source_base,
+                    output_root,
+                    sym_side,
+                    args.harness_root,
+                    verified_sources,
                 )
             )
         except (OSError, KeyError, ValueError, json.JSONDecodeError) as error:
@@ -585,11 +605,15 @@ def main():
             execution.append(
                 {
                     "sym_side": item["sym_side"],
-                    "status": "HELD_BY_ORACLE_RESOURCE_GUARD"
-                    if run.returncode and resource_hold
-                    else "ORACLE_COMPLETE"
-                    if run.returncode == 0
-                    else "ORACLE_FAILED",
+                    "status": (
+                        "HELD_BY_ORACLE_RESOURCE_GUARD"
+                        if run.returncode and resource_hold
+                        else (
+                            "ORACLE_COMPLETE"
+                            if run.returncode == 0
+                            else "ORACLE_FAILED"
+                        )
+                    ),
                     "returncode": run.returncode,
                     "stdout": run.stdout[-4000:],
                     "stderr": run.stderr[-4000:],
@@ -607,6 +631,11 @@ def main():
         ),
         "snapshot": str(snapshot.resolve()),
         "source_base": str(source_base.resolve()),
+        "harness_root": (
+            str(Path(args.harness_root).resolve())
+            if args.harness_root
+            else str((source_base / "harness").resolve())
+        ),
         "output_root": str(output_root.resolve()),
         "run_requested": args.run,
         "prepared": results,
