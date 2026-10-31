@@ -44944,7 +44944,7 @@ async def evaluate_reentry(ctx: dict) -> Optional[Signal]:
             _rt_xt = getattr(position, "last_reduction_time", None)
             _rt_xt = _rt_xt.timestamp() if hasattr(_rt_xt, "timestamp") else (__import__("live_twins.reentry_augment", fromlist=["epoch"]).epoch(_rt_xt) or 0.0)
             _rt_kl = Path(getattr(config, "BASE_PATH", ".")) / "klines_cache" / f"{symbol}_15m.json"
-            _rt_name = _rtrg_l.fire_live(_rt_cfg, is_long, current_price, i, _rt_xp, float(_rt_xt or 0.0), _rt_kl)
+            _rt_name = _rtrg_l.fire_live(_rt_cfg, is_long, current_price, i, _rt_xp, float(_rt_xt or 0.0), _rt_kl, asof_ts=time.time())
             if _rt_name:
                 logger.warning(f"[{_rt_name}] {position_key}: cur={current_price:.6f} exit={_rt_xp:.6f} — re-entry trigger fired")
                 return Signal(action="REENTRY", reason=f"{_rt_name}_cur{current_price:.6f}_exit{_rt_xp:.6f}", conviction=80.0, quantity=re_qty)

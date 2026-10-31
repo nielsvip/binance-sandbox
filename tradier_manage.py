@@ -41811,7 +41811,7 @@ class StockStrategy:
                 _rt_xt_t = getattr(position, "last_reduction_time", None)
                 _rt_xt_t = _rt_xt_t.timestamp() if hasattr(_rt_xt_t, "timestamp") else (__import__("live_twins.reentry_augment", fromlist=["epoch"]).epoch(_rt_xt_t) or 0.0)
                 _rt_kl_t = Path(getattr(config, "BASE_PATH", ".")) / "klines_cache" / f"{symbol}_15m.json"
-                _rt_name_t = _rtrg_t.fire_live(_rt_cfg_t, is_long, current_price, i or {}, _rt_xp_t, float(_rt_xt_t or 0.0), _rt_kl_t)
+                _rt_name_t = _rtrg_t.fire_live(_rt_cfg_t, is_long, current_price, i or {}, _rt_xp_t, float(_rt_xt_t or 0.0), _rt_kl_t, asof_ts=time.time())
                 if _rt_name_t:
                     _rt_qty_t = max(1.0, _weekly_max_shares_tradier(position, current_price, symbol, current_account.get("") or "trb"))
                     logger.warning(f"[{_rt_name_t}] {symbol} {'LONG' if is_long else 'SHORT'}: cur={current_price:.4f} exit={_rt_xp_t:.4f} — re-entry trigger fired")

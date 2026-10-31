@@ -7185,11 +7185,29 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                                 _wick_px = (min(_wick_stop, _wick_open) if _wick_long else max(_wick_stop, _wick_open)) if _wick_open > 0 else _wick_stop
                                 _wick_prev_px = price_cache.get(_wick_sym)
                                 _wick_prev_ind_px = _wick_ind.get("current_price")
+                                _wick_prev_mark = getattr(pos, "mark_price", None)
+                                _wick_prev_mark_ts = getattr(pos, "mark_price_last_updated", None)
+                                _wick_prev_cache = trade_manager.price_cache.get(_wick_sym)
+                                _wick_prev_cache2 = trade_manager.price_cache_2.get(_wick_sym)
                                 price_cache[_wick_sym] = _wick_px
                                 _wick_ind["current_price"] = _wick_px
+                                pos.mark_price = _wick_px
+                                pos.mark_price_last_updated = _sim_datetime_now(timezone.utc)
+                                trade_manager.price_cache[_wick_sym] = {"price": _wick_px, "ts": float(ts)}
+                                trade_manager.price_cache_2[_wick_sym] = _wick_px
                                 try:
                                     await ez_manage.process_position(account_key=account_key, position_key=pk, order_queue=order_queue, trade_manager=trade_manager, force=True)
                                 finally:
+                                    pos.mark_price = _wick_prev_mark
+                                    pos.mark_price_last_updated = _wick_prev_mark_ts
+                                    if _wick_prev_cache is None:
+                                        trade_manager.price_cache.pop(_wick_sym, None)
+                                    else:
+                                        trade_manager.price_cache[_wick_sym] = _wick_prev_cache
+                                    if _wick_prev_cache2 is None:
+                                        trade_manager.price_cache_2.pop(_wick_sym, None)
+                                    else:
+                                        trade_manager.price_cache_2[_wick_sym] = _wick_prev_cache2
                                     if _wick_prev_px is None:
                                         price_cache.pop(_wick_sym, None)
                                     else:

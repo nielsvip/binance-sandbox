@@ -184,10 +184,10 @@ def _vector_acts(ledger, last_index, tails):
         typ = str(row.get("type", "")).upper()
         if typ not in ("OPEN", "AUGMENT", "REDUCE", "CLOSE") or row.get("unrealised") or str(row.get("reason") or "").startswith("FINAL_MTM"):
             continue
-        bar = row.get("bar_exit") if typ == "CLOSE" else row.get("bar", row.get("bar_entry"))
+        bar = row.get("bar_exit") if typ == "CLOSE" or (typ == "REDUCE" and row.get("bar_exit") is not None) else row.get("bar", row.get("bar_entry"))
         if bar is not None:
             rows.append((int(bar), n, typ, row))
-    rows.sort(key=lambda item: (item[0], item[1]))
+    rows.sort(key=lambda item: (item[0], item[2] == "CLOSE" or bool(item[3].get("pnl_is_lifecycle")), item[1]))
     qty = open_qty = open_px = 0.0
     open_bar = None
     acts = []
@@ -200,7 +200,7 @@ def _vector_acts(ledger, last_index, tails):
         elif typ == "AUGMENT":
             qty += q
         elif typ == "REDUCE":
-            qty = max(0.0, qty - q)
+            qty = 0.0 if row.get("pnl_is_lifecycle") else max(0.0, qty - q)
         else:
             qty = 0.0
         if qty <= 1e-12:
@@ -307,10 +307,10 @@ def state_for(symside, window_days=30):
         out.update(_pos)
         out["acts_bar_ts"] = tail
         out["acts_last_bar"] = _acts
-        if out.get("open") and float(_pos.get("engine_qty") or 0.0) <= 1e-12 and any(
-                str(x.get("type")) in ("CLOSE", "REDUCE") and float(x.get("qty_after") or 0.0) <= 1e-12 for x in _acts):
+        out["open"] = float(_pos.get("engine_qty") or 0.0) > 1e-12
+        if not out["open"]:
             out["open"], out["entry_bar"], out["entry_px"] = False, None, None
-            out["flat_reason"] = "zero_qty_after_same_bar_close"
+            out["flat_reason"] = "zero_qty_after_ledger_close"
     except Exception as exc:
         out["acts_error"] = f"{type(exc).__name__}: {exc}"[:160]
     return out

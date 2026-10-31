@@ -490,12 +490,21 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict], equity: dict |
 
 
 def fail_page(symside: str, board: dict, error: str, now: str) -> str:
+    source = Path(board.get("board_html") or "")
+    historical = source.is_file() and source.parent == CELL
+    original = board.get("orig_metrics") or {}
+    title = f"{symside} — ORIGINAL board"
+    if historical:
+        title += f" · B&H {_fmt(original.get('bh_pct'))}% · {original.get('trades') or '?'} vector trades · gain {_fmt(original.get('gain_pct'))}%"
+    source_url = "../V15_V16_CELL_BY_CELL/" + source.name if historical else ""
+    viewer = (f"<p><a href='{_html.escape(source_url)}'>Open original board directly</a></p>"
+              f"<iframe src='{_html.escape(source_url)}' title='Historical original board' style='width:100%;height:78vh;border:1px solid #555;background:#0a0a0a'></iframe>") if historical else ""
     return (
-        f"<!doctype html><html><head><meta charset=utf-8><title>{_html.escape(symside)} daily FAIL</title>"
+        f"<!doctype html><html><head><meta charset=utf-8><title>{_html.escape(title)}</title>"
         "<style>body{font-family:system-ui,monospace;margin:12px;background:#0a0a0a;color:#e5e5e5}</style></head><body>"
-        f"<h2>{_html.escape(symside)} — daily 30D recalculation FAILED</h2>"
-        f"<div style='background:#5a1a1a;border:1px solid #a33;padding:8px;font-size:12px'>No current chart: {_html.escape(error)}<br>attempted {now} · "
-        f"source board {_html.escape(os.path.basename(board.get('board_html') or '?'))} (published {_html.escape(str(board.get('published_utc')))}, cells {_html.escape(str(board.get('cells_vintage') or 'UNAVAILABLE'))})</div></body></html>\n"
+        f"<h2>{_html.escape(title)}</h2>"
+        f"<div style='background:#5a1a1a;border:1px solid #a33;padding:8px;font-size:12px'>CURRENT 30D RECALCULATION FAILED: {_html.escape(error)}<br>attempted {now} · "
+        f"original board published {_html.escape(str(board.get('published_utc')))}; cells {_html.escape(str(board.get('cells_vintage') or 'UNAVAILABLE'))}. Historical chart below; its metrics and trades are from that publication.</div>{viewer}</body></html>\n"
     )
 
 

@@ -203,13 +203,7 @@ def vec_trades_for_plot(sym):
 
 def draw_vec_mismatch(ax_plot, x_left_ts, x_right_ts, vec_entries, vec_exits,
                       fill_entries, fill_exits, x_of, tol_min=30.0):
-    """Trade-based discrepancy markers (replaces indicator-signal matching).
-
-    Grey UP arrow under the box = vec trade (HTML frozen or forward) with no
-    /history/ fill nearby. Grey DOWN arrow above the box = live fill with no
-    vec trade nearby. Entries match entries, exits match exits. Either side
-    empty (no vec feed for this symbol) -> (0, 0), nothing drawn.
-    """
+    """Full-height orange vector-only and blue live-only trade lines."""
     import live_trade_history as lth
     ve, vx = sorted(vec_entries), sorted(vec_exits)
     fe, fx = sorted(fill_entries), sorted(fill_exits)
@@ -218,34 +212,24 @@ def draw_vec_mismatch(ax_plot, x_left_ts, x_right_ts, vec_entries, vec_exits,
     tol_s = tol_min * 60.0
     me_v, me_l = lth.greedy_match(ve, fe, tol_s)
     mx_v, mx_l = lth.greedy_match(vx, fx, tol_s)
-    vc, va = lth.MISMATCH_VEC_MPL
-    lc, la = lth.MISMATCH_LIVE_MPL
-    try:
-        _lo, _hi = ax_plot.get_ylim()
-        _span = _hi - _lo if _hi > _lo else 1.0
-    except Exception:
-        _lo, _span = 0.0, 1.0
-    y_below, y_above = _lo - 0.015 * _span, _lo + 1.015 * _span
+    vc, va = "#f97316", 0.95
+    lc, la = "#2563eb", 0.95
     n_vec = n_live = 0
     for i, t in enumerate(ve):
         if i not in me_v and x_left_ts <= t <= x_right_ts:
-            ax_plot.plot(x_of(t), y_below, marker="^", color=vc, alpha=va,
-                         ms=lth.MISMATCH_MARKER_SIZE, linestyle="None", zorder=9, clip_on=False)
+            ax_plot.axvline(x=x_of(t), color=vc, alpha=va, lw=2.0, zorder=9)
             n_vec += 1
     for i, t in enumerate(vx):
         if i not in mx_v and x_left_ts <= t <= x_right_ts:
-            ax_plot.plot(x_of(t), y_below, marker="^", color=vc, alpha=va,
-                         ms=lth.MISMATCH_MARKER_SIZE, linestyle="None", zorder=9, clip_on=False)
+            ax_plot.axvline(x=x_of(t), color=vc, alpha=va, lw=2.0, zorder=9)
             n_vec += 1
     for j, t in enumerate(fe):
         if j not in me_l and x_left_ts <= t <= x_right_ts:
-            ax_plot.plot(x_of(t), y_above, marker="v", color=lc, alpha=la,
-                         ms=lth.MISMATCH_MARKER_SIZE, linestyle="None", zorder=9, clip_on=False)
+            ax_plot.axvline(x=x_of(t), color=lc, alpha=la, lw=2.0, zorder=9)
             n_live += 1
     for j, t in enumerate(fx):
         if j not in mx_l and x_left_ts <= t <= x_right_ts:
-            ax_plot.plot(x_of(t), y_above, marker="v", color=lc, alpha=la,
-                         ms=lth.MISMATCH_MARKER_SIZE, linestyle="None", zorder=9, clip_on=False)
+            ax_plot.axvline(x=x_of(t), color=lc, alpha=la, lw=2.0, zorder=9)
             n_live += 1
     return n_vec, n_live
 
@@ -268,8 +252,6 @@ def draw_vec_outcome_lines(ax_plot, x_left_ts, x_right_ts, vec_outcomes, fill_ex
     for i, (t, win) in enumerate(vo):
         if i in matched_v or not (x_left_ts <= t <= x_right_ts):
             continue
-        color = lth.VEC_WIN_COLOR if win else lth.VEC_LOSS_COLOR
-        ax_plot.axvline(x=x_of(t), color=color, alpha=lth.OUTCOME_ALPHA, lw=lth.OUTCOME_LW, linestyle=":", zorder=6)
         if win:
             n_win += 1
         else:

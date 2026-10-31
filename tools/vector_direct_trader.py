@@ -1296,20 +1296,37 @@ class Trader:
                     self.alert("VD_MAC_POSITION_MISSING", account=acct, sym_side=ss, broker_qty=float(broker_row.get("qty") or 0), written_at=doc.get("written_at"))
                 continue
             broker_qty, mac_qty = float(broker_row.get("qty") or 0), float(row.get("qty") or 0)
-            broker_row["mac"] = {k: v for k, v in row.items() if k != "qty"}
-            broker_row["mac_qty"] = mac_qty
-            broker_row["mac_age_s"] = round(age, 1)
-            if not float(broker_row.get("entry") or 0) and row.get("entry_price") is not None:
-                broker_row["entry"] = float(row["entry_price"])
-            for field in ("opened_at", "max_gain", "gain", "last_signal"):
-                if row.get(field) is not None and broker_row.get(field) is None:
-                    broker_row[field] = row[field]
+            source_epoch = float(row.get("source_file_epoch") or doc.get("epoch") or 0)
+            if row.get("last_updated"):
+                try:
+                    source_epoch = min(source_epoch, dt.datetime.fromisoformat(str(row["last_updated"]).replace("Z", "+00:00")).replace(tzinfo=dt.timezone.utc).timestamp())
+                except (ValueError, TypeError):
+                    source_epoch = 0.0
+            source_age = time.time() - source_epoch
+            if source_age > MAC_POSITIONS_MAX_AGE_S or source_age < -5:
+                signal = (acct, ss, "source_stale", source_epoch)
+                if signal not in rung:
+                    rung.add(signal)
+                    self.alert("VD_MAC_POSITION_SOURCE_STALE", account=acct, sym_side=ss, source_age_s=round(source_age, 1), source_file=row.get("source_file"), written_at=doc.get("written_at"))
+                broker_row["position_source"] = "broker_verified_mac_source_stale"
+                continue
             if broker_qty > 0 and abs(mac_qty - broker_qty) > max(1e-8, broker_qty * 1e-6):
                 signal = (acct, ss, "qty", round(mac_qty, 8), round(broker_qty, 8))
                 if signal not in rung:
                     rung.add(signal)
                     self.alert("VD_MAC_POSITION_QTY_DISAGREES", account=acct, sym_side=ss, broker_qty=broker_qty, mac_qty=mac_qty, written_at=doc.get("written_at"))
-                    log(f"mac/broker disagree {acct} {ss}: broker {broker_qty} vs mac {mac_qty} — broker stands, lifecycle attached anyway")
+                broker_row["mac_qty"] = mac_qty
+                broker_row["position_source"] = "broker_verified_mac_quantity_mismatch"
+                continue
+            broker_row["mac"] = {k: v for k, v in row.items() if k != "qty"}
+            broker_row["mac_qty"] = mac_qty
+            broker_row["mac_age_s"] = round(source_age, 1)
+            broker_row["position_source"] = "mac_snapshot_broker_verified"
+            if not float(broker_row.get("entry") or 0) and row.get("entry_price") is not None:
+                broker_row["entry"] = float(row["entry_price"])
+            for field in ("opened_at", "max_gain", "gain", "last_signal"):
+                if row.get(field) is not None and broker_row.get(field) is None:
+                    broker_row[field] = row[field]
         for ss, row in book.items():
             if ss in pos or float(row.get("qty") or 0) <= 0:
                 continue

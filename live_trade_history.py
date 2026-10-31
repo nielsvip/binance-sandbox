@@ -142,8 +142,8 @@ def account_color(acct, direction):
 
 
 ENTRY_ALPHA = 1.0
-EXIT_ALPHA = 0.65
-ARROW_SIZE = 55
+EXIT_ALPHA = 0.95
+ARROW_SIZE = 90
 
 
 def _qty(rec):

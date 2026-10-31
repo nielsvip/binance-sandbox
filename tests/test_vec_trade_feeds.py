@@ -21,17 +21,16 @@ def test_draw_vec_mismatch_marks_only_unmatched():
     from matplotlib.lines import Line2D
     fig, ax = plt.subplots()
     lo, hi = _w(9), _w(16)
-    lo0, hi0 = ax.get_ylim()
     ve = [_w(10), _w(13)]
     vx = [_w(11)]
     fe = [_w(10, 5)]
     fx = [_w(11, 5), _w(15)]
     nv, nl = vtf.draw_vec_mismatch(ax, lo, hi, ve, vx, fe, fx, lambda t: t.timestamp())
     assert (nv, nl) == (1, 1)
-    ups = [l for l in ax.get_children() if isinstance(l, Line2D) and l.get_marker() == "^"]
-    dns = [l for l in ax.get_children() if isinstance(l, Line2D) and l.get_marker() == "v"]
-    assert len(ups) == 1 and len(dns) == 1
-    assert ups[0].get_ydata()[0] < lo0 and dns[0].get_ydata()[0] > hi0
+    orange = [l for l in ax.get_children() if isinstance(l, Line2D) and l.get_color() == "#f97316"]
+    blue = [l for l in ax.get_children() if isinstance(l, Line2D) and l.get_color() == "#2563eb"]
+    assert len(orange) == 1 and len(blue) == 1
+    assert all(list(line.get_ydata()) == [0, 1] and line.get_linewidth() == 2.0 for line in orange + blue)
     plt.close(fig)
 
 

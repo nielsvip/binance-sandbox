@@ -60,7 +60,7 @@ def fire(cfg, is_long: bool, close: float, prev_close: float, exit_px: float, dc
     return ""
 
 
-def fire_live(cfg, is_long: bool, price: float, ind: dict, exit_px: float, exit_ts: float, klines_path=None) -> str:
+def fire_live(cfg, is_long: bool, price: float, ind: dict, exit_px: float, exit_ts: float, klines_path=None, asof_ts=None) -> str:
     """Native live adapter (ez_manage / tradier_manage, used when the vec twin is not deciding): the same fire() on the live
     indicator dict (closed-bar 15m values) + the 15m klines cache for the extreme since the exit."""
     try:
@@ -70,9 +70,10 @@ def fire_live(cfg, is_long: bool, price: float, ind: dict, exit_px: float, exit_
         dc4p = g("dc_high4_15m_prev") if is_long else g("dc_low4_15m_prev")
         ext = 0.0
         if klines_path and exit_ts > 0:
-            from live_twins.reentry_augment import klines_bars
+            from live_twins.reentry_augment import klines_bars, epoch
 
-            bars = [b for b in (klines_bars(klines_path) or []) if b[0] and b[0] >= exit_ts - 900 and b[1] and b[2]]
+            cutoff = epoch(asof_ts)
+            bars = [b for b in (klines_bars(klines_path) or []) if b[0] and b[0] >= exit_ts - 900 and (cutoff is None or b[0] <= cutoff) and b[1] and b[2]]
             if len(bars) >= 2:
                 hist = bars[:-1]
                 ext = min(float(b[1]) for b in hist) if is_long else max(float(b[2]) for b in hist)

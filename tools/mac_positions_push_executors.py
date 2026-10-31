@@ -90,7 +90,7 @@ def collect(accounts):
                 symbol = str(record.get("symbol") or key.split(":")[-1].rsplit("_", 1)[0]).upper()
                 position_side = str(record.get("position_side") or record.get("side") or side).upper()
                 position_side = "LONG" if position_side.startswith("L") else "SHORT"
-                row = {"qty": qty}
+                row = {"qty": qty, "source_file_epoch": path.stat().st_mtime, "source_file": f"{acct}/{side}_positions.json"}
                 for field in LIFECYCLE:
                     if record.get(field) is not None:
                         row[field] = record[field]
