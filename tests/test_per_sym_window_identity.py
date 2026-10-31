@@ -153,3 +153,33 @@ def test_a_dry_run_writes_nothing(tmp_path):
     before = rows(path)
     W.process(path, tmp_path / "bk", dry=True)
     assert rows(path) == before
+
+
+def test_a_30d_store_gets_identity_and_guards_but_no_row_is_rewritten(tmp_path):
+    """Rewriting meta_json on hundreds of live rows on five hosts would make the copies diverge."""
+    path = make_store(tmp_path, "per_sym_store.db", [("A_LONG", {}), ("B_SHORT", {"source": "x"})])
+    before = rows(path)
+    report = W.process(path, tmp_path / "bk", dry=False)
+    assert rows(path) == before, "a 30D store's rows must be left byte-for-byte as they were"
+    assert report["relabel_rows"] is False and report["backup"].endswith(".revert.json")
+    con = sqlite3.connect(str(path))
+    try:
+        con.execute("INSERT INTO per_sym_active (sym_side, meta_json) VALUES ('C', ?)", (json.dumps({"window_days": 7}),))
+        raise AssertionError("the 30D guard must still refuse a 7D row")
+    except sqlite3.DatabaseError as exc:
+        assert "WRONG_WINDOW" in str(exc)
+    con.close()
+
+
+def test_the_light_backup_holds_an_exact_revert(tmp_path):
+    path = make_store(tmp_path, "per_sym_store.db", [("A_LONG", {})])
+    report = W.process(path, tmp_path / "bk", dry=False)
+    rec = json.loads(Path(report["backup"]).read_text())
+    con = sqlite3.connect(str(path))
+    for sql in rec["revert_sql"]:
+        con.execute(sql)
+    con.commit()
+    left = con.execute("select count(*) from sqlite_master where type='trigger' and name like 'guard_window_%'").fetchone()[0]
+    kv = con.execute("select count(*) from kv_json where key='store_identity'").fetchone()[0]
+    con.close()
+    assert left == 0 and kv == 0, "running the recorded revert must return the store exactly to before"

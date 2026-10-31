@@ -183,6 +183,43 @@ def test_accepted_cycle_tp_is_labeled_projection_not_exchange_fill():
     assert result["account_partial_audit"]["accepted_count"] == 1
 
 
+def test_canonical_ppl_rejects_unexecutable_partial_and_rolls_back_ppl_state():
+    npz = _npz_fixture()
+    cfg = _cfg()
+    cfg.CYCLE_TP_TIERED_ENABLED = False
+    cfg.PARTIAL_PROFIT_LOCK_ENABLED = True
+    cfg.PARTIAL_PROFIT_LOCK_GAIN_PCT = 0.001
+    cfg.PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT = 0.75
+    cfg.PARTIAL_PROFIT_LOCK_FRAC = 0.5
+    baseline = engine.simulate_one(npz, "QNTUSDT", True, cfg, force_initial_seed=True)
+    first = next(row for row in baseline["ledger"] if str(row.get("reason", "")).startswith("PPL_TP_"))
+    ts = npz["timestamps"]
+    cfg = _cfg()
+    cfg.CYCLE_TP_TIERED_ENABLED = False
+    cfg.PARTIAL_PROFIT_LOCK_ENABLED = True
+    cfg.PARTIAL_PROFIT_LOCK_GAIN_PCT = 0.001
+    cfg.PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT = 0.75
+    cfg.PARTIAL_PROFIT_LOCK_FRAC = 0.5
+    cfg._PARTIAL_EXECUTION_CONTEXT = {
+        "schema_version": 1,
+        "account_key": "ang",
+        "symbol": "QNTUSDT",
+        "side": "LONG",
+        "window_first_ts": int(ts[0]),
+        "window_last_ts": int(ts[-1]),
+        "observation_bar_ts": int(first["ts"]),
+        "observed_qty": 0.1,
+        "market_lot": {"step_size": 0.001, "min_qty": 0.1},
+        "decision_generation": "g-ppl-reject",
+        "config_sha256": "c" * 64,
+    }
+    result = engine.simulate_one(npz, "QNTUSDT", True, cfg, force_initial_seed=True)
+    ppl_reduces = [row for row in result["ledger"] if str(row.get("reason", "")).startswith("PPL_TP_")]
+    assert not ppl_reduces
+    assert result["account_partial_audit"]["rejection_counts"]["PARTIAL_BELOW_MIN_QTY"] >= 1
+    assert all(row.get("projection_only_not_a_fill") is not True for row in result["ledger"])
+
+
 @pytest.mark.parametrize(
     "gate_name",
     [

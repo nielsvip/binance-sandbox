@@ -51,6 +51,7 @@ def test_observation_event_projection_export_omits_return_fields():
         "price": 10,
         "pnl_dollars": 5,
         "pnl_pct": 3,
+        "pnl_is_lifecycle": True,
         "account_partial_projection": {"projection_only_not_a_fill": True},
     }
     exported = _safe_event(event, 1793414700)
@@ -59,5 +60,6 @@ def test_observation_event_projection_export_omits_return_fields():
         "bar_exit": 1793414700,
         "qty": 0.2,
         "price": 10,
+        "lifecycle_terminal_marker": True,
         "account_partial_projection": {"projection_only_not_a_fill": True},
     }

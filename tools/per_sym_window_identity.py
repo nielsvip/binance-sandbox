@@ -63,6 +63,30 @@ def backup(path: Path, out_dir: Path) -> Path:
     return dest
 
 
+def light_backup(path: Path, out_dir: Path) -> Path:
+    """A store this tool only ADDS to (kv_json identity row + guard triggers, no row rewrites) does not need a
+    multi-GB copy on a host already under the disk floor: record the prior state of everything touched and the exact
+    SQL that reverts it. Measured 2026-10-31: S1 had 8.0 GB free against a 40 GB floor and a 1.6 GB store."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=30)
+    try:
+        prior_kv = None
+        if "kv_json" in tables_present(con):
+            cols = [r[1] for r in con.execute("pragma table_info(kv_json)")]
+            row = con.execute("select * from kv_json where key='store_identity'").fetchone()
+            prior_kv = dict(zip(cols, row)) if row else None
+        prior_triggers = {n: s for n, s in con.execute("select name, sql from sqlite_master where type='trigger' and name like 'guard_window_%'")}
+    finally:
+        con.close()
+    names = [f"guard_window_{t}_{op}" for t in TABLES for op in ("insert", "update")]
+    record = {"db": str(path), "taken_utc": stamp(), "prior_store_identity": prior_kv, "prior_guard_triggers": prior_triggers,
+              "revert_sql": [f"DROP TRIGGER IF EXISTS {n};" for n in names if n not in prior_triggers]
+                            + ([] if prior_kv else ["DELETE FROM kv_json WHERE key='store_identity';"])}
+    dest = out_dir / f"before_window_identity_{dt.datetime.now(dt.timezone.utc):%Y%m%d%H%M}_{path.parent.parent.parent.name}_{path.stem}.revert.json"
+    dest.write_text(json.dumps(record, indent=1, sort_keys=True))
+    return dest
+
+
 def tables_present(con):
     return {r[0] for r in con.execute("select name from sqlite_master where type='table'")}
 
@@ -124,13 +148,18 @@ def install_guards(con, window: int, dry: bool) -> list:
     return made
 
 
-def process(path: Path, backups: Path, dry: bool) -> dict:
+def process(path: Path, backups: Path, dry: bool, relabel_rows=None) -> dict:
     ident = identity_for(path)
     if ident is None:
         return {"db": str(path), "skipped": "unknown store name — not guessing its window"}
-    report = {"db": str(path), "identity": ident, "dry_run": dry}
+    # Rows are relabelled only in the 7D stores: their labels are WRONG (inherited 30). A 30D store's unlabelled rows
+    # are 30D by its identity, and rewriting meta_json on hundreds of live rows on every host, each at a different
+    # moment, would make the copies diverge for the sync tools. The guards protect the 30D store either way.
+    if relabel_rows is None:
+        relabel_rows = ident["window_days"] != 30
+    report = {"db": str(path), "identity": ident, "dry_run": dry, "relabel_rows": relabel_rows}
     if not dry:
-        report["backup"] = str(backup(path, backups))
+        report["backup"] = str(backup(path, backups) if relabel_rows else light_backup(path, backups))
     con = sqlite3.connect(str(path), timeout=60)
     try:
         con.execute("PRAGMA busy_timeout=60000")
@@ -150,7 +179,7 @@ def process(path: Path, backups: Path, dry: bool) -> dict:
             report["kv_json"] = "store_identity stamped" if not dry else "would stamp store_identity"
         else:
             report["kv_json"] = "no kv_json table — identity carried by triggers and row labels only"
-        report["relabelled"] = relabel(con, ident["window_days"], dry)
+        report["relabelled"] = relabel(con, ident["window_days"], dry) if relabel_rows else "not relabelled (30D store: identity + guards only)"
         report["guards"] = install_guards(con, ident["window_days"], dry)
         if not dry:
             con.execute("COMMIT")

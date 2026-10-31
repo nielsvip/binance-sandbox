@@ -4057,12 +4057,19 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         qty = _unlevered_shadow_qty(qty)
         if qty <= 0:
             return "BLOCKED_UNLEVERED_CAPACITY_OR_REDUCTION_EMPTY"
-        executed_trades.append({"timestamp": _sim_ts[0], "type": "eta", "position_key": pk,
-                                "symbol": sym, "position_side": ps, "side": side,
-                                "requested_qty": requested_qty, "executed_qty": qty, "quantity": qty,
-                                "price": px, "action": ledger_action, "reason": str(reason)[:200],
-                                "is_full_close": bool(ifc),
-                                "round_trip_cost_pct": _round_trip_cost_for_sym(sym)})
+        _eta_pos_before = trade_manager.positions.get(pk)
+        _eta_before_amt = abs(float(getattr(_eta_pos_before, "positionAmt", 0) or 0)) if _eta_pos_before else 0.0
+        _eta_fill_row = {"timestamp": _sim_ts[0], "type": "eta", "position_key": pk,
+                         "symbol": sym, "position_side": ps, "side": side,
+                         "requested_qty": requested_qty, "executed_qty": qty, "quantity": qty,
+                         "price": px, "action": ledger_action, "reason": str(reason)[:200],
+                         "is_full_close": bool(ifc), "status": "FILLED",
+                         "position_before": _eta_before_amt,
+                         "position_before_signed": _eta_before_amt if pk.endswith("_LONG") else -_eta_before_amt,
+                         "position_state_found": bool(_eta_pos_before),
+                         "sym_side": pk.split(":", 1)[-1] if pk else "",
+                         "round_trip_cost_pct": _round_trip_cost_for_sym(sym)}
+        executed_trades.append(_eta_fill_row)
         # 2026-05-12 FIX 2 — sim-time state hooks for the vec cooldown gates.
         # Every accepted fill updates the corresponding sim_ts map. Read by
         # _v8_vec_short_circuit (last_augment_ts / last_reduce_ts / last_open_ts).
@@ -4266,6 +4273,13 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     pass
                 trade_manager.positions[pk] = np2
                 trade_manager.positions_by_account.setdefault(acct, {})[pk] = np2
+        _eta_pos_after = trade_manager.positions.get(pk)
+        _eta_after_amt = abs(float(getattr(_eta_pos_after, "positionAmt", 0) or 0)) if _eta_pos_after else 0.0
+        _eta_is_reduce = bool(is_red)
+        _eta_fill_row["action"] = (("CLOSE" if _eta_after_amt <= 1e-12 else "REDUCE") if _eta_is_reduce
+                                    else ("OPEN" if _eta_before_amt < 0.0001 else "AUGMENT"))
+        _eta_fill_row["position_after"] = _eta_after_amt
+        _eta_fill_row["position_after_signed"] = _eta_after_amt if pk.endswith("_LONG") else -_eta_after_amt
         return "SUCCESS"
     # 2026-10-06 parity lane A (USER RULING H3): V12_REAL_EXECUTE=1 keeps the REAL ez_manage execute_trade_action and
     # execute_now (every live gate runs); only exchange/broker I/O stays stubbed (send_webhook -> _recording_webhook fills at
@@ -18795,7 +18809,41 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
         m["ledger"] = [{"ts": float(getattr(e,"ts",0)), "type": getattr(e,"type",""), "price": float(getattr(e,"value",0)/max(1e-9,float(getattr(e,"qty",0)))) if getattr(e,"qty",0) else 0.0, "qty": float(getattr(e,"qty",0)), "pnl_pct": float(getattr(e,"pnl_pct",0)), "reason": ""} for e in events if getattr(e,"type","")=="CLOSE"]
         # 2026-10-06 trade-parity (tools/v15_trade_parity.py): every executed live-path event with its action + reason,
         # so vec and live ledgers can be matched trade-by-trade. Output only — no simulation change.
-        m["execution_ledger"] = [{"ts": float(getattr(e, "ts", 0)), "type": getattr(e, "type", ""), "action": str(ev.get("action", "") or "").upper(), "reason": str(ev.get("reason", "") or "")[:160], "qty": float(getattr(e, "qty", 0)), "price": float(ev.get("price", 0) or 0), "pnl_pct": float(getattr(e, "pnl_pct", 0)), "raw_type": str(ev.get("type", "") or ""), "position_key": str(ev.get("position_key", "") or ""), "position_side": str(ev.get("position_side", "") or ""), "side": str(ev.get("side", "") or ""), "status": str(ev.get("status", "") or ""), "position_before": ev.get("position_before"), "position_before_signed": ev.get("position_before_signed"), "position_after": ev.get("position_after"), "position_after_signed": ev.get("position_after_signed"), "position_state_found": ev.get("position_state_found"), "sym_side": str(ev.get("sym_side", "") or ""), "account": str(ev.get("position_key", "").split(":", 1)[0]) if ev.get("position_key") else ""} for e, ev in zip(events, executed or [])]
+        _native_execution_rows = []
+        _canonical_native_orders = []
+        for e, ev in zip(events, executed or []):
+            _ts_fill = float(getattr(e, "ts", 0))
+            _raw_action = str(ev.get("action", "") or "").upper()
+            _fill_row = {"ts": _ts_fill, "bar_ts": _ts_fill, "type": getattr(e, "type", ""), "action": _raw_action,
+                         "reason": str(ev.get("reason", "") or "")[:160], "qty": float(getattr(e, "qty", 0)),
+                         "price": float(ev.get("price", 0) or 0), "pnl_pct": float(getattr(e, "pnl_pct", 0)),
+                         "raw_type": str(ev.get("type", "") or ""), "position_key": str(ev.get("position_key", "") or ""),
+                         "position_side": str(ev.get("position_side", "") or ""), "side": str(ev.get("side", "") or ""),
+                         "status": str(ev.get("status", "") or ""), "position_before": ev.get("position_before"),
+                         "position_before_signed": ev.get("position_before_signed"), "position_after": ev.get("position_after"),
+                         "position_after_signed": ev.get("position_after_signed"), "position_state_found": ev.get("position_state_found"),
+                         "sym_side": str(ev.get("sym_side", "") or ""),
+                         "account": str(ev.get("position_key", "").split(":", 1)[0]) if ev.get("position_key") else ""}
+            _native_execution_rows.append(_fill_row)
+            if _fill_row["status"] == "FILLED":
+                if _fill_row["position_state_found"] and _fill_row["position_before"] is not None and _fill_row["position_after"] is not None:
+                    _before_actual = float(_fill_row["position_before"])
+                    _after_actual = float(_fill_row["position_after"])
+                    if _after_actual > _before_actual + 1e-12:
+                        _canonical_action = "OPEN" if _before_actual <= 1e-9 else "AUGMENT"
+                    elif _after_actual < _before_actual - 1e-12:
+                        _canonical_action = "CLOSE" if _after_actual <= 1e-9 else "REDUCE"
+                    else:
+                        _canonical_action = "UNKNOWN"
+                else:
+                    _canonical_action = "UNKNOWN"
+                _canonical_native_orders.append({"account": _fill_row["account"], "sym_side": _fill_row["sym_side"],
+                                                 "bar_ts": _ts_fill, "action": _canonical_action,
+                                                 "qty": _fill_row["qty"], "position_after": _fill_row["position_after"],
+                                                 "reason": _fill_row["reason"], "raw_action": _raw_action,
+                                                 "status": _fill_row["status"]})
+        m["execution_ledger"] = _native_execution_rows
+        m["canonical_order_ledger"] = _canonical_native_orders
         m["sim_account"] = str(_run_one_sim_account or os.environ.get("V12_SIM_ACCOUNT") or "trb").lower() if mode == "tradier" else None
         m["exit_guarantee_replay"] = _xg_rp.replay_stats() if _xg_rp is not None else None  # 2026-10-14: would-escalate / would-retry counts (pass-through)
         return m

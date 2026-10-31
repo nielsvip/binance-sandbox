@@ -145,18 +145,24 @@ def _safe_event(event, observation_bar_ts):
         return None
     bar = event.get("bar_exit", event.get("bar", event.get("bar_entry")))
     is_observation = False
-    try:
-        is_observation = int(bar) == int(observation_bar_ts)
-    except (TypeError, ValueError):
-        pass
+    if observation_bar_ts is None:
+        is_observation = True
+    else:
+        try:
+            is_observation = int(bar) == int(observation_bar_ts)
+        except (TypeError, ValueError):
+            pass
     projection = event.get("account_partial_projection")
     if not is_observation and projection is None:
         return None
-    keep = ("type", "bar", "bar_entry", "bar_exit", "ts", "reason", "qty", "price", "qty_before", "qty_after", "qty_frac", "account_partial_projection")
-    return {key: event[key] for key in keep if key in event}
+    keep = ("type", "bar", "bar_entry", "bar_exit", "ts", "qty", "price", "qty_before", "qty_after", "qty_frac", "seeded_prewindow", "unrealised", "account_partial_projection")
+    safe = {key: event[key] for key in keep if key in event}
+    if "pnl_is_lifecycle" in event:
+        safe["lifecycle_terminal_marker"] = bool(event["pnl_is_lifecycle"])
+    return safe
 
 
-def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=30):
+def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=30, npz_dir=None):
     """Run only after every consumed source link and baseline ledger hash verifies."""
     root = Path(root).resolve()
     account = str(account).strip().lower()
@@ -195,7 +201,29 @@ def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=3
     import v12_quick_engine as engine
 
     evaluate_v12._STORES.clear()
-    prepared = prepare_batch(sym_side, window_days)
+    npz_path = None
+    npz_file_sha256 = None
+    original_engine_load_npz = engine.load_npz
+    original_eval_root = evaluate_v12.ROOT
+    if npz_dir:
+        npz_dir = Path(npz_dir).resolve()
+        npz_path = npz_dir / f"{symbol}.npz"
+        if not npz_path.is_file():
+            raise ValueError(f"explicit frozen NPZ is absent: {npz_path}")
+        npz_file_sha256 = _sha256_bytes(npz_path.read_bytes())
+        engine.load_npz = lambda mode, symbols, start_date, npz_dir_arg="": original_engine_load_npz(mode, symbols, start_date, npz_dir=str(npz_dir))
+        evaluate_v12.ROOT = npz_dir.parent.parent
+    try:
+        if npz_path:
+            from tools.npz_merged_view import merged_npz_reads
+
+            with merged_npz_reads([npz_path]):
+                prepared = prepare_batch(sym_side, window_days)
+        else:
+            prepared = prepare_batch(sym_side, window_days)
+    finally:
+        engine.load_npz = original_engine_load_npz
+        evaluate_v12.ROOT = original_eval_root
     if not isinstance(prepared, dict) or prepared.get("_stale"):
         raise ValueError("frozen evaluator preparation failed")
     npz = prepared.get("npz_prepared")
@@ -240,7 +268,47 @@ def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=3
     baseline_ledger_sha, baseline_ledger = _ledger_hash(baseline)
     consumed_ledger_sha = state.get("ledger_sha256")
     if baseline_ledger_sha != consumed_ledger_sha:
-        raise ValueError("candidate engine no-context ledger differs from consumed decision-state ledger; projection refused")
+        consumed_ledger = state.get("ledger") if isinstance(state.get("ledger"), list) else []
+        ledger_differences = []
+        for index in range(max(len(consumed_ledger), len(baseline_ledger))):
+            consumed_row = _safe_event(consumed_ledger[index], None) if index < len(consumed_ledger) else None
+            candidate_row = _safe_event(baseline_ledger[index], None) if index < len(baseline_ledger) else None
+            if consumed_row != candidate_row:
+                ledger_differences.append({"index": index, "consumed": consumed_row, "candidate": candidate_row})
+        return {
+            "schema_version": 1,
+            "audit_type": "read_only_current_bar_account_projection",
+            "status": "REFUSED_BASELINE_LEDGER_MISMATCH",
+            "labels": ["projection_not_run", "not_realized_fill", "not_account_history_parity"],
+            "identity": {"account_key": account, "sym_side": sym_side},
+            "source": {
+                "snapshot_pointer_path": str(pointer_path),
+                "snapshot_pointer_sha256": _sha256_bytes(pointer_path.read_bytes()),
+                "snapshot_path": str(snapshot_path),
+                "snapshot_sha256": snapshot["snapshot_sha256"],
+                "decision_state_path": str(state_path),
+                "decision_state_sha256": state_pointer,
+                "settings_source_path": settings["path"],
+                "settings_sha256": settings["sha256"],
+                "settings_updated_at": settings["updated_at"],
+                "engine_source_ast_sha256": source_engine_ast,
+                "candidate_engine_file_sha256": candidate_engine_sha,
+                "npz_input_sha256": input_hashes,
+                "npz_file_path": str(npz_path) if npz_path else None,
+                "npz_file_sha256": npz_file_sha256,
+                "market_lot": filter_info,
+            },
+            "window": {"first_bar_ts": int(tail_values[0]), "last_bar_ts": tail, "observation_bar_ts": observation, "bar_count": len(tail_values)},
+            "baseline_gate": {
+                "passed": False,
+                "consumed_ledger_sha256": consumed_ledger_sha,
+                "candidate_no_context_ledger_sha256": baseline_ledger_sha,
+                "consumed_event_count": len(consumed_ledger),
+                "candidate_event_count": len(baseline_ledger),
+                "full_structural_differences": ledger_differences,
+            },
+            "projection": {"status": "NOT_RUN_BASELINE_MISMATCH", "snapshot_observed_at": snapshot["observed_at"], "snapshot_age_seconds_at_run": round(snapshot_age, 3)},
+        }
     perf_reason = str(baseline.get("invalid_reason") or "")
     baseline_completed = baseline.get("valid") is True or any(perf_reason.startswith(prefix) for prefix in ("trades ", "TIM ", "DD "))
     if not baseline_completed:
@@ -304,6 +372,8 @@ def run_audit(root, account, sym_side, *, max_snapshot_age_s=30.0, window_days=3
             "engine_source_ast_sha256": source_engine_ast,
             "candidate_engine_file_sha256": candidate_engine_sha,
             "npz_input_sha256": input_hashes,
+            "npz_file_path": str(npz_path) if npz_path else None,
+            "npz_file_sha256": npz_file_sha256,
             "market_lot": filter_info,
         },
         "window": {"first_bar_ts": int(tail_values[0]), "last_bar_ts": tail, "observation_bar_ts": observation, "bar_count": len(tail_values)},
@@ -328,8 +398,12 @@ def main():
     parser.add_argument("--output", type=Path, help="Write one JSON audit result; stdout if omitted")
     parser.add_argument("--max-snapshot-age-s", type=float, default=30.0)
     parser.add_argument("--window-days", type=int, default=30)
+    parser.add_argument("--npz-dir", type=Path, help="Explicit frozen indicator directory when outside --root")
     args = parser.parse_args()
-    result = run_audit(args.root, args.account, args.sym_side, max_snapshot_age_s=args.max_snapshot_age_s, window_days=args.window_days)
+    try:
+        result = run_audit(args.root, args.account, args.sym_side, max_snapshot_age_s=args.max_snapshot_age_s, window_days=args.window_days, npz_dir=args.npz_dir)
+    except Exception as exc:
+        result = {"schema_version": 1, "audit_type": "read_only_current_bar_account_projection", "status": "REFUSED", "reason": f"{type(exc).__name__}: {exc}"[:300], "projection": {"status": "NOT_RUN"}}
     encoded = json.dumps(result, sort_keys=True, indent=2, default=str) + "\n"
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)

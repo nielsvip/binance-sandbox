@@ -310,6 +310,16 @@ def verified_fixed_stop_trigger(symbol_side, position):
         return None
 
 
+def verified_deterioration_wt15_trigger(order, venue, halted, wt, now):
+    if venue != "crypto" or order.get("act") != "CLOSE" or order.get("ss") not in halted:
+        return None
+    bar = last_closed_bar(now)
+    if order.get("deterioration_wt15_bar") != bar or int((wt or {}).get("bar_ts") or 0) != bar:
+        return None
+    against, detail = wt15_against(order["ss"], wt)
+    return {"kind": "CURRENT_BAR_WT15_AGAINST_HALTED_SIDE", "bar": bar, "detail": detail, "wt_source": wt.get("src")} if against else None
+
+
 def load_env_files(paths) -> dict:
     """KEY = VALUE lines (spaces and quotes tolerated). Values never printed."""
     env = {}
@@ -529,7 +539,7 @@ def plan_account(acct, venue, keys, states, positions, bar, done, allowed, prev_
                     orders.append({"acct": acct, "ss": ss, "act": "CLOSE", "qty": held,
                                    "key": f"{acct}|{ss}|{wt_bar}|DETERIORATED_CLOSE",
                                    "why": f"DETERIORATED_CLOSE_WT15_AGAINST: {detail}; {str((halted[ss] or {}).get('reason') or '30D gain deterioration')[:120]}",
-                                   "reason": "DETERIORATED_CLOSE"})
+                                   "reason": "DETERIORATED_CLOSE", "deterioration_wt15_bar": wt_bar})
                     continue
                 notes.append((ss, f"DETERIORATION_HOLD_WAIT_WT15 {detail}"))
             else:
@@ -2064,7 +2074,10 @@ class Trader:
                 stop_trigger = verified_fixed_stop_trigger(o["ss"], pos.get(o["ss"]) or {}) if o["act"] == "CLOSE" and not profitable else None
                 if stop_trigger:
                     row["stop_trigger_authorization"] = stop_trigger
-                if not profitable and not stop_trigger:
+                wt_trigger = verified_deterioration_wt15_trigger(o, self.venue, getattr(self, "halted_now", set()), self.wt15(o["ss"]), time.time()) if o["act"] == "CLOSE" and not profitable and o.get("deterioration_wt15_bar") is not None else None
+                if wt_trigger:
+                    row["wt15_exit_authorization"] = wt_trigger
+                if not profitable and not stop_trigger and not wt_trigger:
                     row.update({"status": "REFUSED_NONPROFIT_REDUCE" if o["act"] == "REDUCE" else "REFUSED_NONSTOP_LOSS_CLOSE", "final": False})
                     if o["key"] not in self.quiet:
                         self.quiet.add(o["key"])

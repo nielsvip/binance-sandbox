@@ -59,3 +59,19 @@ def test_stop_reason_or_uncrossed_level_cannot_authorize_loss():
     position["price"] = 94
     position["position_source"] = "broker_verified_mac_quantity_mismatch"
     assert module.verified_fixed_stop_trigger("X_LONG", position) is None
+
+
+def test_only_current_bar_against_wt_authorizes_deterioration_loss_close():
+    bar = 1793132100
+    now = bar + 910
+    ss = "XUSDT_LONG"
+    order = {"ss": ss, "act": "CLOSE", "deterioration_wt15_bar": bar}
+    against = {"bar_ts": bar, "wt1_15m": -2.0, "wt2_15m": 1.0, "src": "tail"}
+    auth = module.verified_deterioration_wt15_trigger(order, "crypto", {ss}, against, now)
+    assert auth["kind"] == "CURRENT_BAR_WT15_AGAINST_HALTED_SIDE"
+    assert module.verified_deterioration_wt15_trigger(order, "crypto", set(), against, now) is None
+    assert module.verified_deterioration_wt15_trigger(order, "stocks", {ss}, against, now) is None
+    assert module.verified_deterioration_wt15_trigger(order, "crypto", {ss}, {**against, "bar_ts": bar - 900}, now) is None
+    assert module.verified_deterioration_wt15_trigger(order, "crypto", {ss}, {**against, "bar_ts": bar + 900}, now) is None
+    assert module.verified_deterioration_wt15_trigger(order, "crypto", {ss}, {**against, "wt1_15m": 2.0}, now) is None
+    assert module.verified_deterioration_wt15_trigger({**order, "deterioration_wt15_bar": bar - 900}, "crypto", {ss}, against, now) is None

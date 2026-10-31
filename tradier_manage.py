@@ -22982,6 +22982,36 @@ async def process_position(
                                     pass
                         except Exception:
                             pass
+                # REENTRY_B04_DC_RETEST_ENABLED: stock flat-open twin uses the same
+                # scalar core and 15m/HTF fields as the v12 B04 block. Earlier native
+                # OPEN producers retain priority; the shared B04 master is the kill switch.
+                if action_type != "OPEN" and bool(
+                    _cfg_auto("REENTRY_B04_DC_RETEST_ENABLED", True)
+                ):
+                    try:
+                        from vec_decisions.ez_missing_b04_retest import dc_high_break_retest_live_adapter as _b04_live
+
+                        _b04_ind = indicators_raw if indicators_raw else i
+                        _b04_fire, _b04_detail, _b04_mult = _b04_live(
+                            _b04_ind or {}, current_price, bool(is_long)
+                        )
+                        if _b04_fire:
+                            _b04_budget = float(
+                                _cfg_auto("START_POSITION_SIZE", 600)
+                            )
+                            _b04_qty = int(
+                                max(1, (_b04_budget * float(_b04_mult)) / current_price)
+                            ) if current_price and current_price > 0 else 1
+                            action_type = "OPEN"
+                            qty = _b04_qty
+                            conf = 88.0
+                            reason = f"B04_DC_RETEST_{_b04_detail}"
+                            try:
+                                _entry_score = max(float(_entry_score or 0.0), float(conf))
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
                 # USER 2026-10-24 VEC-LAST catch-up: B12 WT-momentum via the SHARED
                 # core (same predicate the vector sweeps as WT_CROSS_B12). Fires only
                 # when no earlier path claimed OPEN. Default True matches the venue

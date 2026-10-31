@@ -1,6 +1,7 @@
 import ast
 import copy
 import json
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -121,3 +122,37 @@ def test_stale_actual_measurement_remains_unknown_and_batch_end_detects_source_d
     (tmp_path / 'v12_quick_engine.py').write_text('changed during batch')
     with pytest.raises(ValueError, match='changed during'):
         consumer.end_batch()
+
+
+def test_actual_worker_artifact_binding_rejects_result_tamper_and_shared_thread(tmp_path, monkeypatch):
+    import multiprocessing
+    row, consumer, contexts, _ = fixture(tmp_path)
+    current = contexts[-1]
+    epoch = current['current_epoch']
+    engine = SimpleNamespace(__file__=str(tmp_path / 'v12_quick_engine.py'))
+    monkeypatch.setitem(sys.modules, 'v12_quick_engine', engine)
+    monkeypatch.setitem(sys.modules, 'tools.opt.v12_pilot', SimpleNamespace(evaluate_prepared_sanitized=lambda *args: None))
+    directory = tmp_path / 'worker_evidence'
+    directory.mkdir()
+    capture = dict(directory=str(directory), source_epoch=epoch, npz_sha256=epoch['sources'][1]['sha256'])
+    result = dict(valid=True, gain_pct=0.0, execution_ledger=[])
+    configs = [{'FLAG': True}]
+    proof = dict(input_cutoff_sha256='d'*64, effective_config_values=configs, effective_config_sha256=C.priority.evidence.guard.fingerprint(configs), execution_ledger_sha256=C.priority.evidence.guard.fingerprint([]), result_sha256=C.priority.evidence.guard.fingerprint(C.priority.evidence.guard.result_fields(result)))
+    monkeypatch.setattr(C.priority.evidence.guard, 'capture_actual', lambda *args: (result, proof))
+    with pytest.raises(ValueError, match='isolated fork'):
+        C.evaluate_fork_worker({}, {'FLAG': True}, 30, capture)
+    monkeypatch.setattr(multiprocessing, 'current_process', lambda: SimpleNamespace(name='ForkProcess-test-fixture'))
+    assert C.evaluate_fork_worker({}, {'FLAG': True}, 30, capture) is result
+    path = next(directory.glob('*.json'))
+    source = dict(path=str(path), sha256=C.priority.evidence.sha(path))
+    scientific = dict(current['scientific_identity'], npz_sha256=capture['npz_sha256'])
+    bound_context = dict(current, scientific_identity=scientific)
+    cell = dict(row, filter='FILTER', opt='15m')
+    bound = C.bind_worker_measurement(source, cell, bound_context, {'FLAG': True})
+    assert bound['record']['evaluation_status'] == 'evaluated_valid'
+    data = json.loads(path.read_text())
+    data['result']['gain_pct'] = 123.0
+    path.write_text(json.dumps(data))
+    changed = dict(path=str(path), sha256=C.priority.evidence.sha(path))
+    with pytest.raises(ValueError, match='artifacts mismatch'):
+        C.bind_worker_measurement(changed, cell, bound_context, {'FLAG': True})
