@@ -12,6 +12,10 @@ from collections.abc import Mapping
 import numpy as np
 
 from vec_decisions.asr_mts_entry_gate import mts_entry_gate_array
+from vec_decisions.asr_inline_score import (
+    bc155_score_array, k_zone_score_array, momentum_fade_score_array, mover_score_array,
+    satoshit_score_array, stochastic_alignment_score_array,
+)
 from vec_decisions.asr_mts_mi_score import mts_mi_score_array
 from vec_decisions.asr_portfolio_ratio_score import portfolio_ratio_array
 from vec_decisions.asr_score_core import (
@@ -24,6 +28,7 @@ from vec_decisions.asr_score_core import (
 )
 from vec_decisions.asr_stoch_entry_score import stoch_entry_score_array
 from vec_decisions.asr_input_adapter import paired_npz_view
+from vec_decisions.asr_ordered_composer import bind_asr_npz_arrays
 
 
 def _cfg(cfg, name, default):
@@ -65,7 +70,7 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
     context = {} if context is None else context
     if not isinstance(context, Mapping):
         raise ValueError("context must be a mapping")
-    arrays = paired_npz_view(npz, bool(_cfg(cfg, "USE_1M_3M_SIGNALS_ENABLED", False)))
+    arrays = bind_asr_npz_arrays(npz, cfg)
     current_price = _required_col(context, "current_price", n)
     score_arrays = dict(arrays)
     score_arrays["close"] = current_price
@@ -208,15 +213,48 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
         score_arrays, n, is_long, result, bool(_cfg(cfg, "USE_1M_3M_SIGNALS_ENABLED", False))
     )
     add("channel_k_cross", proposed, channel_masks)
+
+    proposed, bc_masks = bc155_score_array(arrays, current_price, is_long, cfg, score=result)
+    add("bc155", proposed, bc_masks)
+    proposed, kz_masks = k_zone_score_array(arrays, is_long, cfg, score=result)
+    add("k_zone", proposed, kz_masks)
+
+    if "mover_registry_available" not in context:
+        raise ValueError("context must explicitly state mover_registry_available")
+    mover_available = np.broadcast_to(np.asarray(context["mover_registry_available"], dtype=bool), (n,))
+    mover_direction = _col(context, "mover_direction", n, "", object) if np.any(mover_available) else np.full(n, "", dtype=object)
+    proposed, mover_masks = mover_score_array(mover_direction, mover_available, is_long, cfg, score=result)
+    add("mover", proposed, mover_masks)
+
+    proposed, fade_masks = momentum_fade_score_array(arrays, is_long, cfg, score=result)
+    add("momentum_fade", proposed, fade_masks)
+
+    satoshit_on = bool(_cfg(cfg, "SATOSHIT_ENABLED", False))
+    if satoshit_on and "satoshit_account_allowed" not in context:
+        raise ValueError("SATOSHIT_ENABLED requires context.satoshit_account_allowed")
+    satoshit_allowed = bool(context.get("satoshit_account_allowed", False))
+    satoshit_values = dict(arrays)
+    if "stoch_k_15m" not in satoshit_values and "k_15m" in arrays:
+        satoshit_values["stoch_k_15m"] = arrays["k_15m"]
+    proposed, satoshit_masks = satoshit_score_array(
+        satoshit_values, is_long, cfg, satoshit_on and satoshit_allowed, score=result
+    )
+    add("satoshit", proposed, satoshit_masks)
+
+    align_delta, align_masks = stochastic_alignment_score_array(arrays, long_ok, short_ok, is_long)
+    proposed = result + align_delta
+    add("stochastic_alignment", proposed, align_masks)
     return {
         "score": result,
         "entry_allowed": ~blocked,
         "masks": masks,
         "complete_rate": False,
-        "covered_native_spans": ("ez_positions_quick.py:4696-4880 extracted score/gate blocks", "ez_positions_quick.py:4956-5010 channel/K/DC-cross and adjacent directional scores"),
+        "covered_native_spans": ("ez_positions_quick.py:4696-4954 selected gate/score blocks", "ez_positions_quick.py:4955-5071 channel/K/DC-cross and directional scores", "ez_positions_quick.py:5072-5287 BC155, K-zone, mover, momentum fade, Satoshit, stochastic alignment"),
         "remaining": (
             "pre_score_lifecycle_gates", "regime_input_producer", "entry_atr_and_chase_gates:ez_positions_quick.py:4881-4955",
-            "inline_research_and_family_scores:ez_positions_quick.py:5070-5154", "later_inline_family_scores:ez_positions_quick.py:5155-7409",
+            "HLR_rally_and_sizing:ez_positions_quick.py:5288-5389", "candle_and_all_tf_wt_gates:ez_positions_quick.py:5503-5674",
+            "tracker_state_mandatory_reentry:ez_positions_quick.py:5675-6052", "RSI_MFI_DC_BOTA_scores:ez_positions_quick.py:6053-6264",
+            "scalp_and_lifecycle_paths:ez_positions_quick.py:6265-7158", "other_inline_nonexit_scoring:ez_positions_quick.py:5393-5502",
             "reentry_state_machine",
             "action_threshold_and_execution",
         ),

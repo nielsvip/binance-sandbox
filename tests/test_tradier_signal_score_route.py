@@ -6,7 +6,7 @@ sys.path.insert(0, "tests")
 
 import v12_quick_engine as V
 from test_tradier_reviewed_exit_ledgers import _base_npz, _cfg
-from vec_decisions.tradier_signal_score import _Tradeability, entry_pre_gate_score_vec, entry_score_arrays, paired_lower_tf_indicators, possible_entry_setup_mask
+from vec_decisions.tradier_signal_score import _Tradeability, entry_pre_gate_score_vec, entry_score_arrays, entry_tail_score_vec, mts_score_vec, paired_lower_tf_indicators, possible_entry_setup_mask
 
 
 def test_paired_lower_tf_stock_score_inputs_use_15m_only_when_ltf_is_off():
@@ -331,7 +331,7 @@ def test_vector_trigger_score_matches_native_scalar_oracle_with_momentum_fade():
         assert vector_score[bar] == scalar_score
         assert "MOM_FADE" in scalar_reason
         assert "MOM_FADE" in vector_reasons[bar]
-        assert scalar_reason in vector_reasons[bar]
+        assert vector_reasons[bar].endswith(scalar_reason)
 
 
 def test_vector_golden_angles_score_matches_native_scalar_oracle_both_sides():
@@ -551,6 +551,141 @@ def test_vector_stock_entry_pregate_penalty_order_matches_native_scalar():
         "TR_CHOP4H_OK(55,+15)",
     ]
 
+
+
+def test_vector_mts_scores_match_native_analyzer_both_sides():
+    from tradier_indicators import analyze_multi_tf_state_tradier
+
+    npz = _base_npz()
+    n = len(npz["close"])
+    rng = np.random.default_rng(194)
+    cfg = _cfg()
+    cfg.MODE = "tradier"
+    for tf in ("5m", "15m", "1h", "4h", "D"):
+        for key, values in {
+            f"k_{tf}": rng.uniform(0.0, 100.0, n),
+            f"d_{tf}": rng.uniform(0.0, 100.0, n),
+            f"k_{tf}_prev": rng.uniform(0.0, 100.0, n),
+            f"wt1_{tf}": rng.uniform(-80.0, 80.0, n),
+            f"wt2_{tf}": rng.uniform(-80.0, 80.0, n),
+            f"wt_velocity_{tf}": rng.uniform(-8.0, 8.0, n),
+            f"wt_cross_value_{tf}": rng.uniform(-60.0, 60.0, n),
+            f"wt_cross_prev_value_{tf}": rng.uniform(-60.0, 60.0, n),
+            f"wt_cross_bars_ago_{tf}": rng.integers(0, 20, n),
+            f"dc_position_{tf}": rng.uniform(0.0, 1.0, n),
+            f"dc_width_{tf}": rng.uniform(0.5, 8.0, n),
+        }.items():
+            npz[key] = values
+        npz[f"wt_cross_{tf}"] = rng.choice(["BULL", "BEAR", ""], n)
+        npz[f"wt_cross_rising_{tf}"] = rng.choice([True, False], n)
+        npz[f"wt_divergence_{tf}"] = rng.choice(["BULL", "HIDDEN_BULL", "BEAR", "HIDDEN_BEAR", ""], n)
+        npz[f"wt_momentum_state_{tf}"] = rng.choice(["EXHAUST_UP", "EXHAUST_DOWN", ""], n)
+    for is_long in (True, False):
+        adjustments, reasons, blocked, bottoms, entry_quality = mts_score_vec(npz, n, is_long, cfg)
+        assert all(item is None for item in blocked)
+        for index in range(n):
+            indicators = {key: np.asarray(value)[index].item() for key, value in npz.items() if np.asarray(value).ndim == 1 and len(np.asarray(value)) == n}
+            indicators = paired_lower_tf_indicators(indicators, bool(cfg.LTF_SUB15M_TRADING_ENABLED))
+            native = analyze_multi_tf_state_tradier(indicators, is_long, float(indicators["close"]), cfg)
+            assert bottoms[index] == native["bottom_score"]
+            assert entry_quality[index] == native["entry_quality"]
+            expected_adjustment = (8.0 if bottoms[index] > 40 else 4.0 if bottoms[index] > 25 else 0.0) + (5.0 if entry_quality[index] > 40 else 2.0 if entry_quality[index] > 25 else 0.0)
+            assert adjustments[index] == expected_adjustment
+            expected_reason = []
+            if bottoms[index] > 40: expected_reason.append(f"MTS_STRONG({bottoms[index]:.0f},+8)")
+            elif bottoms[index] > 25: expected_reason.append(f"MTS_BOTTOM({bottoms[index]:.0f},+4)")
+            if entry_quality[index] > 40: expected_reason.append(f"MTS_EQ({entry_quality[index]:.0f},+5)")
+            elif entry_quality[index] > 25: expected_reason.append(f"MTS_EQ_OK({entry_quality[index]:.0f},+2)")
+            assert reasons[index] == expected_reason
+
+
+def test_vector_mts_gate_block_matches_native_scalar():
+    import tradier_manage as tm
+
+    npz = _base_npz()
+    n = len(npz["close"])
+    bar = 201
+    cfg = _cfg()
+    cfg.BACKTEST_VALIDATED_GATES_TRADIER = False
+    cfg.MTS_GATE_ENABLED_TRADIER = True
+    cfg.MTS_BOTTOM_MIN_TRADIER = 100.0
+    cfg.MTS_ENTRY_QUALITY_MIN_TRADIER = 0.0
+    cfg.ENTRY_SCORE_THRESHOLD = 10000.0
+    adjustments, reasons, blocked, bottoms, entry_quality = mts_score_vec(npz, n, True, cfg)
+    assert blocked[bar] is not None
+    token_cfg = tm._TR_SCORE_CFG_CTX.set(cfg)
+    token_ts = tm._TR_SCORE_TS_CTX.set(float(npz["timestamps"][bar]))
+    token_mts = tm._TR_SCORE_MTS_CTX.set((float(adjustments[bar]), reasons[bar], blocked[bar], float(bottoms[bar]), float(entry_quality[bar])))
+    try:
+        strategy = tm.StockStrategy.__new__(tm.StockStrategy)
+        strategy.config = cfg
+        strategy.trade_manager = _Tradeability("SYNTH", True)
+        indicators = {key: np.asarray(value)[bar].item() for key, value in npz.items() if np.asarray(value).ndim == 1 and len(np.asarray(value)) == n}
+        injected = strategy.calculate_signal_score("v12", "SYNTH", True, float(indicators["close"]), indicators, None, is_exit=False)
+    finally:
+        tm._TR_SCORE_MTS_CTX.reset(token_mts)
+        tm._TR_SCORE_TS_CTX.reset(token_ts)
+        tm._TR_SCORE_CFG_CTX.reset(token_cfg)
+    assert injected == (0.0, "WAIT", blocked[bar])
+
+
+def test_vector_entry_tail_matches_bear_and_eod_thresholds():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    npz = _base_npz()
+    n = len(npz["close"])
+    et = ZoneInfo("America/New_York")
+    moments = [datetime(2026, 10, 29, 15, minute, tzinfo=et).timestamp() for minute in (30, 45, 56)]
+    npz["timestamps"][:3] = moments
+    cfg = _cfg()
+    cfg.BEAR_MARKET_MODE_TRADIER = True
+    cfg.EOD_RATIO_ENFORCE_TRADIER = True
+    long_adjustments, long_reasons, long_blocked = entry_tail_score_vec(npz, n, True, cfg)
+    assert long_adjustments[:3].tolist() == [-20.0, -25.0, -28.0]
+    assert long_reasons[0] == ["BEAR_PENALTY", "EOD_FADE(30min)"]
+    assert long_reasons[1] == ["BEAR_PENALTY", "EOD_FADE(15min)"]
+    assert long_blocked[0] is None and long_blocked[1] is None
+    assert long_blocked[2] == "EOD_BLOCK(4min_to_close)"
+    short_adjustments, short_reasons, _ = entry_tail_score_vec(npz, n, False, cfg)
+    assert short_adjustments[:2].tolist() == [15.0, 10.0]
+    assert short_reasons[0] == ["BEAR_BONUS", "EOD_FADE(30min)"]
+    assert short_reasons[1] == ["BEAR_BONUS", "EOD_FADE(15min)"]
+
+
+def test_vector_entry_eod_block_reaches_native_entry_score_context():
+    import tradier_manage as tm
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    npz = _base_npz()
+    n = len(npz["close"])
+    bar = 201
+    npz["timestamps"][bar] = datetime(2026, 10, 29, 15, 56, tzinfo=ZoneInfo("America/New_York")).timestamp()
+    npz["k_15m"] = np.full(n, 20.0)
+    npz["d_15m"] = np.full(n, 30.0)
+    npz["k_5m"] = np.full(n, 20.0)
+    npz["d_5m"] = np.full(n, 30.0)
+    cfg = _cfg()
+    cfg.BACKTEST_VALIDATED_GATES_TRADIER = False
+    cfg.EOD_RATIO_ENFORCE_TRADIER = True
+    cfg.ENTRY_SCORE_THRESHOLD = 10000.0
+    adjustment, reasons, blocked = entry_tail_score_vec(npz, n, True, cfg)
+    assert blocked[bar] == "EOD_BLOCK(4min_to_close)"
+    token_cfg = tm._TR_SCORE_CFG_CTX.set(cfg)
+    token_ts = tm._TR_SCORE_TS_CTX.set(float(npz["timestamps"][bar]))
+    token_tail = tm._TR_SCORE_TAIL_CTX.set((float(adjustment[bar]), reasons[bar], blocked[bar]))
+    try:
+        strategy = tm.StockStrategy.__new__(tm.StockStrategy)
+        strategy.config = cfg
+        strategy.trade_manager = _Tradeability("SYNTH", True)
+        indicators = {key: np.asarray(value)[bar].item() for key, value in npz.items() if np.asarray(value).ndim == 1 and len(np.asarray(value)) == n}
+        injected = strategy.calculate_signal_score("v12", "SYNTH", True, float(indicators["close"]), indicators, None, is_exit=False)
+    finally:
+        tm._TR_SCORE_TAIL_CTX.reset(token_tail)
+        tm._TR_SCORE_TS_CTX.reset(token_ts)
+        tm._TR_SCORE_CFG_CTX.reset(token_cfg)
+    assert injected == (0.0, "WAIT", blocked[bar])
 
 def test_native_score_fallback_changes_simulate_one_open_bar_with_market_quality(monkeypatch):
     monkeypatch.setenv("V8_RATE_GUARD_DISABLED", "1")

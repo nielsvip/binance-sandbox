@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T07:22:34Z",
+ "ts": "2026-10-31T07:27:26Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 2,
    "open_positions": 1,
-   "unrealised_usd": -0.01,
+   "unrealised_usd": -0.04,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,8 +43,8 @@
    }
   },
   "men": {
-   "fills_6h": 52,
-   "open_positions": 9,
+   "fills_6h": 53,
+   "open_positions": 8,
    "unrealised_usd": -0.78,
    "pos_mismatch": 0,
    "vec_parity": {
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 89,
-   "open_positions": 9,
-   "unrealised_usd": -0.66,
+   "fills_6h": 91,
+   "open_positions": 7,
+   "unrealised_usd": -0.65,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 18,
-   "open_positions": 5,
-   "unrealised_usd": -0.28,
+   "fills_6h": 19,
+   "open_positions": 4,
+   "unrealised_usd": -0.31,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,50 +127,50 @@
     "87988"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 48.0
   },
   "men": {
    "pids": [
     "84264"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": -0.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 26.0
   },
   "inf": {
    "pids": [
     "68362"
    ],
    "starts_30m": 1,
-   "log_age_s": 75.0
+   "log_age_s": 4.0
   },
   "flz": {
    "pids": [
     "88793"
    ],
    "starts_30m": 1,
-   "log_age_s": 16.0
+   "log_age_s": 33.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 9616.0
+   "log_age_s": 9909.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 9932.0
+   "log_age_s": 10225.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T07:22:35Z",
+   "ts": "2026-10-31T07:27:26Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:HYPEUSDT_LONG",
@@ -231,5 +231,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.89
+ "sweep_s": 3.08
 }

@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-31T07:20:09.493020+00:00",
+  "ts": "2026-10-31T07:25:04.755971+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 7,
-  "pending_sym_sides": 63,
+  "pending_sym_sides": 57,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -12,25 +12,24 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 6774,
-      "disk_free_gb": 0,
-      "load1": 14.9,
-      "dispatch_idle_why": "disk 689MB < 3000",
+      "mem_avail_mb": 6693,
+      "disk_free_gb": 8,
+      "load1": 16.4,
+      "dispatch_idle_why": "mem 6898MB < 8500",
       "published_ss": []
     },
     "s2": {
       "published_last_60m": 0,
-      "published_last_3h": 1,
+      "published_last_3h": 0,
       "boards": {
-        "DE_LONG": 0,
         "PARTIUSDT_LONG": 7
       },
-      "boards_running": 2,
+      "boards_running": 1,
       "workers": 7,
       "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 14730,
-      "disk_free_gb": 24,
-      "load1": 4.4,
+      "mem_avail_mb": 14663,
+      "disk_free_gb": 23,
+      "load1": 4.5,
       "dispatch_idle_why": "HOLD until 2026-10-31T09:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": []
     },
@@ -43,9 +42,9 @@
       "boards_running": 1,
       "workers": 6,
       "workers_vs_law_28": "6/28",
-      "mem_avail_mb": 22975,
+      "mem_avail_mb": 22005,
       "disk_free_gb": 16,
-      "load1": 2.8,
+      "load1": 2.4,
       "dispatch_idle_why": "quarantine: 3 boards died unfinished <2h ['AXON_SHORT', 'MU_SHORT', 'PBF_SHORT']",
       "published_ss": [
         "HMSTRUSDT_SHORT",
@@ -62,9 +61,9 @@
       "boards_running": 1,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 24972,
+      "mem_avail_mb": 24761,
       "disk_free_gb": 12,
-      "load1": 0.9,
+      "load1": 2.4,
       "dispatch_idle_why": "quarantine: 2 boards died unfinished <2h ['SKYUSDT_SHORT', 'SLB_SHORT']",
       "published_ss": [
         "CHILLGUYUSDT_SHORT",
@@ -75,17 +74,17 @@
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=disk 689MB < 3000)",
-    "DISK_FLOOR:s1:0GB<40",
+    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=mem 6898MB < 8500)",
+    "DISK_FLOOR:s1:8GB<40",
     "LOW_THROUGHPUT:s2:0/h<12 (idle_why=HOLD until 2026-10-31T09:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))",
-    "DISK_FLOOR:s2:24GB<40",
-    "STUCK_BOARD:s2:PARTIUSDT_LONG:128min",
+    "DISK_FLOOR:s2:23GB<40",
+    "STUCK_BOARD:s2:PARTIUSDT_LONG:133min",
     "LOW_THROUGHPUT:s5:3/h<12 (idle_why=quarantine: 3 boards died unfinished <2h ['AXON_SHORT', 'MU_SHORT', 'PBF_SHORT'])",
     "DISK_FLOOR:s5:16GB<40",
-    "STUCK_BOARD:s5:ENJUSDT_SHORT:301min",
+    "STUCK_BOARD:s5:ENJUSDT_SHORT:306min",
     "LOW_THROUGHPUT:s6:4/h<12 (idle_why=quarantine: 2 boards died unfinished <2h ['SKYUSDT_SHORT', 'SLB_SHORT'])",
     "DISK_FLOOR:s6:12GB<40",
-    "STUCK_BOARD:s6:KAVAUSDT_LONG:178min"
+    "STUCK_BOARD:s6:KAVAUSDT_LONG:182min"
   ],
-  "repair": "DISK_REPAIR:s1:0GB->1G (eval_cache_v1.db + rebuild_scratch_* deleted); DISK_REPAIR:s6:12GB->24G (eval_cache_v1.db + rebuild_scratch_* deleted)"
+  "repair": "DISK_REPAIR:s1:8GB->9G (eval_cache_v1.db + rebuild_scratch_* deleted); DISK_REPAIR:s6:12GB->24G (eval_cache_v1.db + rebuild_scratch_* deleted)"
 }

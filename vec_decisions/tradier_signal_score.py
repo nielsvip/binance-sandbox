@@ -514,6 +514,160 @@ def wt_composite_score_vec(npz, n, is_long, cfg):
     return points, reasons, blocked
 
 
+
+def mts_score_vec(npz, n, is_long, cfg):
+    """Vectorize the MTS outputs consumed by StockStrategy's entry scorer."""
+    if not bool(getattr(cfg, "LTF_SUB15M_TRADING_ENABLED", False)):
+        npz = paired_lower_tf_indicators(npz, False)
+    def col(key, default=0.0): return _column(npz, key, n, default)
+    def obj(key, default=None):
+        values = [_value_at(npz, key, index, n) for index in range(n)]
+        return np.asarray([default if value is None else value for value in values], dtype=object)
+    total_bottom = np.zeros(n, dtype=float)
+    total_entry = np.zeros(n, dtype=float)
+    total_weight = 0.0
+    extreme_count = np.zeros(n, dtype=int)
+    htf_bull_count = np.zeros(n, dtype=int)
+    convergence_data = []
+    for tf, default_weight in (("5m", 2.0), ("15m", 4.0), ("1h", 3.0), ("4h", 5.0), ("D", 12.0)):
+        weight = float(getattr(cfg, f"MTS_WEIGHT_{tf}", default_weight))
+        k = col(f"k_{tf}", 50.0)
+        d = col(f"d_{tf}", 50.0)
+        k_prev = col(f"k_{tf}_prev", 50.0) if f"k_{tf}_prev" in npz else k
+        wt1, wt2 = col(f"wt1_{tf}", 0.0), col(f"wt2_{tf}", 0.0)
+        wt_score = wt1 - wt2
+        cross = obj(f"wt_cross_{tf}", "")
+        cross_value = col(f"wt_cross_value_{tf}", np.nan)
+        cross_prev = col(f"wt_cross_prev_value_{tf}", np.nan)
+        cross_rising = np.asarray([bool(value) for value in obj(f"wt_cross_rising_{tf}", False)], dtype=bool)
+        bars_ago = col(f"wt_cross_bars_ago_{tf}", 999.0)
+        divergence = obj(f"wt_divergence_{tf}", "")
+        momentum = obj(f"wt_momentum_state_{tf}", "")
+        dc_pos = col(f"dc_position_{tf}", 0.5)
+        dc_pos = np.where(dc_pos > 1.0, dc_pos / 100.0, dc_pos)
+        dc_pos = np.clip(dc_pos, 0.0, 1.0)
+        dc_width = col(f"dc_width_{tf}", 0.0)
+        wt_bull = wt1 > wt2
+        k_extreme = (k < 10.0) if is_long else (k > 90.0)
+        k_zone = (k < 30.0) if is_long else (k > 70.0)
+        extreme_count += k_extreme.astype(int)
+        bottom = np.zeros(n, dtype=float)
+        bottom += np.where(k_extreme, 20.0, 0.0) + np.where(k_zone, 10.0, 0.0)
+        bottom += np.where((cross == ("BULL" if is_long else "BEAR")) & (bars_ago < 5.0), 15.0, 0.0)
+        cross_valid = ~np.isnan(cross_value)
+        if is_long:
+            bottom += np.where(cross_valid & (cross_value < -40.0), 15.0, np.where(cross_valid & (cross_value < -20.0), 8.0, 0.0))
+            bottom += np.where(divergence == "BULL", 20.0, np.where(divergence == "HIDDEN_BULL", 20.0, 0.0))
+            bottom += np.where(momentum == "EXHAUST_DOWN", 10.0, 0.0)
+            bottom += np.where((col(f"wt_velocity_{tf}", 0.0) > 0.0) & (k > k_prev), 5.0, 0.0)
+            bottom += np.where(dc_pos < 0.10, 25.0, np.where(dc_pos < 0.20, 18.0, np.where(dc_pos < 0.30, 12.0, np.where(dc_pos < 0.40, 5.0, np.where(dc_pos > 0.80, -10.0, 0.0)))))
+            entry = np.where(cross_valid & ~np.isnan(cross_prev) & (cross_value > cross_prev), 15.0, 0.0)
+            entry += np.where((dc_pos < 0.25) & wt_bull, 15.0, 0.0)
+        else:
+            bottom += np.where(cross_valid & (cross_value > 40.0), 15.0, np.where(cross_valid & (cross_value > 20.0), 8.0, 0.0))
+            bottom += np.where(divergence == "BEAR", 20.0, np.where(divergence == "HIDDEN_BEAR", 20.0, 0.0))
+            bottom += np.where(momentum == "EXHAUST_UP", 10.0, 0.0)
+            bottom += np.where((col(f"wt_velocity_{tf}", 0.0) < 0.0) & ~(k > k_prev), 5.0, 0.0)
+            bottom += np.where(dc_pos > 0.90, 25.0, np.where(dc_pos > 0.80, 18.0, np.where(dc_pos > 0.70, 12.0, np.where(dc_pos > 0.60, 5.0, np.where(dc_pos < 0.20, -10.0, 0.0)))))
+            entry = np.where(cross_valid & ~np.isnan(cross_prev) & (cross_value < cross_prev), 15.0, 0.0)
+            entry += np.where((dc_pos > 0.75) & ~wt_bull, 15.0, 0.0)
+        bottom += np.where(cross_rising, 10.0, 0.0)
+        entry += np.where(bars_ago < 3.0, 15.0, np.where(bars_ago < 10.0, 5.0, 0.0))
+        entry += np.where(cross_rising, 10.0, 0.0)
+        total_bottom += bottom * weight
+        total_entry += entry * weight
+        total_weight += weight
+        htf_bull_count += wt_bull.astype(int)
+        convergence_data.append((dc_pos, wt_score, k, bars_ago, wt_bull))
+    if total_weight > 0.0:
+        bottom_score = total_bottom / total_weight
+        entry_quality = total_entry / total_weight
+    else:
+        bottom_score = np.zeros(n, dtype=float)
+        entry_quality = np.zeros(n, dtype=float)
+    bottom_score *= np.where(extreme_count >= 4, 2.0, np.where(extreme_count >= 3, 1.5, 1.0))
+    entry_quality += htf_bull_count * 5.0
+    bottom_score = np.clip(bottom_score, -100.0, 100.0)
+    entry_quality = np.clip(entry_quality, -100.0, 100.0)
+    bottom_conv_count = np.zeros(n, dtype=int)
+    top_conv_count = np.zeros(n, dtype=int)
+    for dc_pos, wt_score, k, bars_ago, wt_bull in convergence_data:
+        bot_sigs = (dc_pos < 0.15).astype(int) + (wt_score < -15.0).astype(int) + (k < 25.0).astype(int) + ((bars_ago < 12.0) & wt_bull).astype(int)
+        top_sigs = (dc_pos > 0.85).astype(int) + (wt_score > 15.0).astype(int) + (k > 75.0).astype(int) + ((bars_ago < 12.0) & ~wt_bull).astype(int)
+        bottom_conv_count += (bot_sigs >= 2).astype(int)
+        top_conv_count += (top_sigs >= 2).astype(int)
+    focus_dc = np.full(n, 0.5, dtype=float)
+    focus_set = np.zeros(n, dtype=bool)
+    for tf in ("5m", "15m", "1h"):
+        raw = col(f"dc_position_{tf}", 0.5)
+        eligible = (raw != 0.5) & (raw != 0.0) & ~focus_set
+        focus_dc = np.where(eligible, raw, focus_dc)
+        focus_set |= eligible
+    focus_dc = np.where(focus_dc > 1.0, focus_dc / 100.0, focus_dc)
+    price_below, price_above = focus_dc < 0.05, focus_dc > 0.95
+    price_near_low, price_near_high = focus_dc < 0.15, focus_dc > 0.85
+    if is_long:
+        bottom_conv = (bottom_conv_count >= 2) & (price_near_low | price_below)
+        top_conv = (top_conv_count >= 2) & price_above
+        conv_count = np.where(bottom_conv, bottom_conv_count, np.where(top_conv, top_conv_count, 0))
+        bottom_score += np.where(bottom_conv, 10.0 * bottom_conv_count, np.where(top_conv, 15.0 * top_conv_count, 0.0))
+        entry_quality += np.where(bottom_conv, 8.0 * bottom_conv_count, np.where(top_conv, 12.0 * top_conv_count, 0.0))
+    else:
+        top_conv = (top_conv_count >= 2) & (price_near_high | price_above)
+        bottom_conv = (bottom_conv_count >= 2) & price_below
+        conv_count = np.where(top_conv, top_conv_count, np.where(bottom_conv, bottom_conv_count, 0))
+        bottom_score += np.where(top_conv, 10.0 * top_conv_count, np.where(bottom_conv, 15.0 * bottom_conv_count, 0.0))
+        entry_quality += np.where(top_conv, 8.0 * top_conv_count, np.where(bottom_conv, 12.0 * bottom_conv_count, 0.0))
+    bottom_score = np.clip(bottom_score, -100.0, 100.0)
+    entry_quality = np.clip(entry_quality, -100.0, 100.0)
+    adjustment = np.where(bottom_score > 40.0, 8.0, np.where(bottom_score > 25.0, 4.0, 0.0))
+    adjustment += np.where(entry_quality > 40.0, 5.0, np.where(entry_quality > 25.0, 2.0, 0.0))
+    reason_rows = [[] for _ in range(n)]
+    for index in np.flatnonzero(adjustment):
+        if bottom_score[index] > 40.0: reason_rows[index].append(f"MTS_STRONG({bottom_score[index]:.0f},+8)")
+        elif bottom_score[index] > 25.0: reason_rows[index].append(f"MTS_BOTTOM({bottom_score[index]:.0f},+4)")
+        if entry_quality[index] > 40.0: reason_rows[index].append(f"MTS_EQ({entry_quality[index]:.0f},+5)")
+        elif entry_quality[index] > 25.0: reason_rows[index].append(f"MTS_EQ_OK({entry_quality[index]:.0f},+2)")
+    gate_enabled = bool(getattr(cfg, "MTS_GATE_ENABLED_TRADIER", False))
+    bottom_min = float(getattr(cfg, "MTS_BOTTOM_MIN_TRADIER", 5.0))
+    entry_min = float(getattr(cfg, "MTS_ENTRY_QUALITY_MIN_TRADIER", 0.0))
+    blocked = [None] * n
+    if gate_enabled:
+        for index in np.flatnonzero((bottom_score < bottom_min) | (entry_quality < entry_min)):
+            blocked[index] = f"MTS_GATE_T(b={bottom_score[index]:.0f}<{bottom_min},eq={entry_quality[index]:.0f}<{entry_min})"
+    return adjustment, reason_rows, blocked, bottom_score, entry_quality
+
+
+
+def entry_tail_score_vec(npz, n, is_long, cfg):
+    """Vectorize entry-only bear bias and time-to-close score adjustments."""
+    adjustment = np.zeros(n, dtype=float)
+    reasons = [[] for _ in range(n)]
+    blocked = [None] * n
+    if bool(getattr(cfg, "BEAR_MARKET_MODE_TRADIER", False)):
+        points = -20.0 if is_long else 15.0
+        adjustment += points
+        label = "BEAR_PENALTY" if is_long else "BEAR_BONUS"
+        for row in reasons:
+            row.append(label)
+    if bool(getattr(cfg, "EOD_RATIO_ENFORCE_TRADIER", False)):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        timestamps = _column(npz, "timestamps", n, np.nan)
+        et = ZoneInfo("America/New_York")
+        for index in range(n):
+            if not np.isfinite(timestamps[index]):
+                continue
+            now_et = datetime.fromtimestamp(float(timestamps[index]), et)
+            mins_to_close = (16 * 60) - (now_et.hour * 60 + now_et.minute)
+            if 0 < mins_to_close <= 30:
+                adjustment[index] -= int(10 * (1 - mins_to_close / 30))
+                reasons[index].append(f"EOD_FADE({mins_to_close}min)")
+            if mins_to_close <= 5:
+                blocked[index] = f"EOD_BLOCK({mins_to_close}min_to_close)"
+    return adjustment, reasons, blocked
+
+
 def entry_pre_gate_score_vec(npz, n, is_long, cfg, ltf_enabled):
     """Vectorize native entry pre-gates, ordered returns and additive penalties."""
     def col(key, default=0.0):
@@ -643,6 +797,8 @@ def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None):
     dc_retest_bonus, dc_retest_reasons = dc_retest_score_vec(npz, n, is_long, ltf_enabled)
     wt_comp_bonus, wt_comp_reasons, wt_comp_blocked = wt_composite_score_vec(npz, n, is_long, cfg)
     wt_comp_enabled = bool(getattr(cfg, "WT_COMPOSITE_SCORING_ENABLED_TRADIER", False) or getattr(cfg, "WT_COMPOSITE_SCORING_ENABLED", False))
+    mts_adjustments, mts_reasons, mts_blocked, mts_bottom, mts_entry_quality = mts_score_vec(npz, n, is_long, cfg)
+    tail_adjustments, tail_reasons, tail_blocked = entry_tail_score_vec(npz, n, is_long, cfg)
     pre_adjustments, pre_reasons, pre_blocked = entry_pre_gate_score_vec(npz, n, is_long, cfg, ltf_enabled)
     score_values = np.zeros(n, dtype=float)
     fires = np.zeros(n, dtype=bool)
@@ -676,12 +832,16 @@ def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None):
             dcrt_token = tm._TR_SCORE_DCRT_CTX.set((float(dc_retest_bonus[index]), dc_retest_reasons[index]))
             wtc_token = tm._TR_SCORE_WTC_CTX.set((float(wt_comp_bonus[index]), wt_comp_reasons[index], wt_comp_blocked[index]) if wt_comp_enabled else None)
             pre_token = tm._TR_SCORE_PRE_CTX.set((float(pre_adjustments[index]), pre_reasons[index], pre_blocked[index]))
+            mts_token = tm._TR_SCORE_MTS_CTX.set((float(mts_adjustments[index]), mts_reasons[index], mts_blocked[index], float(mts_bottom[index]), float(mts_entry_quality[index])))
+            tail_token = tm._TR_SCORE_TAIL_CTX.set((float(tail_adjustments[index]), tail_reasons[index], tail_blocked[index]))
             try:
                 score, recommendation, reason = strategy.calculate_signal_score(
                     "v12", symbol, is_long, float(indicators.get("close", 0.0) or 0.0), indicators, None, is_exit=False
                 )
                 threshold = float(tm._cfg("ENTRY_SCORE_THRESHOLD", 12.0, "v12", symbol, side) or 0.0)
             finally:
+                tm._TR_SCORE_TAIL_CTX.reset(tail_token)
+                tm._TR_SCORE_MTS_CTX.reset(mts_token)
                 tm._TR_SCORE_PRE_CTX.reset(pre_token)
                 tm._TR_SCORE_WTC_CTX.reset(wtc_token)
                 tm._TR_SCORE_DCRT_CTX.reset(dcrt_token)

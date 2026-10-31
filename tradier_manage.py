@@ -7972,6 +7972,8 @@ _TR_SCORE_KZONE_CTX: ContextVar = ContextVar("_TR_SCORE_KZONE_CTX", default=None
 _TR_SCORE_DCRT_CTX: ContextVar = ContextVar("_TR_SCORE_DCRT_CTX", default=None)
 _TR_SCORE_WTC_CTX: ContextVar = ContextVar("_TR_SCORE_WTC_CTX", default=None)
 _TR_SCORE_PRE_CTX: ContextVar = ContextVar("_TR_SCORE_PRE_CTX", default=None)
+_TR_SCORE_MTS_CTX: ContextVar = ContextVar("_TR_SCORE_MTS_CTX", default=None)
+_TR_SCORE_TAIL_CTX: ContextVar = ContextVar("_TR_SCORE_TAIL_CTX", default=None)
 _TR_PROXY_GUARD = threading.local()
 
 
@@ -33063,19 +33065,27 @@ class StockStrategy:
         dc_high_x_4h = dc_high_x_4h or dc_above_4h
 
         # === MTS GATE — unified multi-TF K+WT scoring (ablation: Sharpe 5.91 with D_dom weights) ===
-        _mts = analyze_multi_tf_state_tradier(i, is_long, current_price, self.config)
-        _mts_bottom = _mts["bottom_score"]
-        _mts_eq = _mts["entry_quality"]
-        _mts_dir = _mts["direction"]
-        _mts_gp = _mts["gain_potential"]
-        _mts_sz = _mts["size_multiplier"]
+        _mts_vector = _TR_SCORE_MTS_CTX.get()
+        if _mts_vector is None:
+            _mts = analyze_multi_tf_state_tradier(i, is_long, current_price, self.config)
+            _mts_bottom = _mts["bottom_score"]
+            _mts_eq = _mts["entry_quality"]
+            _mts_dir = _mts["direction"]
+            _mts_gp = _mts["gain_potential"]
+            _mts_sz = _mts["size_multiplier"]
+        else:
+            _mts_adjustment, _mts_reasons, _mts_blocked, _mts_bottom, _mts_eq = _mts_vector
+            _mts_dir = _mts_gp = 0.0
+            _mts_sz = 1.0
         # Stocks: WT entry always wins, MTS as score bonus only (real test: MTS gate over-filters stocks)
         # LONG: NEW_WT_NO_MTS = Sharpe 6.12 vs OLD 5.59 (+9%). MTS b10 = 5.08 (hurts).
         # SHORT: NEW_WT_NO_MTS = Sharpe 4.32 vs OLD 3.81 (+13%). MTS gate hurts both sides.
         # Keep MTS for SCORE BONUSES only, not as a hard gate for stocks.
         _mts_gate = getattr(
             self.config, "MTS_GATE_ENABLED_TRADIER", False
-        )  # OFF by default for stocks
+        ) if _mts_vector is None else False  # vector branch carries exact per-bar MTS block result
+        if not is_exit and _mts_vector is not None and _mts_blocked:
+            return 0.0, "WAIT", str(_mts_blocked)
         if not is_exit and _mts_gate:
             _mts_bmin = getattr(self.config, "MTS_BOTTOM_MIN_TRADIER", 5.0)
             _mts_eqmin = getattr(self.config, "MTS_ENTRY_QUALITY_MIN_TRADIER", 0.0)
@@ -33086,18 +33096,22 @@ class StockStrategy:
                     f"MTS_GATE_T(b={_mts_bottom:.0f}<{_mts_bmin},eq={_mts_eq:.0f}<{_mts_eqmin})",
                 )
         if not is_exit:
-            if _mts_bottom > 40:
-                score += 8
-                reasons.append(f"MTS_STRONG({_mts_bottom:.0f},+8)")
-            elif _mts_bottom > 25:
-                score += 4
-                reasons.append(f"MTS_BOTTOM({_mts_bottom:.0f},+4)")
-            if _mts_eq > 40:
-                score += 5
-                reasons.append(f"MTS_EQ({_mts_eq:.0f},+5)")
-            elif _mts_eq > 25:
-                score += 2
-                reasons.append(f"MTS_EQ_OK({_mts_eq:.0f},+2)")
+            if _mts_vector is not None:
+                score += _mts_adjustment
+                reasons.extend(_mts_reasons)
+            else:
+                if _mts_bottom > 40:
+                    score += 8
+                    reasons.append(f"MTS_STRONG({_mts_bottom:.0f},+8)")
+                elif _mts_bottom > 25:
+                    score += 4
+                    reasons.append(f"MTS_BOTTOM({_mts_bottom:.0f},+4)")
+                if _mts_eq > 40:
+                    score += 5
+                    reasons.append(f"MTS_EQ({_mts_eq:.0f},+5)")
+                elif _mts_eq > 25:
+                    score += 2
+                    reasons.append(f"MTS_EQ_OK({_mts_eq:.0f},+2)")
         # Stoch-based entry gate for HODL system (DC breakout moved to DaytradeWing)
         _side = "LONG" if is_long else "SHORT"
         _stoch_zone_long = _cfg(
@@ -33837,7 +33851,11 @@ class StockStrategy:
                         reasons.append("BB_SQUEEZE_EXIT")
 
         # URGENT_FIX: Bear market bias — penalize longs, favor shorts
-        if _cfg_auto("BEAR_MARKET_MODE_TRADIER", False):
+        _tail_vector = _TR_SCORE_TAIL_CTX.get()
+        if _tail_vector is not None:
+            score += _tail_vector[0]
+            reasons.extend(_tail_vector[1])
+        elif _cfg_auto("BEAR_MARKET_MODE_TRADIER", False):
             if is_long:
                 score -= 20
                 reasons.append("BEAR_PENALTY")
@@ -33862,7 +33880,10 @@ class StockStrategy:
             if _mq_reason:
                 reasons.append(_mq_reason)
         # --- EOD RATIO ENFORCEMENT (BACKTEST_CHANGE_147) --- scale down 30min before close
-        if _cfg_auto("EOD_RATIO_ENFORCE_TRADIER", False) and not is_exit:
+        if _tail_vector is not None and not is_exit:
+            if _tail_vector[2]:
+                return 0.0, "WAIT", str(_tail_vector[2])
+        elif _cfg_auto("EOD_RATIO_ENFORCE_TRADIER", False) and not is_exit:
             try:
                 from zoneinfo import ZoneInfo
 

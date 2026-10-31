@@ -182,12 +182,18 @@ def validate_switch(sw, tab, cands, default, venues, sides, root=ROOT, bible=Non
     e = bible.get(sw)
     if not e:
         _refuse(f"{sw} has no SWITCH_BIBLE entry — rebuild the bible first")
-    if str(e.get("status") or "").upper().startswith("DEAD"):
-        _refuse(f"{sw} bible status is dead ({e.get('status')})")
-    if not (e.get("vec_reads") or e.get("vec_read_count")):
-        _refuse(f"{sw} has no vec reads — wire v12_quick_engine/vec_decisions first")
-    if not any((e.get("live_read_count") or {}).values()):
-        _refuse(f"{sw} has no live reads — wire ez_manage/tradier_manage first")
+    counts = e.get("vec_read_count") or {}
+    if not isinstance(counts, dict) or int(counts.get("reachable", 0) or 0) <= 0:
+        _refuse(f"{sw} has no reachable vec reads — wire v12_quick_engine/vec_decisions first")
+    statuses = e.get("status") or {}
+    live_counts = e.get("live_read_count") or {}
+    for venue in venues:
+        venue_key = "crypto" if venue == "CRYPTO" else "stocks"
+        status = statuses.get(venue_key, "") if isinstance(statuses, dict) else ""
+        if status not in ("WIRED_BOTH_UNPROVEN", "WIRED_BOTH_PARITY_PROVEN"):
+            _refuse(f"{sw} {venue} bible status {status!r} is not wired in both engines")
+        if int(live_counts.get(venue_key, 0) or 0) <= 0:
+            _refuse(f"{sw} has no {venue} live reads — wire its native trading path first")
     reg = (e.get("agent_c_registry") or {})
     if reg.get("suggested_home_tab") and reg["suggested_home_tab"] != tab:
         _refuse(f"registry suggested_home_tab is {reg['suggested_home_tab']}, not {tab}")
