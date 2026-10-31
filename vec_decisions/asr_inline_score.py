@@ -236,7 +236,7 @@ def satoshit_score_array(values, is_long, cfg, enabled, score=None):
         if isinstance(value, (bool, int, float, np.integer, np.floating)):
             green[index] = float(value) > 0
             red[index] = float(value) < 0
-    min_votes = int(_satoshi_cfg(cfg, "SATOSHIT_MIN_VOTES", 3))
+    min_votes = _satoshi_cfg(cfg, "SATOSHIT_MIN_VOTES", 3)
     if is_long:
         ha_streak = np.where(red, -1, np.where(green, 1, 0))
         vote_terms = (rsi < float(_satoshi_cfg(cfg, "SATOSHIT_LONG_RSI_MAX", 50)),
@@ -275,7 +275,10 @@ def stochastic_alignment_score_array(values, long_ok, short_ok, is_long):
         raise ValueError("stochastic flags have different lengths")
     directions = {}
     for tf in ("1m", "3m", "15m", "1h", "4h", "D"):
-        directions[tf] = _float_column(values, f"wt_bullish_{tf}", n, 0.0) != 0
+        key = f"wt_bullish_{tf}"
+        if key not in values:
+            raise ValueError(f"missing required ASR alignment input {key}")
+        directions[tf] = _float_column(values, key, n, 0.0) != 0
     ltf_count = np.zeros(n, dtype=np.int8)
     htf_count = np.zeros(n, dtype=np.int8)
     for tf in ("1m", "3m", "15m"):
@@ -290,3 +293,153 @@ def stochastic_alignment_score_array(values, long_ok, short_ok, is_long):
     side_stoch_ok = long_ok if is_long else short_ok
     delta = side_stoch_ok.astype(float) * 5.0 + ltf_aligned.astype(float) * 3.0 + htf_aligned.astype(float) * 5.0
     return delta, {"STOCH_SIDE_OK": side_stoch_ok, "LTF_ALIGNED": ltf_aligned, "HTF_ALIGNED": htf_aligned}
+
+
+def hlr_rally_score_array(values, current_price, is_long, cfg, is_exit=False, score=None):
+    """Port HLR_RALLY score, size multiplier, and hard-gate bypass state."""
+    price = np.asarray(current_price, dtype=float).reshape(-1)
+    n = price.size
+    result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).reshape(-1).copy()
+    if result.size != n:
+        raise ValueError("score and current_price lengths differ")
+    size_mult = np.ones(n, dtype=float)
+    bypass = np.zeros(n, dtype=bool)
+    tf_masks = {}
+    if bool(_cfg(cfg, "HLR_RALLY_ENABLED", True)) and not is_exit:
+        band = float(_cfg(cfg, "HLR_SMA_BAND_PCT", 0.03))
+        off_points = float(_cfg(cfg, "HLR_OFF_SMA_PTS_FRAC", 0.5))
+        off_size = float(_cfg(cfg, "HLR_OFF_SMA_SZ_FRAC", 0.7))
+        bypass_min = float(_cfg(cfg, "HLR_BYPASS_MIN_TF_WEIGHT", 25))
+        definitions = (
+            ("3m", "low_3m", "low_3m_prev", "high_3m", "high_3m_prev", "sma_200_1m", "HLR_PTS_3M", 15, "HLR_SZ_3M", 1.2),
+            ("15m", "low_15m", "low_15m_prev", "high_15m", "high_15m_prev", "sma_200_15m", "HLR_PTS_15M", 25, "HLR_SZ_15M", 1.5),
+            ("1h", "low_1h", "low_1h_prev", "high_1h", "high_1h_prev", "sma_200_1h", "HLR_PTS_1H", 40, "HLR_SZ_1H", 2.0),
+            ("4h", "low_4h", "low_4h_prev", "high_4h", "high_4h_prev", "sma_200_4h", "HLR_PTS_4H", 60, "HLR_SZ_4H", 3.5),
+            ("D", "low_D", "low_D_prev", "high_D", "high_D_prev", "sma_200_D", "HLR_PTS_D", 90, "HLR_SZ_D", 6.0),
+            ("W", "low_W", "low_W_prev", "high_W", "high_W_prev", "sma_200_W", "HLR_PTS_W", 130, "HLR_SZ_W", 10.0),
+        )
+        total_points = np.zeros(n, dtype=float)
+        for tf, low_key, low_prev_key, high_key, high_prev_key, sma_key, pts_key, pts_default, size_key, size_default in definitions:
+            low = _float_column(values, low_key, n, 0.0)
+            low_prev = _float_column(values, low_prev_key, n, 0.0)
+            high = _float_column(values, high_key, n, 0.0)
+            high_prev = _float_column(values, high_prev_key, n, 0.0)
+            sma = _float_column(values, sma_key, n, 0.0)
+            points = float(_cfg(cfg, pts_key, pts_default))
+            size = float(_cfg(cfg, size_key, size_default))
+            structure = (low > 0) & (low_prev > 0) & (low > low_prev) if is_long else (high > 0) & (high_prev > 0) & (high < high_prev)
+            near = (sma > 0) & (np.abs(price - sma) / np.where(sma > 0, sma, 1.0) <= band)
+            points_add = np.where(near, points, np.trunc(points * off_points))
+            size_add = np.where(near, size, size * off_size)
+            total_points += np.where(structure, points_add, 0.0)
+            size_mult = np.maximum(size_mult, np.where(structure, size_add, 1.0))
+            bypass |= structure & (points_add >= bypass_min)
+            tf_masks[tf] = structure
+        result += np.where(total_points > 0, total_points, 0.0)
+        size_mult = np.where(total_points > 0, np.minimum(size_mult, float(_cfg(cfg, "HLR_SZ_MAX", 10.0))), size_mult)
+    return result, size_mult, bypass, tf_masks
+
+
+def data_blind_gate_array(values, state):
+    """Port the rate() 5050 gate; external gain state is needed only on blind rows."""
+    k3 = _float_column(values, "k_3m", _size(values, "close"), 50.0)
+    d3 = _float_column(values, "d_3m", k3.size, 50.0)
+    k1 = _float_column(values, "k_1m", k3.size, 50.0)
+    d1 = _float_column(values, "d_1m", k3.size, 50.0)
+    blind = ((k3 == 50.0) & (d3 == 50.0)) | ((k1 == 50.0) & (d1 == 50.0))
+    if not np.any(blind):
+        return np.zeros(k3.size, dtype=bool), {"DATA_BLIND": blind}
+    if "gain" not in state or "prev_gain" not in state:
+        raise ValueError("5050 indicator rows require explicit gain and prev_gain state")
+    gain = _float_column(state, "gain", k3.size, 0.0)
+    prev_gain = _float_column(state, "prev_gain", k3.size, 0.0)
+    allow = (gain < prev_gain)
+    block = blind & ~allow
+    return block, {"DATA_BLIND": blind, "DATA_BLIND_LOSING_POSITION_EXEMPTION": blind & allow}
+
+
+def stoch_kx_score_array(values, state, is_long, is_exit=False, score=None):
+    """NumPy port of `vec_paths.stoch_kx_scorer.score_stoch_kx` plus its ASR inputs."""
+    n = _size(values, "close")
+    price = _float_column(state, "current_price", n, 0.0)
+    red_price = _float_column(state, "last_reduction_price", n, 0.0)
+    since_red = _float_column(state, "minutes_since_reduction", n, 0.0)
+    gain = _float_column(state, "gain", n, 0.0)
+    lag = _float_column(state, "true_lag", n, 0.0)
+    result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).reshape(-1).copy()
+    if result.size != n:
+        raise ValueError("score and KX inputs have different lengths")
+    masks = {}
+    delta = np.zeros(n, dtype=float)
+    recent_reduction = ((price > red_price) if is_long else (price < red_price)) & (since_red < 35)
+    delta += recent_reduction * 8.0
+    masks["RECENT_REDUCTION"] = recent_reduction
+
+    dc = {}
+    for tf in ("D", "4h"):
+        dc[f"basis_{tf}"] = _float_column(values, f"dc_basis_{tf}", n, 0.0)
+        dc[f"low_{tf}"] = _float_column(values, f"dc_low_{tf}", n, 0.0)
+        dc[f"high_{tf}"] = _float_column(values, f"dc_high_{tf}", n, 0.0)
+        low = dc[f"low_{tf}"]
+        width = np.zeros(n, dtype=float)
+        np.divide(dc[f"high_{tf}"] - low, low, out=width, where=low > 0)
+        dc[f"width_{tf}"] = width * 100.0
+    if not is_exit:
+        if is_long:
+            pb_d = (red_price > 0) & (dc["low_D"] > 0) & (dc["width_D"] > 4.0) & (price > dc["low_D"]) & (price < dc["basis_D"])
+            pb_4h = ~pb_d & (red_price > 0) & (dc["width_4h"] > 3.0) & (dc["low_4h"] > 0) & (price > dc["low_4h"]) & (price < dc["basis_4h"])
+        else:
+            pb_d = (red_price > 0) & (dc["width_D"] > 4.0) & (price < dc["high_D"]) & (price > dc["basis_D"])
+            pb_4h = ~pb_d & (red_price > 0) & (dc["width_4h"] > 3.0) & (dc["high_4h"] > 0) & (price < dc["high_4h"]) & (price > dc["basis_4h"])
+        delta += pb_d * 20.0 + pb_4h * 15.0
+        masks["DC_REENTRY_PB_D"] = pb_d
+        masks["DC_REENTRY_PB_4H"] = pb_4h
+
+    def num(key, default=0.0):
+        return _float_column(values, key, n, default)
+    k1, d1 = num("k_1m", 50), num("d_1m", 50)
+    k1p = num("k_1m_prev", 50)
+    k3, d3, k3p = num("k_3m", 50), num("d_3m", 50), num("k_3m_prev", 50)
+    k15, d15, k15p = num("k_15m", 50), num("d_15m", 50), num("k_15m_prev", 50)
+    k1co = (k1 > d1) & (k1p <= d1) & (k1 < 30) & (lag < 10.0)
+    k1cu = (k1 < d1) & (k1p >= d1) & (k1 > 70) & (lag < 10.0)
+    k3co = (k3 > d3) & (k3p <= d3) & (k3 < 30)
+    k3cu = (k3 < d3) & (k3p >= d3) & (k3 > 70)
+    k15co = (k15 > d15) & (k15p <= d15) & (k15 < 30)
+    k15cu = (k15 < d15) & (k15p >= d15) & (k15 > 70)
+    cp3, cpp3 = num("crossover_price_3m"), num("crossover_price_previous_3m")
+    cu3, cup3 = num("crossunder_price_3m"), num("crossunder_price_previous_3m")
+    cp15, cpp15 = num("crossover_price_15m"), num("crossover_price_previous_15m")
+    cu15, cup15 = num("crossunder_price_15m"), num("crossunder_price_previous_15m")
+    fire = (is_long & k1co) | ((not is_long) & k1cu)
+    favorable = (price > cp3) if is_long else (price < cu3)
+    improved = (cp3 > cpp3) if is_long else (cu3 < cup3)
+    delta += fire * 1.0 + (fire & favorable) * 2.0 + (fire & favorable & improved) * 3.0 + (fire & (since_red < 25)) * 3.0
+    masks["K1_CROSS_FAVORABLE"] = fire
+    fire = ((not is_long) & k1co) | (is_long & k1cu)
+    favorable = (price < cp3) if is_long else (price > cu3)
+    worsened = (cp3 < cpp3) if is_long else (cu3 > cup3)
+    delta += fire * -1.0 + (fire & favorable) * -1.0 + (fire & favorable & worsened) * -4.0 + (fire & (gain < 0.1)) * -5.0
+    masks["K1_CROSS_AGAINST"] = fire
+    fire = (is_long & k3co) | ((not is_long) & k3cu)
+    favorable = (price > cp3) if is_long else (price < cu3)
+    improved = (cp3 > cpp3) if is_long else (cu3 < cup3)
+    delta += fire * 4.0 + (fire & favorable) * 2.0 + (fire & favorable & improved) * 2.0 + (fire & (gain < 0.1)) * -8.0 + (fire & (since_red < 35)) * 3.0
+    masks["K3_CROSS_FAVORABLE"] = fire
+    fire = ((not is_long) & k3co) | (is_long & k3cu)
+    favorable = (price < cp3) if is_long else (price > cu3)
+    worsened = (cp3 < cpp3) if is_long else (cu3 > cup3)
+    delta += fire * -3.0 + (fire & favorable) * -2.0 + (fire & favorable & worsened) * -3.0 + (fire & (gain < 0.1)) * -7.0
+    masks["K3_CROSS_AGAINST"] = fire
+    fire = (is_long & k15co) | ((not is_long) & k15cu)
+    favorable = (price > cp15) if is_long else (price < cu15)
+    improved = (cp15 > cpp15) if is_long else (cu15 < cup15)
+    delta += fire * 7.0 + (fire & favorable) * 5.0 + (fire & favorable & improved) * 3.0 + (fire & (gain < 0.1)) * -9.0
+    masks["K15_CROSS_FAVORABLE"] = fire
+    fire = ((not is_long) & k15co) | (is_long & k15cu)
+    favorable = (price < cp15) if is_long else (price > cu15)
+    worsened = (cp15 < cpp15) if is_long else (cu15 > cup15)
+    delta += fire * -9.0 + (fire & favorable) * -4.0 + (fire & favorable & worsened) * -4.0 + (fire & (gain < 0.1)) * -19.0
+    masks["K15_CROSS_AGAINST"] = fire
+    result += delta
+    return result, masks

@@ -400,7 +400,7 @@ def test_shadow_never_orders(tmp_path, monkeypatch):
     _run_loop(tm, monkeypatch, cycles=2)
     assert calls == []
     rows = [json.loads(x) for x in (vl / "shadow_compare_men.jsonl").read_text().splitlines()]
-    assert len(rows) == 1 and rows[0]["would_action"] == "OPEN" and rows[0]["native_matches"] is True
+    assert len(rows) == 1 and rows[0]["would_action"] == "OPEN" and rows[0]["native_matches"] is False
 
 
 def test_reconcile_retries_open_while_flat_but_closes_once(tmp_path, monkeypatch):

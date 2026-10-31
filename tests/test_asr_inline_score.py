@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from utils import safe_fetch_float
-from vec_decisions.asr_inline_score import bc155_score_array, k_zone_score_array, momentum_fade_score_array, satoshit_score_array
+from vec_decisions.asr_inline_score import bc155_score_array, hlr_rally_score_array, k_zone_score_array, momentum_fade_score_array, satoshit_score_array
 
 
 ORACLE_SHA256 = "d45e0765b6bddc221cd2bbad5c14f6895729dab925340c7857d3a02adfabad3b"
@@ -163,3 +163,45 @@ def test_satoshit_score_matches_actual_native_bonus_wrapper_both_sides():
         assert np.array_equal(actual, expected)
         assert np.array_equal(masks["SATOSHIT"], expected > 0)
         assert np.all((masks["SATOSHIT_VOTES"] >= 0) & (masks["SATOSHIT_VOTES"] <= 5))
+
+
+def test_hlr_rally_matches_extracted_native_ast_score_size_and_bypass():
+    reference, rate = _native_rate()
+    node = next(item for item in rate.body if isinstance(item, ast.If) and item.lineno == 5295)
+    rng = np.random.default_rng(4315288)
+    n = 120
+    fields = {
+        key: rng.choice([0.0, 90.0, 95.0, 100.0, 105.0, 110.0], n)
+        for key in ("low_3m", "low_3m_prev", "high_3m", "high_3m_prev",
+                    "low_15m", "low_15m_prev", "high_15m", "high_15m_prev",
+                    "low_1h", "low_1h_prev", "high_1h", "high_1h_prev",
+                    "low_4h", "low_4h_prev", "high_4h", "high_4h_prev",
+                    "low_D", "low_D_prev", "high_D", "high_D_prev",
+                    "low_W", "low_W_prev", "high_W", "high_W_prev",
+                    "sma_200_1m", "sma_200_15m", "sma_200_1h", "sma_200_4h",
+                    "sma_200_D", "sma_200_W")
+    }
+    prices = rng.choice([90.0, 97.0, 100.0, 103.0, 110.0], n)
+    cfg = SimpleNamespace(HLR_RALLY_ENABLED=True)
+    for is_long in (True, False):
+        actual, size, bypass, tf_masks = hlr_rally_score_array(fields, prices, is_long, cfg, score=np.full(n, 100.0))
+        for i in range(n):
+            row = {key: values[i] for key, values in fields.items()}
+            env = {"is_exit": False, "is_long": is_long, "current_price": prices[i], "config": cfg,
+                   "i": row, "score": 100.0, "reasons": [], "position_key": "fixture",
+                   "_hlr_rally_score": 0.0, "_hlr_rally_tfs": [], "_hlr_size_mult": 1.0, "_hlr_bypass": False,
+                   "logger": SimpleNamespace(debug=lambda *args, **kwargs: None),
+                   "safe_fetch_float": safe_fetch_float}
+            for key in ("low_3m", "low_3m_prev", "high_3m", "high_3m_prev",
+                        "low_1h", "low_1h_prev", "high_1h", "high_1h_prev",
+                        "low_4h", "low_4h_prev", "high_4h", "high_4h_prev",
+                        "low_D", "high_D"):
+                env[key] = row[key]
+            for key in ("sma_200_15m", "sma_200_1h", "sma_200_4h", "sma_200_D"):
+                env[key] = row[key]
+            exec(compile(ast.Module(body=[node], type_ignores=[]), str(reference), "exec"), env)
+            assert actual[i] == env["score"]
+            assert size[i] == env["_hlr_size_mult"]
+            assert bypass[i] == env["_hlr_bypass"]
+        for tf in ("3m", "15m", "1h", "4h", "D", "W"):
+            assert tf_masks[tf].shape == (n,)

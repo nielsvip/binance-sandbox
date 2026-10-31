@@ -6,7 +6,7 @@ sys.path.insert(0, "tests")
 
 import v12_quick_engine as V
 from test_tradier_reviewed_exit_ledgers import _base_npz, _cfg
-from vec_decisions.tradier_signal_score import _Tradeability, entry_pre_gate_score_vec, entry_score_arrays, entry_tail_score_vec, mts_score_vec, paired_lower_tf_indicators, possible_entry_setup_mask
+from vec_decisions.tradier_signal_score import _Tradeability, entry_pre_gate_score_vec, entry_score_arrays, entry_tail_score_vec, mts_score_vec, native_entry_setup_masks, paired_lower_tf_indicators, possible_entry_setup_mask
 
 
 def test_paired_lower_tf_stock_score_inputs_use_15m_only_when_ltf_is_off():
@@ -629,6 +629,60 @@ def test_vector_mts_gate_block_matches_native_scalar():
     assert injected == (0.0, "WAIT", blocked[bar])
 
 
+
+def test_vector_stock_good_setup_mask_matches_native_setup_return(monkeypatch):
+    import tradier_manage as tm
+
+    monkeypatch.setattr(tm, "is_regular_trading_hours", lambda: True)
+    npz = _base_npz()
+    n = len(npz["close"])
+    rng = np.random.default_rng(87)
+    for key, values in {
+        "k_1m": rng.uniform(0.0, 100.0, n),
+        "d_1m": rng.uniform(0.0, 100.0, n),
+        "k_1m_prev": rng.uniform(0.0, 100.0, n),
+        "k_15m": rng.uniform(0.0, 100.0, n),
+        "d_15m": rng.uniform(0.0, 100.0, n),
+        "k_15m_prev": rng.uniform(0.0, 100.0, n),
+        "k_5m": rng.uniform(0.0, 100.0, n),
+        "d_5m": rng.uniform(0.0, 100.0, n),
+        "k_5m_prev": rng.uniform(0.0, 100.0, n),
+        "k_4h": rng.uniform(0.0, 100.0, n),
+        "d_4h": rng.uniform(0.0, 100.0, n),
+        "mfi_4h": rng.uniform(0.0, 100.0, n),
+        "rsi_1h": rng.uniform(0.0, 100.0, n),
+        "bb_pct_b_15m": rng.uniform(0.0, 1.0, n),
+        "bb_upper_15m": np.full(n, 102.0),
+        "bb_lower_15m": np.full(n, 98.0),
+        "timestamp_1m": np.asarray(npz["timestamps"], dtype=float) - rng.uniform(-10.0, 120.0, n),
+    }.items():
+        npz[key] = values
+    for is_long in (True, False):
+        cfg = _cfg()
+        cfg.MODE = "tradier"
+        cfg.LTF_SUB15M_TRADING_ENABLED = False
+        cfg.BACKTEST_VALIDATED_GATES_TRADIER = False
+        cfg.ENTRY_DC_TF = "OFF"
+        cfg.WT_COMPOSITE_SCORING_ENABLED_TRADIER = False
+        cfg.WT_COMPOSITE_SCORING_ENABLED = False
+        cfg.BB_BREAKOUT_ENTRY_TF = "15m"
+        cfg.MTS_GATE_ENABLED_TRADIER = False
+        cfg.EOD_RATIO_ENFORCE_TRADIER = False
+        cfg.FG_FEAR_THRESHOLD = 35.0
+        cfg.FG_GREED_THRESHOLD = 70.0
+        masks, _, _, _, _ = native_entry_setup_masks(npz, n, is_long, cfg)
+        strategy = tm.StockStrategy.__new__(tm.StockStrategy)
+        strategy.config = cfg
+        strategy.trade_manager = _Tradeability("SYNTH", is_long)
+        cfg_token = tm._TR_SCORE_CFG_CTX.set(cfg)
+        try:
+            for index in range(n):
+                indicators = {key: np.asarray(value)[index].item() for key, value in npz.items() if np.asarray(value).ndim == 1 and len(np.asarray(value)) == n}
+                _, _, reason = strategy.calculate_signal_score("v12", "SYNTH", is_long, float(indicators["close"]), indicators, None, is_exit=False)
+                assert bool(masks[index]) == (reason != f"NO_{'LONG' if is_long else 'SHORT'}_SETUP")
+        finally:
+            tm._TR_SCORE_CFG_CTX.reset(cfg_token)
+
 def test_vector_entry_tail_matches_bear_and_eod_thresholds():
     from datetime import datetime
     from zoneinfo import ZoneInfo
@@ -662,12 +716,14 @@ def test_vector_entry_eod_block_reaches_native_entry_score_context():
     n = len(npz["close"])
     bar = 201
     npz["timestamps"][bar] = datetime(2026, 10, 29, 15, 56, tzinfo=ZoneInfo("America/New_York")).timestamp()
-    npz["k_15m"] = np.full(n, 20.0)
+    npz["k_15m"] = np.full(n, 10.0)
     npz["d_15m"] = np.full(n, 30.0)
-    npz["k_5m"] = np.full(n, 20.0)
+    npz["k_5m"] = np.full(n, 10.0)
     npz["d_5m"] = np.full(n, 30.0)
     cfg = _cfg()
     cfg.BACKTEST_VALIDATED_GATES_TRADIER = False
+    cfg.WT_COMPOSITE_SCORING_ENABLED_TRADIER = False
+    cfg.WT_COMPOSITE_SCORING_ENABLED = False
     cfg.EOD_RATIO_ENFORCE_TRADIER = True
     cfg.ENTRY_SCORE_THRESHOLD = 10000.0
     adjustment, reasons, blocked = entry_tail_score_vec(npz, n, True, cfg)

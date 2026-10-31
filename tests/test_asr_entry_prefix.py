@@ -30,6 +30,8 @@ def _cfg(**overrides):
 
 def _arrays(n=3):
     return {
+        "close": np.full(n, 100.0), "ha_D": np.full(n, "neutral", object),
+        **{f"wt_bullish_{tf}": np.array([True, False, True][:n]) for tf in ("1m", "3m", "15m", "1h", "4h", "D")},
         "wt_bullish_scalp": np.array([True, False, True][:n]),
         "wt_score_scalp": np.array([10.0, -20.0, -40.0][:n]),
         "wt_velocity_scalp": np.array([0.0, 0.0, -2.0][:n]),
@@ -40,6 +42,8 @@ def _arrays(n=3):
         "k_3m": np.array([40.0, 70.0, 60.0][:n]),
         "d_3m": np.array([35.0, 75.0, 55.0][:n]),
         "k_1m": np.full(n, 50.0), "d_1m": np.full(n, 50.0),
+        "k_15m": np.array([40.0, 70.0, 60.0][:n]), "d_15m": np.array([35.0, 75.0, 55.0][:n]),
+        "k_15m_prev": np.array([40.0, 70.0, 60.0][:n]),
         "k_1m_prev": np.full(n, 50.0), "k_3m_prev": np.full(n, 50.0),
         "wt_cross_bull_3m": np.zeros(n), "wt_cross_bear_3m": np.zeros(n),
         "wt_crossover_value_3m": np.zeros(n), "wt_crossover_value_3m_prev": np.zeros(n),
@@ -59,14 +63,16 @@ def _arrays(n=3):
 
 def test_entry_prefix_preserves_native_score_order_and_explicit_context():
     npz = _arrays()
-    context = {"current_price": np.array([100.0, 100.0, 100.0]), "portfolio_ratio_active": False}
+    context = {"current_price": np.array([100.0, 100.0, 100.0]), "portfolio_ratio_active": False, "mover_registry_available": False}
     result = score_asr_entry_prefix_array(npz, 3, True, _cfg(), context)
-    assert result["entry_allowed"].tolist() == [True, True, True]
+    assert result["entry_allowed"].tolist() == [True, False, True]
+    assert result["masks"]["SHIT_IDEA"].tolist() == [False, True, False]
     assert result["score"].shape == (3,)
     assert result["complete_rate"] is False
     assert result["covered_native_spans"] == (
-        "ez_positions_quick.py:4696-4880 extracted score/gate blocks",
-        "ez_positions_quick.py:4956-5010 channel/K/DC-cross and adjacent directional scores",
+        "ez_positions_quick.py:4696-4924 selected gate/score blocks",
+        "ez_positions_quick.py:4955-5071 channel/K/DC-cross and directional scores",
+        "ez_positions_quick.py:5072-5434 BC155 through HLR/candle-alignment and unreliable-indicator gates",
     )
     assert result["masks"]["stoch_entry:long_ok"].tolist() == [True, False, True]
 
@@ -90,5 +96,5 @@ def test_entry_prefix_fails_closed_when_regime_state_is_enabled_but_absent():
     with pytest.raises(ValueError, match="regime_delta"):
         score_asr_entry_prefix_array(
             npz, 1, True, cfg,
-            {"current_price": [100.0], "portfolio_ratio_active": False},
+            {"current_price": [100.0], "portfolio_ratio_active": False, "mover_registry_available": False},
         )

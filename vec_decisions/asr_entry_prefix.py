@@ -13,7 +13,7 @@ import numpy as np
 
 from vec_decisions.asr_mts_entry_gate import mts_entry_gate_array
 from vec_decisions.asr_inline_score import (
-    bc155_score_array, k_zone_score_array, momentum_fade_score_array, mover_score_array,
+    bc155_score_array, hlr_rally_score_array, k_zone_score_array, momentum_fade_score_array, mover_score_array,
     satoshit_score_array, stochastic_alignment_score_array,
 )
 from vec_decisions.asr_mts_mi_score import mts_mi_score_array
@@ -244,18 +244,42 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
     align_delta, align_masks = stochastic_alignment_score_array(arrays, long_ok, short_ok, is_long)
     proposed = result + align_delta
     add("stochastic_alignment", proposed, align_masks)
+
+    result, hlr_size_multiplier, hlr_bypass, hlr_masks = hlr_rally_score_array(
+        arrays, current_price, is_long, cfg, score=result
+    )
+    masks.update({f"hlr_rally:{key}": value for key, value in hlr_masks.items()})
+    masks["hlr_rally:bypass"] = hlr_bypass
+
+    k1, d1 = _col(arrays, "k_1m", n, 50.0), _col(arrays, "d_1m", n, 50.0)
+    k3, d3 = _col(arrays, "k_3m", n, 50.0), _col(arrays, "d_3m", n, 50.0)
+    k15, d15 = _col(arrays, "k_15m", n, 50.0), _col(arrays, "d_15m", n, 50.0)
+    c1 = k1 > d1 if is_long else k1 < d1
+    c3 = k3 > d3 if is_long else k3 < d3
+    pullback = (k15 < 30.0) if is_long else (k15 > 70.0)
+    veto("SHIT_IDEA", ~(c1 | c3 | pullback | hlr_bypass))
+    no_c3 = ~c3
+    aligned_both = c1 & c3
+    add_score = np.where(no_c3, -2.0, np.where(aligned_both, 3.0, 1.0))
+    result = np.where(~blocked, result + add_score, result)
+    masks["candle_alignment:score_penalty"] = ~blocked & no_c3
+    masks["candle_alignment:both_bonus"] = ~blocked & aligned_both
+    masks["candle_alignment:c3_bonus"] = ~blocked & (c3 & ~aligned_both)
+    unreliable = (k3 == 50.0) & (d3 == 50.0) & (k15 == 50.0) & (d15 == 50.0) & (_col(arrays, "k_1h", n, 50.0) == 50.0) & (_col(arrays, "d_1h", n, 50.0) == 50.0)
+    veto("UNRELIABLE_INDICATORS", unreliable)
     return {
         "score": result,
         "entry_allowed": ~blocked,
+        "hlr_size_multiplier": hlr_size_multiplier,
+        "hlr_bypass": hlr_bypass,
         "masks": masks,
         "complete_rate": False,
-        "covered_native_spans": ("ez_positions_quick.py:4696-4954 selected gate/score blocks", "ez_positions_quick.py:4955-5071 channel/K/DC-cross and directional scores", "ez_positions_quick.py:5072-5287 BC155, K-zone, mover, momentum fade, Satoshit, stochastic alignment"),
+        "covered_native_spans": ("ez_positions_quick.py:4696-4924 selected gate/score blocks", "ez_positions_quick.py:4955-5071 channel/K/DC-cross and directional scores", "ez_positions_quick.py:5072-5434 BC155 through HLR/candle-alignment and unreliable-indicator gates"),
         "remaining": (
-            "pre_score_lifecycle_gates", "regime_input_producer", "entry_atr_and_chase_gates:ez_positions_quick.py:4881-4955",
-            "HLR_rally_and_sizing:ez_positions_quick.py:5288-5389", "candle_and_all_tf_wt_gates:ez_positions_quick.py:5503-5674",
+            "pre_score_lifecycle_gates", "regime_input_producer", "entry_chase_and_atr_gates:ez_positions_quick.py:4925-4954",
+            "tracker_position_and_market_state:ez_positions_quick.py:5435-5502", "candle_and_all_tf_wt_gates:ez_positions_quick.py:5503-5674",
             "tracker_state_mandatory_reentry:ez_positions_quick.py:5675-6052", "RSI_MFI_DC_BOTA_scores:ez_positions_quick.py:6053-6264",
-            "scalp_and_lifecycle_paths:ez_positions_quick.py:6265-7158", "other_inline_nonexit_scoring:ez_positions_quick.py:5393-5502",
-            "reentry_state_machine",
+            "scalp_and_lifecycle_paths:ez_positions_quick.py:6265-7158",
             "action_threshold_and_execution",
         ),
     }

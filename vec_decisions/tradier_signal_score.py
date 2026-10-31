@@ -639,6 +639,52 @@ def mts_score_vec(npz, n, is_long, cfg):
 
 
 
+
+def native_entry_setup_masks(npz, n, is_long, cfg):
+    """Vectorize native stoch, K-zone, MFI and BB setup predicates before score assembly."""
+    if not bool(getattr(cfg, "LTF_SUB15M_TRADING_ENABLED", False)):
+        npz = paired_lower_tf_indicators(npz, False)
+    def col(key, default=50.0): return _column(npz, key, n, default)
+    k5, d5, k5p = col("k_5m"), col("d_5m"), col("k_5m_prev")
+    k15, d15 = col("k_15m"), col("d_15m")
+    timestamps = col("timestamps", 0.0)
+    try:
+        stamp_1m = np.asarray(npz["timestamp_1m"], dtype=float).reshape(-1)
+        if stamp_1m.size != n:
+            raise ValueError("unaligned timestamp_1m")
+        fresh = (timestamps - stamp_1m) < 60.0
+    except (KeyError, TypeError, ValueError):
+        fresh = np.ones(n, dtype=bool)
+    if is_long:
+        stoch = ((k5 < float(getattr(cfg, "TRADIER_STOCH_ENTRY_LONG_TRADIER", 30.0))) & (k5 > d5)) | (k5 < float(getattr(cfg, "TRADIER_STOCH_EXTREME_LONG_TRADIER", 15.0)))
+        stoch |= (k5 > d5) & (k5p <= d5) & (k5 < 35.0) & fresh
+    else:
+        stoch = ((k5 > float(getattr(cfg, "TRADIER_STOCH_ENTRY_SHORT_TRADIER", 70.0))) & (k5 < d5)) | (k5 > float(getattr(cfg, "TRADIER_STOCH_EXTREME_SHORT_TRADIER", 85.0)))
+        stoch |= (k5 < d5) & (k5p >= d5) & (k5 > 65.0) & fresh
+    from vec_decisions.twin_p0_stocks import dd_bounce_fire_vec, fg_fear_fire_vec, fg_greed_fire_vec
+    stoch &= dd_bounce_fire_vec(k5, is_long, getattr(cfg, "DD_BOUNCE_ENABLED", False))
+    if bool(getattr(cfg, "STOCH_CROSS_ENTRY_TRADIER", False)):
+        stoch = ((k5p <= d5) & (k5 > d5)) if is_long else ((k5p >= d5) & (k5 < d5))
+    k4, d4 = col("k_4h"), col("d_4h")
+    if is_long:
+        kzone = bool(getattr(cfg, "K_ZONE_ENTRY_ENABLED_TRADIER", True)) & (k4 < float(getattr(cfg, "K_ZONE_LONG_THRESHOLD_TRADIER", 35.0))) & (k4 > d4)
+    else:
+        kzone = bool(getattr(cfg, "K_ZONE_ENTRY_ENABLED_TRADIER", True)) & (k4 > float(getattr(cfg, "K_ZONE_SHORT_THRESHOLD_TRADIER", 65.0))) & (k4 < d4)
+    entry_tf = str(getattr(cfg, "ENTRY_PRIMARY_TF", "4h") or "4h")
+    mfi = col(f"mfi_{entry_tf}")
+    flow = (mfi < float(getattr(cfg, "RSI_ENTRY_LONG_TRADIER", 42.0))) if is_long else (mfi > float(getattr(cfg, "RSI_ENTRY_SHORT_TRADIER", 58.0)))
+    rsi1h = col("rsi_1h", 50.0)
+    flow &= fg_fear_fire_vec(rsi1h, getattr(cfg, "FG_FEAR_THRESHOLD", 25), 25, is_long)
+    flow &= fg_greed_fire_vec(rsi1h, getattr(cfg, "FG_GREED_THRESHOLD", 75), 75, is_long)
+    bb_tf = str(getattr(cfg, "BB_BREAKOUT_ENTRY_TF", "OFF") or "OFF").strip()
+    bb = np.zeros(n, dtype=bool)
+    if bb_tf in ("15m", "1h", "4h", "D"):
+        pct = col(f"bb_pct_b_{bb_tf}", 0.5)
+        band = col(f"bb_upper_{bb_tf}" if is_long else f"bb_lower_{bb_tf}", 0.0)
+        bb = ((pct > 0.95) if is_long else (pct < 0.05)) & (band > 0.0)
+    return (stoch | kzone | flow | bb), stoch, kzone, flow, bb
+
+
 def entry_tail_score_vec(npz, n, is_long, cfg):
     """Vectorize entry-only bear bias and time-to-close score adjustments."""
     adjustment = np.zeros(n, dtype=float)
@@ -765,7 +811,7 @@ def entry_pre_gate_score_vec(npz, n, is_long, cfg, ltf_enabled):
     return adjustment, reasons, blocked
 
 
-def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None):
+def _entry_score_arrays_scalar(npz, n, symbol, is_long, cfg, candidate_mask=None):
     """Evaluate native StockStrategy score and final threshold in bar order.
 
     This calls the production scalar scorer for each prepared bar so every
@@ -806,6 +852,8 @@ def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None):
     candidates = possible_entry_setup_mask(npz, n, is_long, cfg) if candidate_mask is None else np.asarray(candidate_mask, dtype=bool)
     if candidates.shape != (n,):
         raise ValueError("candidate_mask must have shape (n,)")
+    native_setup = native_entry_setup_masks(npz, n, is_long, cfg)[0]
+    candidates &= native_setup
     cfg_token = tm._TR_SCORE_CFG_CTX.set(cfg)
     try:
         for index in range(n):
@@ -867,3 +915,101 @@ def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None):
     finally:
         tm._TR_SCORE_CFG_CTX.reset(cfg_token)
     return score_values, fires, reasons
+
+
+def entry_score_arrays_numpy(npz, n, symbol, is_long, cfg, candidate_mask=None):
+    """Assemble the native Tradier entry score from ordered NumPy score layers."""
+    if str(getattr(cfg, "MODE", "crypto")) != "tradier":
+        return np.zeros(n, dtype=float), np.zeros(n, dtype=bool), [""] * n
+    timestamps = np.asarray(npz.get("timestamps", []), dtype=float).reshape(-1)
+    if timestamps.size != n:
+        raise ValueError("Tradier signal score requires aligned NPZ timestamps")
+    import tradier_manage as tm
+    ltf = bool(getattr(cfg, "LTF_SUB15M_TRADING_ENABLED", False))
+    native_setup, stoch, kzone_mask, flow, bb = native_entry_setup_masks(npz, n, is_long, cfg)
+    candidates = possible_entry_setup_mask(npz, n, is_long, cfg) if candidate_mask is None else np.asarray(candidate_mask, dtype=bool)
+    if candidates.shape != (n,):
+        raise ValueError("candidate_mask must have shape (n,)")
+    candidates &= native_setup
+    pre_adjustment, pre_reasons, pre_blocked = entry_pre_gate_score_vec(npz, n, is_long, cfg, ltf)
+    mts_adj, mts_reasons, mts_blocked, _, _ = mts_score_vec(npz, n, is_long, cfg)
+    tail_adj, tail_reasons, tail_blocked = entry_tail_score_vec(npz, n, is_long, cfg)
+    mq_enabled = bool(getattr(cfg, "MARKET_QUALITY_SCORE_ENABLED_TRADIER", False))
+    from vec_decisions.tradier_market_quality import market_quality_score_vec_details
+    mq_points, mq_reasons = market_quality_score_vec_details(npz, n, is_long, cfg, _column)
+    ga_points, ga_reasons = golden_angles_score_vec(npz, n, is_long, _column)
+    sentiment_points, trend_points, st_reasons = sentiment_trend_score_vec(npz, n, is_long, _column)
+    setup_points, setup_reasons = pullback_setup_score_vec(npz, n, is_long, ltf)
+    trigger_points, trigger_reasons, trigger_inputs = trigger_score_vec(npz, n, is_long, cfg, ltf)
+    bar_points, bar_reasons = bar_pattern_score_vec(npz, n, is_long)
+    dc_points, dc_reasons, kz_points, kz_reasons = entry_bonus_layers_vec(npz, n, is_long, cfg)
+    dcrt_points, dcrt_reasons = dc_retest_score_vec(npz, n, is_long, ltf)
+    wt_points, wt_reasons, wt_blocked = wt_composite_score_vec(npz, n, is_long, cfg)
+    wt_enabled = bool(getattr(cfg, "WT_COMPOSITE_SCORING_ENABLED_TRADIER", False) or getattr(cfg, "WT_COMPOSITE_SCORING_ENABLED", False))
+    if not wt_enabled:
+        wt_points = np.zeros(n, dtype=float)
+        wt_reasons = [[] for _ in range(n)]
+        wt_blocked = [None] * n
+    score = pre_adjustment + mts_adj + dc_points + dcrt_points + kz_points + wt_points + ga_points + sentiment_points + trend_points + setup_points + bar_points + tail_adj
+    entry_tf = str(getattr(cfg, "ENTRY_PRIMARY_TF", "4h") or "4h")
+    mfi_values = _column(npz, f"mfi_{entry_tf}", n, 50.0)
+    if mq_enabled:
+        score += mq_points
+    before_trigger = score - bar_points - tail_adj - (mq_points if mq_enabled else 0.0)
+    inputs = {key: np.asarray(value) for key, value in trigger_inputs.items()}
+    knife = inputs["fresh"] & (inputs["k1"] < inputs["d1"] if is_long else inputs["k1"] > inputs["d1"]) & (inputs["k5"] < inputs["d5"] if is_long else inputs["k5"] > inputs["d5"]) & (before_trigger < 15.0)
+    trigger_points = trigger_points - np.where(knife, 3.0, 0.0)
+    score = score + trigger_points
+    reasons = [[] for _ in range(n)]
+    for index in range(n):
+        if not candidates[index]:
+            continue
+        reasons[index].extend(pre_reasons[index])
+        reasons[index].extend(mts_reasons[index])
+        if dc_points[index] != 0.0: reasons[index].extend(dc_reasons[index])
+        if dcrt_points[index] != 0.0: reasons[index].extend(dcrt_reasons[index])
+        if kz_points[index] != 0.0: reasons[index].extend(kz_reasons[index])
+        if flow[index]: reasons[index].append(f"MFI_{mfi_values[index]:.0f}")
+        reasons[index].extend(wt_reasons[index])
+        reasons[index].extend(ga_reasons[index])
+        reasons[index].extend(st_reasons[index])
+        reasons[index].extend(setup_reasons[index])
+        reasons[index].extend(trigger_reasons[index])
+        reasons[index].extend(bar_reasons[index])
+        reasons[index].extend([item for item in tail_reasons[index] if not item.startswith("EOD_")])
+        if mq_enabled and mq_reasons[index]: reasons[index].append(mq_reasons[index])
+        reasons[index].extend([item for item in tail_reasons[index] if item.startswith("EOD_")])
+    active = candidates & np.asarray([item is None for item in pre_blocked], dtype=bool) & np.asarray([item is None for item in mts_blocked], dtype=bool) & np.asarray([item is None for item in wt_blocked], dtype=bool) & np.asarray([item is None for item in tail_blocked], dtype=bool)
+    raw_score = np.trunc(score)
+    final_score = np.clip(raw_score, 0.0, 30.0).astype(float)
+    side = "LONG" if is_long else "SHORT"
+    threshold = float(tm._cfg("ENTRY_SCORE_THRESHOLD", 12.0, "v12", symbol, side) or 0.0)
+    sniper = np.asarray([any("Sniper" in reason for reason in row) for row in reasons], dtype=bool)
+    fires = active & ((final_score >= threshold) | ((final_score >= 6.0) & sniper))
+    reason_out = [""] * n
+    for index in np.flatnonzero(fires):
+        value = final_score[index]
+        if value >= 28.0: recommendation = "STRONG_BUY" if is_long else "STRONG_SELL"
+        elif value >= 20.0: recommendation = "GOOD_BUY" if is_long else "GOOD_SELL"
+        elif value >= 15.0: recommendation = "WEAK_BUY" if is_long else "WEAK_SELL"
+        else: recommendation = "WAIT"
+        if value < threshold and sniper[index]:
+            reason_out[index] = f"SNIPER_{side}_{recommendation}"
+        else:
+            reason_out[index] = f"{side}_{recommendation}: {','.join(reasons[index])}"
+    # Statefully consumed HTF-only BB setups keep the live gate oracle until the vector retry book is supplied.
+    bb_tf = str(getattr(cfg, "BB_BREAKOUT_ENTRY_TF", "OFF") or "OFF").strip()
+    htf_only = candidates & bb & ~stoch & ~kzone_mask & ~flow & (bb_tf in ("1h", "4h", "D")) & bool(getattr(cfg, "HTF_SIGNAL_CONSUME_ENABLED", True))
+    if np.any(htf_only):
+        scalar_scores, scalar_fires, scalar_reasons = _entry_score_arrays_scalar(npz, n, symbol, is_long, cfg, htf_only)
+        final_score[htf_only] = scalar_scores[htf_only]
+        fires[htf_only] = scalar_fires[htf_only]
+        for index in np.flatnonzero(htf_only): reason_out[index] = scalar_reasons[index]
+    return final_score, fires, reason_out
+
+
+def entry_score_arrays(npz, n, symbol, is_long, cfg, candidate_mask=None, scalar_reference=False):
+    """Native NumPy stock score; scalar_reference exposes production oracle for differential tests."""
+    if scalar_reference:
+        return _entry_score_arrays_scalar(npz, n, symbol, is_long, cfg, candidate_mask)
+    return entry_score_arrays_numpy(npz, n, symbol, is_long, cfg, candidate_mask)
