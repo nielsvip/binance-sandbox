@@ -7874,6 +7874,12 @@ def _cfg(
         return True
     if param in _LIVE_AUTHORITY_TR:  # USER 2026-10-17 total parity: config only — never a frozen per-sym / cat_side value
         return getattr(config, param, default)
+    try:
+        _score_cfg = _TR_SCORE_CFG_CTX.get()
+        if _score_cfg is not None and hasattr(_score_cfg, param):
+            return getattr(_score_cfg, param)
+    except Exception:
+        pass
     _test_found, _test_value = _v8_sweep_override(param)
     if _test_found:
         return _test_value
@@ -7953,6 +7959,8 @@ def _cfg(
 # FAIL-SAFE: with no per-sym context set, or on any exception, the value comes from the plain object exactly as
 # today. TR_PER_SYM_PROXY=0 restores the unwrapped `TradierConfig()`.
 _TR_PSYM_CTX: ContextVar = ContextVar("_TR_PSYM_CTX", default=None)
+_TR_SCORE_CFG_CTX: ContextVar = ContextVar("_TR_SCORE_CFG_CTX", default=None)
+_TR_SCORE_TS_CTX: ContextVar = ContextVar("_TR_SCORE_TS_CTX", default=None)
 _TR_PROXY_GUARD = threading.local()
 
 
@@ -11453,6 +11461,11 @@ def is_regular_trading_hours(ts=None):
         import pytz
 
         _tz = pytz.timezone("America/New_York")
+    if ts is None:
+        try:
+            ts = _TR_SCORE_TS_CTX.get()
+        except Exception:
+            pass
     try:
         _sim_ts_env = float(os.environ.get("V8_SIM_TS") or 0)
     except (TypeError, ValueError):
@@ -32693,7 +32706,14 @@ class StockStrategy:
         position: Any,
         is_exit: bool = False,
     ) -> tuple[float, str, str]:
-        now_ts = time.time()
+        _score_ts = _TR_SCORE_TS_CTX.get()
+        now_ts = float(_score_ts) if _score_ts is not None else time.time()
+        if not is_exit:
+            from vec_decisions.tradier_signal_score import paired_lower_tf_indicators
+
+            i = paired_lower_tf_indicators(
+                i, bool(_cfg_auto("LTF_SUB15M_TRADING_ENABLED", False))
+            )
         score = 0.0
         reasons = []
         longs = getattr(self.trade_manager, f"symbols_long_{account_key}", [])
@@ -33225,7 +33245,7 @@ class StockStrategy:
                     "HTF_RETRY_TIGHTEN_CONFIRMS": _cfg("HTF_RETRY_TIGHTEN_CONFIRMS", getattr(self.config, "HTF_RETRY_TIGHTEN_CONFIRMS", None), account_key, symbol, _side),
                     "HTF_RETRY_TIGHTEN_SIZE": _cfg("HTF_RETRY_TIGHTEN_SIZE", getattr(self.config, "HTF_RETRY_TIGHTEN_SIZE", None), account_key, symbol, _side),
                 }
-                _hsc_ok, _ = _hsc_t.live_gate(lambda k, d: _hsc_keys.get(k) if _hsc_keys.get(k) is not None else d, f"{account_key}:{symbol}:{_side}:score", f"BB_BREAKOUT_ENTRY_{_bb_tf}", _bb_tf, i or {}, is_long, time.time(), "tradier")
+                _hsc_ok, _ = _hsc_t.live_gate(lambda k, d: _hsc_keys.get(k) if _hsc_keys.get(k) is not None else d, f"{account_key}:{symbol}:{_side}:score", f"BB_BREAKOUT_ENTRY_{_bb_tf}", _bb_tf, i or {}, is_long, now_ts, "tradier")
                 if not _hsc_ok:
                     _bb_breakout = False
             except Exception:

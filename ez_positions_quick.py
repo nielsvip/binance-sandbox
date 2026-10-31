@@ -4817,29 +4817,19 @@ class AdvancedSignalRater:
         _mts_dir = _mts["direction"]
         _mts_gp = _mts["gain_potential"]
         _mts_sz = _mts["size_multiplier"]
-        # LONG: WT bullish on scalp + not deeply overbought, OR deep oversold reversal
-        is_long_stoch_ok = (
-            (wt_bullish_scalp and wt_score_scalp > -20 and wt_velocity_scalp > -1.0)
-            or (wt_cross_bull_scalp and wt_score_scalp < -30)
-            or (k_15m <= 32 and k_3m > d_3m)
+        from vec_decisions.asr_stoch_entry_score import stoch_entry_score_scalar as _asr_stoch_entry_score_scalar
+        _asr_stoch_entry_values = {
+            "wt_bullish_scalp": wt_bullish_scalp, "wt_score_scalp": wt_score_scalp,
+            "wt_velocity_scalp": wt_velocity_scalp, "wt_cross_bull_scalp": wt_cross_bull_scalp,
+            "wt_momentum_state_1h": _wt_mom_1h, "k_15m": k_15m, "k_15m_prev": k_15m_prev,
+            "k_3m": k_3m, "d_3m": d_3m,
+        }
+        _asr_stoch_delta, _asr_stoch_reasons, is_long_stoch_ok, is_short_stoch_ok = _asr_stoch_entry_score_scalar(
+            _asr_stoch_entry_values, is_long, is_exit
         )
-        # SHORT: WT bearish on scalp + not deeply oversold, OR exhaustion reversal
-        is_short_stoch_ok = (
-            (not wt_bullish_scalp and wt_score_scalp < -10 and wt_velocity_scalp < 1.0)
-            or (_wt_mom_1h == "EXHAUST_UP" and not wt_bullish_scalp)
-            or (k_15m > 70 and k_15m < k_15m_prev and k_3m < d_3m)
-        )
+        score += _asr_stoch_delta
+        reasons.extend(_asr_stoch_reasons)
         if not is_exit:
-            if is_long and not is_long_stoch_ok:
-                score -= 15
-                reasons.append(
-                    f"WT_PENALTY_LONG(-15,wts={wt_score_scalp:.0f},vel={wt_velocity_scalp:.1f})"
-                )
-            elif not is_long and not is_short_stoch_ok:
-                score -= 15
-                reasons.append(
-                    f"WT_PENALTY_SHORT(-15,wts={wt_score_scalp:.0f},vel={wt_velocity_scalp:.1f})"
-                )
             # MTS GATE — side-aware: strict for LONGS (Sharpe +124%), loose for SHORTS (over-filtering hurts)
             # Real test (47 sym, 4yr): LONG b10,eq5 = Sharpe 1.41 vs 0.63 OLD. SHORT no-MTS = 5.87 vs 4.40 OLD.
             # PER-SWITCH 2026-09-05: also check TRADIER gate (tradier_manage OR logic)
@@ -4849,91 +4839,23 @@ class AdvancedSignalRater:
                 if account_key
                 else getattr(config, "MTS_GATE_ENABLED", False)
             )
-            _mts_gate = _mts_gate_generic or _mts_gate_tradier
-            if _mts_gate:
-                # TRADIER thresholds when tradier gate fires, else generic
-                if _mts_gate_tradier and not _mts_gate_generic:
-                    # Use TRADIER thresholds (stocks: bottom 5, eq 0, no short distinction)
-                    _mts_bmin = float(getattr(config, "MTS_BOTTOM_MIN_TRADIER", 5.0))
-                    _mts_eqmin = float(
-                        getattr(config, "MTS_ENTRY_QUALITY_MIN_TRADIER", 0.0)
-                    )
-                    if _mts_bottom < _mts_bmin or _mts_eq < _mts_eqmin:
-                        return (
-                            0,
-                            "WAIT",
-                            f"MTS_GATE_TRADIER(b={_mts_bottom:.0f}<{_mts_bmin},eq={_mts_eq:.0f}<{_mts_eqmin},{'L' if is_long else 'S'})",
-                        )
-                elif _mts_gate_generic:
-                    if is_long:
-                        _mts_bmin = getattr(config, "MTS_BOTTOM_MIN", 10.0)
-                        _mts_eqmin = getattr(config, "MTS_ENTRY_QUALITY_MIN", 5.0)
-                    else:
-                        _mts_bmin = getattr(config, "MTS_BOTTOM_MIN_SHORT", 5.0)
-                        _mts_eqmin = getattr(config, "MTS_ENTRY_QUALITY_MIN_SHORT", 0.0)
-                    if _mts_bottom < _mts_bmin or _mts_eq < _mts_eqmin:
-                        return (
-                            0,
-                            "WAIT",
-                            f"MTS_GATE(b={_mts_bottom:.0f}<{_mts_bmin},eq={_mts_eq:.0f}<{_mts_eqmin},{'L' if is_long else 'S'})",
-                        )
-                else:
-                    pass  # tradier gate already handled
-            # Unified multi-TF bonus/penalty from analyze_multi_tf_state
-            _mts_b_strong = getattr(config, "MTS_BOTTOM_STRONG_THRESHOLD", 40.0)
-            _mts_b_bonus = getattr(config, "MTS_BOTTOM_BONUS_THRESHOLD", 25.0)
-            _mts_eq_strong = getattr(config, "MTS_ENTRY_QUALITY_STRONG", 40.0)
-            _mts_eq_bonus = getattr(config, "MTS_ENTRY_QUALITY_BONUS", 25.0)
-            if _mts_bottom > _mts_b_strong:
-                score += 8
-                reasons.append(f"MTS_STRONG_BOTTOM({_mts_bottom:.0f},+8)")
-            elif _mts_bottom > _mts_b_bonus:
-                score += 4
-                reasons.append(f"MTS_BOTTOM({_mts_bottom:.0f},+4)")
-            if _mts_eq > _mts_eq_strong:
-                score += 5
-                reasons.append(f"MTS_ENTRY_QUALITY({_mts_eq:.0f},+5)")
-            elif _mts_eq > _mts_eq_bonus:
-                score += 2
-                reasons.append(f"MTS_ENTRY_OK({_mts_eq:.0f},+2)")
-            # MOMENTUM INTERCEPTION ENTRY — bonus for favorable opposing-side exhaustion + structure
-            if getattr(config, "MI_ENTRY_ENABLED", False):
-                _mi_e_bonus = 0
-                _mi_e_struct_b = getattr(config, "MI_ENTRY_STRUCT_BONUS", 10)
-                _mi_e_exh_b = getattr(config, "MI_ENTRY_EXHAUST_BONUS", 8)
-                if is_long:
-                    if _wt_trough_struct_1h == "HL":
-                        _mi_e_bonus += _mi_e_struct_b
-                        reasons.append(f"MI_HL_1h(+{_mi_e_struct_b})")
-                    if _wt_trough_struct_4h == "HL":
-                        _mi_e_bonus += _mi_e_struct_b
-                        reasons.append(f"MI_HL_4h(+{_mi_e_struct_b})")
-                    if _wt_mom_1h == "EXHAUST_DOWN":
-                        _mi_e_bonus += _mi_e_exh_b
-                        reasons.append(f"MI_EXH_DOWN_1h(+{_mi_e_exh_b})")
-                    if _wt_mom_4h == "EXHAUST_DOWN":
-                        _mi_e_bonus += _mi_e_exh_b
-                        reasons.append(f"MI_EXH_DOWN_4h(+{_mi_e_exh_b})")
-                    if _wt_div_1h == "BULL":
-                        _mi_e_bonus += _mi_e_exh_b
-                        reasons.append(f"MI_BULL_DIV_1h(+{_mi_e_exh_b})")
-                else:
-                    if _wt_peak_struct_1h == "LH":
-                        _mi_e_bonus += _mi_e_struct_b
-                        reasons.append(f"MI_LH_1h(+{_mi_e_struct_b})")
-                    if _wt_peak_struct_4h == "LH":
-                        _mi_e_bonus += _mi_e_struct_b
-                        reasons.append(f"MI_LH_4h(+{_mi_e_struct_b})")
-                    if _wt_mom_1h == "EXHAUST_UP":
-                        _mi_e_bonus += _mi_e_exh_b
-                        reasons.append(f"MI_EXH_UP_1h(+{_mi_e_exh_b})")
-                    if _wt_mom_4h == "EXHAUST_UP":
-                        _mi_e_bonus += _mi_e_exh_b
-                        reasons.append(f"MI_EXH_UP_4h(+{_mi_e_exh_b})")
-                    if _wt_div_1h == "BEAR":
-                        _mi_e_bonus += _mi_e_exh_b
-                        reasons.append(f"MI_BEAR_DIV_1h(+{_mi_e_exh_b})")
-                score += _mi_e_bonus
+            from vec_decisions.asr_mts_entry_gate import mts_entry_gate_scalar as _asr_mts_entry_gate_scalar
+            _asr_mts_wait_reason = _asr_mts_entry_gate_scalar(
+                _mts_bottom, _mts_eq, is_long, _mts_gate_tradier, _mts_gate_generic, config
+            )
+            if _asr_mts_wait_reason is not None:
+                return 0, "WAIT", _asr_mts_wait_reason
+            from vec_decisions.asr_mts_mi_score import mts_mi_score_scalar as _asr_mts_mi_score_scalar
+            _asr_mts_mi_values = {
+                "mts_bottom": _mts_bottom, "mts_entry_quality": _mts_eq,
+                "wt_trough_structure_1h": _wt_trough_struct_1h, "wt_trough_structure_4h": _wt_trough_struct_4h,
+                "wt_peak_structure_1h": _wt_peak_struct_1h, "wt_peak_structure_4h": _wt_peak_struct_4h,
+                "wt_momentum_state_1h": _wt_mom_1h, "wt_momentum_state_4h": _wt_mom_4h,
+                "wt_divergence_1h": _wt_div_1h,
+            }
+            _asr_mts_mi_delta, _asr_mts_mi_reasons = _asr_mts_mi_score_scalar(_asr_mts_mi_values, is_long, config)
+            score += _asr_mts_mi_delta
+            reasons.extend(_asr_mts_mi_reasons)
         if not is_exit and sma_200_D > 0:
             _sma200d_dist = (current_price - sma_200_D) / sma_200_D
             if is_long and _sma200d_dist > 0.35:

@@ -11853,7 +11853,7 @@ def _iso_force_masters(cfg):
                 pass
 
 
-def compute_entry_signals(npz, n, is_long, cfg):
+def compute_entry_signals(npz, n, is_long, cfg, symbol=None):
     close = _base_safe(npz, "close", n, cfg)
     k_3m = _base_safe(npz, "stoch_k", n, cfg, 50)
     k_15m = _safe(npz, "stoch_k_15m", n, 50)
@@ -13266,6 +13266,17 @@ def compute_entry_signals(npz, n, is_long, cfg):
         first_valid = np.argmax(close > 0) if np.any(close > 0) else 0
         if first_valid < n:
             _base_entry[first_valid] = True
+    if str(getattr(cfg, "MODE", "crypto")) == "tradier" and symbol:
+        import vec_decisions.tradier_signal_score as _tradier_score
+
+        _, _score_fire, _score_reasons = _tradier_score.entry_score_arrays(
+            npz, n, symbol, is_long, cfg
+        )
+        _score_only = _score_fire & ~_base_entry
+        cfg._tradier_signal_score_mask = _score_only
+        cfg._tradier_signal_score_reasons = _score_reasons
+        if np.any(_score_only):
+            _base_entry = _base_entry | _score_only
     return _base_entry
 
 
@@ -15780,7 +15791,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _iso_force_masters(
         cfg
     )  # [N1/004] isolated-family test mode forces the family master(s) ON (no-op when ENTRY_ISOLATE_FAMILY is empty)
-    entry_sig = _setup_memo("entry_sig", compute_entry_signals, cfg, npz, n, is_long, lambda: compute_entry_signals(npz, n, is_long, cfg))
+    entry_sig = _setup_memo("entry_sig", compute_entry_signals, cfg, npz, n, is_long, sym, lambda: compute_entry_signals(npz, n, is_long, cfg, sym))
     # 2026-10-21 BTC dedicated entry override (crypto; default OFF = baseline untouched).
     # Live: ez_positions_quick.py:29364-29378 (_btc_dedicated_active gate) + :3441 head-gate
     # on ENABLE_BTC_DEDICATED_ENTRY. Vec has no account leg: scope = switch ON + sym in
@@ -15831,6 +15842,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _entry_or_srcs = (
         []
     )  # 2026-10-06 ENTRY_SOURCE_LABEL (USER: ENTRY_SIGNAL fallback banned): (label, mask) for every non-B OR-source ORed into entry_sig. Label-only; trade logic untouched.
+    _tradier_score_mask = getattr(cfg, "_tradier_signal_score_mask", None)
+    if _tradier_score_mask is not None:
+        _tradier_score_mask = np.asarray(_tradier_score_mask, dtype=bool)
+        if _tradier_score_mask.shape == (n,):
+            _entry_or_srcs.append(("TRADIER_SIGNAL_SCORE", _tradier_score_mask))
     try:
         _force_bar0 = (
             int(np.argmax(np.asarray(close) > 0))
@@ -20683,6 +20699,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                     except Exception:
                                         pass
                                 entry_reason = _res
+                                if _res == "TRADIER_SIGNAL_SCORE":
+                                    _score_reasons = getattr(cfg, "_tradier_signal_score_reasons", [])
+                                    if i < len(_score_reasons) and _score_reasons[i]:
+                                        entry_reason = _score_reasons[i]
                                 _res_attributed = True
                             if (
                                 _res_attributed

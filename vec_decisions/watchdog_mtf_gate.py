@@ -15,7 +15,7 @@ def prepare(npz, n, is_long, cfg, close):
         if values.ndim != 1 or len(values) != n:
             raise ValueError(f"MTF arming input {field} is not aligned to the replay bars")
         arrays[field] = values
-    votes = gr_filter_pass_vec(npz, n, is_long, cfg, close) if bool(getattr(cfg, "MTF_ENTRY_REQUIRE_GR_FILTER", True)) else np.ones(n, dtype=bool)
+    votes = gr_filter_pass_vec(npz, n, is_long, cfg, close, min_tfs=int(getattr(cfg, "MTF_GR_MIN_TFS", 3)), min_ind=int(getattr(cfg, "MTF_GR_MIN_IND", 5))) if bool(getattr(cfg, "MTF_ENTRY_REQUIRE_GR_FILTER", True)) else np.ones(n, dtype=bool)
     return {"cfg": cfg, "side": "LONG" if is_long else "SHORT", "state": native._new_state(), "arrays": arrays, "votes": votes}
 
 def step(prepared, index):

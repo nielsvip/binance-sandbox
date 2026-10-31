@@ -70,3 +70,25 @@ def test_vec_driven_native_suppression_is_ownership_not_a_risk_gate(monkeypatch,
         asyncio.run(simulate())
     assert config.VEC_DRIVEN_ENABLED and config.VEC_DICTATE_ONLY_ENABLED
     assert config.MIN_GAIN == 3.0 and config.FIXED_STOP_ENABLED
+
+
+@pytest.mark.parametrize("native_mode", [False, True])
+def test_global_and_per_symbol_exact_owner_are_scoped_without_altering_risk(monkeypatch, native_mode):
+    monkeypatch.setenv("V12_REPLAY_NATIVE_OWNERSHIP", "1" if native_mode else "0")
+    config = SimpleNamespace(PARITY_VEC_EXACT_MODE=True, MIN_GAIN=3.)
+    resolver = lambda symbol, side, key, default=None: {"PARITY_VEC_EXACT_MODE": True, "MIN_GAIN": 3.}.get(key, default)
+    probe = lambda: config.PARITY_VEC_EXACT_MODE or resolver("TEST", "LONG", "PARITY_VEC_EXACT_MODE")
+    owner = SimpleNamespace(_vec_exact_mode_on=probe, _psym_get=resolver)
+    @replay_ownership_scope
+    async def simulate():
+        report = configure_replay_ownership(config, "crypto", ownership_owner=owner)
+        assert owner._vec_exact_mode_on() is not native_mode
+        assert owner._psym_get("TEST", "LONG", "PARITY_VEC_EXACT_MODE") is not native_mode
+        assert owner._psym_get("TEST", "LONG", "MIN_GAIN") == 3.
+        assert config.MIN_GAIN == 3.
+        assert report["effective_ownership_flags"]["PARITY_VEC_EXACT_MODE"] is not native_mode
+        raise RuntimeError("native failure")
+    with pytest.raises(RuntimeError, match="native failure"):
+        asyncio.run(simulate())
+    assert owner._vec_exact_mode_on is probe and owner._psym_get is resolver
+    assert config.PARITY_VEC_EXACT_MODE is True

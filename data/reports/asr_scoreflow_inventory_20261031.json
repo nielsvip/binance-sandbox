@@ -1,10 +1,10 @@
 {
-  "coverage_status": "Partial shared scalar/NumPy components plus policy-selected native/vector input adaptation. Native source fragments have pre-edit AST differential tests; newly covered WT/volume/history/DC structure/directional stages have scalar and array twins. There is still no complete ordered NumPy AdvancedSignalRater composer or v12 action consumer. Cross-sectional sentiment, per-bar causal state, many earlier score/veto branches and early returns remain required.",
+  "coverage_status": "Partial shared scalar/NumPy components plus policy-selected native/vector input adaptation. Covered native fragments have source-exact AST differential tests and scalar/NumPy checks. There is still no complete ordered NumPy AdvancedSignalRater composer or v12 action consumer. Cross-sectional sentiment, per-bar causal state, many earlier score/veto branches and early returns remain required.",
   "current_asr_mutation_semantics": "AST count of score assignment and augmented-assignment nodes still inside current rate() after extracted shared native hooks. This is not the count of uncovered semantic components; helper calls can cover multiple former score mutations.",
-  "current_asr_score_mutation_nodes_including_initialization": 179,
-  "current_native_mutation_count_method": "AST count of Assign/ AugAssign nodes targeting name score within AdvancedSignalRater.rate; includes score initialization.",
+  "current_asr_score_mutation_nodes_including_initialization": 176,
+  "current_native_mutation_count_method": "AST count of Assign/AugAssign nodes targeting name score inside current AdvancedSignalRater.rate; includes initialization and is not the number of uncovered semantic blocks.",
   "current_native_score_mutations_including_initialization": 254,
-  "current_native_sha256": "2082837a6bb42bb5cebdcd42af4838ce899b56ea9137d62214592df1050f7e56",
+  "current_native_sha256": "0532f3a297f0f565538c33408e8710055ad1b9fbd3737101f20e24dda14fcfcd",
   "existing_vector_related_modules": [
     "vec_decisions/quick_missing_entry_score.py (partial, no v12 caller found)",
     "vec_paths/live_entry_engine.py (separate LIVE_ENTRY_ENGINE score, not AdvancedSignalRater aggregate)",
@@ -16,14 +16,20 @@
     "vec_decisions/asr_directional_score.py (new ordered scalar/NumPy stochastic, DC basis, SMA, HA and WT votes)",
     "vec_decisions/asr_wt_intelligence_score.py (new ordered scalar/NumPy WT divergence, momentum, structure, percentile and trigger votes)",
     "vec_decisions/asr_volume_setup_score.py (new scalar/NumPy volume/conviction/resistance scores and valid_setup masks)",
-    "vec_decisions/asr_history_score.py (new scalar/NumPy modifier consuming explicit causal tracker-history inputs)"
+    "vec_decisions/asr_history_score.py (new scalar/NumPy modifier consuming explicit causal tracker-history inputs)",
+    "vec_decisions/asr_dc_structure_score.py (ordered scalar/NumPy Donchian structure votes)",
+    "vec_decisions/asr_directional_score.py (ordered scalar/NumPy stochastic, DC basis, SMA, HA and WT votes)",
+    "vec_decisions/asr_wt_intelligence_score.py (ordered scalar/NumPy WT divergence, momentum, structure, percentile and trigger votes)",
+    "vec_decisions/asr_volume_setup_score.py (scalar/NumPy volume, conviction, resistance and setup-validity scores)",
+    "vec_decisions/asr_history_score.py (explicit causal tracker-history scalar/NumPy modifier)",
+    "vec_decisions/asr_portfolio_ratio_score.py (explicit per-account portfolio ratio scalar/NumPy modifier)"
   ],
   "function": {
     "all_score_mutations_including_initialization": 254,
-    "current_score_assignment_nodes_including_initialization": 179,
+    "current_score_assignment_nodes_including_initialization": 176,
     "direct_score_mutations_after_entry_scoring_begins": 253,
-    "end_line": 7805,
-    "ifs": 534,
+    "end_line": 7800,
+    "ifs": 530,
     "name": "AdvancedSignalRater.rate",
     "returns": 104,
     "start_line": 3616
@@ -38,71 +44,90 @@
     ]
   },
   "latest_focused_validation": {
-    "status": "Differential checks passed across separate runs: DC/directional/WaveTrend/volume/setup/history native-source comparisons and scalar/NumPy checks. The previous broader 44-test suite predates the latest WT, volume/setup, and history hooks; rerun combined suite before reporting a single aggregate count.",
+    "status": "56 passed in 134.00s; source-exact pre-edit AST and scalar/NumPy comparisons included for new extracted components.",
     "tests": [
+      "tests/test_asr_post_rank_score.py",
+      "tests/test_asr_rank_sentiment_score.py",
+      "tests/test_asr_input_adapter.py",
+      "tests/test_asr_policy_native_and_array_binding.py",
+      "tests/test_asr_channel_confluence_score.py",
+      "tests/test_asr_channel_confluence_native_call.py",
+      "tests/test_asr_late_score.py",
+      "tests/test_asr_dc_position_score.py",
+      "tests/test_asr_dc_position_native_call.py",
+      "tests/test_asr_gain_quality_score.py",
+      "tests/test_asr_research_score.py",
+      "tests/test_asr_score_core.py",
+      "tests/test_asr_score_native_wiring.py",
       "tests/test_asr_dc_structure_score.py",
       "tests/test_asr_directional_score.py",
       "tests/test_asr_wt_intelligence_score.py",
       "tests/test_asr_volume_setup_score.py",
-      "tests/test_asr_history_score.py"
+      "tests/test_asr_history_score.py",
+      "tests/test_asr_portfolio_ratio_score.py"
     ]
   },
-  "latest_native_sha256": "2082837a6bb42bb5cebdcd42af4838ce899b56ea9137d62214592df1050f7e56",
+  "latest_native_sha256": "0532f3a297f0f565538c33408e8710055ad1b9fbd3737101f20e24dda14fcfcd",
   "latest_ordered_native_hooks": [
+    {
+      "component": "Account portfolio-ratio adjustment",
+      "function": "_asr_portfolio_ratio_scalar",
+      "line": 4798
+    },
     {
       "component": "Donchian structure votes",
       "function": "_dc_structure_votes_scalar",
-      "line": 7504
+      "line": 7499
     },
     {
       "component": "Directional stochastic/DC/SMA/HA/WT votes",
       "function": "_asr_directional_score_scalar",
-      "line": 7614
+      "line": 7609
     },
     {
       "component": "WT intelligence and trigger score",
       "function": "_wt_intelligence_score_scalar",
-      "line": 7627
+      "line": 7622
     },
     {
       "component": "Volume, conviction, resistance and setup-validity score",
       "function": "_asr_volume_setup_scalar",
-      "line": 7637
+      "line": 7632
     },
     {
       "component": "Causal tracker-history modifier",
       "function": "_asr_history_score_scalar",
-      "line": 7644
+      "line": 7639
     },
     {
       "component": "Channel confluence",
       "function": "apply_channel_confluence_scalar",
-      "line": 7664
+      "line": 7659
     },
     {
       "component": "Rank and sentiment",
       "function": "apply_rank_sentiment_scalar",
-      "line": 7666
+      "line": 7661
     },
     {
-      "component": "Post-rank ordered multipliers/clamp",
+      "component": "Post-rank multipliers/clamp",
       "function": "apply_asr_post_rank_scalar",
-      "line": 7680
+      "line": 7675
     },
     {
       "component": "DC-width sufficiency multiplier",
       "function": "apply_asr_dc_sufficiency_scalar",
-      "line": 7688
+      "line": 7683
     },
     {
       "component": "Late score segment",
       "function": "apply_asr_late_score_scalar",
-      "line": 7725
+      "line": 7720
     },
     {
       "component": "Final recommendation tail",
       "function": "_finish_asr_score",
-      "line": 7803
+      "line": 7798
     }
   ],
   "literal_config_getattr_names": [
@@ -8619,7 +8644,7 @@
       "op": "="
     }
   ],
-  "score_updates_capture_status": "The detailed score_updates list and score_updates_source_sha256 remain an immutable pre-extraction source census. Do not interpret its line numbers as current source locations. Current native source SHA is latest_native_sha256.",
+  "score_updates_capture_status": "Detailed score_updates rows remain the immutable pre-extraction census identified by score_updates_source_sha256; their line numbers are not current source references.",
   "score_updates_source_sha256": "7634c897c67a28dbbfcbf99f39cabc1e564084bf82d07f632b6042267399d1a8",
   "shared_score_components": [
     {
@@ -8728,24 +8753,24 @@
   "source_sha256": "7634c897c67a28dbbfcbf99f39cabc1e564084bf82d07f632b6042267399d1a8",
   "unresolved_ordered_sections": [
     {
-      "range": "4754-6500 (current approximate source span)",
-      "status": "Inline score changes and early WAIT returns remain in order: ratio and account portfolio state, per-symbol configuration, MTS/WT gates and bonuses, regime/volatility/sentiment, and other score contributors. Must be reproduced before the native-shared score tail can be composed."
+      "range": "4754-6500 approximate current source span",
+      "status": "Inline score branches and early WAIT returns remain: account ratio and other portfolio/tracker state (ratio helper now extracted), per-symbol configuration, MTS/WT gates and bonuses, regime/volatility/sentiment, and multiple ordered contributors. Must be reproduced before a complete scorer can be composed."
     },
     {
       "range": "causal state inputs",
-      "status": "Tracker history modifier now has explicit scalar/NumPy adapters; vector producer must reconstruct accepted-event win rate/trade count/realized PnL. Remaining score/gate inputs include account long-short ratio, last reduction/augmentation/exit state, delta tracker state and position lifecycle."
+      "status": "Tracker-history and account-ratio score adapters now exist. The vector producer must reconstruct tracker history from accepted events and provide account ratio, last reduction/augmentation/exit state, delta tracker state and lifecycle on each bar."
     },
     {
       "range": "crosssectional sentiment",
-      "status": "Live score requires exact per-symbol raw sentiment, global scaling/shard context, local/global values, top/bottom flags and ranking points. Backtest WT15m approximation is not parity."
+      "status": "Live score needs the exact raw per-symbol sentiment, global scaling/shard context, local/global values, top/bottom flags and ranking points. Backtest WT15m approximation is not parity."
     },
     {
       "range": "remaining rate control flow",
-      "status": "rate() includes data freshness/eligibility/HTF/regime BOYCOTT and WAIT returns, separate exit/reentry/position routes, and additional ordered bonuses. Current partial components do not form a complete route."
+      "status": "Data freshness/eligibility/HTF/regime BOYCOTT and WAIT returns, separate exit/reentry routes, and additional ordered bonuses remain outside a full vectorized ordered scorer."
     },
     {
       "range": "v12 consumer",
-      "status": "No complete ordered NumPy composer is imported or called by v12_quick_engine; no ASR aggregate action-bar parity claim is valid."
+      "status": "No complete ordered NumPy composer is imported or called by v12_quick_engine; action-bar parity for the ASR aggregate is not established."
     }
   ]
 }

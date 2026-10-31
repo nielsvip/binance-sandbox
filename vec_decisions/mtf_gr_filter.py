@@ -60,11 +60,11 @@ def tf_score(npz, n, tf, is_long, invert, close):
     return s
 
 
-def gr_filter_pass_vec(npz, n, is_long, cfg, close):
+def gr_filter_pass_vec(npz, n, is_long, cfg, close, min_tfs=None, min_ind=None):
     if not bool(getattr(cfg, "MTF_GR_FILTER_ENABLED", True)):
         return np.ones(n, dtype=bool)
-    min_tfs = int(getattr(cfg, "MTF_GR_MIN_TFS", getattr(cfg, "GOLDEN_RULE_HTF_MIN_TFS", 3)))
-    min_ind = int(getattr(cfg, "MTF_GR_MIN_IND", getattr(cfg, "GOLDEN_RULE_MIN_IND", 5)))
+    min_tfs = int(getattr(cfg, "MTF_GR_MIN_TFS", getattr(cfg, "GOLDEN_RULE_HTF_MIN_TFS", 3))) if min_tfs is None else int(min_tfs)
+    min_ind = int(getattr(cfg, "MTF_GR_MIN_IND", getattr(cfg, "GOLDEN_RULE_MIN_IND", 5))) if min_ind is None else int(min_ind)
     invert = bool(getattr(cfg, "MTF_GR_INVERT_DC_BB", False))
     stock = str(getattr(cfg, "MODE", "crypto")) == "tradier"
     use_ltf = bool(getattr(cfg, "LTF_SUB15M_TRADING_ENABLED" if stock else "USE_1M_3M_SIGNALS_ENABLED", False))
