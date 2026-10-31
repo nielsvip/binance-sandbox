@@ -467,22 +467,39 @@ def wt_exhaust_require_gain_mask(npz: Mapping[str, Any], n: int, is_long: bool, 
 def wt_exit_min_tfs_mask(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any) -> np.ndarray | None:
     raw_tfs = getattr(cfg, "WT_EXIT_TFS_TRADIER", "5m+15m+1h+4h+D")
     tfs = [t.strip() for t in str(raw_tfs).replace("+", ",").split(",") if t.strip()]
-    need = _i(cfg, "WT_EXIT_MIN_TFS_TRADIER", 4) or 4
+    try:
+        need = int(float(getattr(cfg, "WT_EXIT_MIN_TFS_TRADIER", 4)) or 4)
+    except (TypeError, ValueError):
+        return None
     against = np.zeros(n, dtype=int)
-    pairs = 0
+    if not tfs or need <= 0:
+        return None
     for _tf in tfs:
-        w1 = _col(npz, f"wt1_{_tf}", n)
-        w2 = _col(npz, f"wt2_{_tf}", n)
-        if w1 is None or w2 is None:
-            continue
-        pairs += 1
+        values = []
+        for key in (f"wt1_{_tf}", f"wt2_{_tf}"):
+            if not _have(npz, key):
+                values.append(np.zeros(n, dtype=float))
+                continue
+            raw = np.asarray(npz[key], dtype=object).reshape(-1)
+            if raw.size < n:
+                padded = np.zeros(n, dtype=float)
+                for index, item in enumerate(raw):
+                    padded[index] = float(item or 0.0)
+                values.append(padded)
+                continue
+            values.append(
+                np.fromiter(
+                    (float(item or 0.0) for item in raw[:n]),
+                    dtype=float,
+                    count=n,
+                )
+            )
+        w1, w2 = values
         ok = np.isfinite(w1) & np.isfinite(w2)
         if is_long:
             against += (ok & (w1 < w2)).astype(int)
         else:
             against += (ok & (w1 > w2)).astype(int)
-    if pairs == 0 or need <= 0 or not tfs:
-        return None
     return against >= need
 
 

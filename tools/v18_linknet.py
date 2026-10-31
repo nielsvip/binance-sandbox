@@ -128,6 +128,14 @@ def _tier(t):
 
 # ------------------------------------------------------------------------------------------------ dataset
 
+def gain_cells(event, counters=None):
+    """Original cells plus explicit eligible historical noops, with the graph reader's provenance and deduplication rules."""
+    cells = list(event.get("y") or [])
+    if event.get("nz"):
+        cells.extend(VB.source_noop_gain_cells(event, counters if counters is not None else collections.Counter()))
+    return cells
+
+
 class _Cols:
     """Compact column store (array.array) of one cat_side's examples."""
 
@@ -366,7 +374,7 @@ class CatDS:
                 self.c["R_pos"] += y
                 self.c[f"R_inf_{src}"] += 1
         ci = None
-        for c in ev.get("y") or []:
+        for c in gain_cells(ev, self.c):
             hdr, md, valid = str(c[0]).strip(), c[1], c[2]
             fk = hdr.partition("=")[0]
             if fk in EXCLUDE_KEYS:
@@ -510,7 +518,7 @@ def cmd_dataset(a):
             last = ts
             if n % 2000000 == 0:
                 print(f"[dataset] {n:,} lines {time.time() - t0:.0f}s", flush=True)
-    out = {"files": files, "lines": n, "first_ts": first, "last_ts": last, "sort_secs": round(t_sort, 1), "counters": dict(cnt), "per_cat_side": {}}
+    out = {"files": files, "lines": n, "first_ts": first, "last_ts": last, "sort_secs": round(t_sort, 1), "counters": dict(cnt), "per_cat_side": {}, "source_noop_gain_policy": VB.SOURCE_NOOP_GAIN_POLICY, "source_noop_current_engine_cell_authority": False}
     for cs, ds in dss.items():
         ds.finish()
         p = ds.save(a.out_dir)
@@ -2552,7 +2560,7 @@ def cmd_calibrate(a):
             if nk is not None and nk[-1] and VB.gain_eligible(nk[1], nk[0]):
                 PR.append(float(z["row_p_pos"][ri, 0]))
                 YR.append(1 if (nk[1] and nk[0] is not None and nk[0] > EPS) else 0)
-            for c in ev.get("y") or []:
+            for c in gain_cells(ev):
                 if not VB.gain_eligible(c[2], c[1]):
                     continue
                 yi = y_ix.get(str(c[0]).strip())

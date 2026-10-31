@@ -197,3 +197,36 @@ def test_raw_npz_delta_binding_matches_actual_indicator_store_rows(tmp_path):
     )
     for key in direct_result["signals"]:
         np.testing.assert_array_equal(direct_result["signals"][key], native_rows_result["signals"][key], err_msg=key)
+
+
+def test_incremental_npz_stream_matches_replay_provider():
+    from vec_decisions.asr_delta_provider import DeltaTrackerNpZStream
+
+    ts, data = _fixture()
+    cfg = {"tf_weights": {"15m": 1.0}, "entry_min_tf": 1,
+           "rz_entry_enabled": False, "rz_exit_enabled": False}
+    stream = DeltaTrackerNpZStream("TEST", cfg, True, data, True)
+    observed = [stream.update_index(index, None) for index in range(len(ts))]
+    replay = replay_delta_tracker_arrays(
+        data, symbol="TEST", cfg=cfg, use_ltf=True, timestamps=ts,
+        is_long=True, position_states=[None] * len(ts),
+    )
+    for index, result in enumerate(observed):
+        signal = result["signal"]
+        for field, values in replay["signals"].items():
+            assert values[index] == getattr(signal, field), (index, field)
+    assert stream.update_count == len(ts)
+    with np.testing.assert_raises_regex(IndexError, "outside"):
+        stream.update_index(len(ts), None)
+
+
+def test_incremental_npz_stream_requires_explicit_price_for_active_redzone():
+    from vec_decisions.asr_delta_provider import DeltaTrackerNpZStream
+
+    ts, data = _fixture()
+    cfg = {"tf_weights": {"15m": 1.0}, "rz_entry_enabled": True, "rz_exit_enabled": False}
+    stream = DeltaTrackerNpZStream("TEST", cfg, True, data, True)
+    with np.testing.assert_raises_regex(ValueError, "requires current_price"):
+        stream.update_index(0, None)
+    result = stream.update_index(0, None, current_price=100.0)
+    assert result["delta_signal_present"] is True

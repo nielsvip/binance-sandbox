@@ -75,6 +75,46 @@ class DeltaTrackerStream:
             "timestamp": timestamp, "update_count": self.update_count,
         }
 
+
+class DeltaTrackerNpZStream(DeltaTrackerStream):
+    """Incremental native tracker fed by exact IndicatorStore-shaped NPZ rows."""
+
+    def __init__(self, symbol, cfg, is_long, npz, use_ltf):
+        super().__init__(symbol, cfg, is_long)
+        self.arrays = delta_indicator_arrays(npz, use_ltf)
+        if "timestamps" not in self.arrays:
+            raise ValueError("DeltaTrackerNpZStream requires timestamps")
+        self.timestamps = np.asarray(self.arrays["timestamps"], dtype=np.int64).reshape(-1)
+        self.n = self.timestamps.size
+        self.requires_price = bool(cfg.get("rz_entry_enabled", True) or cfg.get("rz_exit_enabled", True))
+        self.has_price = "current_price" in self.arrays
+        if self.n == 0 or np.any(np.diff(self.timestamps) < 0):
+            raise ValueError("DeltaTrackerNpZStream requires non-empty ordered timestamps")
+        for key, value in self.arrays.items():
+            array = np.asarray(value)
+            if array.ndim > 0 and array.shape[0] not in (self.n,):
+                raise ValueError(f"{key} length {array.shape[0]} does not match timestamps {self.n}")
+
+    def update_index(self, index, position_state, current_price=None):
+        index = int(index)
+        if index < 0 or index >= self.n:
+            raise IndexError(f"DeltaTrackerNpZStream index {index} outside [0,{self.n})")
+        row = {}
+        for key, value in self.arrays.items():
+            array = np.asarray(value)
+            if array.ndim == 0:
+                row[key] = array.item()
+            elif array.shape[0] == self.n:
+                item = array[index]
+                row[key] = item.item() if hasattr(item, "item") else item
+        if current_price is not None:
+            row["current_price"] = float(current_price)
+        elif self.requires_price and not self.has_price:
+            raise ValueError("active DeltaTracker red-zone path requires current_price at each update")
+        row["_tick_ts"] = float(self.timestamps[index])
+        row["ts"] = float(self.timestamps[index])
+        return self.update(row, position_state)
+
 def native_delta_tracker_config(config):
     """Build the exact DeltaTracker kwargs from FastDataManager.__init__."""
     return {

@@ -422,9 +422,7 @@ def test_native_wt_min_tfs_ast_order_is_master_then_stdev_within_scorer_hold():
     tree = ast.parse(Path("tradier_manage.py").read_text())
     evaluator = next(
         node
-        for cls in ast.walk(tree)
-        if isinstance(cls, ast.ClassDef) and cls.name == "TradierStopEvaluator"
-        for node in cls.body
+        for node in ast.walk(tree)
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
         and node.name == "evaluate_stop"
     )
@@ -453,3 +451,28 @@ def test_native_wt_min_tfs_ast_order_is_master_then_stdev_within_scorer_hold():
         if "STDEV_BB_RZ_EXIT_ENABLED" in ast.dump(node.test)
     )
     assert master_index < stdev_index
+
+
+def test_stock_wt_min_tfs_missing_scalars_follow_native_zero_fallback():
+    from types import SimpleNamespace
+    from vec_decisions.lane_vec_entryq2 import wt_exit_min_tfs_mask
+
+    npz = {
+        "wt1_5m": np.asarray([-1.0, -1.0]),
+        "wt2_15m": np.asarray([1.0, 1.0]),
+    }
+    cfg = SimpleNamespace(
+        WT_EXIT_TFS_TRADIER="5m+15m",
+        WT_EXIT_MIN_TFS_TRADIER=2,
+    )
+    np.testing.assert_array_equal(
+        wt_exit_min_tfs_mask(npz, 2, True, cfg),
+        np.asarray([True, True]),
+    )
+    cfg.WT_EXIT_MIN_TFS_TRADIER = 0
+    np.testing.assert_array_equal(
+        wt_exit_min_tfs_mask(npz, 2, True, cfg),
+        np.asarray([False, False]),
+    )
+    cfg.WT_EXIT_TFS_TRADIER = ""
+    assert wt_exit_min_tfs_mask(npz, 2, True, cfg) is None
