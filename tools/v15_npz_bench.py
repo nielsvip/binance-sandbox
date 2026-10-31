@@ -292,9 +292,7 @@ def build_root(snap, run_dir, code, model_bundle=None):
         os.rename(str(snap / "data"), str(root / "data"))
     else:
         subprocess.run(["cp", "-a", str(snap / "data"), str(root / "data")], check=True)
-    if model_bundle:
-        receipt = apply_model_bundle(root, model_bundle)
-        (run_dir / "model_bundle_receipt.json").write_text(json.dumps(receipt, sort_keys=True, indent=2) + "\n")
+    receipt = apply_model_bundle(root, model_bundle) if model_bundle else None
     ind = root / "backtest_v8" / "indicators"
     ind.mkdir(parents=True)
     now = time.time()
@@ -306,6 +304,13 @@ def build_root(snap, run_dir, code, model_bundle=None):
     for f in (snap / "templates").glob("*.xlsx"):
         shutil.copy2(f, tdir / f.name)
         shutil.copy2(f, root / "SPREADSHEETS" / f.name)  # pending-rows reader looks in SPREADSHEETS/ directly
+    if receipt is not None:
+        receipt["snapshot_inputs"] = {
+            "npz_sha256_by_symbol": {p.stem: sha256_file(ind / p.name) for p in (snap / "npz").glob("*.npz")},
+            "template_sha256_by_name": {p.name: sha256_file(tdir / p.name) for p in (snap / "templates").glob("*.xlsx")},
+            "start_sha256_by_side": {p.stem.removesuffix("_autopsy_base"): sha256_file(p) for p in (snap / "starts").glob("*_autopsy_base.json")},
+        }
+        (run_dir / "model_bundle_receipt.json").write_text(json.dumps(receipt, sort_keys=True, indent=2) + "\n")
     return root
 
 
@@ -600,6 +605,8 @@ def _cmd_run_body(args, snap, man, run_dir):
     root = build_root(snap, run_dir, code, args.model_bundle)
     pmd5 = md5(root / "v15_pilot.py")
     env_base = {k: v for k, v in os.environ.items() if not k.startswith(ENV_KEEP_PREFIX)}
+    if args.clear_nn_env:
+        env_base = {k: v for k, v in env_base.items() if not k.startswith(("V18_", "V20_"))}
     # 2026-10-16 USER "test every version side by side against the previous version so corner cutting is exposed": the
     # gate passes the champion's recorded LAUNCH env (what production really runs) instead of the env frozen into the
     # snapshot on 10-14 — scheduler/autotune env changes otherwise never reached a bench.
@@ -607,6 +614,8 @@ def _cmd_run_body(args, snap, man, run_dir):
     for kv in args.set or []:
         k, _, v = kv.partition("=")
         env_base[k] = v
+    nn_env = {k: v for k, v in env_base.items() if k.startswith(("V18_", "V20_"))}
+    nn_env_sha256 = hashlib.sha256(json.dumps(nn_env, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
     # 2026-10-15: V15_HOLDOUT_DAYS truncates the NPZ in memory at (last bar - H d), so a 30 d fit window on a ~31 d
     # snapshot leaves ~24 d of bars and evaluate_v12._validate refuses every row ("npz covers 24d of the 30d window
     # (79%) - regenerate") -> 0 promoted rows -> IMPOSSIBLE -> final_gain None on BOTH sides, so the gate could never
@@ -633,6 +642,8 @@ def _cmd_run_body(args, snap, man, run_dir):
     queue, results = list(sides), {}
     running = args._running
     t_all = time.time()
+    board_started = None
+    retry_count = 0
     while queue or running:
         while queue and len(running) < args.parallel and mem_avail_mb() >= args.min_free_mb:
             ss = queue.pop(0)
@@ -650,6 +661,8 @@ def _cmd_run_body(args, snap, man, run_dir):
             cmd = [str(root / ".venv" / "bin" / "python"), "-u", "v15_pilot.py", "--sym-side", ss, "--template", str(root / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / template_for(ss)), "--seq-mode", "worst2best", "--window-days", str(fit_days), "--vector-only", "--workers", str(args.workers)]
             log = open(sd / "pilot.log", "w")
             pr = subprocess.Popen(["nice", "-n", str(args.nice)] + cmd, cwd=str(root), env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+            if board_started is None:
+                board_started = time.time()
             running[ss] = (pr, time.time(), log)
             print(f"[bench] start {ss} pid {pr.pid}", flush=True)
         time.sleep(5)
@@ -665,6 +678,7 @@ def _cmd_run_body(args, snap, man, run_dir):
             if not _cleared:
                 print(f"[bench] ERROR lock of {ss_v} still held after {_lock_s}s - requeue would exit on DEDUP", flush=True)
             queue.insert(0, ss_v)
+            retry_count += 1
             print(f"[bench] MEM {_mem_v:.0f} MB < {args.sacrifice_mb} -> sacrificed own {ss_v}, requeued", flush=True)
             print(f"[bench] requeue {ss_v} after {_tree_s + _lock_s:.1f}s ({'SIGKILL' if _hard else 'SIGTERM'} tree gone in {_tree_s}s), lock {'cleared' if _cleared else 'NOT cleared'}", flush=True)
             time.sleep(120)
@@ -685,8 +699,8 @@ def _cmd_run_body(args, snap, man, run_dir):
             results[ss] = m
             del running[ss]
             print(f"[bench] done {ss} rc={rc} wall={m['wall_s']} gain={m.get('final_gain')}", flush=True)
-            _write_json_atomic(run_dir / "results.json", {"snap": args.snap, "label": args.label, "code": str(code), "pilot_md5": pmd5, "set": args.set or [], "window_days_fit": fit_days, "holdout_days": _ho, "results": results})
-    summary = {"snap": args.snap, "label": args.label, "code": str(code), "pilot_md5": pmd5, "set": args.set or [], "window_days_fit": fit_days, "holdout_days": _ho, "wall_total_s": round(time.time() - t_all, 1), "results": results}
+            _write_json_atomic(run_dir / "results.json", {"snap": args.snap, "label": args.label, "code": str(code), "pilot_md5": pmd5, "set": args.set or [], "window_days_fit": fit_days, "holdout_days": _ho, "nn_env_sha256": nn_env_sha256, "board_wall_s": round(time.time() - board_started, 1) if board_started else None, "retry_count": retry_count, "results": results})
+    summary = {"snap": args.snap, "label": args.label, "code": str(code), "pilot_md5": pmd5, "set": args.set or [], "window_days_fit": fit_days, "holdout_days": _ho, "nn_env_sha256": nn_env_sha256, "board_wall_s": round(time.time() - board_started, 1) if board_started else None, "retry_count": retry_count, "wall_total_s": round(time.time() - t_all, 1), "results": results}
     _write_json_atomic(run_dir / "results.json", summary)
     print(json.dumps({k: v for k, v in summary.items() if k != "results"}))
     return 0
@@ -780,6 +794,7 @@ def main(argv=None):
     r.add_argument("--label", required=True)
     r.add_argument("--code", help="code tree to bench (default ~/binance-sandbox)")
     r.add_argument("--model-bundle", help="validated 32-artifact model bundle overlaid after the frozen snapshot data")
+    r.add_argument("--clear-nn-env", action="store_true", help="remove inherited V18_/V20_ variables before applying explicit arm --set flags")
     r.add_argument("--set", action="append", help="extra env K=V for this version (e.g. V15_BRAIN=1)")
     r.add_argument("--env-file", help="JSON launch env replacing the snapshot's frozen env (the gate passes the champion/candidate env)")
     r.add_argument("--only")

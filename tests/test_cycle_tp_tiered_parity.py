@@ -61,6 +61,8 @@ def test_v12_emits_tiered_reduce_once_with_live_reason_and_quantity():
     cfg.PROFIT_TARGET_ENABLED = False
     cfg.STOP_LOSS_ENABLED = False
     cfg.ALL_TF_AGAINST_FORCE_CLOSE_ENABLED = False
+    npz["dc_low4_15m"] = np.array([min(close[max(0, index - 3):index + 1]) for index in range(n)])
+    npz["dc_high4_15m"] = np.array([max(close[max(0, index - 3):index + 1]) for index in range(n)])
     result = vq.simulate_one(npz, "CYCLE_LONG", True, cfg, force_initial_seed=True)
     rows = [e for e in result["ledger"] if str(e.get("reason") or "").startswith("CYCLE_TP_TIERED_")]
     assert rows

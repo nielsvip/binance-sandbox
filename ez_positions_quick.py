@@ -7612,148 +7612,21 @@ class AdvancedSignalRater:
                 "ha_15m": ha_15m, "ha_1h": ha_1h, "wt_score_15m": wt_score_15m, "wt_score_1h": wt_score_1h,
             }
             score += _asr_directional_score_scalar(_asr_directional_values, is_long)
-            # === WAVETREND INTELLIGENCE SCORING ===
-            # WT Divergence — strongest signal (bullish div at oversold = high conviction entry)
-            if _wt_div_1h == "BULL" and is_long:
-                score += 4.0
-                reasons.append("WT_BULL_DIV_1h")
-            elif _wt_div_1h == "BEAR" and not is_long:
-                score += 4.0
-                reasons.append("WT_BEAR_DIV_1h")
-            elif _wt_div_1h == "HIDDEN_BULL" and is_long:
-                score += 2.0
-                reasons.append("WT_HIDDEN_BULL_1h")
-            elif _wt_div_1h == "HIDDEN_BEAR" and not is_long:
-                score += 2.0
-                reasons.append("WT_HIDDEN_BEAR_1h")
-            if _wt_div_4h == "BULL" and is_long:
-                score += 5.0
-                reasons.append("WT_BULL_DIV_4h")
-            elif _wt_div_4h == "BEAR" and not is_long:
-                score += 5.0
-                reasons.append("WT_BEAR_DIV_4h")
-            # WT Momentum State — early warning system
-            if is_long and _wt_mom_1h == "EXHAUST_DOWN":
-                score += 3.0
-                reasons.append("WT_EXHAUST_DOWN_1h(buy_signal)")
-            elif not is_long and _wt_mom_1h == "EXHAUST_UP":
-                score += 3.0
-                reasons.append("WT_EXHAUST_UP_1h(sell_signal)")
-            if is_long and _wt_mom_1h == "IMPULSE_UP":
-                score += 1.5
-                reasons.append("WT_IMPULSE_UP_1h")
-            elif not is_long and _wt_mom_1h == "IMPULSE_DOWN":
-                score += 1.5
-                reasons.append("WT_IMPULSE_DOWN_1h")
-            # Penalize entering against WT momentum — auto-tuner: 46.7% WR on IMPULSE_DOWN longs, increased from -3.0 to -4.0
-            if is_long and _wt_mom_1h == "IMPULSE_DOWN":
-                score -= 4.0
-                reasons.append("WT_AGAINST_IMPULSE_DN(-4)")
-            elif not is_long and _wt_mom_1h == "IMPULSE_UP":
-                score -= 4.0
-                reasons.append("WT_AGAINST_IMPULSE_UP(-4)")
-            # WT Structure — higher lows on WT = strengthening trend
-            if is_long and _wt_trough_struct_1h == "HL":
-                score += 2.0
-                reasons.append("WT_HL_1h(strengthening)")
-            elif not is_long and _wt_peak_struct_1h == "LH":
-                score += 2.0
-                reasons.append("WT_LH_1h(weakening)")
-            # WT Peak exhaustion — WT making lower highs while we want to go long = bad
-            if is_long and _wt_peak_struct_1h == "LH" and _wt_peak_struct_4h == "LH":
-                score -= 3.0
-                reasons.append("WT_PEAK_EXHAUST_1h+4h")
-            elif (
-                not is_long
-                and _wt_trough_struct_1h == "HL"
-                and _wt_trough_struct_4h == "HL"
-            ):
-                score -= 3.0
-                reasons.append("WT_TROUGH_EXHAUST_1h+4h")
-            # WT Cross quality — rising cross levels = strong trend
-            if _wt_cross_1h == "BULL" and is_long:
-                score += 3.0
-                reasons.append("WT_BULL_CROSS_1h")
-                if _wt_cross_rising_1h:
-                    score += 2.0
-                    reasons.append("WT_CROSS_RISING(stronger)")
-            elif _wt_cross_1h == "BEAR" and not is_long:
-                score += 3.0
-                reasons.append("WT_BEAR_CROSS_1h")
-                if _wt_cross_rising_1h is False:
-                    score += 2.0
-                    reasons.append("WT_CROSS_FALLING(stronger)")
-            # WT Percentile — per-symbol adaptive zones (better than fixed levels)
-            if is_long and _wt_pctile_1h < 10:
-                score += 3.0
-                reasons.append(f"WT_DEEP_OS({_wt_pctile_1h:.0f}pct)")
-            elif not is_long and _wt_pctile_1h > 90:
-                score += 3.0
-                reasons.append(f"WT_DEEP_OB({_wt_pctile_1h:.0f}pct)")
-            # WT Extreme — block entries AT the extreme in your direction (about to reverse)
-            if _wt_extreme_1h:
-                if is_long and _wt_pctile_1h > 90:
-                    score -= 4.0
-                    reasons.append("WT_EXTREME_OB_BLOCK")
-                elif not is_long and _wt_pctile_1h < 10:
-                    score -= 4.0
-                    reasons.append("WT_EXTREME_OS_BLOCK")
-            # === END WAVETREND INTELLIGENCE ===
-            # === WT ALL-TF TRIGGER SYSTEM (WT replaces K/D as primary signal) ===
-            # LTF triggers (D/4h/1h): WT structure + divergence + percentile = setup detection
-            # Confirmation (15m/3m): WT cross + momentum state + 3m structure break = entry timing
-            _wt_pctile_4h = safe_fetch_float(ind.get("wt_percentile_4h"), 50)
-            _wt_div_4h = ind.get("wt_divergence_4h", None)
-            _wt_struct_4h = (
-                ind.get("wt_trough_structure_4h", "")
-                if is_long
-                else ind.get("wt_peak_structure_4h", "")
-            )
-            _wt_struct_D = (
-                ind.get("wt_trough_structure_D", "")
-                if is_long
-                else ind.get("wt_peak_structure_D", "")
-            )
-            _wt_trigger_count = 0
-            if is_long:
-                if _wt_pctile_1h < 30:
-                    _wt_trigger_count += 1
-                if _wt_pctile_4h < 30:
-                    _wt_trigger_count += 1
-                if _wt_div_1h in ("BULL", "HIDDEN_BULL"):
-                    _wt_trigger_count += 1
-                if _wt_div_4h in ("BULL", "HIDDEN_BULL"):
-                    _wt_trigger_count += 1
-                if _wt_struct_4h == "HL":
-                    _wt_trigger_count += 1
-                if _wt_struct_D == "HL":
-                    _wt_trigger_count += 1
-            else:
-                if _wt_pctile_1h > 70:
-                    _wt_trigger_count += 1
-                if _wt_pctile_4h > 70:
-                    _wt_trigger_count += 1
-                if _wt_div_1h in ("BEAR", "HIDDEN_BEAR"):
-                    _wt_trigger_count += 1
-                if _wt_div_4h in ("BEAR", "HIDDEN_BEAR"):
-                    _wt_trigger_count += 1
-                if _wt_struct_4h == "LH":
-                    _wt_trigger_count += 1
-                if _wt_struct_D == "LH":
-                    _wt_trigger_count += 1
-            if _wt_trigger_count >= 4:
-                score += 4.0
-                reasons.append(f"WT_TRIGGER_STRONG({_wt_trigger_count}/6)")
-            elif _wt_trigger_count >= 3:
-                score += 2.5
-                reasons.append(f"WT_TRIGGER_OK({_wt_trigger_count}/6)")
-            elif _wt_trigger_count >= 2:
-                score += 1.0
-                reasons.append(f"WT_TRIGGER_WEAK({_wt_trigger_count}/6)")
-            elif _wt_trigger_count == 0:
-                score -= 3.0
-                reasons.append("WT_NO_TRIGGER(0/6)")
-            # === END WT TRIGGER SYSTEM ===
+            from vec_decisions.asr_wt_intelligence_score import wt_intelligence_score_scalar as _wt_intelligence_score_scalar
+            _wt_intelligence_values = {
+                "wt_divergence_1h": _wt_div_1h, "wt_divergence_4h": _wt_div_4h,
+                "wt_momentum_state_1h": _wt_mom_1h, "wt_momentum_state_4h": _wt_mom_4h,
+                "wt_trough_structure_1h": _wt_trough_struct_1h, "wt_peak_structure_1h": _wt_peak_struct_1h,
+                "wt_trough_structure_4h": _wt_trough_struct_4h, "wt_peak_structure_4h": _wt_peak_struct_4h,
+                "wt_cross_1h": _wt_cross_1h, "wt_cross_rising_1h": _wt_cross_rising_1h,
+                "wt_percentile_1h": _wt_pctile_1h, "wt_percentile_4h": safe_fetch_float(ind.get("wt_percentile_4h"), 50),
+                "wt_extreme_1h": _wt_extreme_1h,
+                "wt_trough_structure_D": ind.get("wt_trough_structure_D", ""),
+                "wt_peak_structure_D": ind.get("wt_peak_structure_D", ""),
+            }
+            _wt_score_delta, _wt_score_reasons, _wt_trigger_count = _wt_intelligence_score_scalar(_wt_intelligence_values, is_long)
+            score += _wt_score_delta
+            reasons.extend(_wt_score_reasons)
             if rel_vol > 1.5:
                 score += 1.0
                 reasons.append("HighVol")

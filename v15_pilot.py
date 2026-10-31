@@ -255,12 +255,11 @@ DEAD_VEC_SWITCHES = frozenset({
     "DC_MOMENT_STRONG_THRESHOLD",  # live score bonus/penalty, no vec twin
     "LIVE_ENTRY_ENGINE_DC_ENABLED", "LIVE_ENTRY_ENGINE_HTF_ENABLED",
     "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED", "LIVE_ENTRY_ENGINE_STOCH_ENABLED",
-    "LIVE_ENTRY_ENGINE_WT_ENABLED", "RULE_B_5M_EXIT_ENABLED",  # NPZ has no 5m data — structurally unwirable
+    "LIVE_ENTRY_ENGINE_WT_ENABLED",
     # Live-infra / execution plumbing (real GLOBAL live reads; single-symbol NPZs cannot model them — board can never move them):
     "EXECUTE_NOW_MAX_MARK_AGE_S", "EZ_MANAGE_THROTTLER_RATE", "OPEN_RATE_BREAKER_ENABLED", "OPEN_RATE_MAX",
     # Live-runs-unmeasured strategy (real live consumers; vector never models them — vectorize first, tune after):
     "HTF_TREND_VETO_BYPASS_ENABLED", "HTF_TREND_VETO_BYPASS_REASONS",  # reason-string bypass, not vectorizable per vec_decisions/ported_entry.py
-    "MARKET_QUALITY_SCORE_ENABLED",  # live entry score bonus; default False
     "BEAR_MARKET_MODE_TRADIER",  # side preference; vector sweeps sides separately
     "REENTRY_TIER2_MIN_MINUTES_TRADIER",  # tradier-only cooldown param, no vec twin
     "HTF_GATE_BYPASS_RZ",  # live entry gate bypass, no vec twin

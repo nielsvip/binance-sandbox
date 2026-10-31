@@ -10,6 +10,7 @@ from tools import v15_version_gate as gate
 
 
 TRAINED_AT = "2026-10-16T16:45:00Z"
+BASE_FLAGS = {"V18_BRAIN": "1", "V20_SELECTOR": "1"}
 
 
 def test_snapshot():
@@ -25,7 +26,7 @@ def write_bundle(root, bundle_id, trained_at=TRAINED_AT):
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         if name.startswith("v18_brain_"):
-            value = {"_meta": {"last_ts": trained_at}}
+            value = {"_meta": {"last_ts": trained_at, "at": trained_at}}
         elif name.startswith("digest_"):
             value = {"meta": {"era_cut": trained_at}}
         elif name.startswith("linknet_proposals_"):
@@ -64,18 +65,20 @@ def learn_file(name, root=None, sub="learn"):
         source = reference_root / "data" / sub / name
         target = tools / f"v18_data_{sub}_{name}"
         shutil.copyfile(source, target)
+    (root / "v15_pilot.py").write_text("# pinned test pilot\n")
     (root / "runtime.py").write_bytes(runtime_bytes)
     return root
 
 
-def make_runtime_spec(base, reference, candidate, champion_tree, snapshot, runtime_bytes=b"same-runtime", candidate_trained_at=TRAINED_AT):
+def make_runtime_spec(base, reference, candidate, champion_tree, snapshot, runtime_bytes=b"same-runtime", candidate_trained_at=TRAINED_AT, promotion_eligible=True):
     runtime_manifest = base / "runtime_manifest.json"
-    runtime_manifest.write_text(json.dumps({"schema": "v15_nn_runtime/1", "code_root": str(champion_tree), "files": {"runtime.py": hashlib.sha256(runtime_bytes).hexdigest()}, "symlinks": {}}))
+    runtime_files = {path.relative_to(champion_tree).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in champion_tree.rglob("*") if path.is_file() and not path.is_symlink()}
+    runtime_manifest.write_text(json.dumps({"schema": "v15_nn_runtime/1", "scope": "exact test tree inventory", "code_root": str(champion_tree), "files": runtime_files, "symlinks": {}}))
     reference_manifest = reference / gate.MODEL_BUNDLE_PATH
     candidate_manifest = candidate / gate.MODEL_BUNDLE_PATH
     champion_meta = base / "champion_meta.json"
-    champion_meta.write_text(json.dumps({"flags": {"V20_SELECTOR": "1"}, "env": {}}))
-    resolved = gate.champion_resolved_model_inventory(champion_tree, {"V20_SELECTOR": "1"})
+    champion_meta.write_text(json.dumps({"flags": {"V18_BRAIN": "1", "V20_SELECTOR": "1"}, "env": {}}))
+    resolved = gate.champion_resolved_model_inventory(champion_tree, {"V18_BRAIN": "1", "V20_SELECTOR": "1"})
     spec_path = base / "spec.json"
     ref_train = gate.model_training_market_max_by_category(reference)
     can_train = gate.model_training_market_max_by_category(candidate)
@@ -94,7 +97,7 @@ def make_runtime_spec(base, reference, candidate, champion_tree, snapshot, runti
         "oos_holdout_days": 7,
         "training_market_max_by_category": {"reference": ref_train, "candidate": can_train},
         "snapshot": {key: snapshot[key] for key in ("snapshot_id", "manifest_sha256", "npz_sha256_by_symbol", "oos_start_by_side")},
-        "promotion_eligible": True,
+        "promotion_eligible": promotion_eligible,
     }))
     return spec_path, runtime_manifest, champion_meta
 
@@ -118,16 +121,16 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
             gate_champ.mkdir(parents=True)
             shutil.copyfile(champion_meta, gate_champ / "meta.json")
             with patch.object(gate, "CHAMP", gate_champ):
-                result = gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, {"V20_SELECTOR": "1"}, {"V18_LINKNET_FIRST": "1"})
+                result = gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, BASE_FLAGS, {"V18_LINKNET_FIRST": "1"})
                 self.assertEqual(result["reference_flags"]["V18_LINKNET_FIRST"], "0")
                 self.assertEqual(result["candidate_flags"]["V18_LINKNET_FIRST"], "1")
                 self.assertEqual(result["reference_flags"]["V20_SELECTOR"], "1")
                 self.assertEqual(result["candidate_flags"]["V20_SELECTOR"], "1")
                 with self.assertRaisesRegex(ValueError, "conflicts with pinned candidate"):
-                    gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, {"V20_SELECTOR": "1"}, {"V18_LINKNET_FIRST": "0"})
+                    gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, BASE_FLAGS, {"V18_LINKNET_FIRST": "0"})
                 (champion / "runtime.py").write_bytes(b"different-runtime")
                 with self.assertRaisesRegex(ValueError, "comparison runtime file fails its declared SHA256"):
-                    gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, {"V20_SELECTOR": "1"})
+                    gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, BASE_FLAGS)
 
     def test_fresh_model_training_cutoff_is_rejected_against_exact_holdout(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -142,7 +145,7 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
             gate_champ.mkdir(parents=True)
             shutil.copyfile(champion_meta, gate_champ / "meta.json")
             with patch.object(gate, "CHAMP", gate_champ), self.assertRaisesRegex(ValueError, "training market cutoff overlaps exact OOS holdout"):
-                gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, {"V20_SELECTOR": "1"})
+                gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, BASE_FLAGS)
 
     def _finalize_with_real_model_roots(self, candidate_oos, candidate_wall, initial_pass):
         snapshot = test_snapshot()
@@ -161,19 +164,36 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
             ref_pin = write_bundle(reference_source, "reference")
             candidate_pin = write_bundle(candidate_tree, "candidate")
             make_champion_tree(champ_tree, reference_source)
-            (champ_dir / "meta.json").write_text(json.dumps({"flags": {"V20_SELECTOR": "1"}, "env": {}}))
+            make_champion_tree(candidate_tree, reference_source)
+            (champ_dir / "meta.json").write_text(json.dumps({"flags": {"V18_BRAIN": "1", "V20_SELECTOR": "1"}, "env": {}}))
             spec_path, _, _ = make_runtime_spec(base, reference_source, candidate_tree, champ_tree, snapshot)
             with patch.object(gate, "CHAMP", champ_dir):
-                spec_pin = gate.model_comparison_spec_pin(spec_path, reference_source, candidate_tree, ref_pin, candidate_pin, snapshot, champ_tree, {"V20_SELECTOR": "1"})
+                spec_pin = gate.model_comparison_spec_pin(spec_path, reference_source, candidate_tree, ref_pin, candidate_pin, snapshot, champ_tree, BASE_FLAGS)
             pins = {}
             for label, bundle_id in (("gate_test_champ", "reference"), ("gate_test_cand", "candidate")):
                 run_root = bench / "runs" / f"current8__{label}" / "root"
-                run_root.mkdir(parents=True)
-                shutil.copyfile(champ_tree / "runtime.py", run_root / "runtime.py")
+                shutil.copytree(champ_tree, run_root, dirs_exist_ok=True)
                 pins[label] = write_bundle(run_root, bundle_id)
                 run_root.parent.mkdir(parents=True, exist_ok=True)
                 receipt = {"manifest_sha256": pins[label]["manifest_sha256"], "artifact_sha256": pins[label]["artifact_sha256"]}
                 (run_root.parent / "model_bundle_receipt.json").write_text(json.dumps(receipt))
+            for arm, label, code_root in (("baseline", "gate_test_champ", champ_tree), ("candidate", "gate_test_cand", candidate_tree)):
+                run_dir = bench / "runs" / f"current8__{label}"
+                flags = {"V18_BRAIN": "1", "V20_SELECTOR": "1", "V15_BRAIN": "0", "V15_BRAIN_NAKED": "0"}
+                flags.update({"V18_LINKNET_FIRST": "0", "V18_LINKNET_BUNDLE_REQUIRED": "0"} if arm == "baseline" else {"V18_LINKNET_FIRST": "1", "V18_LINKNET_BUNDLE_REQUIRED": "1"})
+                rows = {}
+                for side in sides:
+                    venue = "crypto" if side.startswith("S") else "stocks"
+                    category = f"{'CRYPTO' if venue == 'crypto' else 'STOCKS'}_{side.rsplit('_', 1)[-1]}"
+                    brain = json.loads((run_dir / "root" / "data" / "brain" / f"v18_brain_{category}.json").read_text())
+                    v18 = {"brain": {"model_at": brain["_meta"]["at"]}}
+                    if arm == "candidate":
+                        v18["linknet_first"] = {"proposals": 0, "booked_cells": 0, "cells_forced": 0, "why": "ok linknet proposals=0"}
+                    side_dir = run_dir / side / "progress"
+                    side_dir.mkdir(parents=True)
+                    (side_dir / f"{side}_30d_progress.json").write_text(json.dumps({"symside": side, "window_days": 30, "v18": v18}))
+                    rows[side] = {"rc": 0, "wall_s": 10.0, "final_gain": 1.0, "oos_final": 1.0}
+                (run_dir / "results.json").write_text(json.dumps({"snap": "current8", "label": label, "code": str(code_root), "pilot_md5": gate.md5(run_dir / "root" / "v15_pilot.py"), "set": ["V15_HOLDOUT_DAYS=7", *(f"{k}={v}" for k, v in flags.items())], "window_days_fit": 30, "holdout_days": 7, "results": rows}))
             overlay = {
                 "snapshot": snapshot,
                 "baseline": pins["gate_test_champ"],
@@ -192,6 +212,7 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
                  patch.object(gate, "DECISIONS", gate_dir / "decisions.jsonl"), \
                  patch.object(gate, "STATUS", gate_dir / "status.md"), \
                  patch.object(gate, "model_snapshot_pin", return_value=snapshot), \
+                patch.object(gate, "snap_manifest", return_value={"admission": {"admission": {side: {"venue": "crypto" if side.startswith("S") else "stocks"} for side in sides}}}), \
                  patch.object(gate, "write_status"), \
                  patch.object(gate, "deploy", return_value={"complete": False}) as deploy, \
                  patch.object(gate, "deploy_complete", return_value=False):

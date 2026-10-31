@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from tools.replay_vector_consumer import _MockBroker, _ReplayTime, _prefix_digest, _validate_state_stream
+from tools.replay_vector_consumer import _MockBroker, _NativeMacLifecycle, _ReplayTime, _prefix_digest, _published_board_preflight, _validate_state_stream
 from tools.v15_forward_state import _vector_acts
 
 
@@ -130,3 +130,54 @@ def test_forward_projection_preserves_native_stop_permission_and_pnl_fields():
                      "exit_reason": "FIXED_STOP", "entry_price": 100.0, "exit_price": 98.5,
                      "avg_price": 99.4, "pnl_dollars": -4.5, "pnl_pct": -1.2,
                      "fixed_stop_level": 98.5, "mandatory_stop_kind": "DC15_FROZEN_DEFAULT"}]
+
+
+def test_native_position_stop_snapshot_merges_against_mock_broker(tmp_path, monkeypatch):
+    import time
+    from tools import vector_direct_trader
+
+    clock = [1800.0]
+    original_time = vector_direct_trader.time
+    original_mac_flag = vector_direct_trader.MAC_POSITIONS
+    publisher = __import__("tools.mac_positions_push_executors", fromlist=["ROOT"])
+    original_root = publisher.ROOT
+    original_publisher_time = publisher.time
+    monkeypatch.setattr(vector_direct_trader, "time", _ReplayTime(clock, time))
+    monkeypatch.setattr(vector_direct_trader, "MAC_POSITIONS", True)
+    trader = vector_direct_trader.Trader.__new__(vector_direct_trader.Trader)
+    trader.out = tmp_path / "data" / "vector_direct"
+    trader.out.mkdir(parents=True)
+    trader.venue = "crypto"
+    trader.accounts = ["ang"]
+    trader.mac_positions_cache = None
+    trader.__dict__["mac_pos_rung"] = set()
+    trader.alert = lambda *_args, **_kwargs: None
+    lifecycle = _NativeMacLifecycle("ang", tmp_path / "books", trader.out, trader, clock,
+                                    np.asarray([95.0]), np.asarray([105.0]), {900: 0})
+    row = {"qty": 5.0, "entry": 100.0, "break_even": 100.0, "price": 100.0}
+    published = lifecycle.update("XUSDC_LONG", row, 900, action="OPEN", fill_qty=5.0, fill_price=100.0)
+    observed = {"XUSDC_LONG": dict(row)}
+    lifecycle.merge(observed)
+    try:
+        merged = observed["XUSDC_LONG"]
+        assert published["source"] == "mac"
+        assert merged["position_source"] == "mac_snapshot_broker_verified"
+        assert merged["mac"]["fixed_stop_armed"] is True
+        assert merged["mac"]["fixed_stop_anchor"] == 1800.0
+        assert merged["mac"]["fixed_stop_price"] == pytest.approx(94.7625)
+    finally:
+        publisher.ROOT = original_root
+        publisher.time = original_publisher_time
+        vector_direct_trader.MAC_POSITIONS = original_mac_flag
+        vector_direct_trader.time = original_time
+
+
+def test_published_board_preflight_uses_frozen_active_sym_side_and_fails_closed():
+    calls = []
+    board = SimpleNamespace(latest_board_ok=lambda symbol, side: (calls.append((symbol, side)) or (True, {"source": "frozen"})))
+    sym_side, ok, detail = _published_board_preflight({"sym_side": "pepeusdc_long"}, board)
+    assert (sym_side, ok, detail) == ("PEPEUSDC_LONG", True, {"source": "frozen"})
+    assert calls == [("PEPEUSDC", "LONG")]
+    board.latest_board_ok = lambda symbol, side: (False, "missing")
+    with pytest.raises(RuntimeError, match="does not authorize"):
+        _published_board_preflight({"sym_side": "PEPEUSDC_LONG"}, board)

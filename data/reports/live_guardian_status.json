@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T06:30:53Z",
+ "ts": "2026-10-31T06:35:43Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -27,9 +27,9 @@
  "rth": false,
  "accounts": {
   "fin": {
-   "fills_6h": 1,
-   "open_positions": 0,
-   "unrealised_usd": 0.0,
+   "fills_6h": 2,
+   "open_positions": 1,
+   "unrealised_usd": -0.02,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 55,
+   "fills_6h": 56,
    "open_positions": 11,
-   "unrealised_usd": -0.59,
+   "unrealised_usd": -0.67,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 95,
+   "fills_6h": 96,
    "open_positions": 16,
-   "unrealised_usd": -0.84,
+   "unrealised_usd": -0.88,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 20,
    "open_positions": 7,
-   "unrealised_usd": -0.03,
+   "unrealised_usd": -0.02,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -126,76 +126,76 @@
    "pids": [
     "67104"
    ],
-   "starts_30m": 0,
-   "log_age_s": 2816.0
+   "starts_30m": 1,
+   "log_age_s": 3105.0
   },
   "men": {
    "pids": [
     "18080"
    ],
    "starts_30m": 1,
-   "log_age_s": 874.0
+   "log_age_s": 1163.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 9.0
   },
   "inf": {
    "pids": [
     "68362"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 6.0
   },
   "flz": {
    "pids": [
     "78871"
    ],
    "starts_30m": 1,
-   "log_age_s": 557.0
+   "log_age_s": 846.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 6516.0
+   "log_age_s": 6805.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 6832.0
+   "log_age_s": 7120.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T06:30:55Z",
+   "ts": "2026-10-31T06:35:44Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "inf:BCHUSDC_SHORT",
    "evidence": "31 06:27:29 - WARNING - [inf] [REENTRY_GRANDFATHERED] inf:BCHUSDC_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $150 \u2014 restoring $6 on bounce (prior max 0.1240)"
   },
   {
-   "ts": "2026-10-31T06:30:56Z",
+   "ts": "2026-10-31T06:35:44Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 2816s"
+   "evidence": "ez_manage_fin.log not written for 3105s"
   },
   {
-   "ts": "2026-10-31T06:30:56Z",
+   "ts": "2026-10-31T06:35:44Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 874s"
+   "evidence": "ez_manage_men.log not written for 1163s"
   },
   {
-   "ts": "2026-10-31T06:30:56Z",
+   "ts": "2026-10-31T06:35:44Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 557s"
+   "evidence": "ez_manage_flz.log not written for 846s"
   }
  ],
  "alert_counts": {
@@ -253,5 +253,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.36
+ "sweep_s": 1.4
 }

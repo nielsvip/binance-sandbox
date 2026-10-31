@@ -220,7 +220,13 @@ def research_score_masks_scalar(ind, current_price, is_long, cfg, is_exit=False,
         if fire:
             score += float(_cfg(cfg, bonus_key, default))
     mq_fire = False
-    if not is_exit and bool(_cfg(cfg, "MARKET_QUALITY_SCORE_ENABLED", False)):
+    if not is_exit and str(_cfg(cfg, "MODE", "crypto")) == "tradier":
+        from vec_decisions.tradier_market_quality import market_quality_score_scalar
+        mq_bonus, _mq_reason = market_quality_score_scalar(ind, is_long, lambda key, default: _cfg(cfg, key, default))
+        mq_fire = mq_bonus > 0.0 and bool(_cfg(cfg, "MARKET_QUALITY_SCORE_ENABLED_TRADIER", False))
+        if mq_fire:
+            score += mq_bonus
+    elif not is_exit and bool(_cfg(cfg, "MARKET_QUALITY_SCORE_ENABLED", False)):
         from vec_decisions.sba_bounce import _market_quality_score_parts
         values = dict(ind)
         values.setdefault("current_price", px)
@@ -238,6 +244,9 @@ def research_score_masks_scalar(ind, current_price, is_long, cfg, is_exit=False,
 
 def market_quality_score_bonus_vec(npz, n, is_long, cfg):
     """Exact no-veto MQ score bonus, without SBA's independent dealbreakers."""
+    if str(_cfg(cfg, "MODE", "crypto")) == "tradier":
+        from vec_decisions.tradier_market_quality import market_quality_score_vec
+        return market_quality_score_vec(npz, n, is_long, cfg, _column)
     bonuses = np.zeros(n, dtype=float)
     fires = np.zeros(n, dtype=bool)
     if not bool(_cfg(cfg, "MARKET_QUALITY_SCORE_ENABLED", False)):

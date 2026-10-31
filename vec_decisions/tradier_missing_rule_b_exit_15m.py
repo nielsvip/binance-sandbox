@@ -10,15 +10,15 @@ def _f(value, default=0.0):
         return default
 
 
-def rule_b_exit_15m_fires(get, is_long, indicators, gain_pct):
-    """Scalar native predicate with 5m OHLC mapped to live 15m fields."""
+def rule_b_exit_15m_fires(get, is_long, indicators, gain_pct, field_tf="15m"):
+    """Scalar native predicate with explicit 15m-floor or available 5m OHLC inputs."""
     if not bool(get("RULE_B_5M_EXIT_ENABLED", False)):
         return False, ""
     indicators = indicators or {}
-    low = _f(indicators.get("low_15m"))
-    low_prev = _f(indicators.get("low_15m_prev"))
-    high = _f(indicators.get("high_15m"))
-    high_prev = _f(indicators.get("high_15m_prev"))
+    low = _f(indicators.get(f"low_{field_tf}"))
+    low_prev = _f(indicators.get(f"low_{field_tf}_prev"))
+    high = _f(indicators.get(f"high_{field_tf}"))
+    high_prev = _f(indicators.get(f"high_{field_tf}_prev"))
     gain = _f(gain_pct, -np.inf)
     min_gain = _f(get("NOLOSS_MIN_PROFIT_PCT_TRADIER", None), np.inf)
     if gain < min_gain:
@@ -32,7 +32,7 @@ def rule_b_exit_15m_fires(get, is_long, indicators, gain_pct):
     return False, ""
 
 
-def rule_b_exit_15m_mask(npz, n, is_long, cfg, gain_pct, safe):
+def rule_b_exit_15m_mask(npz, n, is_long, cfg, gain_pct, safe, field_tf="15m"):
     """Vector mask equivalent to the scalar predicate; gain is percent per bar."""
     if not bool(getattr(cfg, "RULE_B_5M_EXIT_ENABLED", False)):
         return np.zeros(n, dtype=bool)
@@ -41,10 +41,10 @@ def rule_b_exit_15m_mask(npz, n, is_long, cfg, gain_pct, safe):
     gain = np.asarray(gain_pct, dtype=float)
     if gain.ndim == 0 or len(gain) != n:
         return np.zeros(n, dtype=bool)
-    low = np.asarray(safe(npz, "low_15m", n, 0.0), dtype=float)
-    low_prev = np.asarray(safe(npz, "low_15m_prev", n, np.nan), dtype=float)
-    high = np.asarray(safe(npz, "high_15m", n, 0.0), dtype=float)
-    high_prev = np.asarray(safe(npz, "high_15m_prev", n, np.nan), dtype=float)
+    low = np.asarray(safe(npz, f"low_{field_tf}", n, 0.0), dtype=float)
+    low_prev = np.asarray(safe(npz, f"low_{field_tf}_prev", n, np.nan), dtype=float)
+    high = np.asarray(safe(npz, f"high_{field_tf}", n, 0.0), dtype=float)
+    high_prev = np.asarray(safe(npz, f"high_{field_tf}_prev", n, np.nan), dtype=float)
     if np.all(~np.isfinite(low_prev)):
         low_prev = np.roll(low, 1)
         if n:

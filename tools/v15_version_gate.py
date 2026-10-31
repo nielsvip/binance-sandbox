@@ -158,6 +158,7 @@ def model_snapshot_pin():
     if set(gate_sides()) != set(sides):
         raise ValueError("model comparison gate side selection must equal the complete pinned snapshot side set")
     holdout_start_by_side = {}
+    start_sha256_by_side = {}
     for side in sides:
         symbol = side.rsplit("_", 1)[0]
         npz = snapshot / "npz" / f"{symbol}.npz"
@@ -166,6 +167,11 @@ def model_snapshot_pin():
         npz_record = (manifest.get("npz") or {}).get(symbol) or {}
         if npz_record.get("md5") != md5(npz) or npz_record.get("bytes") != npz.stat().st_size:
             raise ValueError(f"model comparison snapshot NPZ differs from its frozen manifest: {symbol}")
+        start_path = snapshot / "starts" / f"{side}_autopsy_base.json"
+        expected_start_md5 = (manifest.get("starts") or {}).get(side)
+        if not expected_start_md5 or not start_path.is_file() or md5(start_path) != expected_start_md5:
+            raise ValueError(f"model comparison snapshot start overrides differ from frozen manifest: {side}")
+        start_sha256_by_side[side] = sha256(start_path)
         code = "import numpy as np,sys; z=np.load(sys.argv[1],mmap_mode='r',allow_pickle=True); k=next((k for k in z.files if 'timestamp' in k and '15m' in k),None); print('' if k is None or len(z[k]) < 2 else float(z[k][-1]))"
         result = subprocess.run([str(SRC / ".venv" / "bin" / "python"), "-c", code, str(npz)], capture_output=True, text=True, timeout=120)
         try:
@@ -176,7 +182,15 @@ def model_snapshot_pin():
             raise ValueError(f"model comparison cannot read final 15m timestamp from snapshot NPZ: {symbol}")
         start = dt.datetime.fromtimestamp(last_bar - MODEL_HOLDOUT_DAYS * 86400, dt.timezone.utc)
         holdout_start_by_side[side] = start.isoformat(timespec="seconds").replace("+00:00", "Z")
-    return {"snapshot_id": SNAP, "manifest_sha256": hashlib.sha256(raw).hexdigest(), "sides": sides, "holdout_days": MODEL_HOLDOUT_DAYS, "npz_sha256_by_symbol": {side.rsplit("_", 1)[0]: sha256(snapshot / "npz" / f"{side.rsplit('_', 1)[0]}.npz") for side in sides}, "oos_start_by_side": holdout_start_by_side}
+    template_sha256_by_name = {}
+    for name, expected_md5 in (manifest.get("templates") or {}).items():
+        path = snapshot / "templates" / name
+        if not path.is_file() or md5(path) != expected_md5:
+            raise ValueError(f"model comparison snapshot template differs from frozen manifest: {name}")
+        template_sha256_by_name[name] = sha256(path)
+    if not template_sha256_by_name:
+        raise ValueError("model comparison snapshot lacks frozen templates")
+    return {"snapshot_id": SNAP, "manifest_sha256": hashlib.sha256(raw).hexdigest(), "sides": sides, "holdout_days": MODEL_HOLDOUT_DAYS, "npz_sha256_by_symbol": {side.rsplit("_", 1)[0]: sha256(snapshot / "npz" / f"{side.rsplit('_', 1)[0]}.npz") for side in sides}, "oos_start_by_side": holdout_start_by_side, "start_sha256_by_side": start_sha256_by_side, "template_sha256_by_name": template_sha256_by_name}
 
 
 def model_training_market_max_by_category(root):
@@ -232,7 +246,7 @@ def validate_model_training_windows(spec, reference_root, candidate_root, snapsh
     if int(spec.get("oos_holdout_days") or 0) != snapshot_pin.get("holdout_days"):
         raise ValueError("comparison spec holdout days differ from exact frozen snapshot holdout")
     snapshot = spec.get("snapshot") or {}
-    for key in ("snapshot_id", "manifest_sha256", "npz_sha256_by_symbol", "oos_start_by_side"):
+    for key in ("snapshot_id", "manifest_sha256", "npz_sha256_by_symbol", "oos_start_by_side", "start_sha256_by_side", "template_sha256_by_name"):
         if snapshot.get(key) != snapshot_pin.get(key):
             raise ValueError(f"comparison spec {key} differs from the exact frozen snapshot")
     declared = spec.get("training_market_max_by_category")
@@ -270,6 +284,25 @@ def model_runtime_pin(runtime_spec):
         raise ValueError("comparison runtime code_root is missing")
     files = manifest["files"]
     symlinks = manifest.get("symlinks") or {}
+    if not isinstance(symlinks, dict) or not manifest.get("scope"):
+        raise ValueError("comparison runtime must declare a scoped complete file/symlink inventory")
+    actual_files, actual_symlinks = set(), {}
+    for directory, dirnames, filenames in os.walk(code_root, followlinks=False):
+        base = Path(directory)
+        for name in list(dirnames):
+            path = base / name
+            if path.is_symlink():
+                actual_symlinks[path.relative_to(code_root).as_posix()] = os.readlink(path)
+                dirnames.remove(name)
+        for name in filenames:
+            path = base / name
+            relative = path.relative_to(code_root).as_posix()
+            if path.is_symlink():
+                actual_symlinks[relative] = os.readlink(path)
+            elif path.is_file():
+                actual_files.add(relative)
+    if set(files) != actual_files or symlinks != actual_symlinks:
+        raise ValueError("comparison runtime inventory is incomplete or includes paths outside the exact champion tree")
     for relative, expected in files.items():
         rel = Path(relative)
         if rel.is_absolute() or ".." in rel.parts or not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected):
@@ -306,7 +339,9 @@ def model_arm_flags(spec, arm_name, base_flags, cli_flags):
     prescribed = dict(equal_flags)
     prescribed.update(arm_flags)
     for key, value in cli_flags.items():
-        if key in prescribed and str(value) != str(prescribed[key]):
+        if key not in prescribed:
+            raise ValueError(f"--set {key} is not declared in the pinned comparison spec")
+        if str(value) != str(prescribed[key]):
             raise ValueError(f"--set {key}={value} conflicts with pinned {arm_name} comparison flag {prescribed[key]}")
     flags = dict(base_flags)
     flags.update(equal_flags)
@@ -338,6 +373,8 @@ def model_comparison_spec_pin(path, reference_root, candidate_root, reference_pi
     if not champion_meta_path.is_file() or baseline_provenance.get("champion_meta_sha256") != sha256(champion_meta_path):
         raise ValueError("comparison baseline does not pin current champion metadata")
     champion_meta = json.loads(champion_meta_path.read_text())
+    if dict(base_flags or {}) != dict(champion_meta.get("flags") or {}):
+        raise ValueError("comparison base flags do not equal the current champion flags")
     resolver_env = dict(champion_meta.get("env") or {})
     resolver_env.update(champion_meta.get("flags") or {})
     resolved = champion_resolved_model_inventory(champion_root, resolver_env)
@@ -354,6 +391,15 @@ def model_comparison_spec_pin(path, reference_root, candidate_root, reference_pi
     cli_flags = cli_flags or {}
     reference_flags = model_arm_flags(spec, "reference", base_flags, {})
     candidate_flags = model_arm_flags(spec, "candidate", base_flags, cli_flags)
+    allowed_reference_overrides = {"V18_LINKNET_FIRST": "0", "V18_LINKNET_BUNDLE_REQUIRED": "0"}
+    for key, value in reference_flags.items():
+        if key in base_flags and str(value) == str(base_flags[key]):
+            continue
+        if allowed_reference_overrides.get(key) != str(value):
+            raise ValueError(f"reference runtime flag {key} differs from actual champion settings")
+    for key, value in base_flags.items():
+        if key not in reference_flags or str(reference_flags[key]) != str(value):
+            raise ValueError(f"reference runtime flags omit or alter actual champion setting {key}")
     if not reference_flags or not candidate_flags:
         raise ValueError("comparison spec must pin reference and candidate runtime flags")
     return {"comparison_id": spec.get("comparison_id"), "path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "runtime": runtime_pin, "training_market_max_by_category": training_windows, "promotion_eligible": bool(spec.get("promotion_eligible")), "base_flags": base_flags, "reference_flags": reference_flags, "candidate_flags": candidate_flags}
@@ -485,13 +531,13 @@ def cmd_submit(a):
             candidate_pin = model_bundle_pin(cd / "tree")
             baseline_pin = stage_model_bundle(a.nn_baseline_bundle, cd / "nn_baseline_bundle")
             snapshot_pin = model_snapshot_pin()
-            comparison_spec_pin = model_comparison_spec_pin(a.nn_comparison_spec, a.nn_baseline_bundle, cd / "tree", baseline_pin, candidate_pin, snapshot_pin, CHAMP / "tree", flags, cli_flags)
+            comparison_spec_pin = model_comparison_spec_pin(a.nn_comparison_spec, a.nn_baseline_bundle, cd / "tree", baseline_pin, candidate_pin, snapshot_pin, CHAMP / "tree", champ.get("flags") or {}, cli_flags)
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             print(f"[gate] invalid model bundle: {exc}", file=sys.stderr)
             shutil.rmtree(cd)
             return 2
         flags = comparison_spec_pin["candidate_flags"]
-        model_overlay = {"candidate": candidate_pin, "baseline": baseline_pin, "baseline_bundle_path": str(cd / "nn_baseline_bundle"), "baseline_source_path": str(Path(a.nn_baseline_bundle).resolve()), "comparison_spec": comparison_spec_pin, "snapshot": snapshot_pin, "champion_flags_sha256": hashlib.sha256(json.dumps(champ.get("flags") or {}, sort_keys=True, separators=(",", ":")).encode()).hexdigest(), "base_flags": comparison_spec_pin["base_flags"], "reference_flags": comparison_spec_pin["reference_flags"], "candidate_flags": comparison_spec_pin["candidate_flags"]}
+        model_overlay = {"candidate": candidate_pin, "baseline": baseline_pin, "baseline_bundle_path": str(cd / "nn_baseline_bundle"), "baseline_source_path": str(Path(a.nn_baseline_bundle).resolve()), "candidate_code_root": str((cd / "tree").resolve()), "comparison_spec": comparison_spec_pin, "snapshot": snapshot_pin, "champion_flags_sha256": hashlib.sha256(json.dumps(champ.get("flags") or {}, sort_keys=True, separators=(",", ":")).encode()).hexdigest(), "base_flags": comparison_spec_pin["base_flags"], "reference_flags": comparison_spec_pin["reference_flags"], "candidate_flags": comparison_spec_pin["candidate_flags"]}
     elif a.nn_baseline_bundle or a.nn_comparison_spec:
         print("[gate] NN bundle/spec arguments require candidate model bundle assets", file=sys.stderr)
         shutil.rmtree(cd)
@@ -540,7 +586,7 @@ def bench(label, code, flags, env, model_bundle=None):
     write_json_atomic(env_file, bench_env(env))
     args = [sys.executable, str(BENCH / "tools" / "v15_npz_bench.py"), "run", "--snap", SNAP, "--label", label, "--code", str(code), "--only", ",".join(gate_sides()), "--env-file", str(env_file), "--parallel", "1", "--workers", "2", "--nice", "10", "--min-free-mb", "7000", "--force", "--set", "V15_HOLDOUT_DAYS=7"]
     if model_bundle:
-        args += ["--model-bundle", str(model_bundle)]
+        args += ["--model-bundle", str(model_bundle), "--clear-nn-env"]
     for k, v in flags.items():
         args += ["--set", f"{k}={v}"]
     for k in ("V15_BRAIN", "V15_BRAIN_NAKED"):
@@ -877,6 +923,7 @@ def apply_model_overlay_acceptance(cd, meta, decision):
     reasons = []
     expected_sides = set((overlay.get("snapshot") or {}).get("sides") or [])
     training_windows_verified = False
+    whole_board_wall = {}
     promotion_eligible = bool(((overlay.get("comparison_spec") or {}).get("promotion_eligible")))
     if not promotion_eligible:
         reasons.append("model promotion eligibility is not proven by the pinned comparison spec")
@@ -904,6 +951,20 @@ def apply_model_overlay_acceptance(cd, meta, decision):
             receipt = json.loads((run_dir / "model_bundle_receipt.json").read_text())
             if receipt.get("manifest_sha256") != expected.get("manifest_sha256") or receipt.get("artifact_sha256") != expected.get("artifact_sha256"):
                 reasons.append(f"{arm} build_root receipt differs from the pinned bundle")
+            snapshot_inputs = receipt.get("snapshot_inputs") or {}
+            expected_inputs = {key: overlay["snapshot"][key] for key in ("npz_sha256_by_symbol", "template_sha256_by_name", "start_sha256_by_side")}
+            if snapshot_inputs != expected_inputs:
+                reasons.append(f"{arm} build_root receipt differs from pinned NPZ/template/start inputs")
+            for symbol, digest in expected_inputs["npz_sha256_by_symbol"].items():
+                path = run_dir / "root" / "backtest_v8" / "indicators" / f"{symbol}.npz"
+                if not path.is_file() or sha256(path) != digest:
+                    reasons.append(f"{arm} run-root NPZ bytes differ from pinned snapshot: {symbol}")
+            for name, digest in expected_inputs["template_sha256_by_name"].items():
+                paths = (run_dir / "root" / "SPREADSHEETS" / "TEMPLATE_FINAL_NORM" / name, run_dir / "root" / "SPREADSHEETS" / name)
+                if any(not path.is_file() or sha256(path) != digest for path in paths):
+                    reasons.append(f"{arm} run-root template bytes differ from pinned snapshot: {name}")
+            run_result = json.loads((run_dir / "results.json").read_text())
+            whole_board_wall[arm] = run_result.get("board_wall_s")
             verify_model_runtime_tree(overlay["comparison_spec"]["runtime"], run_dir / "root")
             training_actual = model_training_market_max_by_category(run_dir / "root")
             training_key = "reference" if arm == "baseline" else "candidate"
@@ -911,6 +972,7 @@ def apply_model_overlay_acceptance(cd, meta, decision):
             if training_actual != training_expected:
                 reasons.append(f"{arm} run-root model training cutoffs differ from the pinned source artifacts: actual={training_actual} expected={training_expected}")
                 training_windows_verified = False
+            reasons.extend(validate_model_run_evidence(run_dir, label, run_dir / "root", expected_sides, overlay, arm))
         except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
             reasons.append(f"{arm} actual run-root model/runtime verification failed: {exc}")
             training_windows_verified = False
@@ -942,7 +1004,9 @@ def apply_model_overlay_acceptance(cd, meta, decision):
             quality_pass = quality_change >= 20.0
             if not quality_pass:
                 reasons.append("aggregate OOS quality change is below 20%")
-        baseline_wall, candidate_wall = sum(baseline_walls), sum(candidate_walls)
+        baseline_wall, candidate_wall = float(whole_board_wall["baseline"]), float(whole_board_wall["candidate"])
+        if not math.isfinite(baseline_wall) or not math.isfinite(candidate_wall) or baseline_wall <= 0 or candidate_wall <= 0:
+            raise ValueError("whole-board active wall-clock measurements are missing, non-finite, or non-positive")
         time_reduction = 100.0 * (baseline_wall - candidate_wall) / baseline_wall
         speed_pass = time_reduction > 90.0
         if not speed_pass:
@@ -980,6 +1044,95 @@ def apply_model_overlay_acceptance(cd, meta, decision):
         decision["PASS"] = False
         decision.setdefault("reasons", []).extend(f"MODEL_OVERLAY: {reason}" for reason in reasons)
     return decision
+
+
+def validate_model_run_evidence(run_dir, label, run_root, expected_sides, overlay, arm):
+    """Bind scored rows to this exact code/model arm and require pilot-side consumer telemetry."""
+    reasons = []
+    results_path = Path(run_dir) / "results.json"
+    try:
+        payload = json.loads(results_path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"{arm} results.json is missing or unreadable: {exc}"]
+    # The bench records the code source path, while its run root is a copied build. Pin each arm's intended source path.
+    if arm == "candidate":
+        expected_code = str(Path(overlay.get("candidate_code_root") or "").resolve())
+    else:
+        expected_code = str((CHAMP / "tree").resolve())
+    if payload.get("snap") != SNAP or payload.get("label") != label or str(Path(str(payload.get("code") or "")).resolve()) != expected_code:
+        reasons.append(f"{arm} results.json snapshot/label/code source does not match its pinned bench arm")
+    if payload.get("pilot_md5") != md5(Path(run_root) / "v15_pilot.py"):
+        reasons.append(f"{arm} results.json pilot_md5 does not match its actual run-root pilot")
+    expected_flags = dict((overlay.get("reference_flags") if arm == "baseline" else overlay.get("candidate_flags")) or {})
+    expected_set = {"V15_HOLDOUT_DAYS=7", *(f"{key}={value}" for key, value in expected_flags.items())}
+    expected_set.update(f"{key}=0" for key in ("V15_BRAIN", "V15_BRAIN_NAKED") if key not in expected_flags)
+    actual_set = payload.get("set") or []
+    if not isinstance(actual_set, list) or len(actual_set) != len(set(actual_set)) or set(actual_set) != expected_set:
+        reasons.append(f"{arm} results.json switch set differs from pinned holdout and runtime flags")
+    if payload.get("window_days_fit") != 30 or payload.get("holdout_days") != MODEL_HOLDOUT_DAYS:
+        reasons.append(f"{arm} results.json fit/holdout window differs from requested 30d/7d")
+    nn_env = {key: value for key, value in expected_flags.items() if key.startswith(("V18_", "V20_"))}
+    nn_env_sha = hashlib.sha256(json.dumps(nn_env, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+    if payload.get("nn_env_sha256") != nn_env_sha:
+        reasons.append(f"{arm} effective V18_/V20_ environment hash differs from explicitly pinned arm flags")
+    if not isinstance(payload.get("retry_count"), int) or payload.get("retry_count") < 0:
+        reasons.append(f"{arm} retry/requeue count is absent or invalid")
+    board_wall = payload.get("board_wall_s")
+    if not isinstance(board_wall, (int, float)) or not math.isfinite(float(board_wall)) or board_wall <= 0:
+        reasons.append(f"{arm} active whole-board wall measurement is absent or invalid")
+    rows = payload.get("results") if isinstance(payload.get("results"), dict) else {}
+    if set(rows) != set(expected_sides):
+        reasons.append(f"{arm} results.json side rows do not equal the pinned eight-side set")
+    for side in expected_sides:
+        row = rows.get(side)
+        if not isinstance(row, dict) or row.get("rc") != 0 or not isinstance(row.get("wall_s"), (int, float)) or not math.isfinite(float(row["wall_s"])) or row["wall_s"] <= 0:
+            reasons.append(f"{arm} {side} has no successful finite positive wall measurement")
+            continue
+        if any(not isinstance(row.get(key), (int, float)) or not math.isfinite(float(row[key])) for key in ("final_gain", "oos_final")):
+            reasons.append(f"{arm} {side} has no finite fit/OOS score in its original results.json row")
+        progress_path = _progress_json(label, side)
+        if progress_path is None:
+            reasons.append(f"{arm} {side} has no pilot progress file for attribution")
+            continue
+        try:
+            progress = json.loads(progress_path.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            reasons.append(f"{arm} {side} progress file is unreadable: {exc}")
+            continue
+        if progress.get("symside") != side or progress.get("window_days") != 30:
+            reasons.append(f"{arm} {side} progress identity/window does not match the scored side")
+        v18 = progress.get("v18") if isinstance(progress.get("v18"), dict) else {}
+        if str(expected_flags.get("V18_BRAIN", "0")).strip().lower() in ("1", "true", "on"):
+            brain = v18.get("brain") if isinstance(v18.get("brain"), dict) else {}
+            side_venue = (((snap_manifest().get("admission") or {}).get("admission") or {}).get(side) or {}).get("venue")
+            category_prefix = {"crypto": "CRYPTO", "stocks": "STOCKS"}.get(str(side_venue).lower())
+            if not category_prefix:
+                reasons.append(f"{arm} {side} pinned snapshot does not identify a market venue for brain attribution")
+                continue
+            category = f"{category_prefix}_{side.rsplit('_', 1)[-1]}"
+            model_path = Path(run_root) / "data" / "brain" / f"v18_brain_{category}.json"
+            if not brain or not model_path.is_file():
+                reasons.append(f"{arm} {side} enabled brain did not report successful model initialization")
+            else:
+                try:
+                    model = json.loads(model_path.read_text())
+                    expected_at = (model.get("_meta") or {}).get("at")
+                    if not expected_at or brain.get("model_at") != expected_at:
+                        reasons.append(f"{arm} {side} brain telemetry model_at differs from the run-root brain artifact")
+                except (OSError, json.JSONDecodeError) as exc:
+                    reasons.append(f"{arm} {side} run-root brain artifact is unreadable: {exc}")
+        if str(expected_flags.get("V18_LINKNET_FIRST", "0")).strip().lower() in ("1", "true", "on"):
+            linknet = v18.get("linknet_first") if isinstance(v18.get("linknet_first"), dict) else {}
+            why = str(linknet.get("why") or "")
+            if not linknet or not why.startswith("ok "):
+                reasons.append(f"{arm} {side} enabled LinkNet has no successful loader telemetry")
+            elif any(not isinstance(linknet.get(key), int) or linknet.get(key) < 0 for key in ("proposals", "booked_cells", "cells_forced")):
+                reasons.append(f"{arm} {side} LinkNet telemetry is incomplete or invalid")
+        if str(expected_flags.get("V20_SELECTOR", "0")).strip().lower() in ("1", "true", "on"):
+            selector = v18.get("v20") if isinstance(v18.get("v20"), dict) else {}
+            if not selector or not str(selector.get("why") or "").strip():
+                reasons.append(f"{arm} {side} enabled V20 selector has no loader telemetry")
+    return reasons
 
 
 def finalize(cd, meta, d):

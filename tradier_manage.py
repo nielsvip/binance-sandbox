@@ -33744,99 +33744,17 @@ class StockStrategy:
                 reasons.append("BEAR_BONUS")
         # --- MARKET QUALITY SCORING (BACKTEST_CHANGE_146) --- 11K-trade validated across Finandy/Bitget/OKX
         if _cfg_auto("MARKET_QUALITY_SCORE_ENABLED_TRADIER", False) and not is_exit:
-            _mq_bb_1h = g("bb_width_1h", 10.0)
-            _mq_bb_4h = g("bb_width_4h", 10.0)
-            _mq_dc_1h = g("dc_width_1h", 8.0)
-            _mq_dc_4h = g("dc_width_4h", 12.0)
-            _mq_adx_1h = g("adx_1h", 30)
-            _mq_adx_4h = g("adx_4h", 30)
-            _mq_mfi_1h = g("mfi_1h", 50)
-            _mq_mfi_4h = g("mfi_4h", 50)
-            _mq_mfi_15m = g("mfi_15m", 50)
-            _mq_rsi_1h = g("rsi_1h", 50)
-            _mq_rsi_4h = g("rsi_4h", 50)
-            _mq_rsi_15m = g("rsi_15m", 50)
-            _mq_rvol_1h = g("relative_volume_1h", 1.0)
-            _mq_rvol_15m = g("relative_volume_15m", 1.0)
-            _mq_quality = 0.0
-            _mq_reasons = []
-            # BB tight = ranging (Bitget d=0.34)
-            if _mq_bb_1h < 6.5 and _mq_bb_4h < 10.0:
-                _mq_quality += 1.5
-                _mq_reasons.append(f"BB_TIGHT")
-            elif _mq_bb_1h < 9.0 and _mq_bb_4h < 13.0:
-                _mq_quality += 0.5
-            # ADX low = mean-reversion works (Bitget d=0.20)
-            if _mq_adx_1h < 20 and _mq_adx_4h < 25:
-                _mq_quality += 1.0
-                _mq_reasons.append(f"ADX_LOW({_mq_adx_1h:.0f})")
-            elif _mq_adx_1h < 25:
-                _mq_quality += 0.5
-            # Indicator-by-direction (2026-04-17 fix):
-            #   LONG  uses MFI (RSI_up + volume → MFI rises, captures long confirmation correctly)
-            #   SHORT uses RSI + rel_vol (RSI falling + volume gives MISLEADING higher MFI, not lower — user-confirmed)
-            _short_rvol_gate = _cfg_auto("TRADIER_RSI_SHORT_RVOL_1H", 1.0)
-            if is_long:
-                if _mq_mfi_1h > 50 and _mq_mfi_4h > 45:
-                    _mq_quality += 1.0
-                    _mq_reasons.append("MFI_STRONG_L")
-                elif _mq_mfi_1h > 40 and _mq_mfi_4h > 40:
-                    _mq_quality += 0.5
-            else:
-                # SHORT: RSI elevated (overbought on HTF) + rel_vol confirming
-                if (
-                    _mq_rsi_1h > 55
-                    and _mq_rsi_4h > 50
-                    and _mq_rvol_1h >= _short_rvol_gate
-                ):
-                    _mq_quality += 1.0
-                    _mq_reasons.append(
-                        f"RSI_STRONG_S(r1h={_mq_rsi_1h:.0f},rv={_mq_rvol_1h:.2f})"
-                    )
-                elif (
-                    _mq_rsi_1h > 50
-                    and _mq_rsi_4h > 45
-                    and _mq_rvol_1h >= _short_rvol_gate
-                ):
-                    _mq_quality += 0.5
-            # Low volume = quiet market (applies to LONG — LONG uses MFI). For SHORT, rel_vol was already gated above.
-            if is_long and _mq_rvol_1h < 0.95:
-                _mq_quality += 0.5
-                _mq_reasons.append("LOW_VOL_L")
-            # Extreme-reversal scoring — per-direction indicator
-            _mq_rev = 0.0
-            if is_long:
-                if _mq_mfi_15m < 30 and _mq_mfi_1h < 35:
-                    _mq_rev += 1.0
-                    _mq_reasons.append("MFI_EXTREME_L")
-                elif _mq_mfi_15m > _mq_mfi_1h and _mq_mfi_1h < 40:
-                    _mq_rev += 0.5
-                    _mq_reasons.append("MFI_TURN_L")
-            else:
-                # SHORT extreme: per-TF RSI thresholds + rel_vol gate (MFI would give false signal here)
-                _rsi_s15 = _cfg_auto("TRADIER_RSI_SHORT_15M", 65.0)
-                _rsi_s1h = _cfg_auto("TRADIER_RSI_SHORT_1H", 65.0)
-                _rvol_s15 = _cfg_auto("TRADIER_RSI_SHORT_RVOL_15M", 1.0)
-                if (
-                    _mq_rsi_15m > _rsi_s15
-                    and _mq_rsi_1h > _rsi_s1h
-                    and _mq_rvol_15m >= _rvol_s15
-                ):
-                    _mq_rev += 1.0
-                    _mq_reasons.append(
-                        f"RSI_EXTREME_S(r15={_mq_rsi_15m:.0f},r1h={_mq_rsi_1h:.0f},rv={_mq_rvol_15m:.2f})"
-                    )
-                elif _mq_rsi_15m < _mq_rsi_1h and _mq_rsi_1h > (_rsi_s1h - 5):
-                    _mq_rev += 0.5
-                    _mq_reasons.append(f"RSI_TURN_S(r15<r1h={_mq_rsi_1h:.0f})")
-            _mq_total = _mq_quality + _mq_rev
-            # Bonus only — no filtering/penalty (entries already have enough gates)
-            if _mq_total >= 4.0:
-                score += 4
-                reasons.append(f"MQ_STRONG({_mq_total:.1f})|{'|'.join(_mq_reasons)}")
-            elif _mq_total >= 2.5:
-                score += 2
-                reasons.append(f"MQ_GOOD({_mq_total:.1f})")
+            from vec_decisions.tradier_market_quality import market_quality_score_scalar
+            _mq_cfg = {
+                "TRADIER_RSI_SHORT_RVOL_1H": _cfg_auto("TRADIER_RSI_SHORT_RVOL_1H", 1.0),
+                "TRADIER_RSI_SHORT_15M": _cfg_auto("TRADIER_RSI_SHORT_15M", 65.0),
+                "TRADIER_RSI_SHORT_1H": _cfg_auto("TRADIER_RSI_SHORT_1H", 65.0),
+                "TRADIER_RSI_SHORT_RVOL_15M": _cfg_auto("TRADIER_RSI_SHORT_RVOL_15M", 1.0),
+            }
+            _mq_bonus, _mq_reason = market_quality_score_scalar(i, is_long, _mq_cfg.get)
+            score += _mq_bonus
+            if _mq_reason:
+                reasons.append(_mq_reason)
         # --- EOD RATIO ENFORCEMENT (BACKTEST_CHANGE_147) --- scale down 30min before close
         if _cfg_auto("EOD_RATIO_ENFORCE_TRADIER", False) and not is_exit:
             try:

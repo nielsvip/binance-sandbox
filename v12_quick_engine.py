@@ -18336,17 +18336,25 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _safe(npz, f"_completed_bb_pct_b_{_sre_tf}_prev", n, np.nan), dtype=float
         )
         _sre_velocity = np.asarray(_safe(npz, "wt_velocity_1h", n, 0.0), dtype=float)
-    _rule_b_exit_on = _tr_exit15 and bool(getattr(cfg, "RULE_B_5M_EXIT_ENABLED", False))
+    _rule_b_ltf = bool(getattr(cfg, "LTF_SUB15M_TRADING_ENABLED", False))
+    _rule_b_tf = "5m" if _rule_b_ltf else "15m"
+    _rule_b_exit_on = str(getattr(cfg, "MODE", "crypto")) == "tradier" and bool(getattr(cfg, "RULE_B_5M_EXIT_ENABLED", False))
     if _rule_b_exit_on:
-        _rule_b_low15 = np.asarray(_safe(npz, "low_15m", n, 0.0), dtype=float)
-        _rule_b_low15_prev = np.asarray(_safe(npz, "low_15m_prev", n, np.nan), dtype=float)
-        _rule_b_high15 = np.asarray(_safe(npz, "high_15m", n, 0.0), dtype=float)
-        _rule_b_high15_prev = np.asarray(_safe(npz, "high_15m_prev", n, np.nan), dtype=float)
-        if np.all(~np.isfinite(_rule_b_low15_prev)):
+        _rule_b_fields = tuple(f"{field}_{_rule_b_tf}{suffix}" for field in ("low", "high") for suffix in ("", "_prev"))
+        if _rule_b_ltf:
+            for _rule_b_field in _rule_b_fields:
+                _rule_b_values = np.asarray(npz.get(_rule_b_field, []))
+                if _rule_b_values.ndim != 1 or len(_rule_b_values) != n:
+                    raise ValueError(f"RULE_B_5M_EXIT_ENABLED unsupported: NPZ missing aligned field {_rule_b_field}")
+        _rule_b_low15 = np.asarray(_safe(npz, f"low_{_rule_b_tf}", n, 0.0), dtype=float)
+        _rule_b_low15_prev = np.asarray(_safe(npz, f"low_{_rule_b_tf}_prev", n, np.nan), dtype=float)
+        _rule_b_high15 = np.asarray(_safe(npz, f"high_{_rule_b_tf}", n, 0.0), dtype=float)
+        _rule_b_high15_prev = np.asarray(_safe(npz, f"high_{_rule_b_tf}_prev", n, np.nan), dtype=float)
+        if not _rule_b_ltf and np.all(~np.isfinite(_rule_b_low15_prev)):
             _rule_b_low15_prev = np.roll(_rule_b_low15, 1)
             if n:
                 _rule_b_low15_prev[0] = 0.0
-        if np.all(~np.isfinite(_rule_b_high15_prev)):
+        if not _rule_b_ltf and np.all(~np.isfinite(_rule_b_high15_prev)):
             _rule_b_high15_prev = np.roll(_rule_b_high15, 1)
             if n:
                 _rule_b_high15_prev[0] = 0.0
@@ -23522,14 +23530,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         if not closed and pos is not None and _rule_b_exit_on:
             from vec_decisions.tradier_missing_rule_b_exit_15m import rule_b_exit_15m_fires
             _rule_b_ind = {
-                "low_15m": float(_rule_b_low15[i]),
-                "low_15m_prev": float(_rule_b_low15_prev[i]),
-                "high_15m": float(_rule_b_high15[i]),
-                "high_15m_prev": float(_rule_b_high15_prev[i]),
+                f"low_{_rule_b_tf}": float(_rule_b_low15[i]),
+                f"low_{_rule_b_tf}_prev": float(_rule_b_low15_prev[i]),
+                f"high_{_rule_b_tf}": float(_rule_b_high15[i]),
+                f"high_{_rule_b_tf}_prev": float(_rule_b_high15_prev[i]),
             }
             _rule_b_fire, _ = rule_b_exit_15m_fires(
                 lambda _k, _d=None: getattr(cfg, _k, _d),
-                is_long, _rule_b_ind, live_pnl_pct,
+                is_long, _rule_b_ind, live_pnl_pct, _rule_b_tf,
             )
             if _rule_b_fire:
                 reason = (

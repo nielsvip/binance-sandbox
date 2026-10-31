@@ -3,6 +3,7 @@
 import argparse
 import copy
 import hashlib
+import importlib.util
 import json
 import os
 import sys
@@ -20,8 +21,26 @@ def _sha(path):
     return digest.hexdigest()
 
 
+def _load_isolated_helper(path, name):
+    spec = importlib.util.spec_from_file_location(name, path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Cannot load isolated replay helper {path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def _write(stream, row):
     stream.write(json.dumps(row, sort_keys=True, default=str) + "\n")
+
+
+def _published_board_preflight(active, vec_exact_module):
+    sym_side = str(active["sym_side"]).upper()
+    symbol, side = sym_side.rsplit("_", 1)
+    board_ok, board_detail = vec_exact_module.latest_board_ok(symbol, side)
+    if not board_ok:
+        raise RuntimeError(f"Frozen published board does not authorize replay side: {board_detail}")
+    return sym_side, board_ok, board_detail
 
 
 def _canonical_sha256(value):
@@ -174,11 +193,13 @@ class _NativeMacLifecycle:
             armed = bool(prior["fixed_stop_armed"])
         now = self.ez.datetime.fromtimestamp(float(self.clock[0]), self.ez.timezone.utc)
         opened = opened_at
+        native_gain = self.ez._ptruth_gain(side, entry, mark)
+        gain = float(native_gain) if native_gain is not None else 0.0
         position_data = {
             "symbol": symbol, "position_side": side, "entry_price": entry, "mark_price": mark,
             "positionAmt": qty, "initial_quantity": float(prior.get("initial_quantity", fill_qty) if prior else fill_qty),
-            "gain": ((mark / entry - 1.0) * 100.0 if is_long else (entry / mark - 1.0) * 100.0) if entry > 0 and mark > 0 else 0.0,
-            "max_gain": max(float(prior.get("max_gain", 0.0) if prior else 0.0), ((mark / entry - 1.0) * 100.0 if is_long else (entry / mark - 1.0) * 100.0) if entry > 0 and mark > 0 else 0.0),
+            "gain": gain,
+            "max_gain": max(float(prior.get("max_gain", 0.0) if prior else 0.0), gain),
             "prev_gain": float(prior.get("gain", 0.0) if prior else 0.0), "max_quantity": max(qty, float(prior.get("max_quantity", 0.0) if prior else 0.0)),
             "last_augmentation_amount": float(fill_qty if action == "AUGMENT" else prior.get("last_augmentation_amount", 0.0) if prior else 0.0),
             "last_augmentation_price": float(fill_price if action == "AUGMENT" else prior.get("last_augmentation_price", 0.0) if prior else 0.0),
@@ -373,19 +394,60 @@ def replay(args):
     if _sha(code_manifest_path) != args.code_manifest_sha:
         raise RuntimeError("Replay source manifest SHA differs from the frozen stream manifest")
     os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+    os.environ["BASE_PATH"] = str(code_root)
+    os.environ["V12_BASE_PATH"] = str(code_root)
+    os.environ["V12_NPZ_DIR"] = str(Path(args.npz).resolve().parent)
+    os.environ["VD_MAC_POSITIONS"] = "1"
+    active_db = isolation_root / "frozen_data" / "hourly_reconfig" / "per_sym_store.db"
+    if not active_db.is_file():
+        raise RuntimeError(f"Frozen active database is missing: {active_db}")
+    os.environ["PER_SYM_STORE_DB"] = str(active_db)
+    runtime_guard = _load_isolated_helper(code_root / "tools" / "replay_runtime_guard.py", "replay_runtime_guard")
+    runtime_guard.assert_runtime_paths(code_root, isolation_root,
+                                       {"BASE_PATH": os.environ["BASE_PATH"], "V12_BASE_PATH": os.environ["V12_BASE_PATH"],
+                                        "PER_SYM_STORE_DB": os.environ["PER_SYM_STORE_DB"]})
+    log_redirect = _load_isolated_helper(code_root / "tools" / "replay_log_redirect.py", "replay_log_redirect")
+    log_redirect_status = log_redirect.install_replay_log_redirect(root / "logs")
     out_dir = root / "data" / "vector_direct"
     out_dir.mkdir(parents=True, exist_ok=True)
     for source, target in ((args.exchange_info, out_dir / "exchange_info_crypto.json"),
                            (args.exchange_ticks, out_dir / "exchange_ticks_crypto.json")):
         target.write_bytes(Path(source).read_bytes())
     sys.path.insert(0, str(code_root))
-    os.environ["BASE_PATH"] = str(code_root)
-    os.environ["V12_BASE_PATH"] = str(code_root)
-    os.environ["V12_NPZ_DIR"] = str(Path(args.npz).resolve().parent)
-    os.environ["VD_MAC_POSITIONS"] = "1"
+    import per_trade_logger
+    per_trade_root = root / "native_state" / "per_trade_logger"
+    per_trade_logger._BASE = per_trade_root
+    per_trade_logger._OUT_DIR = per_trade_root / "per_trade_returns"
+    per_trade_logger._ATTEMPT_DIR = per_trade_root / "per_trade_attempts"
+    per_trade_logger._IDEM_DIR = per_trade_root / "per_trade_returns" / "_idem"
+    for path in (per_trade_logger._BASE, per_trade_logger._OUT_DIR, per_trade_logger._ATTEMPT_DIR, per_trade_logger._IDEM_DIR):
+        Path(path).mkdir(parents=True, exist_ok=True)
     from tools import vector_direct_trader as trader_module
     import tools.vector_direct_stops as stops_module
     from tools.vector_direct_stops import Stops
+    import config as config_module
+    import ez_manage as ez_manage_module
+    import per_sym_store as per_sym_store_module
+    import stale_set_halt as stale_set_halt_module
+    from live_twins import vec_exact as vec_exact_module
+    from tools import mac_positions_push_executors as mac_positions_module
+    if Path(per_sym_store_module.DB_PATH).resolve() != active_db.resolve():
+        raise RuntimeError(f"Replay per_sym_store DB differs from frozen DB: {per_sym_store_module.DB_PATH}")
+    state_modules = {"per_trade_logger": per_trade_logger, "config": config_module,
+                     "ez_manage": ez_manage_module, "stale_set_halt": stale_set_halt_module}
+    runtime_paths = runtime_guard.assert_state_module_paths(code_root, isolation_root, state_modules)
+    vec_exact_base = Path(vec_exact_module._base_path()).resolve()
+    if vec_exact_base != code_root:
+        raise RuntimeError(f"Replay published-board root escapes isolated source candidate: {vec_exact_base}")
+    runtime_paths["vec_exact.BASE_PATH"] = str(vec_exact_base)
+    active_row = runtime_guard.assert_frozen_active_row(active_db, active_path)
+    for module_name, module in (("vector_direct_trader", trader_module), ("vector_direct_stops", stops_module),
+                                ("config", config_module), ("ez_manage", ez_manage_module),
+                                ("per_sym_store", per_sym_store_module), ("stale_set_halt", stale_set_halt_module),
+                                ("live_twins.vec_exact", vec_exact_module), ("per_trade_logger", per_trade_logger),
+                                ("mac_positions_push_executors", mac_positions_module)):
+        if not Path(module.__file__).resolve().is_relative_to(code_root):
+            raise RuntimeError(f"Replay imported {module_name} outside isolated source candidate: {module.__file__}")
 
     decision_clock = [0.0]
     replay_time = _ReplayTime(decision_clock, time)
@@ -403,8 +465,10 @@ def replay(args):
     with exchange_ticks_path.open() as stream:
         ticks = json.load(stream)
     active = active_snapshot
+    sym_side, board_ok, board_detail = _published_board_preflight(active, vec_exact_module)
+    if not Path(mac_positions_module.__file__).resolve().is_relative_to(code_root):
+        raise RuntimeError(f"Replay imported mac_positions_push_executors outside isolated source candidate: {mac_positions_module.__file__}")
     admission = {str(value).upper() for value in active.get("account_admission_keys", [])}
-    sym_side = str(active["sym_side"]).upper()
     if f"{args.account}:{sym_side}".upper() not in admission:
         raise ValueError(f"account {args.account} is not admitted by frozen active-set snapshot")
 
@@ -459,6 +523,9 @@ def replay(args):
     stops_module.dc15 = causal_dc15
     lifecycle = _NativeMacLifecycle(args.account, root / "native_position_books", out_dir, trader, decision_clock,
                                     dc_low, dc_high, time_to_index)
+    publisher_root = Path(lifecycle.publisher.ROOT).resolve()
+    if not publisher_root.is_relative_to(isolation_root):
+        raise RuntimeError(f"Replay MAC position publisher root escapes isolated candidate: {publisher_root}")
     broker.lifecycle = lifecycle
 
     manifest = {"record": "vector_consumer_manifest", "schema_version": 1, "account": args.account,
@@ -490,6 +557,11 @@ def replay(args):
                 "acceptance_status": "diagnostic_only_contract_ohlc_stop_proxy_and_incomplete_fee_funding",
                 "broker_transport": "exact _MockBroker.send and _MockBroker._req methods; unsupported requests raise",
                 "mock_broker_transport_verified": type(broker) is _MockBroker and broker.send.__func__ is _MockBroker.send and broker._req.__func__ is _MockBroker._req,
+                "runtime_log_redirect": log_redirect_status,
+                "runtime_preflight": {"paths": runtime_paths, "active_row": active_row,
+                                      "published_board": {"ok": board_ok, "detail": board_detail},
+                                      "mac_position_publisher_root": str(publisher_root),
+                                      "active_db_sha256": _sha(active_db)},
                 "isolation_root": str(isolation_root), "run_root": str(root), "source_root": str(code_root),
                 "phase_score_start_ts": args.score_start_ts}
     state_rows, action_rows, invalid = 0, 0, {}
