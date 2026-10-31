@@ -2919,6 +2919,10 @@ class PilotBrainV18:
             self.ema[sym_side] = float(e0)
         self.ctx = {"tier": 0.0, "bh": 0.0, "regime": "UNK"}
         self.booked = collections.Counter()
+        self._probability_surface, self.surface_why = None, "off"
+        if os.environ.get("V18_LINKNET_SURFACE_MANIFEST"):
+            from tools.v18_probability_surface import load_surface
+            self._probability_surface, self.surface_why = load_surface(os.environ, path, cs, ROOT)
         self.bi, self.bind_why = None, "model has no M/B heads"
         if all(h in self.w for h in BIND_HEADS):
             if binding_feature_mode(self.meta) == "unknown":
@@ -2949,6 +2953,7 @@ class PilotBrainV18:
 
     def decide(self, sheet, row_key, filter_key=None, round_id="", naked_d=None, running_set=None):
         pm = pb = bv = None
+        surface_value = None
         if filter_key is None:
             x, cn = self._x("R", sheet, row_key, None)
             p = sig(sum(a * b for a, b in zip(self.w["R"], x)))
@@ -2962,6 +2967,10 @@ class PilotBrainV18:
             else:
                 x, cn = self._x("F0", sheet, row_key, filter_key)
                 p = sig(sum(a * b for a, b in zip(self.w["F0"], x)))
+                if getattr(self, "_probability_surface", None) is not None:
+                    surface_value = self._probability_surface.lookup(sheet, row_key, filter_key, self.ctx["regime"])
+                    if surface_value is not None:
+                        p = surface_value[0]
                 pe = p_eval(p, self.p_ref["F"], self.floor, cn)
                 u = draw(self.sym_side, sheet, row_key + "|" + str(filter_key), round_id)
                 why = "V18_BRAIN cell"
@@ -2972,8 +2981,14 @@ class PilotBrainV18:
             self.booked["cost_aware"] += 1
         keep = u < pe
         self.booked["keep" if keep else "skip"] += 1
-        return {"keep": keep, "p": pe, "p_pos": p, "n": cn, "u": u, "why": f"{why} p_pos={p:.4f} n={cn:g} p_eval={pe:.4f}", "p_marginal": pm, "p_binds": pb,
-                "bind_verdict": bv}
+        if surface_value is not None:
+            self.booked["linknet_surface"] += 1
+            why += " LINKNET_SURFACE"
+        decision = {"keep": keep, "p": pe, "p_pos": p, "n": cn, "u": u, "why": f"{why} p_pos={p:.4f} n={cn:g} p_eval={pe:.4f}", "p_marginal": pm, "p_binds": pb,
+                    "bind_verdict": bv}
+        if surface_value is not None:
+            decision["linknet_n_measured"] = surface_value[1]
+        return decision
 
     def observe(self, sheet, row_key, delta, alpha=0.02):
         y = 1.0 if (delta is not None and delta > getattr(self, "pos_thr", POS_THR)) else 0.0
