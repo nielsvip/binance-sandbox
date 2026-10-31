@@ -61,7 +61,7 @@ def test_exact_tab_row_header_regime_and_immutable_cache(tmp_path, monkeypatch):
 
 
 def test_substitution_uses_existing_policy_and_graph_n_not_linknet_n(tmp_path, monkeypatch):
-    model, _, _, environment = make_inputs(tmp_path, monkeypatch)
+    model, _, _, environment = make_inputs(tmp_path, monkeypatch, cell_p_net=np.full((3, 1), 0.9))
     value = runtime(model, monkeypatch, environment, n=10)
     decision = value.decide("TAB1", "SW=1", "F=0", "r")
     assert decision["p_pos"] == pytest.approx(0.0002)
@@ -73,6 +73,28 @@ def test_substitution_uses_existing_policy_and_graph_n_not_linknet_n(tmp_path, m
     assert selected["settled"]["F=0"]["reason_code"] != selector.RC_KEEP_EVIDENCE
     untried = runtime(model, monkeypatch, environment, n=2).decide("TAB1", "SW=1", "F=0", "r")
     assert untried["n"] == 2 and untried["p"] == 1.0
+
+
+def test_existing_cost_aware_cap_and_positive_revival_remain_in_force(tmp_path, monkeypatch):
+    model, _, _, environment = make_inputs(tmp_path, monkeypatch, cell_p_pos=np.full((3, 1), 0.9))
+    value = runtime(model, monkeypatch, environment)
+    value._ca = {}
+    monkeypatch.setattr(brain, "cost_aware_hit", lambda *args: True)
+    decision = value.decide("TAB1", "SW=1", "F=0", "r")
+    assert decision["p"] == brain.COST_AWARE_P
+    assert value.booked["cost_aware"] == value.booked["linknet_surface"] == 1
+    assert "COST_AWARE" in decision["why"] and "LINKNET_SURFACE" in decision["why"]
+    assert value.decide("TAB1", "SW=1", "F=0", "r", naked_d=0.1)["p"] == 1.0
+
+
+def test_foreign_symbol_and_unsupported_context_fall_back(tmp_path, monkeypatch):
+    model, _, _, environment = make_inputs(tmp_path, monkeypatch)
+    provider, why = surface.load_surface(environment, model, "CRYPTO_LONG", tmp_path, "ETHUSDT_LONG")
+    assert provider is None and "symbol identity" in why
+    baseline = runtime(model, monkeypatch)
+    enabled = runtime(model, monkeypatch, environment)
+    baseline.ctx["regime"] = enabled.ctx["regime"] = "UNSUPPORTED"
+    assert baseline.decide("TAB1", "SW=1", "F=0", "r") == enabled.decide("TAB1", "SW=1", "F=0", "r")
 
 
 def test_absent_missing_and_positive_naked_paths_preserve_graph_decisions(tmp_path, monkeypatch):
