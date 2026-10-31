@@ -249,3 +249,11 @@ def test_each_canonical_partial_mutation_family_has_account_gate_and_projection_
 def test_stock_whole_share_postprocessor_preserves_account_quantized_projection():
     source = (Path(__file__).resolve().parents[1] / "v12_quick_engine.py").read_text()
     assert source.count('if _ws_e.get("account_partial_projection")') == 2
+
+
+def test_satoshi_dust_flat_projection_is_committed_only_on_reduce_event():
+    source = (Path(__file__).resolve().parents[1] / "v12_quick_engine.py").read_text()
+    start = source.index("        _satoshi_account_ok, _satoshi_account_qty, _satoshi_account_plan")
+    end = source.index('            pnl_preview = pos["realized"] + (', start)
+    satoshi_branch = source[start:end]
+    assert satoshi_branch.count("_account_partial_commit(pos, _satoshi_account_plan") == 1

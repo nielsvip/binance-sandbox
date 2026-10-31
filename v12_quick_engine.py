@@ -18475,7 +18475,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             )  # [N3 q3]
         except Exception:
             _n3_obl = None
-    # MOP-UP M 2026-10-04 (C41 DD_BOUNCE_ENABLED): Prepared only when master ON (crypto only).
+    # MOP-UP M 2026-10-04 (C41 DD_BOUNCE_ENABLED): Prepared only when master ON.
     _wirem_dd = None
     if bool(getattr(cfg, "DD_BOUNCE_ENABLED", False)):
         try:
@@ -22436,6 +22436,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _wirem_dd is not None
             and pos is not None
             and float(pos.get("qty", 0) or 0) > 0
+            and not _n4_fire
         ):
             try:
                 import vec_decisions.wirem_dd_bounce as _wirem_dd_m
@@ -24222,8 +24223,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             "bars_held": int(i - pos["entry_bar"]),
                         }
                     )
-                    if _satoshi_account_plan is not None:
-                        _account_partial_commit(pos, _satoshi_account_plan, trades[-1])
                     pos = None
                     cd = cooldown_bars
                     has_closed_before = True

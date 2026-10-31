@@ -183,3 +183,35 @@ def test_the_light_backup_holds_an_exact_revert(tmp_path):
     kv = con.execute("select count(*) from kv_json where key='store_identity'").fetchone()[0]
     con.close()
     assert left == 0 and kv == 0, "running the recorded revert must return the store exactly to before"
+
+
+def test_a_reassert_on_a_correct_store_changes_nothing_at_all(tmp_path):
+    """The sync tools must never see a store 'change' that changed nothing."""
+    path = make_store(tmp_path, "per_sym_store.db", [("A_LONG", {})])
+    W.process(path, tmp_path / "bk", dry=False)
+    con = sqlite3.connect(str(path))
+    first = con.execute("select value_json, updated_at, epoch from kv_json where key='store_identity'").fetchone()
+    con.close()
+    report = W.process(path, tmp_path / "bk", dry=False)
+    con = sqlite3.connect(str(path))
+    second = con.execute("select value_json, updated_at, epoch from kv_json where key='store_identity'").fetchone()
+    con.close()
+    assert first == second and "untouched" in report["kv_json"]
+
+
+def test_a_replaced_store_is_restamped_by_the_reassert(tmp_path):
+    """A copy swapped in wholesale loses identity and guards; the next re-assert must put both back."""
+    path = make_store(tmp_path, "per_sym_store.db", [("A_LONG", {})])
+    W.process(path, tmp_path / "bk", dry=False)
+    path.unlink()
+    make_store(tmp_path, "per_sym_store.db", [("A_LONG", {})])
+    W.process(path, tmp_path / "bk", dry=False)
+    assert W.verify(path)["guard"].startswith("OK")
+
+
+def test_a_correct_store_takes_no_backup_on_reassert(tmp_path):
+    path = make_store(tmp_path, "per_sym_store.db", [("A_LONG", {})])
+    W.process(path, tmp_path / "bk", dry=False)
+    n = len(list((tmp_path / "bk").iterdir()))
+    report = W.process(path, tmp_path / "bk", dry=False)
+    assert report["state"].startswith("already correct") and len(list((tmp_path / "bk").iterdir())) == n

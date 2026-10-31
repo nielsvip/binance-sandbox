@@ -45,6 +45,7 @@ import signal
 import sys
 import threading
 import time as _real_time_module
+from contextvars import ContextVar
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -54,6 +55,22 @@ import numpy as np
 from tools.paper_frame_stream import historical_or_forward_steps
 
 from test_rate_guard import RateGuard
+
+_BT_ETA_STATE_MARKER = ContextVar("bt_eta_state_marker", default=None)
+
+
+def _bt_eta_marker_set(marker):
+    return _BT_ETA_STATE_MARKER.set(marker)
+
+
+def _bt_eta_marker_reset(token):
+    _BT_ETA_STATE_MARKER.reset(token)
+
+
+def _bt_eta_marker_mark_applied(position_key):
+    marker = _BT_ETA_STATE_MARKER.get()
+    if isinstance(marker, dict) and marker.get("position_key") == position_key:
+        marker["execute_now_applied"] = True
 
 
 def _curated_override_subset(overrides: dict) -> dict:
@@ -3093,6 +3110,37 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     # Redis (in-memory)
     trade_manager.redis_manager = InMemoryRedis()
 
+    async def _replay_apply_service_fill(position_key, account_key, symbol, side, position_side, quantity, price, is_full_close=False, reason=""):
+        pos = trade_manager.positions.get(position_key)
+        if pos is None or positions_service is None:
+            raise RuntimeError(f"replay fill has no PositionService slot: {position_key}")
+        qty_abs = abs(float(quantity or 0))
+        px = float(price or 0)
+        if qty_abs <= 0 or px <= 0:
+            raise ValueError(f"replay fill has invalid qty/price: {position_key} qty={qty_abs} px={px}")
+        before = abs(float(getattr(pos, "positionAmt", 0) or 0))
+        is_long = str(position_side or "").upper() == "LONG" or (not position_side and position_key.endswith("_LONG"))
+        is_reduce = (str(side).upper() == "SELL" and is_long) or (str(side).upper() == "BUY" and not is_long)
+        positions_service.get_current_price = lambda _symbol: _sim_price(_symbol, px)
+        async def _frozen_indicators(_symbol, force_refresh=False):
+            return dict(indicator_cache.get(str(_symbol).upper(), {}) or {})
+        async def _sim_price(_symbol, _px):
+            return _px, _sim_datetime_now(timezone.utc)
+        positions_service.get_indicators_for_symbol = _frozen_indicators
+        old_entry = float(getattr(pos, "entry_price", 0) or 0)
+        if is_reduce:
+            after = 0.0 if is_full_close else max(0.0, before - qty_abs)
+            reduced = before - after
+            await positions_service.handle_reduction(pos, position_key, before, after, reduced, px, old_entry or px, reduction_source="v8_replay_fill", reason=reason)
+        else:
+            after = before + qty_abs
+            avg_entry = (before * old_entry + qty_abs * px) / after if before > 0 and old_entry > 0 else px
+            await positions_service.handle_augmentation(pos, position_key, before, after, qty_abs, px, old_entry or px, price_is_fresh=True, broker_entry_price=avg_entry)
+        actual_after = abs(float(getattr(pos, "positionAmt", 0) or 0))
+        return {"before": before, "after": actual_after, "position_state_found": True,
+                "action": (("CLOSE" if actual_after <= 1e-12 else "REDUCE") if is_reduce
+                           else ("OPEN" if before < 0.0001 else "AUGMENT"))}
+
     # Mock the Binance client on trade_manager to record trades
     # MUST be sync (called via asyncio.to_thread) and MUST update positionAmt
     class _RecordingClient:
@@ -3221,29 +3269,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             "position_state_found": bool(pos),
             "sym_side": position_key.split(":", 1)[-1] if position_key else "",
         }
-        # Apply the trade to positions (what Finandy would do)
         if pos and quantity > 0:
-            is_reduce = (side == "SELL" and is_long) or (side == "BUY" and not is_long)
-            if is_reduce:
-                pos.positionAmt = max(0.0, abs(pos.positionAmt) - abs(quantity))
-                if is_full_close:
-                    pos.positionAmt = 0.0
-            else:
-                _wh_old_amt = abs(pos.positionAmt)
-                if _wh_old_amt < 0.0001:
-                    _f1_new_lifecycle(pos, price, quantity)
-                    pos.entry_price = price
-                    pos.opened_at = _sim_datetime_now(timezone.utc)
-                    pos.initial_quantity = abs(quantity)
-                else:
-                    pos.entry_price = (_wh_old_amt * pos.entry_price + abs(quantity) * price) / (_wh_old_amt + abs(quantity))
-                pos.positionAmt = _wh_old_amt + abs(quantity)
-            # Always ensure opened_at is datetime
-            if not isinstance(getattr(pos, 'opened_at', None), datetime):
-                pos.opened_at = _sim_datetime_now(timezone.utc)
-            after_amt = abs(float(getattr(pos, "positionAmt", 0) or 0))
-            before_row["action"] = (("CLOSE" if after_amt <= 1e-12 else "REDUCE") if is_reduce
-                                     else ("OPEN" if before_amt < 0.0001 else "AUGMENT"))
+            _fill_state = await _replay_apply_service_fill(position_key, account_key, symbol, side, position_side, quantity, price, is_full_close, reason)
+            before_row["action"] = _fill_state["action"]
+            after_amt = _fill_state["after"]
             before_row["position_after"] = after_amt
             before_row["position_after_signed"] = after_amt if is_long else -after_amt
             before_row["status"] = "FILLED"
@@ -4063,7 +4092,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                          "symbol": sym, "position_side": ps, "side": side,
                          "requested_qty": requested_qty, "executed_qty": qty, "quantity": qty,
                          "price": px, "action": ledger_action, "reason": str(reason)[:200],
-                         "is_full_close": bool(ifc), "status": "FILLED",
+                         "is_full_close": bool(ifc), "status": "PENDING",
                          "position_before": _eta_before_amt,
                          "position_before_signed": _eta_before_amt if pk.endswith("_LONG") else -_eta_before_amt,
                          "position_state_found": bool(_eta_pos_before),
@@ -4225,59 +4254,11 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             _air_ledger_record(trade_manager, pk, float(_sim_ts[0]) if _sim_ts else 0.0, _air_old_amt, _air_new_amt, px, reason)
         except Exception:
             pass
-        if is_red and pos:
-            old_amt = abs(getattr(pos, 'positionAmt', 0))
-            new_amt = max(0, old_amt - abs(qty))
-            pos.positionAmt = new_amt; pos.quantity = new_amt
-            if ifc or new_amt < 0.0001: pos.positionAmt = 0; pos.quantity = 0
-            pos.was_reduced = True; pos.last_reduction_time = _sim_datetime_now(timezone.utc); pos.last_reduction_price = px
-        elif not is_red:
-            if pos:
-                old_amt = abs(getattr(pos, 'positionAmt', 0)); old_ep = getattr(pos, 'entry_price', px) or px
-                new_amt = old_amt + abs(qty)
-                pos.entry_price = (old_ep*old_amt + px*abs(qty))/new_amt if new_amt>0 else px
-                pos.positionAmt = new_amt; pos.quantity = new_amt
-                # 2026-05-21 USER FIX: any 0→positive transition is a NEW position lifecycle.
-                if old_amt < 0.0001:
-                    _f1_new_lifecycle(pos, px, qty)
-                    pos.entry_price = px
-                    try: pos.opened_at = _sim_datetime_now(timezone.utc)
-                    except Exception: pass
-            else:
-                class _P:
-                    def __init__(s, sy, sd, q, ep):
-                        s.symbol=sy; s.position_side=sd; s.positionAmt=q; s.quantity=q; s.entry_price=ep; s.mark_price=ep
-                        s.gain=0; s.prev_gain=0; s.max_gain=0; s.opened_at=_sim_datetime_now(timezone.utc); s.last_updated=_sim_datetime_now(timezone.utc)
-                        s.last_augmentation_time=None; s.last_reduction_time=None; s.last_reduction_price=0; s.was_reduced=False; s.augmented_count=0; s.max_quantity=q; s.mark_price_last_updated=None
-                np2 = _P(sym, ps, abs(qty), px)
-                # 2026-10-20 CARRY THE PRIOR EXIT PRICE ONTO A REOPENED KEY — live does, this engine did not.
-                # HARDCODED_RALLY_REENTRY (the system's highest-volume entry family: 159,841 rows across the board
-                # corpus, 195 of the 561 VEC_ONLY entries in the 60-sym_side stocks run) is gated on
-                # `last_reduction_price > 0` and fires when price crosses back through that exit
-                # (ez_manage.py:42381, tradier_manage.py:40307). Live KEEPS that field on the key across the flat
-                # period — CLAUDE.md forbids deleting position dict entries, and ez_positions_service's
-                # [REENTRY_GUARDIAN] (:9518) restores it if it is ever lost — so the comparison is always available.
-                # This engine instead built a FRESH object on every open with last_reduction_price=0, erasing exactly
-                # the number the family needs. Measured consequence: the vector fired HARDCODED_RALLY_REENTRY 195
-                # times in the window while the engine's live leg fired it ZERO times, which read as "the two engines
-                # run different strategies". It is not a wiring gap: live /history/ holds 87 NATIVE (untagged)
-                # HARDCODED_RALLY_REENTRY OPENs on the trc account, 2026-09-21..09-30, so live demonstrably produces
-                # the family. Carrying the field over removes a harness artifact from the parity number; it adds no
-                # decision of its own, and when there is no prior record the behaviour is unchanged.
-                try:
-                    _prior = trade_manager.positions.get(pk)
-                    if _prior is not None and float(getattr(_prior, "last_reduction_price", 0) or 0) > 0:
-                        np2.last_reduction_price = float(_prior.last_reduction_price)
-                        np2.last_reduction_time = getattr(_prior, "last_reduction_time", None)
-                except Exception:
-                    pass
-                trade_manager.positions[pk] = np2
-                trade_manager.positions_by_account.setdefault(acct, {})[pk] = np2
+        _fill_state = await _replay_apply_service_fill(pk, acct, sym, side, ps, qty, px, ifc, reason)
+        _eta_fill_row["status"] = "FILLED"
         _eta_pos_after = trade_manager.positions.get(pk)
-        _eta_after_amt = abs(float(getattr(_eta_pos_after, "positionAmt", 0) or 0)) if _eta_pos_after else 0.0
-        _eta_is_reduce = bool(is_red)
-        _eta_fill_row["action"] = (("CLOSE" if _eta_after_amt <= 1e-12 else "REDUCE") if _eta_is_reduce
-                                    else ("OPEN" if _eta_before_amt < 0.0001 else "AUGMENT"))
+        _eta_after_amt = abs(float(getattr(_eta_pos_after, "positionAmt", 0) or 0)) if _eta_pos_after else _fill_state["after"]
+        _eta_fill_row["action"] = _fill_state["action"]
         _eta_fill_row["position_after"] = _eta_after_amt
         _eta_fill_row["position_after_signed"] = _eta_after_amt if pk.endswith("_LONG") else -_eta_after_amt
         return "SUCCESS"
@@ -10382,8 +10363,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 _ep.mark_price_last_updated = None
                 manager.position_manager.positions[_pk] = _ep
             _eta_state_marker = {"position_key": _pk, "execute_now_applied": False}
-            _eta_prior_marker = manager.__dict__.get("_bt_active_eta_state_marker")
-            manager.__dict__["_bt_active_eta_state_marker"] = _eta_state_marker
+            _eta_marker_token = _bt_eta_marker_set(_eta_state_marker)
             try:
                 _c5_events_before = len(executed_trades)
                 manager.__dict__["_c5_pending_requested_qty"] = abs(float(
@@ -10395,10 +10375,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return f"ERROR_{type(_eta_err).__name__}"
             finally:
                 manager.__dict__.pop("_c5_pending_requested_qty", None)
-                if _eta_prior_marker is None:
-                    manager.__dict__.pop("_bt_active_eta_state_marker", None)
-                else:
-                    manager.__dict__["_bt_active_eta_state_marker"] = _eta_prior_marker
+                _bt_eta_marker_reset(_eta_marker_token)
             _r = str(result or '')
             if "BLOCKED" not in _r:
                 v8_logger.warning(f"[V8_REAL_ETA] {position_key} {_act} {side} → {_r[:80]}")
@@ -10940,10 +10917,23 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     v8_logger.debug(f"[V8_NEWBORN_PROTECT_ERR] {position_key}: exec_now fail-open ({_nbe_err})")
         v8_logger.warning(f"[V8_EXEC_NOW] {position_key} {side} qty={quantity} px={old_price} action={action}")
         act = action or ("CLOSE" if is_reduce else "OPEN")
+        _execution_event_start = len(executed_trades)
+        _execution_pos_before = (
+            manager.position_manager.positions.get(position_key)
+            if manager.position_manager
+            else None
+        )
+        _execution_before_qty = (
+            abs(float(getattr(_execution_pos_before, "positionAmt", 0) or 0))
+            if _execution_pos_before
+            else 0.0
+        )
         _place_result_en = await _place(symbol=symbol, side=side, quantity=float(quantity), price=float(px), action=act, position_side=position_side, reason=str(reason)[:200], is_full_close=is_full_close)
+        _execution_filled = False
         if isinstance(_place_result_en, dict):
             if str(_place_result_en.get("status", "")).lower() != "filled":
                 return str(_place_result_en.get("status") or "BLOCKED_PLACE")
+            _execution_filled = True
             _filled_quantity_en = float(
                 _place_result_en.get("filled_quantity", quantity) or 0.0
             )
@@ -11089,9 +11079,35 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             if hasattr(manager, 'positions_service') and manager.positions_service:
                 manager.positions_service.positions[position_key] = _pos_ref
                 manager.positions_service.positions_by_account.setdefault(account_key_en, {})[position_key] = _pos_ref
-        _eta_state_marker = manager.__dict__.get("_bt_active_eta_state_marker")
-        if isinstance(_eta_state_marker, dict) and _eta_state_marker.get("position_key") == position_key:
-            _eta_state_marker["execute_now_applied"] = True
+        if _execution_filled and _pos_ref is not None:
+            _execution_after_qty = abs(
+                float(getattr(_pos_ref, "positionAmt", 0) or 0)
+            )
+            _execution_action = (
+                ("CLOSE" if _execution_after_qty <= 1e-12 else "REDUCE")
+                if is_reduce
+                else ("OPEN" if _execution_before_qty <= 1e-9 else "AUGMENT")
+            )
+            for _execution_row in executed_trades[_execution_event_start:]:
+                if str(_execution_row.get("position_key") or "") != str(position_key):
+                    continue
+                _execution_row.update(
+                    {
+                        "status": "FILLED",
+                        "action": _execution_action,
+                        "position_before": _execution_before_qty,
+                        "position_before_signed": _execution_before_qty
+                        if str(position_side).upper() == "LONG"
+                        else -_execution_before_qty,
+                        "position_after": _execution_after_qty,
+                        "position_after_signed": _execution_after_qty
+                        if str(position_side).upper() == "LONG"
+                        else -_execution_after_qty,
+                        "position_state_found": True,
+                        "sym_side": str(position_key).split(":", 1)[-1],
+                    }
+                )
+        _bt_eta_marker_mark_applied(position_key)
         manager.recently_processed_signals[position_key] = _sim_ts[0]
         return "SUCCESS"
     if os.environ.get("V12_REAL_EXECUTE") == "1":
@@ -18617,17 +18633,21 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
     stores = {}; resolution = "3m" if mode == "crypto" else "5m"
     executed = []
     try:
-        _load_start_date = "2000-01-01" if not is_crypto else start_date
+        # Preserve every frozen bar for causal warmup; decision_start_ts below
+        # selects the scored interval without trimming the indicator prefix.
+        _load_start_date = "2000-01-01"
         stores, resolution = load_stores(mode, symbols=[sym], start_date=_load_start_date)
         if not is_crypto and stores and sym in stores:
             _stock_store_ts = stores[sym].timestamps
             if len(_stock_store_ts):
                 stores[sym].decision_start_ts = float(_stock_store_ts[-1]) - int(window_days) * 86400.0
         if is_crypto and int(offset_days) == 0 and stores and sym in stores:
-            from tools.opt import evaluate_v12 as _window_eval
-            _window_raw = _window_eval._store(sym, mode, "2000-01-01")
-            _window_npz, _window_policy = _window_eval._exact_30d_slice(_window_raw, True, window_days=window_days)
-            stores[sym].decision_start_ts = float(_window_npz["timestamps"][0])
+            _crypto_store_ts = _np_f.asarray(stores[sym].timestamps, dtype=float)
+            _crypto_store_ts = _crypto_store_ts[_np_f.isfinite(_crypto_store_ts) & (_crypto_store_ts > 0)]
+            if _crypto_store_ts.size < 2:
+                raise ValueError("full-prefix crypto store has fewer than two timestamps")
+            _crypto_end_s = float(_crypto_store_ts[-1]) / (1000.0 if float(_crypto_store_ts[-1]) > 1e11 else 1.0)
+            stores[sym].decision_start_ts = _crypto_end_s - int(window_days) * 86400.0
         if not stores or sym not in stores:
             # no NPZ: invalid run, matches evaluate_v12 semantics
             return {"symside": symside, "valid": False, "invalid_reason": "no npz", "gain_per_mo": 0.0, "trades": 0, "gain_pct": 0.0, "pool_sharpe": 0.0, "max_dd_pct": 0.0, "tim_pct": 0.0, "score": float("-inf")}

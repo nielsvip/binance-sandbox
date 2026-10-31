@@ -148,6 +148,38 @@ def install_guards(con, window: int, dry: bool) -> list:
     return made
 
 
+def already_correct(path: Path, ident: dict, relabel_rows: bool) -> bool:
+    """True when the store already states this identity, has every guard, and (7D) every row declares its window."""
+    con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=30)
+    try:
+        tables = tables_present(con)
+        if "kv_json" in tables:
+            cols = [r[1] for r in con.execute("pragma table_info(kv_json)")]
+            value_col = "value_json" if "value_json" in cols else ("value" if "value" in cols else cols[1])
+            row = con.execute(f"select {value_col} from kv_json where key='store_identity'").fetchone()
+            try:
+                current = json.loads(row[0]) if row else None
+            except (ValueError, TypeError):
+                current = None
+            if not current or any(current.get(k) != ident[k] for k in ident):
+                return False
+        have = {n for (n,) in con.execute("select name from sqlite_master where type='trigger' and name like 'guard_window_%'")}
+        want = {f"guard_window_{tb}_{op}" for tb in TABLES if tb in tables for op in ("insert", "update")
+                if "meta_json" in {r[1] for r in con.execute(f"pragma table_info({tb})")}}
+        if not want <= have:
+            return False
+        if relabel_rows and "per_sym_active" in tables:
+            for (raw,) in con.execute("select meta_json from per_sym_active"):
+                try:
+                    if (json.loads(raw or "{}") or {}).get("window_days") != ident["window_days"]:
+                        return False
+                except ValueError:
+                    return False
+        return True
+    finally:
+        con.close()
+
+
 def process(path: Path, backups: Path, dry: bool, relabel_rows=None) -> dict:
     ident = identity_for(path)
     if ident is None:
@@ -158,6 +190,10 @@ def process(path: Path, backups: Path, dry: bool, relabel_rows=None) -> dict:
     if relabel_rows is None:
         relabel_rows = ident["window_days"] != 30
     report = {"db": str(path), "identity": ident, "dry_run": dry, "relabel_rows": relabel_rows}
+    if already_correct(path, ident, relabel_rows):
+        # nothing to change: no backup, no write — a 15-minute re-assert on a correct store must cost nothing
+        report.update(state="already correct — nothing written", guards=[], relabelled={}, kv_json="untouched")
+        return report
     if not dry:
         report["backup"] = str(backup(path, backups) if relabel_rows else light_backup(path, backups))
     con = sqlite3.connect(str(path), timeout=60)
@@ -168,7 +204,20 @@ def process(path: Path, backups: Path, dry: bool, relabel_rows=None) -> dict:
         if "kv_json" in tables_present(con):
             cols = [r[1] for r in con.execute("pragma table_info(kv_json)")]
             doc = dict(ident, stamped_utc=stamp(), contract="this store holds ONLY these settings; never read it as another window")
-            if not dry:
+            value_col0 = "value_json" if "value_json" in cols else ("value" if "value" in cols else cols[1])
+            existing = con.execute(f"select {value_col0} from kv_json where key='store_identity'").fetchone()
+            try:
+                current = json.loads(existing[0]) if existing else None
+            except (ValueError, TypeError):
+                current = None
+            if current and all(current.get(k) == ident[k] for k in ident):
+                # already correct: leave the row (and the file) untouched, so a periodic re-assert is a real no-op and
+                # the sync tools never see a store "change" that changed nothing
+                report["kv_json"] = "store_identity already correct — untouched"
+                dry_kv = True
+            else:
+                dry_kv = dry
+            if not dry_kv:
                 value_col = "value_json" if "value_json" in cols else ("value" if "value" in cols else cols[1])
                 fields = {"key": "store_identity", value_col: json.dumps(doc, sort_keys=True)}
                 if "updated_at" in cols:
@@ -176,7 +225,7 @@ def process(path: Path, backups: Path, dry: bool, relabel_rows=None) -> dict:
                 if "epoch" in cols:
                     fields["epoch"] = dt.datetime.now(dt.timezone.utc).timestamp()
                 con.execute(f"insert or replace into kv_json ({', '.join(fields)}) values ({', '.join('?' * len(fields))})", list(fields.values()))
-            report["kv_json"] = "store_identity stamped" if not dry else "would stamp store_identity"
+            report.setdefault("kv_json", "store_identity stamped" if not dry else "would stamp store_identity")
         else:
             report["kv_json"] = "no kv_json table — identity carried by triggers and row labels only"
         report["relabelled"] = relabel(con, ident["window_days"], dry) if relabel_rows else "not relabelled (30D store: identity + guards only)"
@@ -237,12 +286,23 @@ def main(argv=None):
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--verify", action="store_true", help="prove each guard refuses a wrong-window row (rolled back)")
     ap.add_argument("--backups", default=str(Path.home() / "backups"))
+    ap.add_argument("--if-stamped", action="store_true",
+                    help="skip a store that carries no store_identity yet (its first stamp is ordered by hand)")
     a = ap.parse_args(argv)
     for raw in a.dbs:
         path = Path(raw).expanduser()
         if not path.is_file():
             print(json.dumps({"db": str(path), "skipped": "missing"}))
             continue
+        if a.if_stamped and not a.verify:
+            con = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=30)
+            try:
+                has = "kv_json" in tables_present(con) and con.execute("select 1 from kv_json where key='store_identity'").fetchone()
+            finally:
+                con.close()
+            if not has:
+                print(json.dumps({"db": str(path), "skipped": "not stamped yet — first stamp is ordered by hand"}))
+                continue
         result = verify(path) if a.verify else process(path, Path(a.backups).expanduser(), a.dry_run)
         print(json.dumps(result, sort_keys=True, default=str))
     return 0

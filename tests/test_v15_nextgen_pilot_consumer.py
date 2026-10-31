@@ -97,6 +97,16 @@ def test_resume_or_print_cannot_claim_first_pass_completion(tmp_path):
         consumer.require_first_pass_complete([row], {'done': {'old': {'delta': 0}}, 'printed_workbook_complete': True}, {'FLAG': True})
 
 
+def test_actual_row_done_does_not_turn_zero_eval_policy_skip_into_measured_completion(tmp_path):
+    row, consumer, _, _ = fixture(tmp_path)
+    progress, logged = {}, []
+    ns = dict(_delta_log=logged.append, _v18_setsha_on=False, utcnow=lambda: '2026-10-31T00:00:00.000000Z', new_symside='FIXTURE_LONG', nav_mode='sequential', _t=SimpleNamespace(time=lambda: 1.0), _row_t0=0.0, cumulative_gain=0.0, cumulative_overrides={'FLAG': False}, _nextgen_consumer=consumer, progress=progress)
+    extract('_row_done', ns)('EXIT', 3, 'FLAG', True, 0, None, False)
+    assert logged[0]['label'] == 'ROW_DONE' and logged[0]['n_evals'] == 0
+    receipt = progress['nextgen_first_pass_rows']['EXIT!3:FLAG=True']
+    assert receipt['complete'] is False and receipt['status'] == 'unknown_no_actual_plan'
+
+
 def test_review_patch_defers_research_and_preserves_exact_phase_source():
     source = PILOT.read_text()
     assert source.index('if _nextgen_consumer is None:\n        if _v18_phases_on:') < source.index('for qi, (sname, rr, switch, cand) in enumerate(pending_queue):')
@@ -151,6 +161,19 @@ def test_actual_worker_artifact_binding_rejects_result_tamper_and_shared_thread(
     bound = C.bind_worker_measurement(source, cell, bound_context, {'FLAG': True})
     assert bound['record']['evaluation_status'] == 'evaluated_valid'
     data = json.loads(path.read_text())
+    original = copy.deepcopy(data)
+    data['result'].update(valid=False, invalid_reason='DATA_ERROR: missing indicator')
+    data['actual_engine_proof']['result_sha256'] = C.priority.evidence.guard.fingerprint(C.priority.evidence.guard.result_fields(data['result']))
+    path.write_text(json.dumps(data))
+    with pytest.raises(ValueError, match='execution failure'):
+        C.bind_worker_measurement(dict(path=str(path), sha256=C.priority.evidence.sha(path)), cell, bound_context, {'FLAG': True})
+    data = original
+    data['result'].update(valid=False, invalid_reason='TIM 90.0% >80% (vomit)')
+    data['actual_engine_proof']['result_sha256'] = C.priority.evidence.guard.fingerprint(C.priority.evidence.guard.result_fields(data['result']))
+    path.write_text(json.dumps(data))
+    infeasible = C.bind_worker_measurement(dict(path=str(path), sha256=C.priority.evidence.sha(path)), cell, bound_context, {'FLAG': True})
+    assert infeasible['record']['evaluation_status'] == 'evaluated_inadmissible'
+    data = original
     data['result']['gain_pct'] = 123.0
     path.write_text(json.dumps(data))
     changed = dict(path=str(path), sha256=C.priority.evidence.sha(path))

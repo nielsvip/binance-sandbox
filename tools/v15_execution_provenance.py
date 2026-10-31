@@ -14,6 +14,7 @@ import os
 import tempfile
 import threading
 import time
+import zlib
 from pathlib import Path
 
 _HOOK_LOCK = threading.RLock()
@@ -23,6 +24,46 @@ _SECRET_PARTS = ("APIKEY", "SECRET", "TOKEN", "PASSWORD", "PASSWD", "PRIVATEKEY"
 
 def canonical_bytes(value):
     return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+
+def _identity_body(provenance):
+    return {key: value for key, value in provenance.items() if key not in ("provenance_sha256", "capture_ms", "capture_components_ms", "config", "npz_manifest")}
+
+
+def _blob_reference(group, digest):
+    return f"{group}/{digest[:2]}/{digest}.json.zlib"
+
+
+def _write_blob(root, group, digest, value):
+    relative = _blob_reference(group, digest)
+    path = Path(root) / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    raw = canonical_bytes(value)
+    compressed = zlib.compress(raw, level=6)
+    fd, temp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "wb") as stream:
+            stream.write(compressed)
+            stream.flush()
+            os.fsync(stream.fileno())
+        try:
+            os.link(temp, path)
+        except FileExistsError:
+            if zlib.decompress(path.read_bytes()) != raw:
+                raise ValueError(f"immutable {group} provenance collision")
+    finally:
+        try:
+            os.unlink(temp)
+        except FileNotFoundError:
+            pass
+    return relative, len(raw), len(compressed)
+
+
+def _read_blob(root, group, digest, relative):
+    if len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest) or relative != _blob_reference(group, digest):
+        raise ValueError(f"invalid {group} provenance reference")
+    value = json.loads(zlib.decompress((Path(root) / relative).read_bytes()))
+    return value
 
 
 def _redact_path(path, key, under_accounts):
@@ -57,7 +98,11 @@ def encode_value(value, path="", redactions=None, under_accounts=False):
         pass
     if isinstance(value, dict):
         pairs = []
-        for key in sorted(value, key=lambda item: canonical_bytes(encode_value(item))):
+        if all(isinstance(key, str) for key in value):
+            keys = sorted(value)
+        else:
+            keys = sorted(value, key=lambda item: canonical_bytes(encode_value(item)))
+        for key in keys:
             child_path = f"{path}.{key}" if path else str(key)
             child_value = value[key]
             redact = _redact_path(path, key, under_accounts)
@@ -167,11 +212,11 @@ def _array_digest(array):
     shape = list(array.shape)
     if array.dtype.hasobject:
         payload = canonical_bytes(encode_value(array.tolist()))
-        content_hash = hashlib.sha256(payload).hexdigest()
+        content_hash = hashlib.sha256(payload).digest()
     else:
         contiguous = np.ascontiguousarray(array)
-        content_hash = hashlib.sha256(memoryview(contiguous).cast("B")).hexdigest()
-    return {"dtype": dtype, "shape": shape, "content_sha256": content_hash}
+        content_hash = hashlib.sha256(memoryview(contiguous).cast("B")).digest()
+    return {"dtype": dtype, "shape": shape, "content_sha256_b64": base64.b64encode(content_hash).decode("ascii")}
 
 
 def npz_manifest(npz):
@@ -186,12 +231,12 @@ def npz_manifest(npz):
             arrays[str(key)] = _array_digest(value)
             continue
         non_arrays[str(key)] = encode_value(value, str(key))
-    manifest = {"arrays": arrays, "non_arrays": non_arrays}
+    manifest = {"hash_algorithm": "sha256", "hash_encoding": "base64", "arrays": arrays, "non_arrays": non_arrays}
     manifest["sha256"] = hashlib.sha256(canonical_bytes(manifest)).hexdigest()
     return manifest
 
 
-def _capture_call(args, kwargs, module):
+def _capture_call(args, kwargs, module, decision_context=None):
     if args:
         npz = args[0]
         symbol = args[1] if len(args) > 1 else kwargs.get("sym")
@@ -207,29 +252,41 @@ def _capture_call(args, kwargs, module):
     if cfg is None or npz is None:
         raise ValueError("simulate_one call did not expose cfg and npz")
     started = time.perf_counter()
+    config_started = time.perf_counter()
     config = config_document(cfg)
+    config_ms = (time.perf_counter() - config_started) * 1000.0
+    npz_started = time.perf_counter()
     manifest = npz_manifest(npz)
+    npz_ms = (time.perf_counter() - npz_started) * 1000.0
     engine_file = getattr(module, "__file__", None)
     engine_hash = hashlib.sha256(Path(engine_file).read_bytes()).hexdigest() if engine_file and Path(engine_file).is_file() else None
+    timestamps = npz.get("timestamps") if isinstance(npz, dict) else None
+    bar_ts = int(timestamps[-1]) if timestamps is not None and len(timestamps) else None
     body = {
         "schema_version": 1,
         "capture_status": "VERIFIED",
         "config": config,
         "effective_config_sha256": hashlib.sha256(canonical_bytes(config)).hexdigest(),
+        "config_sha256": hashlib.sha256(canonical_bytes(config)).hexdigest(),
+        "config_path": _blob_reference("configs", hashlib.sha256(canonical_bytes(config)).hexdigest()),
         "npz_manifest": manifest,
         "npz_manifest_sha256": manifest["sha256"],
+        "npz_manifest_path": _blob_reference("npz_manifests", manifest["sha256"]),
         "engine_source_sha256": engine_hash,
         "engine_module": getattr(module, "__name__", None),
-        "invocation": {"symbol": symbol, "is_long": is_long, "force_initial_seed": force},
+        "invocation": {"symbol": symbol, "is_long": is_long, "force_initial_seed": force, "bar_ts": bar_ts},
+        "decision_context": decision_context or {},
+        "capture_components_ms": {"config": round(config_ms, 3), "npz_manifest": round(npz_ms, 3)},
     }
     body["capture_ms"] = round((time.perf_counter() - started) * 1000.0, 3)
-    body["provenance_sha256"] = hashlib.sha256(canonical_bytes(body)).hexdigest()
+    body["provenance_sha256"] = hashlib.sha256(canonical_bytes(_identity_body(body))).hexdigest()
     return body
 
 
 class EngineInvocationCapture:
-    def __init__(self, module=None):
+    def __init__(self, module=None, decision_context=None):
         self.module = module
+        self.decision_context = decision_context or {}
         self.invocations = []
         self.errors = []
         self.elapsed_ms = 0.0
@@ -261,7 +318,7 @@ class EngineInvocationCapture:
                             call_args[3] = cfg
                         else:
                             call_kwargs["cfg"] = cfg
-                    capture = _capture_call(tuple(call_args), call_kwargs, owner.module)
+                    capture = _capture_call(tuple(call_args), call_kwargs, owner.module, owner.decision_context)
                     owner.invocations.append(capture)
                     owner.elapsed_ms += capture["capture_ms"]
                 except Exception as exc:
@@ -296,21 +353,36 @@ class EngineInvocationCapture:
         return self.invocations[0]
 
 
-def capture_engine_invocation(module=None):
-    return EngineInvocationCapture(module)
+def capture_engine_invocation(module=None, decision_context=None):
+    return EngineInvocationCapture(module, decision_context)
 
 
 def persist_provenance(root, provenance):
     if not isinstance(provenance, dict) or provenance.get("capture_status") != "VERIFIED":
         raise ValueError("only verified execution provenance is immutable-persistable")
-    expected = hashlib.sha256(canonical_bytes({key: value for key, value in provenance.items() if key != "provenance_sha256"})).hexdigest()
+    body = _identity_body(provenance)
+    expected = hashlib.sha256(canonical_bytes(body)).hexdigest()
     if provenance.get("provenance_sha256") != expected:
         raise ValueError("execution provenance hash mismatch")
     digest = str(provenance["provenance_sha256"])
-    relative = Path("provenance") / digest[:2] / f"{digest}.json"
+    stored = {**body, "provenance_sha256": digest}
+    relative = Path("provenance") / digest[:2] / f"{digest}.json.zlib"
     path = Path(root) / relative
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = canonical_bytes(provenance)
+    config = provenance.get("config")
+    manifest = provenance.get("npz_manifest")
+    if not isinstance(config, dict) or not isinstance(manifest, dict):
+        raise ValueError("execution provenance is missing config or NPZ manifest")
+    config_digest = hashlib.sha256(canonical_bytes(config)).hexdigest()
+    manifest_digest = hashlib.sha256(canonical_bytes({key: value for key, value in manifest.items() if key != "sha256"})).hexdigest()
+    if config_digest != provenance.get("config_sha256") or manifest_digest != provenance.get("npz_manifest_sha256"):
+        raise ValueError("config or NPZ manifest hash mismatch")
+    config_path, config_raw_size, config_stored_size = _write_blob(root, "configs", config_digest, config)
+    manifest_path, manifest_raw_size, manifest_stored_size = _write_blob(root, "npz_manifests", manifest_digest, manifest)
+    if config_path != provenance.get("config_path") or manifest_path != provenance.get("npz_manifest_path"):
+        raise ValueError("config or NPZ manifest path mismatch")
+    raw_payload = canonical_bytes(stored)
+    payload = zlib.compress(raw_payload, level=6)
     fd, temp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as stream:
@@ -320,11 +392,40 @@ def persist_provenance(root, provenance):
         try:
             os.link(temp, path)
         except FileExistsError:
-            if path.read_bytes() != payload:
+            try:
+                existing = zlib.decompress(path.read_bytes())
+            except zlib.error as exc:
+                raise ValueError("immutable execution provenance is not valid zlib") from exc
+            if existing != raw_payload:
                 raise ValueError("immutable execution provenance collision")
     finally:
         try:
             os.unlink(temp)
         except FileNotFoundError:
             pass
-    return {"provenance_sha256": digest, "provenance_path": str(relative), "capture_status": "VERIFIED", "capture_ms": provenance.get("capture_ms")}
+    total_stored = len(payload) + config_stored_size + manifest_stored_size
+    total_raw = len(raw_payload) + config_raw_size + manifest_raw_size
+    return {"provenance_sha256": digest, "provenance_path": str(relative), "capture_status": "VERIFIED", "compression": "zlib", "stored_bytes": total_stored, "raw_bytes": total_raw, "config_sha256": config_digest, "config_path": config_path, "npz_manifest_sha256": manifest_digest, "npz_manifest_path": manifest_path, "capture_ms": provenance.get("capture_ms"), "capture_components_ms": provenance.get("capture_components_ms")}
+
+
+def load_provenance(root, reference):
+    digest = str(reference.get("provenance_sha256") or "")
+    relative = str(reference.get("provenance_path") or "")
+    expected = f"provenance/{digest[:2]}/{digest}.json.zlib"
+    if reference.get("compression") != "zlib" or relative != expected or len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest):
+        raise ValueError("invalid execution provenance reference")
+    payload = zlib.decompress((Path(root) / relative).read_bytes())
+    provenance = json.loads(payload)
+    if provenance.get("provenance_sha256") != digest or hashlib.sha256(canonical_bytes(_identity_body(provenance))).hexdigest() != digest:
+        raise ValueError("execution provenance content hash mismatch")
+    for key in ("config_sha256", "config_path", "npz_manifest_sha256", "npz_manifest_path"):
+        if provenance.get(key) != reference.get(key):
+            raise ValueError("execution provenance blob reference mismatch")
+    config = _read_blob(root, "configs", str(reference.get("config_sha256") or ""), str(reference.get("config_path") or ""))
+    manifest = _read_blob(root, "npz_manifests", str(reference.get("npz_manifest_sha256") or ""), str(reference.get("npz_manifest_path") or ""))
+    if hashlib.sha256(canonical_bytes(config)).hexdigest() != reference.get("config_sha256"):
+        raise ValueError("effective config content hash mismatch")
+    manifest_digest = hashlib.sha256(canonical_bytes({key: value for key, value in manifest.items() if key != "sha256"})).hexdigest()
+    if manifest.get("sha256") != reference.get("npz_manifest_sha256") or manifest_digest != reference.get("npz_manifest_sha256"):
+        raise ValueError("NPZ manifest content hash mismatch")
+    return {**provenance, "config": config, "npz_manifest": manifest}

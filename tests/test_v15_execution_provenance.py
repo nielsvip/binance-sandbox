@@ -3,6 +3,7 @@ import datetime
 import hashlib
 import json
 from pathlib import Path
+import threading
 from types import SimpleNamespace
 
 import numpy as np
@@ -49,10 +50,10 @@ def test_npz_manifest_is_stable_for_objects_and_detects_input_mutation():
     assert first == again
     npz["close"][1] = 2.5
     changed = provenance.npz_manifest(npz)
-    assert changed["arrays"]["close"]["content_sha256"] != first["arrays"]["close"]["content_sha256"]
+    assert changed["arrays"]["close"]["content_sha256_b64"] != first["arrays"]["close"]["content_sha256_b64"]
 
 
-def test_capture_preserves_engine_return_and_restores_existing_wrapper():
+def test_capture_preserves_engine_return_and_restores_existing_wrapper(tmp_path):
     calls = []
 
     def existing(npz, symbol, is_long, cfg):
@@ -64,15 +65,23 @@ def test_capture_preserves_engine_return_and_restores_existing_wrapper():
     cfg = _Config()
     expected = existing(npz, "TEST", True, cfg)
     calls.clear()
-    with provenance.capture_engine_invocation(module) as capture:
+    with provenance.capture_engine_invocation(module, {"settings_sha256": "a" * 64}) as capture:
         actual = module.simulate_one(npz, "TEST", True, cfg)
     assert actual == expected
     assert calls == [(npz, "TEST", True, cfg)]
     assert module.simulate_one is existing
     receipt = capture.result()
     assert receipt["capture_status"] == "VERIFIED"
-    assert receipt["invocation"] == {"symbol": "TEST", "is_long": True, "force_initial_seed": False}
+    assert receipt["invocation"] == {"symbol": "TEST", "is_long": True, "force_initial_seed": False, "bar_ts": 3}
+    assert receipt["decision_context"]["settings_sha256"] == "a" * 64
     assert receipt["npz_manifest"]["arrays"]["timestamps"]["shape"] == [3]
+    reference = provenance.persist_provenance(tmp_path, receipt)
+    saved = provenance.load_provenance(tmp_path, reference)
+    assert saved["provenance_sha256"] == reference["provenance_sha256"]
+    changed_timing = {**receipt, "capture_ms": 999.0, "capture_components_ms": {"config": 500.0}}
+    same_reference = provenance.persist_provenance(tmp_path, changed_timing)
+    assert same_reference["provenance_path"] == reference["provenance_path"]
+    assert reference["stored_bytes"] < reference["raw_bytes"]
 
 
 def test_capture_records_config_after_engine_template_layer():
@@ -116,6 +125,25 @@ def test_capture_failure_is_reported_and_does_not_change_engine_result():
     assert result["capture_status"] == "UNVERIFIED"
     assert "unsupported value type" in result["capture_errors"][0]
     assert module.simulate_one.__name__ == "<lambda>"
+
+
+def test_capture_is_thread_scoped_and_does_not_capture_concurrent_unrelated_call():
+    calls = []
+
+    def simulate_one(npz, symbol, is_long, cfg):
+        calls.append(symbol)
+        return {"symbol": symbol}
+
+    module = SimpleNamespace(simulate_one=simulate_one, __name__="test_engine", __file__=None)
+    cfg = _Config()
+    with provenance.capture_engine_invocation(module) as capture:
+        thread = threading.Thread(target=module.simulate_one, args=({"close": np.asarray([1.0])}, "OTHER", False, cfg))
+        thread.start()
+        thread.join()
+        result = module.simulate_one({"close": np.asarray([2.0])}, "CAPTURED", True, cfg)
+    assert result == {"symbol": "CAPTURED"}
+    assert sorted(calls) == ["CAPTURED", "OTHER"]
+    assert capture.result()["invocation"]["symbol"] == "CAPTURED"
 
 
 def test_real_small_frozen_npz_uses_engine_boundary_capture():

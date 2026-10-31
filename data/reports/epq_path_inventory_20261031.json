@@ -1,196 +1,197 @@
 {
   "as_of_utc": "2026-10-31",
-  "scope": "ez_positions_quick.py flat OPEN, explicit REENTRY, and vectorizable non-hedge/non-scalp exit paths reviewed in this pass",
   "decision_rule": "A vector block or score weight is not treated as full-path parity unless producer predicate, eligibility, downstream gate, and execution reachability are all evidenced.",
   "paths": [
     {
-      "path": "REENTRY_ENTRY_FILTER_ENABLED min-pass",
-      "native": "ez_positions_quick.py:31483-31525; explicit flat `_vec_reentry_fire` lane",
-      "predicate": "Named active entry masks evaluated against the current indicator snapshot; pass at least REENTRY_FILTER_MIN_PASS. Explicit reentry skips the separate all-pass fresh-entry FTF gate.",
       "engine": "v12_quick_engine.py:16662-17575 names and records complete mask stack; :17674-17678 computes active count; :20060-20070 applies min-pass to explicit reentry fires.",
+      "limitations": "Provider equivalence is established on frozen 1000PEPE schema, not every venue/live snapshot schema. Missing active indicator fields raise and fail closed in enabled reentry lane. Dynamic harness executes the actual branch statements through set_processing with stub tracker; it does not place orders.",
+      "native": "ez_positions_quick.py:31483-31525; explicit flat `_vec_reentry_fire` lane",
+      "path": "REENTRY_ENTRY_FILTER_ENABLED min-pass",
+      "predicate": "Named active entry masks evaluated against the current indicator snapshot; pass at least REENTRY_FILTER_MIN_PASS. Explicit reentry skips the separate all-pass fresh-entry FTF gate.",
+      "proof": "tests/test_reentry_entry_filter.py (AST-extracted native EPQ branch through awaited set_processing: min_pass=1 accepts with two failed masks; min_pass=5 blocks; ordinary flat OPEN still invokes FTF); tests/test_reentry_entry_filter_npz_parity.py (1000PEPE, 5 configs x both sides, sampled and predicate-boundary bars; exact names/booleans); tests/test_reentry_triggers.py.",
+      "status": "IMPLEMENTED in native EPQ; freshness gate kept for ordinary flat OPENs; explicit reentry uses min-pass only.",
       "switches": [
         "REENTRY_ENTRY_FILTER_ENABLED",
         "REENTRY_FILTER_MIN_PASS"
       ],
-      "templates": "Both switches are present in crypto and stock long/short templates; REENTRY_FILTER_MIN_PASS options include 1, 2, 3.",
-      "status": "IMPLEMENTED in native EPQ; freshness gate kept for ordinary flat OPENs; explicit reentry uses min-pass only.",
-      "proof": "tests/test_reentry_entry_filter.py (AST-extracted native EPQ branch through awaited set_processing: min_pass=1 accepts with two failed masks; min_pass=5 blocks; ordinary flat OPEN still invokes FTF); tests/test_reentry_entry_filter_npz_parity.py (1000PEPE, 5 configs x both sides, sampled and predicate-boundary bars; exact names/booleans); tests/test_reentry_triggers.py.",
-      "limitations": "Provider equivalence is established on frozen 1000PEPE schema, not every venue/live snapshot schema. Missing active indicator fields raise and fail closed in enabled reentry lane. Dynamic harness executes the actual branch statements through set_processing with stub tracker; it does not place orders."
+      "templates": "Both switches are present in crypto and stock long/short templates; REENTRY_FILTER_MIN_PASS options include 1, 2, 3."
     },
     {
-      "path": "K1M_EXTREME_REVERSE exit",
-      "native": "ez_positions_quick.py:26433-26477; enabled, no existing hard exit, not hedge, outside grace, gain >= 0, and no strong trend veto; strict extreme-and-turn condition.",
-      "predicate": "Long k_1m > 90 and k_1m < k_1m_prev; short k_1m < 10 and k_1m > k_1m_prev. Existing shared scalar/vector predicate is vec_decisions/check_exit_candidates_crypto__k1m_extreme_reverse.py:42-89.",
-      "inputs": "Native indicator keys k_1m (default 50) and k_1m_prev (default current); gain, grace, hedge, and trend-veto are runtime state. Frozen 1000PEPE NPZ has no stoch_k_1m or k_1m_prev arrays, but has stoch_k_15m and stoch_k_15m_prev.",
-      "paired_timeframe_policy": "SWITCH_WIRING_GUIDE.md:117-124 defines 15m as floor, maps 3m/5m reads to 15m, and says sub-15m micro-trigger is ported at 15m when LTF is off. Root review treats 1m similarly; native/vector should both consume paired 15m current/previous arrays in LTF-off mode.",
       "engine": "v12_quick_engine.py:20992-21090 uses the shared live_exit_chain K1M predicate. A pre-BB_RECOVERY check preserves EPQ order; the normal shared chain books the event once.",
+      "inputs": "Native indicator keys k_1m (default 50) and k_1m_prev (default current); gain, grace, hedge, and trend-veto are runtime state. Frozen 1000PEPE NPZ has no stoch_k_1m or k_1m_prev arrays, but has stoch_k_15m and stoch_k_15m_prev.",
+      "limitations": "K1M+BB ordering is proven in simulate_one with the native default switch retained False. Per-symbol enabling can be evaluated only in the crypto templates. LTF-on cannot be replayed on this frozen NPZ because 1m arrays are absent; validation refuses that case.",
+      "native": "ez_positions_quick.py:26433-26477; enabled, no existing hard exit, not hedge, outside grace, gain >= 0, and no strong trend veto; strict extreme-and-turn condition.",
+      "paired_timeframe_policy": "SWITCH_WIRING_GUIDE.md:117-124 defines 15m as floor, maps 3m/5m reads to 15m, and says sub-15m micro-trigger is ported at 15m when LTF is off. Root review treats 1m similarly; native/vector should both consume paired 15m current/previous arrays in LTF-off mode.",
+      "path": "K1M_EXTREME_REVERSE exit",
+      "predicate": "Long k_1m > 90 and k_1m < k_1m_prev; short k_1m < 10 and k_1m > k_1m_prev. Existing shared scalar/vector predicate is vec_decisions/check_exit_candidates_crypto__k1m_extreme_reverse.py:42-89.",
+      "proof": "tests/test_k1m_extreme_reverse_pairing.py executes the actual extracted EPQ K1M branch for both sides and checks original log strings, then exercises shared vector state gates, gain/grace/trend, NaN/zero/equal predecessor, and LTF-on missing-input refusal. tests/test_bb_recovery_parity.py exercises simulate_one and confirms same-bar K1M REDUCE wins over BB_RECOVERY. Frozen 1000PEPE key check confirms k_15m/k_15m_prev present and 1m arrays absent.",
+      "status": "IMPLEMENTED native and vector paired lane; default remains False; LTF-on requires real 1m arrays.",
       "switches": [
         "K1M_EXTREME_REVERSE_ENABLED",
         "K1M_EXTREME_HIGH",
         "K1M_EXTREME_LOW"
       ],
-      "templates": "K1M_EXTREME_REVERSE_ENABLED was added through tools/v15_switch_add.py to EXIT_STRUCTURAL in TEMPLATE_CRYPTO_LONG/SHORT with False bold default and True as second option. It is crypto-only because EPQ is crypto-only; VEC_PARITY_STATUS remains a status row, not a control row.",
-      "status": "IMPLEMENTED native and vector paired lane; default remains False; LTF-on requires real 1m arrays.",
-      "proof": "tests/test_k1m_extreme_reverse_pairing.py executes the actual extracted EPQ K1M branch for both sides and checks original log strings, then exercises shared vector state gates, gain/grace/trend, NaN/zero/equal predecessor, and LTF-on missing-input refusal. tests/test_bb_recovery_parity.py exercises simulate_one and confirms same-bar K1M REDUCE wins over BB_RECOVERY. Frozen 1000PEPE key check confirms k_15m/k_15m_prev present and 1m arrays absent.",
-      "limitations": "K1M+BB ordering is proven in simulate_one with the native default switch retained False. Per-symbol enabling can be evaluated only in the crypto templates. LTF-on cannot be replayed on this frozen NPZ because 1m arrays are absent; validation refuses that case."
+      "templates": "K1M_EXTREME_REVERSE_ENABLED was added through tools/v15_switch_add.py to EXIT_STRUCTURAL in TEMPLATE_CRYPTO_LONG/SHORT with False bold default and True as second option. It is crypto-only because EPQ is crypto-only; VEC_PARITY_STATUS remains a status row, not a control row."
     },
     {
-      "path": "PARABOLIC_EXIT",
-      "native": "ez_positions_quick.py:26538-26610; enabled, no higher-priority hard exit, not hedge, outside grace.",
-      "predicate": "Long: k_15m > 90, current price > dc_high_3m, lower low vs prior 3m low, and bull_accel/no-decel. Short mirrors with k_15m < 10, price < dc_low_3m, higher high vs previous 3m high, and bear_accel/no-decel.",
-      "inputs": "k_15m; 3m current/prior DC channel and OHLC; data_manager.delta_tracker.update result for bull_accel/bear_accel (native initializes no-decel=True if tracker absent or update errors).",
+      "engine": "v12_quick_engine.py simulate_one initializes PARABOLIC state outside pos/bar snapshots and passes it only from eligible live_exit_chain.step; live_exit_chain prepares paired channel/crack arrays and advances the recurrence after K1M and BB_RECOVERY priority. A same-bar collision test establishes PARABOLIC before SRS. Actual simulate_one tests show ON books both long/short bars and OFF books neither.",
+      "inputs": "15m mode: actual NPZ current/prior 15m OHLC and 4-bar Donchian channel; completed 15m timestamps; WT/DC fields consumed by DeltaTracker and DELTA_TF_WEIGHTS. LTF-on requires real 3m fields/timestamps; no 15m substitution is made.",
+      "limitations": "Need reproduce delta_tracker bull_accel/bear_accel from causal arrays or pass its existing per-bar state; absent/error behavior must preserve native no-decel=True.",
+      "native": "ez_positions_quick.py:26550-26620; branch remains after BB_RECOVERY, no higher-priority hard exit, non-hedge, outside grace, switch enabled. LTF-off now feeds paired 15m channel/OHLC plus a completed-bar state recurrence keyed (symbol, side) in FastDataManager, outside position snapshots. State persists across close/reentry and duplicate timestamps reuse cached acceleration; missing state or timestamp is fail-closed with a diagnostic.",
       "paired_timeframe_policy": "SWITCH_WIRING_GUIDE.md:117-124 permits 3m-to-15m port with 15m as floor in LTF-off mode. Native and vector must consume paired current/prior 15m OHLC and channel values, rather than missing-value zeros.",
-      "engine": "Shared predicate exists in vec_decisions/check_exit_candidates_crypto__parabolic_exit.py; live_exit_chain.py currently marks PARABOLIC_EXIT inert because of 3m structure plus delta_tracker state; no reachable simulate_one proof.",
+      "path": "PARABOLIC_EXIT",
+      "predicate": "Long: k_15m > 90, price > dc_high4_15m, low_15m > 0 and lower than prior low, and shared DeltaTracker bull_accel. Short mirrors with k_15m < 10, price < dc_low4_15m, higher high than prior high, and bear_accel. LTF-on retains native 3m fields and original DeltaTracker tick call.",
+      "proof": "Native source lines and existing shared predicate module inspected; no ledger replay proof claimed.",
+      "status": "Implemented and tested in local candidate. Master remains False in QuickConfig (existing template default remains authoritative). No production sync, order, or restart.",
       "switches": [
         "PARABOLIC_EXIT_ENABLED",
         "PARABOLIC_K15M_HIGH",
         "PARABOLIC_K15M_LOW"
       ],
-      "templates": "Verify PARABOLIC_EXIT_ENABLED row/default for each crypto category; PARABOLIC_K15M thresholds appear in vector config and are live-hardened 90/10.",
-      "status": "Paired OHLC/channel component is vectorizable in LTF-off mode; delta_tracker state translation remains unproven and blocks exact full-path wiring claim.",
-      "proof": "Native source lines and existing shared predicate module inspected; no ledger replay proof claimed.",
-      "limitations": "Need reproduce delta_tracker bull_accel/bear_accel from causal arrays or pass its existing per-bar state; absent/error behavior must preserve native no-decel=True."
+      "templates": "Crypto long and short EXIT_STRUCTURAL have PARABOLIC_EXIT_ENABLED False/True candidates with True bold. No stock templates rows; EPQ is crypto path. Existing rows unchanged.",
+      "tests": "tests/test_parabolic_delta.py; tests/test_parabolic_delta_npz_parity.py (43,756 frozen bars, both sides); tests/test_parabolic_engine_hook.py (simulate_one ON/OFF both sides, AST-extracted native state cache/refusal persistence, same-bar account cache, and SRS collision). Latest focused suite: 14 passed."
     },
     {
-      "path": "WR_PULLBACK / LR_SHORTTOP (QUICK_OPEN_GOOD producer)",
-      "native": "ez_positions_quick.py:30838-30923; score=max(score,22), direct should_trade=True; 300-second per-account/symbol cooldown.",
-      "predicate": "Account side-list membership; HA4h not against; K1h/K15m/K3m oversold or overbought; turning WT cross or K turn. Under USE_1M_3M_SIGNALS_ENABLED=False, K3m/K1m legs map to 15m exactly.",
-      "membership_meaning": "Native reads trade_manager.symbols_{account_key}_long/short. tools/wr_list_archive.py snapshots the account directional symbol-book files. Source comment says membership means trend confirmed by ranking. This is account/book eligibility, not a dedicated WR strategy approval switch.",
       "engine": "v12_quick_engine.py:10610-10628 has WR_PULLBACK block and :12178 assigns standalone strength weight 6, but caller passes in_list=True; this is not exact account membership and does not establish full AdvancedSignalRater/QUICK_OPEN_GOOD reachability. Separate candidate: vec_decisions/quick_missing_wr_lr.py.",
+      "limitations": "The archive is per-account book history (ang/inf/men/flz/fin), while common boards carry no VEC_ACCOUNT_KEY. This does not prove a shared cross-account decision rule, native 300s cooldown behavior, exact order quantity, or the full scorer. LTF-on requires real 1m/3m inputs; candidate returns unsupported instead of using 15m proxies.",
+      "membership_meaning": "Native reads trade_manager.symbols_{account_key}_long/short. tools/wr_list_archive.py snapshots the account directional symbol-book files. Source comment says membership means trend confirmed by ranking. This is account/book eligibility, not a dedicated WR strategy approval switch.",
+      "native": "ez_positions_quick.py:30838-30923; score=max(score,22), direct should_trade=True; 300-second per-account/symbol cooldown.",
+      "path": "WR_PULLBACK / LR_SHORTTOP (QUICK_OPEN_GOOD producer)",
+      "predicate": "Account side-list membership; HA4h not against; K1h/K15m/K3m oversold or overbought; turning WT cross or K turn. Under USE_1M_3M_SIGNALS_ENABLED=False, K3m/K1m legs map to 15m exactly.",
+      "proof": "tests/test_quick_missing_wr_lr.py; tests/test_quick_missing_wr_lr_npz_parity.py compares every frozen 1000PEPE bar against the shared scalar adapter for FLZ LONG/SHORT: 43,756 bars, 2,294 FLZ-long membership bars, 85 LONG fires, zero mask differences; zero SHORT membership and zero differences.",
+      "status": "CANDIDATE predicate exact for 15m/LTF-off, not integrated into v12; do not wire account archive into common sym_side boards without an explicit account/book policy.",
       "switches": [
         "WR_PULLBACK_ENABLED",
         "USE_1M_3M_SIGNALS_ENABLED",
         "VEC_ACCOUNT_KEY"
       ],
-      "templates": "WR_PULLBACK_ENABLED exists only on crypto long/short templates; not present on stock templates.",
-      "status": "CANDIDATE predicate exact for 15m/LTF-off, not integrated into v12; do not wire account archive into common sym_side boards without an explicit account/book policy.",
-      "proof": "tests/test_quick_missing_wr_lr.py; tests/test_quick_missing_wr_lr_npz_parity.py compares every frozen 1000PEPE bar against the shared scalar adapter for FLZ LONG/SHORT: 43,756 bars, 2,294 FLZ-long membership bars, 85 LONG fires, zero mask differences; zero SHORT membership and zero differences.",
-      "limitations": "The archive is per-account book history (ang/inf/men/flz/fin), while common boards carry no VEC_ACCOUNT_KEY. This does not prove a shared cross-account decision rule, native 300s cooldown behavior, exact order quantity, or the full scorer. LTF-on requires real 1m/3m inputs; candidate returns unsupported instead of using 15m proxies."
+      "templates": "WR_PULLBACK_ENABLED exists only on crypto long/short templates; not present on stock templates."
     },
     {
-      "path": "B04 DC high/low break-retest",
-      "native": "ez_positions_quick.py evaluate_reentry_epq fallback around :30220-30245; B04 signal quantity is carried into the order path.",
-      "predicate": "4h, 1h, 15m priority; channel expansion >=1.5%, prior-channel retest zone, side-correct stochastic turn; shared quantity multiplier.",
       "engine": "vec_decisions/ez_missing_b04_retest.py is used by v12 simulate_one; EPQ has a native adapter through the same predicate. Order quantity routing has a focused EPQ test.",
+      "native": "ez_positions_quick.py evaluate_reentry_epq fallback around :30220-30245; B04 signal quantity is carried into the order path.",
+      "path": "B04 DC high/low break-retest",
+      "predicate": "4h, 1h, 15m priority; channel expansion >=1.5%, prior-channel retest zone, side-correct stochastic turn; shared quantity multiplier.",
+      "proof": "tests/test_ez_missing_b04_retest.py (7 passing); tests/test_epq_b04_signal_quantity_route.py; safe divide regression covers zero previous channels without NumPy runtime warnings.",
+      "status": "SHARED predicate and quantity route; frozen live-versus-vector multi-bar ledger proof is still separate from unit/synthetic tests.",
       "switches": [
         "REENTRY_B04_DC_RETEST_ENABLED"
       ],
-      "templates": "REENTRY_B04_DC_RETEST_ENABLED exists in crypto reentry options; check current workbook rows for the exact cat_side before promotion.",
-      "status": "SHARED predicate and quantity route; frozen live-versus-vector multi-bar ledger proof is still separate from unit/synthetic tests.",
-      "proof": "tests/test_ez_missing_b04_retest.py (7 passing); tests/test_epq_b04_signal_quantity_route.py; safe divide regression covers zero previous channels without NumPy runtime warnings."
+      "templates": "REENTRY_B04_DC_RETEST_ENABLED exists in crypto reentry options; check current workbook rows for the exact cat_side before promotion."
     },
     {
-      "path": "DC_BREAKOUT_ENTRY",
-      "native": "ez_positions_quick.py:30371-30451; tier/TF selection, cooldown, stochastic and WT confirmation, direct score and reason.",
-      "predicate": "check_dc_breakout_tiered native scalar logic with 3m reads when USE_1M_3M_SIGNALS_ENABLED is on and policy-mapped 15m inputs when off.",
       "engine": "v12_quick_engine.py:10576-10608 calls vec_decisions.check_entry_candidates_crypto__dc_breakout_tiered; block is used as a standalone weighted source.",
+      "limitations": "LTF-on requires real 3m fields; no 15m substitute when enabled.",
+      "native": "ez_positions_quick.py:30371-30451; tier/TF selection, cooldown, stochastic and WT confirmation, direct score and reason.",
+      "path": "DC_BREAKOUT_ENTRY",
+      "predicate": "check_dc_breakout_tiered native scalar logic with 3m reads when USE_1M_3M_SIGNALS_ENABLED is on and policy-mapped 15m inputs when off.",
+      "status": "Predicate twin exists; full bar, cooldown, and execution reachability parity not proven in the reviewed evidence.",
       "switches": [
         "DC_BREAKOUT_ENTRY_ENABLED",
         "DC_BREAKOUT_TF",
         "USE_1M_3M_SIGNALS_ENABLED"
       ],
-      "templates": "DC_BREAKOUT_ENTRY_ENABLED present in all four templates.",
-      "status": "Predicate twin exists; full bar, cooldown, and execution reachability parity not proven in the reviewed evidence.",
-      "limitations": "LTF-on requires real 3m fields; no 15m substitute when enabled."
+      "templates": "DC_BREAKOUT_ENTRY_ENABLED present in all four templates."
     },
     {
-      "path": "STDEV_BREAKOUT and STDEV_RETEST",
-      "native": "ez_positions_quick.py:30979-31008; shared `quick_stdev_eval.evaluate_stdev_once` cache ensures standalone evaluation and sizing reuse one result.",
-      "predicate": "Stateful BB sigma breakout/retest with retest count, arming/window, TF priority, cooldown, score, and size multiplier.",
       "engine": "v12_quick_engine.py:11735+ has STDEV breakout mask/size twin; vec_decisions/quick_missing_entry_score.py contains selected AdvancedSignalRater bonuses, not full stateful producer aggregate.",
+      "native": "ez_positions_quick.py:30979-31008; shared `quick_stdev_eval.evaluate_stdev_once` cache ensures standalone evaluation and sizing reuse one result.",
+      "path": "STDEV_BREAKOUT and STDEV_RETEST",
+      "predicate": "Stateful BB sigma breakout/retest with retest count, arming/window, TF priority, cooldown, score, and size multiplier.",
+      "status": "Mask/component exists; exact stateful retest count/arming/window and same-bar reuse need paired scalar replay proof.",
       "switches": [
         "STDEV_BREAKOUT_ENABLED",
         "STDEV_BREAKOUT_MAX_AGE_BARS",
         "STDEV_BREAKOUT_MAX_RETESTS",
         "STDEV_BREAKOUT_RETEST_TF_LIST"
       ],
-      "templates": "STDEV_BREAKOUT_ENABLED present in all four templates.",
-      "status": "Mask/component exists; exact stateful retest count/arming/window and same-bar reuse need paired scalar replay proof."
+      "templates": "STDEV_BREAKOUT_ENABLED present in all four templates."
     },
     {
-      "path": "STDEV_BOUNCE",
-      "native": "ez_positions_quick.py:31012-31024; direct standalone entry from detect_stdev_bounce.",
-      "predicate": "BB band touch/reclaim plus live detector state and configured volatility/volume conditions.",
       "engine": "v12_quick_engine.py:11744+ calls the STDEV bounce twin.",
+      "native": "ez_positions_quick.py:31012-31024; direct standalone entry from detect_stdev_bounce.",
+      "path": "STDEV_BOUNCE",
+      "predicate": "BB band touch/reclaim plus live detector state and configured volatility/volume conditions.",
+      "status": "Vector twin exists; full detector parity/reachability not evidenced here.",
       "switches": [
         "STDEV_BOUNCE_ENABLED",
         "STDEV_BOUNCE_PCTB_LONG",
         "STDEV_BOUNCE_PCTB_SHORT",
         "STDEV_BOUNCE_RVOL_MIN"
       ],
-      "templates": "STDEV_BOUNCE_ENABLED present in all four templates.",
-      "status": "Vector twin exists; full detector parity/reachability not evidenced here."
+      "templates": "STDEV_BOUNCE_ENABLED present in all four templates."
     },
     {
-      "path": "BB_SQUEEZE_BREAKOUT",
-      "native": "ez_positions_quick.py:30928-30975; detect_bb_squeeze_breakout, cooldown, alignment threshold, stochastic filter.",
-      "predicate": "Squeeze breakout signal AND BB_SQUEEZE_ENABLED AND BB_SQUEEZE_ENTRY_ENABLED plus alignment and side-specific K gate.",
       "engine": "v12_quick_engine.py:11219+ squeeze mask; standalone strength block B_BBSQUEEZE weight at :12182.",
+      "native": "ez_positions_quick.py:30928-30975; detect_bb_squeeze_breakout, cooldown, alignment threshold, stochastic filter.",
+      "path": "BB_SQUEEZE_BREAKOUT",
+      "predicate": "Squeeze breakout signal AND BB_SQUEEZE_ENABLED AND BB_SQUEEZE_ENTRY_ENABLED plus alignment and side-specific K gate.",
+      "status": "Predicate component exists; cooldown and full downstream score/route parity not proven.",
       "switches": [
         "BB_SQUEEZE_ENABLED",
         "BB_SQUEEZE_ENTRY_ENABLED",
         "BB_SQUEEZE_MIN_ALIGNMENT",
         "BB_SQUEEZE_COOLDOWN"
       ],
-      "templates": "BB_SQUEEZE_ENABLED in GLOBAL_RISK_GATES; BB_SQUEEZE_ENTRY_ENABLED in ENTRY_REVERSAL_BOUNCE across all four templates.",
-      "status": "Predicate component exists; cooldown and full downstream score/route parity not proven."
+      "templates": "BB_SQUEEZE_ENABLED in GLOBAL_RISK_GATES; BB_SQUEEZE_ENTRY_ENABLED in ENTRY_REVERSAL_BOUNCE across all four templates."
     },
     {
-      "path": "ENTRY_LH_TRIGGER",
-      "native": "ez_positions_quick.py:31030-31049; scalar twin call and standalone OPEN score.",
-      "predicate": "check_lh_trigger_entry shared source predicate.",
       "engine": "v12_quick_engine.py:10552-10575 creates LH_TRIGGER_ENTRY block; weight 6 at :12177.",
+      "native": "ez_positions_quick.py:31030-31049; scalar twin call and standalone OPEN score.",
+      "path": "ENTRY_LH_TRIGGER",
+      "predicate": "check_lh_trigger_entry shared source predicate.",
+      "status": "Shared scalar/vector predicate tests exist; no exact order ledger proof included in this audit.",
       "switches": [
         "ENTRY_LH_TRIGGER_ENABLED"
       ],
-      "templates": "Present in ENTRY_REVERSAL_BOUNCE on all four templates.",
-      "status": "Shared scalar/vector predicate tests exist; no exact order ledger proof included in this audit."
+      "templates": "Present in ENTRY_REVERSAL_BOUNCE on all four templates."
     },
     {
-      "path": "VOL_SPIKE_REVERSAL",
-      "native": "ez_positions_quick.py:31053-31132; detector plus alignment, ratio/budget portfolio checks, direct OPEN.",
-      "predicate": "Volume spike reversal detector and alignment; additionally native portfolio ratio and account floor checks.",
       "engine": "v12_quick_engine.py:10528+ has VOL_SPIKE_REVERSAL block; component weight 6 at :12171.",
+      "native": "ez_positions_quick.py:31053-31132; detector plus alignment, ratio/budget portfolio checks, direct OPEN.",
+      "path": "VOL_SPIKE_REVERSAL",
+      "predicate": "Volume spike reversal detector and alignment; additionally native portfolio ratio and account floor checks.",
+      "status": "Indicator predicate twin exists; single-symbol simulate_one cannot prove account-level ratio/budget gates without portfolio fixture.",
       "switches": [
         "VOL_SPIKE_ENABLED",
         "VOL_SPIKE_MIN_ALIGNMENT",
         "VOL_SPIKE_LS_MAX_IMBALANCE"
       ],
-      "templates": "VOL_SPIKE_ENABLED present in ENTRY_CONFIRMATION_GATES on all four templates.",
-      "status": "Indicator predicate twin exists; single-symbol simulate_one cannot prove account-level ratio/budget gates without portfolio fixture."
+      "templates": "VOL_SPIKE_ENABLED present in ENTRY_CONFIRMATION_GATES on all four templates."
     },
     {
-      "path": "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1",
-      "native": "ez_positions_quick.py:29739-29776; shared scalar evaluator with venue config and symbol.",
-      "predicate": "Deep K4h plus turn K1h and configured bounce-distance/timeframe/side/symbol eligibility.",
       "engine": "v12_quick_engine.py:10889+ twin_entry_ports_a block.",
+      "native": "ez_positions_quick.py:29739-29776; shared scalar evaluator with venue config and symbol.",
+      "path": "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1",
+      "predicate": "Deep K4h plus turn K1h and configured bounce-distance/timeframe/side/symbol eligibility.",
+      "status": "Shared predicate/call sites exist; real NPZ reachability and channel-input parity still need paired evidence.",
       "switches": [
         "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_ENABLED",
         "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SYMBOLS",
         "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE"
       ],
-      "templates": "Master switch present in ENTRY_CONFIRMATION_GATES on all four templates.",
-      "status": "Shared predicate/call sites exist; real NPZ reachability and channel-input parity still need paired evidence."
+      "templates": "Master switch present in ENTRY_CONFIRMATION_GATES on all four templates."
     },
     {
-      "path": "CLASSIC_FORMATION_ENTRY",
-      "native": "ez_positions_quick.py:29777-29822; select_latest_formation uses per-symbol resolver and scales size.",
-      "predicate": "Most recent eligible formation family/TF plus per-symbol formation switches and size multiplier.",
       "engine": "v12_quick_engine.py:10637-10650 uses formation_entry_mask and weights it as standalone, but current engine defaults include FORMATION_ENTRY_ENABLED=False while the native call site has no same top-level master.",
+      "native": "ez_positions_quick.py:29777-29822; select_latest_formation uses per-symbol resolver and scales size.",
+      "path": "CLASSIC_FORMATION_ENTRY",
+      "predicate": "Most recent eligible formation family/TF plus per-symbol formation switches and size multiplier.",
+      "status": "Reachability/default mismatch candidate; do not call exact until per-family settings and size route are paired.",
       "switches": [
         "FORMATION_ENTRY_ENABLED",
         "FORMATION_ENTRY_TF",
         "FORMATION_ENTRY_MIN_SCORE",
         "FORMATION_POSITION_SIZE_MULT"
       ],
-      "templates": "No CLASSIC_FORMATION_ENTRY master row found in the four current templates.",
-      "status": "Reachability/default mismatch candidate; do not call exact until per-family settings and size route are paired."
+      "templates": "No CLASSIC_FORMATION_ENTRY master row found in the four current templates."
     },
     {
-      "path": "LIVE_ENTRY_ENGINE",
-      "native": "ez_positions_quick.py:30659-30704; live entry engine component flags and min-score produce score boosts.",
-      "predicate": "Engine score/fires are combined with underlying signal score; no standalone full source aggregate identified in v12.",
       "engine": "QuickConfig fields exist, but no equivalent full LIVE_ENTRY_ENGINE aggregator call was found in v12_quick_engine.py; lane_vec_wave5 handles selected score fields only.",
+      "native": "ez_positions_quick.py:30659-30704; live entry engine component flags and min-score produce score boosts.",
+      "path": "LIVE_ENTRY_ENGINE",
+      "predicate": "Engine score/fires are combined with underlying signal score; no standalone full source aggregate identified in v12.",
+      "status": "Full vector producer is an architectural gap; component switches/weights do not establish reachability.",
       "switches": [
         "LIVE_ENTRY_ENGINE_ENABLED",
         "LIVE_ENTRY_ENGINE_WT_ENABLED",
@@ -200,41 +201,41 @@
         "LIVE_ENTRY_ENGINE_MIN_SCORE",
         "LIVE_ENTRY_ENGINE_BOOST_SCORE"
       ],
-      "templates": "LIVE_ENTRY_ENGINE_ENABLED present in ENTRY_CONFIRMATION_GATES on all four templates.",
-      "status": "Full vector producer is an architectural gap; component switches/weights do not establish reachability."
+      "templates": "LIVE_ENTRY_ENGINE_ENABLED present in ENTRY_CONFIRMATION_GATES on all four templates."
     },
     {
-      "path": "AdvancedSignalRater ordinary OPEN / QUICK_OPEN_STRONG / QUICK_OPEN_GOOD aggregate",
-      "native": "ez_positions_quick.py:3614 onward; ordinary scoring entry in :30705-30730; QUICK_OPEN_STRONG path near :18718+.",
-      "predicate": "Large score aggregate with many score additions, hard blocks, recommendation classes, direct GOOD/STRONG producer overrides, and execution threshold.",
       "engine": "v12 uses weighted block sum/strength threshold (e.g. :12160-12195, :18718+) that is not the native AdvancedSignalRater score. quick_missing_entry_score.py contains selected bonus predicates only; bonuses cannot be inserted into the unrelated block sum as parity.",
+      "native": "ez_positions_quick.py:3614 onward; ordinary scoring entry in :30705-30730; QUICK_OPEN_STRONG path near :18718+.",
+      "path": "AdvancedSignalRater ordinary OPEN / QUICK_OPEN_STRONG / QUICK_OPEN_GOOD aggregate",
+      "predicate": "Large score aggregate with many score additions, hard blocks, recommendation classes, direct GOOD/STRONG producer overrides, and execution threshold.",
+      "status": "ARCHITECTURAL GAP; full baseline plus score additions, hard vetoes, recommendation classification, and thresholds are unimplemented as a reachable common vector path.",
       "switches": [
         "QUICK_OPEN_STRONG_VEC_ENABLED",
         "ENTRY_SCORE_THRESHOLD",
         "STRENGTH_FILTER_ENABLED",
         "STRENGTH_MIN_SCORE"
       ],
-      "templates": "Multiple contributing switches exist, but no single QUICK_OPEN_GOOD aggregate switch/row establishes scorer parity.",
-      "status": "ARCHITECTURAL GAP; full baseline plus score additions, hard vetoes, recommendation classification, and thresholds are unimplemented as a reachable common vector path."
+      "templates": "Multiple contributing switches exist, but no single QUICK_OPEN_GOOD aggregate switch/row establishes scorer parity."
     },
     {
-      "path": "RZ_ENTRY / RZ_AUGMENT",
-      "native": "ez_positions_quick.py:30495-30624; uses data_manager.delta_tracker, delta_sig zone/legs, account position/gain and augmentation state.",
-      "predicate": "Portfolio-backed red-zone entry or augment using WT/DC/BB legs and gain floor; entry reason and score derive from zone and touch state.",
       "engine": "v12 has delta/bounce blocks and strength weights, but does not prove shared delta_tracker state, portfolio gain, or full score route.",
+      "native": "ez_positions_quick.py:30495-30624; uses data_manager.delta_tracker, delta_sig zone/legs, account position/gain and augmentation state.",
+      "path": "RZ_ENTRY / RZ_AUGMENT",
+      "predicate": "Portfolio-backed red-zone entry or augment using WT/DC/BB legs and gain floor; entry reason and score derive from zone and touch state.",
+      "status": "Indicator candidates exist; full account/data-manager state parity not evidenced.",
       "switches": [
         "DELTA_ENGINE_ENABLED",
         "DELTA_ENTRY_ENABLED",
         "MIN_GAIN"
       ],
-      "templates": "DELTA_ENTRY_ENABLED/DELTA_ENGINE switches are represented in vector config; confirm current template row for each category before comparing.",
-      "status": "Indicator candidates exist; full account/data-manager state parity not evidenced."
+      "templates": "DELTA_ENTRY_ENABLED/DELTA_ENGINE switches are represented in vector config; confirm current template row for each category before comparing."
     },
     {
-      "path": "SBA_BOUNCE augmentation",
-      "native": "ez_positions_quick.py:30733+; requires existing position, loss window, active cooldown/counters, account/global notional room and concurrent cap.",
-      "predicate": "Position/account-state augmentation, not a flat entry.",
       "engine": "v12 has `sba_bounce` signal and SBA config, but not all native global/account counters are inputs to simulate_one.",
+      "native": "ez_positions_quick.py:30733+; requires existing position, loss window, active cooldown/counters, account/global notional room and concurrent cap.",
+      "path": "SBA_BOUNCE augmentation",
+      "predicate": "Position/account-state augmentation, not a flat entry.",
+      "status": "Requires portfolio replay state; single-symbol OHLC cannot establish parity.",
       "switches": [
         "SBA_ENABLED",
         "SBA_BOUNCE_ENABLED",
@@ -242,14 +243,14 @@
         "SBA_MAX_CONCURRENT",
         "SBA_COOLDOWN_GLOBAL_S"
       ],
-      "templates": "No complete paired portfolio-state board proof included.",
-      "status": "Requires portfolio replay state; single-symbol OHLC cannot establish parity."
+      "templates": "No complete paired portfolio-state board proof included."
     }
   ],
   "recent_verification": {
-    "pytest": "77 passed across K1M pairing/precedence, reentry filters/triggers, frozen reentry mask parity, filter gate parity, B04, and WR/LR scalar parity; 6 external websockets deprecation warnings only.",
-    "py_compile": "Passed for modified native/vector modules and tests.",
     "deployment": "No production sync, order placement, service restart, or template write performed.",
+    "py_compile": "Passed for modified native/vector modules and tests.",
+    "pytest": "77 passed across K1M pairing/precedence, reentry filters/triggers, frozen reentry mask parity, filter gate parity, B04, and WR/LR scalar parity; 6 external websockets deprecation warnings only.",
     "template": "K1M_EXTREME_REVERSE_ENABLED present only in crypto EXIT_STRUCTURAL: False bold + True option in both long/short books; row intake queued/pushed to S1. No fleet template sync."
-  }
+  },
+  "scope": "ez_positions_quick.py flat OPEN, explicit REENTRY, and vectorizable non-hedge/non-scalp exit paths reviewed in this pass"
 }

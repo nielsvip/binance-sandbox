@@ -311,18 +311,35 @@ def state_for(symside, window_days=30):
         setting_meta = {**setting_meta, "stale_anchor": _anc}
     try:
         from tools.v15_execution_provenance import capture_engine_invocation, persist_provenance
-        _capture = capture_engine_invocation()
-        _evaluation_started = False
+        _capture_context = {
+            "sym_side": symside,
+            "settings_source": src,
+            "settings_sha256": setting_meta.get("settings_sha256"),
+            "settings_updated_at": setting_meta.get("settings_updated_at"),
+            "template_md5": setting_meta.get("template_md5"),
+            "defaults_round": setting_meta.get("defaults_round"),
+            "window_days": window_days,
+            "engine_ast_sha256": _engine_ast_sha256(),
+        }
+        _capture = capture_engine_invocation(decision_context=_capture_context)
+    except Exception as _capture_exc:
+        res = evaluate_prepared_sanitized(prep, ov, window_days, include_ledger=True) or {}
+        execution_provenance = {"capture_status": "UNVERIFIED", "capture_errors": [f"capture setup {type(_capture_exc).__name__}: {str(_capture_exc)[:160]}"]}
+    else:
+        _capture_body_entered = False
+        _evaluation_completed = False
         try:
             with _capture:
-                _evaluation_started = True
+                _capture_body_entered = True
                 res = evaluate_prepared_sanitized(prep, ov, window_days, include_ledger=True) or {}
+                _evaluation_completed = True
             _capture_doc = _capture.result()
-        except Exception:
-            if _evaluation_started:
+        except Exception as _capture_exc:
+            if _capture_body_entered and not _evaluation_completed:
                 raise
-            res = evaluate_prepared_sanitized(prep, ov, window_days, include_ledger=True) or {}
-            _capture_doc = {"capture_status": "UNVERIFIED", "capture_errors": ["capture hook could not be installed"]}
+            if not _capture_body_entered:
+                res = evaluate_prepared_sanitized(prep, ov, window_days, include_ledger=True) or {}
+            _capture_doc = {"capture_status": "UNVERIFIED", "capture_errors": [f"capture hook {type(_capture_exc).__name__}: {str(_capture_exc)[:160]}"]}
         if _capture_doc.get("capture_status") == "VERIFIED":
             try:
                 execution_provenance = persist_provenance(OUT, _capture_doc)
@@ -330,10 +347,6 @@ def state_for(symside, window_days=30):
                 execution_provenance = {"capture_status": "UNVERIFIED", "capture_errors": [f"persist {type(_capture_exc).__name__}: {str(_capture_exc)[:160]}"], "capture_ms": _capture_doc.get("capture_ms")}
         else:
             execution_provenance = {key: value for key, value in _capture_doc.items() if key not in ("config", "npz_manifest")}
-    except Exception as _capture_exc:
-        # A provenance import/setup failure falls back to the existing evaluator without changing its output.
-        res = evaluate_prepared_sanitized(prep, ov, window_days, include_ledger=True) or {}
-        execution_provenance = {"capture_status": "UNVERIFIED", "capture_errors": [f"capture {type(_capture_exc).__name__}: {str(_capture_exc)[:160]}"]}
     perf_valid = res.get("valid") is True
     perf_reason = res.get("invalid_reason")
     completed_performance_gate = perf_valid or bool(

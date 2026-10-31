@@ -26584,6 +26584,10 @@ async def check_exit_candidates_for_account(
                         _pe_high_3m = safe_fetch_float(indicators.get("high_15m"), 0)
                         _pe_high_3m_prev = safe_fetch_float(indicators.get("high_15m_prev"), 0)
                         try:
+                            _pe_required = ["k_15m", "dc_high4_15m", "dc_low4_15m", "low_15m", "low_15m_prev", "high_15m", "high_15m_prev"]
+                            _pe_missing = [_key for _key in _pe_required if indicators.get(_key) is None]
+                            if _pe_missing:
+                                raise ValueError("missing paired live fields: " + ",".join(_pe_missing))
                             _pe_accel = step_native(
                                 getattr(data_manager, "parabolic_exit_states", {}),
                                 symbol,

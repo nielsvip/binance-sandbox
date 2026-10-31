@@ -56,8 +56,10 @@ def bind_worker_measurement(source, cell, context, settings):
     if proof.get('input_cutoff_sha256') != scientific['window']['input_cutoff_sha256'] or priority.evidence.guard.fingerprint(result.get('execution_ledger')) != proof.get('execution_ledger_sha256') or priority.evidence.guard.fingerprint(priority.evidence.guard.result_fields(result)) != proof.get('result_sha256') or priority.evidence.guard.fingerprint(priority.evidence.guard.decoded(proof.get('effective_config_values'))) != proof.get('effective_config_sha256'):
         raise ValueError('worker measurement actual engine artifacts mismatch')
     gain = result.get('gain_pct')
-    if result.get('valid') not in (True, False) or not isinstance(gain, (int, float)) or not math.isfinite(gain):
+    if type(result.get('valid')) is not bool or not isinstance(gain, (int, float)) or not math.isfinite(gain):
         raise ValueError('missing or nonfinite actual measurement remains unknown')
+    if not result['valid'] and not str(result.get('invalid_reason') or '').startswith(('trades ', 'TIM ', 'DD ', 'max_dd ')):
+        raise ValueError('execution failure or ambiguous invalid verdict remains unknown, not an inadmissible zero')
     row = {key: cell[key] for key in ('tab', 'row', 'switch', 'cand')}
     identity = priority.evidence.guard.fingerprint(dict(row=row, filter=cell['filter'], opt=cell['opt'], scientific_context=scientific))
     bound = dict(schema='current_yellow_measurement/1', cell_identity=identity, scientific_identity=scientific, engine_proof={key: proof[key] for key in ('effective_config_sha256', 'execution_ledger_sha256', 'result_sha256', 'input_cutoff_sha256')}, evaluation_status='evaluated_valid' if result['valid'] else 'evaluated_inadmissible', worker_source=source)
