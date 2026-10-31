@@ -276,6 +276,15 @@ def test_only_fin_and_trc_are_ever_gated():
     assert module.SEVENDAY_BOOK == {"fin": "men", "trc": "trb"}
 
 
+def test_fin_7d_entry_ignores_30d_deterioration_halt(tmp_path, monkeypatch):
+    monkeypatch.setattr(module, "entry_allowed", lambda root, venue, acct, ss: True)
+    halted = {"AAAUSDT_LONG": {"drop_pp": 20.0}}
+    assert module.deterioration_entry_allowed(tmp_path, "crypto", "fin", "AAAUSDT_LONG", halted)
+    assert not module.deterioration_entry_allowed(tmp_path, "crypto", "men", "AAAUSDT_LONG", halted)
+    monkeypatch.setattr(module, "entry_allowed", lambda root, venue, acct, ss: False)
+    assert not module.deterioration_entry_allowed(tmp_path, "crypto", "fin", "AAAUSDT_LONG", halted)
+
+
 def test_the_control_accounts_are_never_touched_by_the_gate(tmp_path):
     now = time.time()
     obj = seven(tmp_path, sides={"AAAUSDT_LONG": now}, keys=("AAAUSDT_LONG",))

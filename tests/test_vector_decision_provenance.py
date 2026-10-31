@@ -26,6 +26,8 @@ def test_order_records_actual_consumed_state_without_rereading_live_file(tmp_pat
     cls = next(value for value in vars(trader).values() if isinstance(value, type) and hasattr(value, "capture_order_states"))
     runner = cls.__new__(cls)
     runner.out = tmp_path
+    runner.venue = "crypto"
+    runner.a = type("Args", (), {"dry_run": True, "force_active": ""})()
     states = {"X_LONG": {"npz_tail": 900, "engine_ast_sha256": "engine", "open": True}}
     orders = [{"acct": "ang", "ss": "X_LONG", "act": "OPEN"}]
     runner.capture_order_states(orders, states)

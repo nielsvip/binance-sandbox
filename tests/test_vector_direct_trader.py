@@ -491,6 +491,25 @@ def test_deterioration_halt_waits_for_fresh_wt15_against_and_never_reenters(tmp_
     assert str(BAR) in orders[0]["key"]
     orders, _ = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(False)}, {"XUSDT_LONG": {"qty": 12.0}}, BAR, set(), ALLOW, wt15=with_wt, halted=halted)
     assert [(o["act"], o["qty"]) for o in orders] == [("CLOSE", 12.0)] and orders[0].get("reason") != "DETERIORATED_CLOSE"
+    acts = [{"type": "REDUCE", "qty": 25.0, "qty_before": 100.0, "qty_frac": 0.25}, {"type": "AUGMENT", "qty": 50.0, "qty_before": 75.0}]
+    held = {"XUSDT_LONG": {"qty": 8.0}}
+    with_wt = lambda ss: {"bar_ts": BAR, "wt1_15m": 2.0, "wt2_15m": 1.0}
+    orders, notes = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(True, acts=acts)}, held, BAR, set(), ALLOW, wt15=with_wt, halted=halted)
+    assert [o["act"] for o in orders] == ["REDUCE"]
+    assert any("DETERIORATION_HOLD_WAIT_WT15" in n for _, n in notes)
+    assert any("DETERIORATION_HALT_NO_AUGMENT" in n for _, n in notes)
+    stale_wt = lambda ss: {"bar_ts": BAR - 3600, "wt1_15m": -2.0, "wt2_15m": 1.0}
+    orders, notes = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(True)}, held, BAR, set(), ALLOW, wt15=stale_wt, halted=halted)
+    assert orders == [] and any("stale/unavailable" in n for _, n in notes)
+    prior_bar_wt = lambda ss: {"bar_ts": BAR - 900, "wt1_15m": -2.0, "wt2_15m": 1.0}
+    orders, _ = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(True)}, held, BAR, set(), ALLOW, wt15=prior_bar_wt, halted=halted)
+    assert orders == []
+    against_wt = lambda ss: {"bar_ts": BAR, "wt1_15m": -2.0, "wt2_15m": 1.0}
+    orders, _ = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(True)}, held, BAR, set(), ALLOW, wt15=against_wt, halted=halted)
+    assert [o["act"] for o in orders] == ["CLOSE"] and orders[0]["reason"] == "DETERIORATED_CLOSE"
+    assert str(BAR) in orders[0]["key"]
+    orders, _ = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(False)}, {"XUSDT_LONG": {"qty": 12.0}}, BAR, set(), ALLOW, wt15=with_wt, halted=halted)
+    assert [(o["act"], o["qty"]) for o in orders] == [("CLOSE", 12.0)] and orders[0].get("reason") != "DETERIORATED_CLOSE"
 
 
 def test_deterioration_halts_require_exact_active_override_md5(tmp_path):
@@ -524,7 +543,34 @@ def test_deterioration_halt_unknown_identity_is_explicit_and_blocks_open(tmp_pat
     assert halts["XUSDT_LONG"]["identity_status"] == "UNVERIFIED"
     assert halts["XUSDT_LONG"]["identity_error"] == "active settings store unavailable: OperationalError"
     orders, notes = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(True)}, {}, BAR, set(), ALLOW, halted=halts)
-    assert orders == [] and notes[0][1] == "DETERIORATED_NO_REENTRY"
+    assert orders == [] and notes[0][1] == "DETERIORATION_IDENTITY_UNVERIFIED_NO_REENTRY"
+
+
+def test_unverified_halt_logs_once_per_unchanged_identity_state(tmp_path, monkeypatch):
+    import json
+
+    (tmp_path / "data").mkdir()
+    halt_file = tmp_path / "data" / "deterioration_halt.json"
+    halt_file.write_text(json.dumps({"halts": {"XUSDT_LONG": {"set_md5": "unknown"}}}))
+    V.UNVERIFIED_HALT_LOG_STATE.update(signature=None, at=0.0)
+    messages = []
+    monkeypatch.setattr(V, "log", messages.append)
+    V.deterioration_halts(tmp_path, tmp_path / "missing" / "per_sym_store.db")
+    V.deterioration_halts(tmp_path, tmp_path / "missing" / "per_sym_store.db")
+    assert len(messages) == 1
+    halt_file.write_text(json.dumps({"halts": {"XUSDT_LONG": {"set_md5": "unknown"}, "YUSDT_SHORT": {"set_md5": "unknown"}}}))
+    V.deterioration_halts(tmp_path, tmp_path / "missing" / "per_sym_store.db")
+    assert len(messages) == 2
+
+
+def test_unknown_identity_does_not_authorize_deterioration_close_or_suppress_normal_close():
+    ss = "XUSDT_LONG"
+    halted = {ss: {"set_md5": "unknown", "identity_status": "UNVERIFIED"}}
+    against_wt = lambda _: {"bar_ts": BAR, "wt1_15m": -2.0, "wt2_15m": 1.0}
+    orders, _ = V.plan_account("ang", "crypto", [ss], {ss: st(True)}, {ss: {"qty": 5.0}}, BAR, set(), ALLOW, wt15=against_wt, halted=halted)
+    assert orders == []
+    orders, _ = V.plan_account("ang", "crypto", [ss], {ss: st(False)}, {ss: {"qty": 5.0}}, BAR, set(), ALLOW, wt15=against_wt, halted=halted)
+    assert [(order["act"], order.get("reason")) for order in orders] == [("CLOSE", None)]
 
 
 def test_plan_decision_identity_changes_with_gate_or_plan_and_is_immutable(tmp_path):
@@ -535,28 +581,68 @@ def test_plan_decision_identity_changes_with_gate_or_plan_and_is_immutable(tmp_p
     denied = {"schema": "vector-direct-plan-decision-v1", "acct": "ang", "ss": "XUSDT_LONG", "bar": BAR,
               "state_provenance": state_ref, "control": {"allowed": False, "halt": {"set_md5": "stale"}, "orders": []}, "orders": []}
     denied_ref = V.persist_plan_decision(tmp_path, denied)
-    opened = {**denied, "control": {"allowed": True, "halt": None, "orders": [{"act": "OPEN", "key": f"ang|XUSDT_LONG|{BAR}|OPEN", "notional": 15.0}]},
-              "orders": [{"act": "OPEN", "key": f"ang|XUSDT_LONG|{BAR}|OPEN", "notional": 15.0}]}
+    intent = {"acct": "ang", "ss": "XUSDT_LONG", "act": "OPEN", "key": f"ang|XUSDT_LONG|{BAR}|OPEN", "notional": 15.0}
+    opened = {**denied, "control": {"allowed": True, "halt": None, "orders": [intent]}, "orders": [intent]}
     opened_ref = V.persist_plan_decision(tmp_path, opened)
     assert denied_ref["plan_decision_id"] != opened_ref["plan_decision_id"]
     assert json.loads((tmp_path / denied_ref["plan_decision_file"]).read_text()) == denied
-    order = {"acct": "ang", "ss": "XUSDT_LONG", **opened["orders"][0], "plan_decision": opened_ref}
+    order = {"acct": "ang", "ss": "XUSDT_LONG", "bar": BAR, "decision_provenance": state_ref, **opened["orders"][0], "plan_decision": opened_ref}
     assert V.validate_plan_decision(tmp_path, "ang", order) == (True, "")
     assert V.validate_plan_decision(tmp_path, "fin", order) == (False, "plan decision account or side mismatch")
 
 
 def test_plan_decision_requires_matching_order_and_existing_state_provenance(tmp_path):
     state_ref = V.persist_decision_state(tmp_path, st(True))
-    intent = {"act": "OPEN", "key": f"ang|XUSDT_LONG|{BAR}|OPEN", "notional": 15.0}
+    intent = {"acct": "ang", "ss": "XUSDT_LONG", "act": "OPEN", "key": f"ang|XUSDT_LONG|{BAR}|OPEN", "notional": 15.0}
     document = {"schema": "vector-direct-plan-decision-v1", "acct": "ang", "ss": "XUSDT_LONG", "bar": BAR,
                 "state_provenance": state_ref, "control": {"allowed": True}, "orders": [intent]}
     reference = V.persist_plan_decision(tmp_path, document)
-    order = {"acct": "ang", "ss": "XUSDT_LONG", **intent, "plan_decision": reference}
+    order = {"acct": "ang", "ss": "XUSDT_LONG", "bar": BAR, "decision_provenance": state_ref, **intent, "plan_decision": reference}
     assert V.validate_plan_decision(tmp_path, "ang", order) == (True, "")
     mismatch = {**order, "key": f"ang|XUSDT_LONG|{BAR + 900}|OPEN"}
     assert V.validate_plan_decision(tmp_path, "ang", mismatch) == (False, "order intent absent from plan decision")
+    assert V.validate_plan_decision(tmp_path, "ang", {**order, "bar": BAR + 900}) == (False, "plan decision bar mismatch")
+    assert V.validate_plan_decision(tmp_path, "ang", {**order, "plan_decision": {**reference, "plan_decision_file": "plan_decisions/../escape.json"}}) == (False, "invalid plan decision path")
     (tmp_path / state_ref["state_file"]).unlink()
     assert V.validate_plan_decision(tmp_path, "ang", order) == (False, "state provenance missing or hash mismatch")
+
+
+def test_state_change_with_same_order_intent_requires_fresh_plan_decision(tmp_path):
+    state1, state2 = st(True), st(True)
+    state2["engine_qty"] = 81.0
+    state_ref1 = V.persist_decision_state(tmp_path, state1)
+    state_ref2 = V.persist_decision_state(tmp_path, state2)
+    intent = {"acct": "ang", "ss": "XUSDT_LONG", "act": "OPEN", "key": f"ang|XUSDT_LONG|{BAR}|OPEN", "notional": 15.0, "anchor": BAR - 2700,
+              "engine_qty": 75.0, "engine_open_qty": 100.0, "engine_qty_ratio": 0.75}
+    document1 = {"schema": "vector-direct-plan-decision-v1", "acct": "ang", "ss": "XUSDT_LONG", "bar": BAR,
+                 "state_provenance": state_ref1, "control": {"allowed": True}, "orders": [intent]}
+    reference1 = V.persist_plan_decision(tmp_path, document1)
+    order = {"acct": "ang", "ss": "XUSDT_LONG", "bar": BAR, "decision_provenance": state_ref2, **intent, "plan_decision": reference1}
+    assert V.validate_plan_decision(tmp_path, "ang", order) == (False, "order state provenance differs from plan decision")
+    document2 = {**document1, "state_provenance": state_ref2}
+    reference2 = V.persist_plan_decision(tmp_path, document2)
+    order["plan_decision"] = reference2
+    assert reference1["plan_decision_id"] != reference2["plan_decision_id"]
+    assert V.validate_plan_decision(tmp_path, "ang", order) == (True, "")
+    enriched = {"acct": "ang", "ss": "XUSDT_LONG", "act": "OPEN", "key": "k", "anchor": BAR - 2700,
+                "qty_frac": 0.25, "engine_qty_ratio": 0.75, "plan_decision": reference2, "decision_provenance": state_ref2, "bar": BAR}
+    assert V.order_intent(enriched) == {key: enriched[key] for key in ("acct", "ss", "act", "key", "anchor", "qty_frac", "engine_qty_ratio")}
+
+
+def test_unchanged_state_file_reuses_in_memory_provenance_without_rehash(tmp_path, monkeypatch):
+    import json
+
+    state_dir = tmp_path / "forward_state"
+    state_dir.mkdir()
+    (state_dir / "XUSDT_LONG.json").write_text(json.dumps(st(True)))
+    trader = V.Trader.__new__(V.Trader)
+    trader.state_dir = state_dir
+    first = trader.load_states({"XUSDT_LONG"})["XUSDT_LONG"]
+    ref = V.persist_decision_state(tmp_path, first)
+    second = trader.load_states({"XUSDT_LONG"})["XUSDT_LONG"]
+    assert second is first
+    monkeypatch.setattr(V.json, "dumps", lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("unchanged state was serialized again")))
+    assert V.persist_decision_state(tmp_path, second) == ref
 
 
 def test_deterioration_short_requires_bullish_wt15_and_rejects_future_bar():

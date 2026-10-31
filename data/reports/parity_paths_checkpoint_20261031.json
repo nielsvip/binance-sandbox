@@ -1,6 +1,6 @@
 {
   "computed_at": "2026-10-31T03:19:32.916010+00:00",
-  "status": "IN_PROGRESS_ONE_FROZEN_ENTRY_EXIT_FIXTURE_PASS_FULL_PARITY_UNPROVEN",
+  "status": "IN_PROGRESS_FULL_14D_ACCEPTANCE_NOT_PROVEN",
   "fleet_deployed": "PARTIAL_AUTO_PUSH_DISCOVERED; NOT_A_REVIEWED_FLEET_BATCH",
   "log_text_preserved": true,
   "local_template_install_summary": {
@@ -347,11 +347,67 @@
       "status": "Disclosed by agent; no retroactive backup claimed"
     }
   ],
-  "checkpoint_updated_at": "2026-10-31T03:46:18.004061+00:00",
+  "checkpoint_updated_at": "2026-10-31T04:21:18.501569+00:00",
   "replay_clock": {
     "signal_clock": "NPZ bar-open timestamp",
     "decision_clock": "bar-open +900seconds when V12_COMPLETED_BAR_SECONDS=900",
     "event_capture": "append-time signal and decision clocks retained independently",
     "status": "compiled and focused tests passed; full replay pending"
+  },
+  "acceptance_quantities": "May differ; exact OPEN/AUGMENT/REDUCE/CLOSE sequence and bars required",
+  "new_confirmed_causes": [
+    {
+      "cause": "Rejected exit ledger append followed by partial commit using trades[-1] could crash or reuse older event",
+      "fix": "20 partial commit sites use latest accepted append event; refusal cannot commit projection",
+      "tests": "11 exit-gate tests plus59 related accounting/hold/reduce tests passed",
+      "full_replay": "pending; formerly failing first prefix succeeds with canonical reader"
+    },
+    {
+      "cause": "Native EPQ augmentation referenced undefined i.get(dc_high_1h)",
+      "fix": "Uses already-loaded scalar dc_high_1h",
+      "tests": "3 boundary tests passed",
+      "fleet_deployed": false
+    },
+    {
+      "cause": "Native WT quality gate read absent3m while USE_1M_3M_SIGNALS_ENABLED=False;35 recorded refusals had aligned15m and3m0/0",
+      "fix": "Paired15m inputs selected under existing switch; original log strings retained",
+      "tests": "4 input-selection tests passed",
+      "full_source_gate_parity": "agent implementing source-specific producer/gate mapping"
+    },
+    {
+      "cause": "Stock replay flat candidates default everythirdbar skipped14:30 modelentry",
+      "fix": "Default everybar; explicit throttle labeled nonacceptance",
+      "tests": "4 agent tests passed",
+      "other_native_mismatches": "still investigating downstream B04 eligibility"
+    },
+    {
+      "cause": "Published selection artifacts stale relative to authentic Oct30 history and activePEPEset",
+      "evidence": "Authoritative rebuild PEPE history8066 gives0 live keydiff; oldS1sandbox10diff, S1main/S5sandbox27diff",
+      "repair": "audited artifact synchronization in progress; otherkeys stilldiff/missing"
+    }
+  ],
+  "source_integrity_incident": {
+    "invalid_candidate": "/tmp/native_replay_candidate_20261031_fullsrc09",
+    "declared_manifest": "885026b575ccc124c251aaa339d5dfaeb4753d2170c3e8f52a79872700f2b281",
+    "actual_audit": {
+      "matched": 538,
+      "missing": 3033,
+      "different": 0
+    },
+    "prior_validation_claim": "false; withdrawn; retained as diagnostic only",
+    "verified_replacement": "/tmp/parity_verified_source_20261031_0410/code",
+    "replacement_audit": {
+      "matched": 3571,
+      "missing": 0,
+      "different": 0
+    },
+    "archive_sha256": "c9a96837f3923dbcf37bbc22b4ff13bb44a0462efa41a853b1a11e08c29b6a31"
+  },
+  "native_replay_mode": {
+    "old_crypto_fixture": "Implicitly forced VEC_DICTATE_ONLY_ENABLED=False; native-enabled candidate diagnostic, not current vector-only authority",
+    "new_contract": "Explicit V12_REPLAY_NATIVE_OWNERSHIP=1, reported and exception-safe restored; default preserves configured ownership",
+    "initial_state": "Flat broker is shared with actual vector_direct.plan_account convergence test; model prehistory recorded separately",
+    "coverage": "Expected and visited bar count/hash retained; capped/skipped/shifted runs incomplete",
+    "latest_tests": "22 coverage/ownership/clock/WT/seed tests passed"
   }
 }

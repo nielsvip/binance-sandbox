@@ -70,10 +70,17 @@ def validate_historical_seed(seed, account, cutoff_bar_ts, bar_seconds=900.0):
     for position_key, position in positions.items():
         if not isinstance(position, dict):
             raise ValueError(f"historical seed position {position_key} must be an object")
-        if float(position.get("positionAmt", 0) or 0) <= 0:
-            raise ValueError(f"historical seed position {position_key} must have positive quantity")
-        if float(position.get("entry_price", 0) or 0) <= 0:
-            raise ValueError(f"historical seed position {position_key} must have positive entry price")
+        quantity = float(position.get("positionAmt", 0) or 0)
+        entry_price = float(position.get("entry_price", 0) or 0)
+        if not math.isfinite(quantity) or quantity <= 0:
+            raise ValueError(f"historical seed position {position_key} must have positive finite quantity")
+        if not math.isfinite(entry_price) or entry_price <= 0:
+            raise ValueError(f"historical seed position {position_key} must have positive finite entry price")
+        position_side = str(position.get("position_side", "")).upper()
+        if position_side not in ("LONG", "SHORT") or not str(position_key).startswith(f"{str(account).strip().lower()}:") or not str(position_key).endswith(f"_{position_side}"):
+            raise ValueError(f"historical seed position {position_key} account/side identity mismatch")
+        if "max_gain" not in position or not math.isfinite(float(position["max_gain"])):
+            raise ValueError(f"historical seed position {position_key} requires finite original max_gain")
         if not position.get("opened_at"):
             raise ValueError(f"historical seed position {position_key} is missing opened_at")
         for field in lifecycle_times:

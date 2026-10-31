@@ -23292,7 +23292,16 @@ async def execute_trade_wrapper(
                 # (1.5% vs 3%), it does NOT bypass WT alignment.
                 # Per user directive: "longs: wt1_3m>wt2_3m and wt1_15m>wt2_15m. shorts v.v."
                 _aug_tag = "PULLBACK_AUG" if _is_pullback_aug else "WINNER_AUG"
-                if _wt_3m_aligned and (_wt_15m_aligned or _gate_gain >= _min_gain_cfg):
+                from vec_decisions.wt_winner_pullback_augment import final_gate as _wt_aug_final_gate
+                if _wt_aug_final_gate(
+                    _gate_is_long,
+                    _gate_gain,
+                    _min_gain_cfg,
+                    _gw1_3m,
+                    _gw2_3m,
+                    _gw1_15m,
+                    _gw2_15m,
+                ):
                     logger.info(
                         f"✅ [WT_GATE_BYPASS_{_aug_tag}] {position_key}: gain={_gate_gain:.2f}% (max={_gate_max:.2f}%) + WT aligned → bypassing LTF/HTF gates. {_gwt_d}"
                     )
@@ -27455,27 +27464,35 @@ async def check_exit_candidates_for_account(
                 if not hard_exit_reason:
                     last_aug_age = minutes_since(position.last_augmentation_time)
                     _is_long = position_key.endswith("_LONG")
-                    _wt1_3m = safe_fetch_float(indicators.get("wt1_3m"), 0)
-                    _wt2_3m = safe_fetch_float(indicators.get("wt2_3m"), 0)
+                    _wt_aug_ltf_enabled = bool(
+                        _psym_get(
+                            symbol,
+                            position_side,
+                            "USE_1M_3M_SIGNALS_ENABLED",
+                            getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False),
+                        )
+                    )
+                    _wt_aug_ltf_tf = "3m" if _wt_aug_ltf_enabled else "15m"
+                    _wt1_ltf = safe_fetch_float(indicators.get(f"wt1_{_wt_aug_ltf_tf}"), 0)
+                    _wt2_ltf = safe_fetch_float(indicators.get(f"wt2_{_wt_aug_ltf_tf}"), 0)
                     _wt1_15m = safe_fetch_float(indicators.get("wt1_15m"), 0)
                     _wt2_15m = safe_fetch_float(indicators.get("wt2_15m"), 0)
-                    _wt_ok = (
-                        (_wt1_3m > _wt2_3m and _wt1_15m > _wt2_15m)
-                        if _is_long
-                        else (_wt1_3m < _wt2_3m and _wt1_15m < _wt2_15m)
-                    )
                     _hl15 = str(indicators.get("wt_trough_structure_15m", ""))
                     _lh15 = str(indicators.get("wt_peak_structure_15m", ""))
-                    _wt_hl_lh = (_is_long and _hl15 == "HL") or (
-                        (not _is_long) and _lh15 == "LH"
-                    )
                     _max_g = safe_fetch_float(getattr(position, "max_gain", 0), 0)
-                    _is_pullback = (_max_g - current_gain) >= 0.5
-                    _is_bounce = _wt_hl_lh or (_is_pullback and _wt_ok)
-                    if (current_gain >= _min_g and _wt_ok) or (
-                        current_gain >= 0.5 * _min_g and _is_bounce
-                    ):
-                        hard_augment = True
+                    from vec_decisions.wt_winner_pullback_augment import producer as _wt_aug_producer
+                    hard_augment, _hard_augment_family = _wt_aug_producer(
+                        _is_long,
+                        current_gain,
+                        _max_g,
+                        _min_g,
+                        _wt1_ltf,
+                        _wt2_ltf,
+                        _wt1_15m,
+                        _wt2_15m,
+                        1.0 if _hl15 == "HL" else 0.0,
+                        -1.0 if _lh15 == "LH" else 0.0,
+                    )
                 is_augmented = position.positionAmt > 1.2 * pos_min_qty
                 from vec_decisions.quick_missing_augmented_dc_break import augmented_dc_break_channel, augmented_dc_break_price_breached
                 _aug_ltf_enabled = bool(_psym_get(symbol, position_side, "LIVE_5m_trading_ENABLED", getattr(config, "LIVE_5m_trading_ENABLED", False)))
@@ -27511,11 +27528,7 @@ async def check_exit_candidates_for_account(
                         _q_sps_usd(symbol, position_side, 50.0) / current_price,
                         position.positionAmt * 0.1,
                     )
-                    augment_reason = (
-                        f"BOUNCE_AUGMENT_{current_gain:.2f}%"
-                        if (current_gain < _min_g)
-                        else f"WINNER_WT_AUGMENT_{current_gain:.2f}%"
-                    )
+                    augment_reason = f"{_hard_augment_family}_{current_gain:.2f}%"
                     await tracker_manager.set_processing(position_key)
                     success, msg = await execute_trade_wrapper(
                         trade_manager,

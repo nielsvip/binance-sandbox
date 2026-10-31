@@ -3,6 +3,7 @@ import copy
 import json
 from pathlib import Path
 import os
+import uuid
 
 from tools import v15_nextgen_pilot_consumer as consumer
 from tools import v15_nextgen_protection_priority as priority
@@ -71,7 +72,27 @@ def build(spec, prepared, progress, current_chain, defaults, exact_classifier):
     policy_source = lookup[spec['budget_policy_asset']]
     policy = json.loads(Path(policy_source['path']).read_text())
     budget_rows = policy['row_yellow_budgets']
+    state_pointer = reservations/'allocation_state.json'
+    allocation_state = copy.deepcopy(spec.get('allocation_state') or {})
+    if state_pointer.exists():
+        pointer = json.loads(state_pointer.read_text())
+        source = pointer['reservation_source']
+        if priority.evidence.sha(source['path']) != source['sha256']:
+            raise ValueError('persisted allocation reservation source changed')
+        previous = json.loads(Path(source['path']).read_text())
+        if previous['scientific_identity']['wiring_epoch_sha256'] != epoch['id'] or previous['scientific_identity']['sym_side'] != spec['sym_side']:
+            raise ValueError('allocation state belongs to another source epoch or symbol-side')
+        allocation_state = previous['allocation']['next_state']
+        if priority.evidence.guard.fingerprint(allocation_state) != pointer['state_sha256']:
+            raise ValueError('persisted allocation state differs from durable reservation')
     bound_domain = priority.bind_domain_sources(epoch, [template, lookup['v15_pilot.py'], lookup['v12_quick_engine.py']])
+    prediction_index = {}
+    for source in spec.get('prediction_sources') or []:
+        if not any(reference['path']==source['path'] and reference['sha256']==source['sha256'] for reference in sources):
+            raise ValueError('retained prediction artifact must be part of batch source epoch')
+        artifact=priority.bind_prediction_artifact(source)
+        for index,item in enumerate(artifact['document'].get('template_untried') or []):
+            prediction_index.setdefault((item.get('switch'),item.get('filter'),item.get('tab')),[]).append((artifact,index))
     defaults_hash = priority.evidence.guard.fingerprint(defaults)
     def context(chain):
         if priority.evidence.guard.fingerprint(defaults) != defaults_hash:
@@ -81,7 +102,23 @@ def build(spec, prepared, progress, current_chain, defaults, exact_classifier):
         resolved = exact_classifier(cell, scientific)
         if not isinstance(resolved, dict):
             raise ValueError('actual pilot classifier returned no explicit verdict')
-        return dict(resolved, bound_domain=bound_domain, evidence_refs=[])
+        bound = dict(resolved, bound_domain=bound_domain, evidence_refs=[])
+        proposal=resolved.get('typed_pair')
+        if resolved.get('eligible') is True and proposal:
+            candidates=prediction_index.get((cell['switch'],cell['filter'],cell['tab']),[])+prediction_index.get((cell['switch'],cell['filter'],None),[])
+            matches=[]
+            for artifact,index in candidates:
+                def resolve(original):
+                    probe=dict(cell,switch=original['switch'],cand=original['cand'],filter=original['filter'],opt=original['opt'])
+                    answer=exact_classifier(probe,scientific)
+                    return dict(answer,**(answer.get('typed_pair') or {}))
+                try:
+                    matches.append(priority.retained_prediction(artifact,index,proposal,scientific,resolve))
+                except ValueError:
+                    continue
+            if matches:
+                bound['retained_prediction']=max(matches,key=lambda prediction:prediction['score'])
+        return bound
     def budget(row, scientific):
         key = priority.evidence.guard.fingerprint(row)
         value = budget_rows.get(key)
@@ -89,8 +126,16 @@ def build(spec, prepared, progress, current_chain, defaults, exact_classifier):
             raise ValueError('actual row has no explicit caller-bound yellow budget')
         return value
     def reserve(allocation, scientific):
+        nonlocal allocation_state
+        if allocation['next_state']['yellow_round'] != int(allocation_state.get('yellow_round',0))+1:
+            raise ValueError('allocation state did not advance from the persisted reservation')
         identity = priority.evidence.guard.fingerprint(dict(allocation=allocation, scientific_identity=priority.scientific_identity(scientific)))
-        record = dict(schema='first_pass_reservation/1', status='reserved', allocation_sha256=identity, allocation=allocation, scientific_identity=priority.scientific_identity(scientific), measurement_claimed=False, deferred_debt=allocation['deferred'])
+        record = dict(schema='first_pass_reservation/1', status='reserved', allocation_sha256=identity, previous_state_sha256=priority.evidence.guard.fingerprint(allocation_state), allocation=allocation, scientific_identity=priority.scientific_identity(scientific), measurement_claimed=False, deferred_debt=allocation['deferred'])
         source = write_immutable(reservations / (identity + '.json'), record)
+        pointer = dict(reservation_source=source,state_sha256=priority.evidence.guard.fingerprint(allocation['next_state']))
+        temporary=reservations/('allocation_state_'+uuid.uuid4().hex+'.tmp')
+        write_immutable(temporary,pointer)
+        os.replace(temporary,state_pointer)
+        allocation_state=copy.deepcopy(allocation['next_state'])
         return dict(status='reserved', allocation_sha256=identity, source=source)
-    return consumer.FirstPassConsumer(context, classify, reserve, copy.deepcopy(spec.get('allocation_state') or {}), budget, lambda row, scientific: spec.get('row_status', {}).get(priority.evidence.guard.fingerprint(row), 'unobserved'), capture_directory=str(directory), budget_policy_source=policy_source)
+    return consumer.FirstPassConsumer(context, classify, reserve, allocation_state, budget, lambda row, scientific: spec.get('row_status', {}).get(priority.evidence.guard.fingerprint(row), 'unobserved'), capture_directory=str(directory), budget_policy_source=policy_source)

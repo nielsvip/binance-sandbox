@@ -93,3 +93,24 @@ def test_cutoff_mark_rejects_missing_price_and_invalid_side():
         position_mark_at_cutoff(base, timestamps, lambda idx: 0, 1800)
     with pytest.raises(ValueError, match="position_side"):
         position_mark_at_cutoff(dict(base, position_side="BOTH"), timestamps, lambda idx: 101, 1800)
+
+
+@pytest.mark.parametrize("field", ["positionAmt", "entry_price", "max_gain"])
+@pytest.mark.parametrize("value", [float("nan"), float("inf")])
+def test_invalid_lifecycle_numbers_fail_closed(field, value):
+    seed = _seed()
+    seed["positions"]["ang:BTCUSDT_LONG"][field] = value
+    with pytest.raises(ValueError, match="finite"):
+        validate_historical_seed(seed, "ang", 1800, 900)
+
+
+def test_seed_cannot_smuggle_foreign_account_or_wrong_side():
+    seed = _seed()
+    position = seed["positions"]["ang:BTCUSDT_LONG"]
+    seed["positions"] = {"inf:BTCUSDT_LONG": position}
+    with pytest.raises(ValueError, match="identity"):
+        validate_historical_seed(seed, "ang", 1800, 900)
+    seed = _seed()
+    seed["positions"]["ang:BTCUSDT_LONG"]["position_side"] = "SHORT"
+    with pytest.raises(ValueError, match="identity"):
+        validate_historical_seed(seed, "ang", 1800, 900)

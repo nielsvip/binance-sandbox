@@ -41,6 +41,7 @@ BACKSTOP         a board OPEN/CLOSE the broker still does not show after the gra
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime as dt
 import hashlib
 import hmac
@@ -278,8 +279,8 @@ def atomic_write_json(path: Path, payload) -> None:
 def persist_decision_state(directory, state):
     cache_key = (str(Path(directory)), id(state))
     cached = PERSISTED_STATE_REF_CACHE.get(cache_key)
-    if cached and cached[0] is state:
-        return cached[1]
+    if cached and cached[0] is state and cached[1] == state:
+        return cached[2]
     encoded = json.dumps(state, sort_keys=True, separators=(",", ":"), default=str).encode()
     digest = hashlib.sha256(encoded).hexdigest()
     relative = Path("decision_states") / digest[:2] / (digest + ".json")
@@ -289,13 +290,23 @@ def persist_decision_state(directory, state):
     reference = {"state_sha256": digest, "state_file": str(relative), "npz_tail": state.get("npz_tail"), "state_ts": state.get("ts"), "settings_sha256": state.get("settings_sha256"), "engine_ast_sha256": state.get("engine_ast_sha256"), "settings_updated_at": state.get("settings_updated_at")}
     if len(PERSISTED_STATE_REF_CACHE) >= 512:
         PERSISTED_STATE_REF_CACHE.pop(next(iter(PERSISTED_STATE_REF_CACHE)))
-    PERSISTED_STATE_REF_CACHE[cache_key] = (state, reference)
+    PERSISTED_STATE_REF_CACHE[cache_key] = (state, copy.deepcopy(state), reference)
     return reference
 
 
 def order_intent(order):
     excluded = {"plan_decision", "decision_provenance", "bar", "account_execution_context"}
     return {key: value for key, value in order.items() if key not in excluded}
+
+
+def order_bar(order):
+    if order.get("bar") is not None:
+        return int(order["bar"])
+    try:
+        return int(str(order.get("key", "")).split("|")[2])
+    except (IndexError, TypeError, ValueError):
+        provenance = order.get("decision_provenance") or {}
+        return int(provenance.get("npz_tail") or 0)
 
 
 def persist_plan_decision(directory, document):
@@ -337,10 +348,10 @@ def validate_plan_decision(directory, acct, order):
     if document.get("acct") != acct or document.get("ss") != order.get("ss"):
         return False, "plan decision account or side mismatch"
     try:
-        order_bar = int(order.get("bar") if order.get("bar") is not None else str(order.get("key", "")).split("|")[2])
-    except (IndexError, TypeError, ValueError):
+        order_bar_value = order_bar(order)
+    except (TypeError, ValueError):
         return False, "order bar unavailable"
-    if document.get("bar") != order_bar:
+    if document.get("bar") != order_bar_value:
         return False, "plan decision bar mismatch"
     state_ref = document.get("state_provenance") or {}
     try:
@@ -488,6 +499,12 @@ def deterioration_halts(root: Path, store_db=None) -> dict:
     if unknown:
         log_unverified(unknown, ",".join(unknown[:12]))
     return verified
+
+
+def deterioration_entry_allowed(root: Path, venue: str, acct: str, ss: str, halted: dict) -> bool:
+    if venue == "crypto" and acct in SEVENDAY_STATE_DIRS:
+        return entry_allowed(root, venue, acct, ss)
+    return ss not in halted and entry_allowed(root, venue, acct, ss)
 
 
 def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: int, alert=None) -> dict:
@@ -1841,7 +1858,7 @@ class Trader:
         if set(halted) != getattr(self, "halted_now", set()):
             log(f"DETERIORATION HALT {len(halted)} sym_sides (no OPEN/AUGMENT, exits unchanged): {','.join(sorted(halted))[:600]}")
             self.halted_now = set(halted)
-        allowed = lambda acct, ss: ss not in halted and entry_allowed(self.root, self.venue, acct, ss)
+        allowed = lambda acct, ss: deterioration_entry_allowed(self.root, self.venue, acct, ss, halted)
         hb = self.heartbeat()
         missed = self.check_expectations(now, set(self.act.active())) if market_ok else {}
         trig, hb_age = self.act.triggers(now, hb, self.venue, missed)
@@ -2155,7 +2172,8 @@ class Trader:
                 state_ref = persist_decision_state(self.out, states.get(order["ss"]) or {})
                 order["decision_provenance"] = state_ref
                 if not validate_plan_decision(self.out, order["acct"], order)[0]:
-                    bar = int(order.get("bar") or str(order.get("key", "")).split("|")[2])
+                    bar = order_bar(order)
+                    order["bar"] = bar
                     plan_doc = {"schema": "vector-direct-plan-decision-v1", "acct": order.get("acct"), "ss": order["ss"], "bar": bar,
                                 "state_provenance": state_ref, "control": {"source": "order_capture", "prior_decision": order.get("plan_decision")},
                                 "orders": [order_intent(order)]}

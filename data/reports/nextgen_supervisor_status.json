@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-31T04:04:22.138627+00:00",
+  "recorded_at": "2026-10-31T04:24:35.754575+00:00",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -36,10 +36,11 @@
       "latest_matrix": "data/reports/learning_preservation_matrix_20261031T0309Z.json"
     },
     "full_matched_learning_refresh": {
-      "status": "incomplete",
+      "status": "incomplete_full_5t_archive_ingestion_required",
       "runner": "tools/v20_candidate_refresh.py",
       "context_join_vintage": "2026-10-20",
-      "newer_context_coverage": "unverified"
+      "newer_context_coverage": "unverified",
+      "coverage_authority": "archive source manifests joined to extraction and actual trainer-consumption receipts"
     },
     "new_switch_exploration": {
       "status": "review_helpers_integration_in_progress",
@@ -661,5 +662,34 @@
     "work_resumed": true,
     "controller_last_observed": "paused",
     "controller_note": "Available tools cannot resume goal controller; user informed. Work and delegated agents resumed under explicit user instruction."
+  },
+  "archive_ingestion_priority": {
+    "user_instruction": "5T Hetzner keeps everything and is topped up; use all information from two months of four servers running backtests continuously",
+    "authoritative_archive": "5t SFTP/rsync alias; append-only",
+    "observed_roots": [
+      "/home/s1",
+      "/home/s2",
+      "/home/s5",
+      "/home/s6",
+      "/home/mac",
+      "/home/WD25",
+      "/home/TOSHIBA_EXT"
+    ],
+    "archive_capacity_is_blocker": false,
+    "correction": "Previous supervision overemphasized local preservation and failed to reconcile existing5T archive into ingestion. Do not repeat that framing.",
+    "required_evidence": [
+      "Complete resumable archive source inventory with pending directories until exhausted",
+      "Every source mapped to actual extraction and trainer consumption receipts or explicit unresolved status",
+      "Recover source/market lineage through archived records; never fabricate timestamps",
+      "Preserve historical/context information when it cannot serve as verified gain label",
+      "No duplicate evidence inflation; keep replica provenance",
+      "All-data application remains incomplete until coverage proves actual use"
+    ],
+    "delegation": {
+      "corpus_inventory": "5T archive full source inventory and sync coverage",
+      "learning_audit": "Archive-to-trainer ingestion and consumed/unconsumed ledger; no arbitrary subset success",
+      "compute_audit": "Continue real switch-authority validation to keep resulting data meaningful"
+    },
+    "optional_storage_compaction": "Secondary throughput concern only, not reason to defer all-data ingestion"
   }
 }

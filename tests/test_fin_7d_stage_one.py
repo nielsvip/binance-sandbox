@@ -120,3 +120,21 @@ def test_the_7d_store_is_readable_only_by_a_7d_producer(tmp_path, monkeypatch):
         sys.modules[spec2.name] = m
         spec2.loader.exec_module(m)
         assert m.store_db() == expect, f"a {window}D producer must {'read' if expect else 'refuse'} the fin 7D store"
+
+
+def test_a_retired_key_men_does_not_trade_never_reappears_in_fins_config(tmp_path, monkeypatch):
+    monkeypatch.setenv("HOME", str(tmp_path))
+    d = tmp_path / "b2" / "x" / "data" / "hourly_reconfig"
+    d.mkdir(parents=True)
+    b = d / "per_sym_store.db"
+    con = sqlite3.connect(str(b))
+    con.execute(f"CREATE TABLE per_sym_active ({COLS})")
+    con.execute("INSERT INTO per_sym_active VALUES (?,?,?,?,?,?,?,?)",
+                ("AWEUSDT_LONG", "CRYPTO_LONG", "t", 1.0, json.dumps({"A": 3}),
+                 json.dumps({"A": 1, "MIN_HOLD_BARS_BEFORE_EXIT": 4}), json.dumps({"A": 3}), json.dumps({})))
+    con.commit()
+    con.close()
+    st = store_path(tmp_path)
+    S.stage("AWEUSDT_LONG", {"A": 7}, b, st)
+    full = row(st)[1]
+    assert full == {"A": 7}, "the retired key is stripped exactly as it is from men's config"

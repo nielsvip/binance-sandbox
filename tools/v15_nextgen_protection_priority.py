@@ -289,7 +289,8 @@ def first_pass_yellows(cells, row_identity, state, context, evaluation_budget, c
             raise ValueError('first-pass yellow allocator cannot change or rerank the current row')
         identity = evidence.guard.fingerprint({'row': actual_row, 'filter': cell['filter'], 'opt': cell['opt'], 'scientific_context': scientific})
         measured, measurement_status = _measurement_state(resolved, identity, scientific)
-        eligible.setdefault(identity, {'cell': cell, 'identity': identity, 'current_epoch_measured': measured, 'measurement_status': measurement_status})
+        proposal = resolved.get('typed_pair') or dict(x=dict(field=row_identity['switch'],value=row_identity['cand']),y=dict(field=cell['filter'],value=cell['opt']))
+        eligible.setdefault(identity, {'cell': cell, 'identity': identity, 'current_epoch_measured': measured, 'measurement_status': measurement_status, 'retained_nn_tiebreak':prediction_tiebreak(proposal,resolved,scientific,context)})
     zero_old_budget = context.get('row_status') == 'known_existing' and isinstance(context.get('budget_policy'), BoundBudgetPolicy) and context['budget_policy']['allow_old_cell_defer'] is True
     if eligible and evaluation_budget == 0 and not zero_old_budget:
         raise ValueError('mandatory yellow exploration has no existing budget; row remains incomplete, never a measured zero')
@@ -297,10 +298,10 @@ def first_pass_yellows(cells, row_identity, state, context, evaluation_budget, c
     unknown = [row for row in eligible.values() if not row['current_epoch_measured']]
     pool = unknown or list(eligible.values())
     quota = math.ceil(len(pool) * new_row_coverage_target) if new_row else min(1, len(pool))
-    ordered = sorted(pool, key=lambda row: (int(last.get(row['identity'], 0)), row['identity']))
+    ordered = sorted(pool, key=lambda row: (int(last.get(row['identity'], 0)), -row['retained_nn_tiebreak'], row['identity']))
     selected = ordered[:min(quota, evaluation_budget)]
     selected_ids = {row['identity'] for row in selected}
-    remainder = sorted((row for row in eligible.values() if row['identity'] not in selected_ids), key=lambda row: (int(last.get(row['identity'], 0)), row['identity']))
+    remainder = sorted((row for row in eligible.values() if row['identity'] not in selected_ids), key=lambda row: (int(last.get(row['identity'], 0)), -row['retained_nn_tiebreak'], row['identity']))
     selected.extend(remainder[:max(0, evaluation_budget - len(selected))])
     for row in selected:
         last[row['identity']] = turn

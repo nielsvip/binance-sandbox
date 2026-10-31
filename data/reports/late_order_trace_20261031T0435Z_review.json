@@ -1,0 +1,45 @@
+{
+  "changes_for_root_review": [
+    "Unknown halt identity is explicit and blocks only flat OPEN and held AUGMENT admission; it no longer produces DETERIORATED_CLOSE from the WT15 deterioration branch and does not suppress normal strategy close.",
+    "Decision identity binds state provenance, bar, account/side, control context and the full plan. OPEN/AUGMENT send validation requires exact plan/state hashes, account, side, bar and order intent; intent includes sizing/action fields such as anchor, fraction, engine quantity and ratio.",
+    "Plan and state provenance file references must exactly match hash-derived relative paths; traversal paths are rejected.",
+    "State cache deep-checks in-memory state equality before reuse. A synthetic 121-side unchanged-state loop measured 1.51 ms warm cached versus 7.09 ms uncached JSON+hash+path per loop; synthetic only."
+  ],
+  "conclusion": "The logged 04:04 OPENs reused earlier denied DECISION state provenance without a new DECISION. Exact runtime reason the earlier deterioration halt ceased to block those sides remains unproven; the 04:03:37 halt rewrite is observed between denial and fill, but time-matched store bytes/process attribution are unavailable.",
+  "created_utc": "2026-10-31T04:35:00Z",
+  "incident_report": "data/reports/late_order_trace_20261031T040933Z.json",
+  "ownership_note": "Workspace is shared and current source includes concurrent changes. S1 patch artifact is a review diff between fresh S1 source and current Mac source; it contains variant differences and is explicitly not a deployable whole-file replacement. Root owns integration and deployment.",
+  "patch_artifacts": {
+    "mac_worktree_review_diff": {
+      "path": "data/reports/late_order_trace_20261031T0435Z_mac.patch",
+      "sha256": "2df9d6ffef4d0d8b093aa77191956b0cfd54405a75ac371bd870b28902815e99"
+    },
+    "s1_to_mac_variant_review_diff_not_deployment_ready": {
+      "path": "data/reports/late_order_trace_20261031T0435Z_s1_variant_review.patch",
+      "sha256": "89eced4fa6e2b105c25ec37fd06b33b906192a17dd4b43743aedc9cc1a797743"
+    }
+  },
+  "schema": "live-order-trace-review-v1",
+  "scope": "Staged planner/control provenance and unknown halt identity review only. No S1 writes, deployment, service restart, exchange/broker request, or order.",
+  "source_hashes": {
+    "mac_vector_direct_trader_sha256": "699a27fac0e8726af871c2869e3092a27bd49efc37f5562e73c5df522a533469",
+    "s1_live_vector_direct_trader_sha256": "feb0b31eae3e69e4d4c9fb633f20d5d655812df975f05808b358470c4e34e687",
+    "s1_source_snapshot": "/tmp/vdt_s1_current_20261031.py",
+    "test_vector_decision_provenance_sha256": "b835abff8dcec8f39c62bddda88d5167c60cb8ea4527c1c1574ff337ee5c3c78",
+    "test_vector_direct_trader_sha256": "7ab6d5fb6948954d8a66965889577ae219bb87307807e25023d2fa9ccc166d38"
+  },
+  "verification": {
+    "baseline_comparison_temp_tree": "/tmp/vdt_baseline_1ur9Kd",
+    "decision_provenance_transport_profit_guard_parity": "19 passed, 1 skipped",
+    "full_test_vector_direct_trader_current": "39 passed, 4 failed",
+    "plan_halt_unknown_identity_tests": "9 passed, 34 deselected",
+    "py_compile_tools_vector_direct_trader": "passed",
+    "same_fixture_baseline_from_backups_before_plan_decision_identity_202610310411": "31 passed, 4 failed",
+    "same_four_failures_baseline_and_current": [
+      "test_activation_triggers_and_hysteresis",
+      "test_owned_account_ignores_per_account_signals_caused_by_standdown",
+      "test_tradier_sizing_whole_shares",
+      "test_tra_entries_refused_but_exits_pass"
+    ]
+  }
+}

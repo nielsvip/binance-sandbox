@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 import sqlite3
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
@@ -36,33 +37,55 @@ def _utc(ts: float) -> str:
 def _journal(path: str | Path) -> tuple[dict, list[dict]]:
     uri = Path(path).resolve().as_uri() + "?mode=ro"
     with sqlite3.connect(uri, uri=True) as connection:
+        connection.execute("BEGIN")
         meta = dict(connection.execute("SELECT key,value FROM metadata"))
         if "identity" not in meta:
             raise ValueError("receipt journal has no identity metadata")
         identity = json.loads(meta["identity"])
         rows = connection.execute(
-            "SELECT sequence,closed_ts,input_hash,receipt_hash,receipt_json FROM frames ORDER BY sequence"
+            "SELECT sequence,closed_ts,payload,input_hash,receipt_hash,receipt_json FROM frames ORDER BY sequence"
         ).fetchall()
-    if not rows:
-        raise ValueError("receipt journal contains no frames")
     receipts = []
-    for seq, ts, input_hash, receipt_hash, receipt_json in rows:
+    saw_incomplete = False
+    for seq, ts, payload_json, input_hash, receipt_hash, receipt_json in rows:
+        if hashlib.sha256(payload_json.encode()).hexdigest() != input_hash:
+            raise ValueError(f"input hash mismatch at sequence {seq}")
         if not receipt_hash or not receipt_json:
-            raise ValueError(f"receipt journal has an uncommitted frame at sequence {seq}")
+            saw_incomplete = True
+            continue
+        if saw_incomplete:
+            raise ValueError(f"receipt journal has a committed frame after incomplete sequence {seq}")
         receipt = json.loads(receipt_json)
         if not isinstance(receipt, dict) or not isinstance(receipt.get("events"), list) or not isinstance(receipt.get("positions"), dict):
             raise ValueError(f"malformed receipt at sequence {seq}")
         if hashlib.sha256(_canonical(receipt).encode()).hexdigest() != receipt_hash:
             raise ValueError(f"receipt hash mismatch at sequence {seq}")
-        receipts.append({"sequence": int(seq), "ts": float(ts), "input_hash": input_hash, "receipt_hash": receipt_hash, "receipt": receipt})
+        payload = json.loads(payload_json)
+        observed_at = next((value.get("observation", {}).get("observed_at_utc") for value in payload.values() if isinstance(value, dict) and isinstance(value.get("observation"), dict) and value["observation"].get("observed_at_utc")), None) if isinstance(payload, dict) else None
+        receipts.append({"sequence": int(seq), "ts": float(ts), "input_hash": input_hash, "receipt_hash": receipt_hash, "observed_at_utc": observed_at, "receipt": receipt})
     return identity, receipts
 
 
-def _ensure_run(db: ScenarioDB, manifest: Mapping[str, Any], identity: Mapping[str, Any]) -> None:
-    required = ("run_id", "epoch_id", "scenario_id", "sym_side", "host", "settings_sha256", "code_sha256", "started_at")
+def _settings_payload(manifest: Mapping[str, Any], key: str, run_dir: str | Path | None) -> dict:
+    value = manifest.get(key)
+    path_key = key + "_file"
+    if value is None and manifest.get(path_key):
+        if run_dir is None:
+            raise ValueError(f"run_dir is required to read {path_key}")
+        relative = Path(str(manifest[path_key]))
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError(f"{path_key} must be a safe relative path")
+        value = json.loads((Path(run_dir) / relative).read_text())
+    if not isinstance(value, dict):
+        raise ValueError(f"manifest must provide {key} or {path_key}")
+    return value
+
+
+def _ensure_run(db: ScenarioDB, manifest: Mapping[str, Any], identity: Mapping[str, Any], run_dir: str | Path | None = None) -> dict:
+    required = ("run_id", "epoch_id", "scenario_id", "sym_side", "host", "settings_sha256", "parent_settings_sha256", "code_sha256", "code_file_hashes", "started_at", "candidate_overrides")
     if any(not str(manifest.get(key, "")).strip() for key in required):
         raise ValueError("manifest missing required run epoch fields: " + ", ".join(key for key in required if not str(manifest.get(key, "")).strip()))
-    for key, identity_key in (("scenario_id", "scenario_id"), ("settings_sha256", "settings_sha256"), ("code_sha256", "code_sha256"), ("run_id", "run_id"), ("epoch_id", "epoch_id")):
+    for key, identity_key in (("scenario_id", "scenario_id"), ("settings_sha256", "settings_sha256"), ("code_sha256", "code_sha256"), ("run_id", "run_id"), ("epoch_id", "epoch_id"), ("sym_side", "sym_side")):
         if str(identity.get(identity_key, "")) != str(manifest[key]):
             raise ValueError(f"worker journal {identity_key} does not match manifest")
     planned_id = "planned-" + _digest([manifest["scenario_id"], manifest["epoch_id"]])
@@ -70,19 +93,58 @@ def _ensure_run(db: ScenarioDB, manifest: Mapping[str, Any], identity: Mapping[s
     if not planned:
         raise ValueError(f"scenario/run epoch is not registered in central inventory: {planned_id}")
     planned = planned[0]
-    if planned["scenario_id"] != manifest["scenario_id"] or planned["sym_side"] != manifest["sym_side"] or planned["host"] != manifest["host"] or planned["settings_hash"] != manifest["settings_sha256"]:
+    if planned["scenario_id"] != manifest["scenario_id"] or planned["sym_side"] != manifest["sym_side"] or planned["host"] != manifest["host"] or planned["settings_hash"] != manifest["parent_settings_sha256"]:
         raise ValueError("manifest does not match registered scenario/run epoch")
+    base_settings = _settings_payload(manifest, "base_settings", run_dir)
+    effective_settings = _settings_payload(manifest, "effective_settings", run_dir)
+    scenario = db.query("SELECT parameters_json FROM scenarios WHERE scenario_id=?", (manifest["scenario_id"],))[0]
+    parameters = json.loads(scenario["parameters_json"])
+    if parameters.get("overrides", {}) != manifest["candidate_overrides"]:
+        raise ValueError("manifest candidate_overrides do not match registered scenario")
+    if hashlib.sha256(_canonical(base_settings).encode()).hexdigest() != manifest["parent_settings_sha256"]:
+        raise ValueError("manifest parent_settings_sha256 does not match base_settings")
+    declared = dict(base_settings)
+    isolation_overrides = manifest.get("isolation_overrides", {})
+    paper_mask_release = manifest.get("paper_mask_release", {})
+    if not isinstance(isolation_overrides, dict) or not isinstance(paper_mask_release, (dict, list)):
+        raise ValueError("isolation_overrides must be an object and paper_mask_release an object or list")
+    declared.update(isolation_overrides)
+    if isinstance(paper_mask_release, dict):
+        declared.update(paper_mask_release)
+    else:
+        for key in paper_mask_release:
+            if key not in base_settings:
+                raise ValueError(f"paper_mask_release key absent from base settings: {key}")
+            declared[key] = base_settings[key]
+    for key, value in manifest["candidate_overrides"].items():
+        if effective_settings.get(key) != value:
+            raise ValueError(f"effective settings candidate mismatch for {key}")
+    declared.update(manifest["candidate_overrides"])
+    if declared != effective_settings:
+        raise ValueError("effective settings contain undeclared changes outside isolation_overrides, paper_mask_release, and candidate_overrides")
+    effective_hash = hashlib.sha256(_canonical(effective_settings).encode()).hexdigest()
+    if effective_hash != manifest["settings_sha256"]:
+        raise ValueError("manifest settings_sha256 does not match effective_settings")
+    code_file_hashes = manifest["code_file_hashes"]
+    if not isinstance(code_file_hashes, dict) or code_file_hashes.get("backtest_v12_engine.py") != manifest["code_sha256"]:
+        raise ValueError("manifest code_file_hashes do not verify the running engine SHA")
+    code_snapshot_hash = hashlib.sha256(_canonical(code_file_hashes).encode()).hexdigest()
     if manifest.get("plan_code_hash") and planned["code_hash"] != manifest["plan_code_hash"]:
         raise ValueError("manifest plan_code_hash does not match registered plan")
     existing = db.query("SELECT * FROM runs WHERE run_id=?", (manifest["run_id"],))
     if existing:
         row = existing[0]
-        expected = (manifest["scenario_id"], manifest["sym_side"], manifest["host"], manifest["settings_sha256"], manifest["code_sha256"], "independent_forward", manifest["started_at"])
+        expected = (manifest["scenario_id"], manifest["sym_side"], manifest["host"], manifest["settings_sha256"], code_snapshot_hash, "independent_forward", manifest["started_at"])
         actual = tuple(row[k] for k in ("scenario_id", "sym_side", "host", "settings_hash", "code_hash", "evidence_kind", "started_at"))
         if actual != expected:
             raise ValueError("immutable independent-forward run identity conflict")
         return
-    db.add_run(run_id=manifest["run_id"], scenario_id=manifest["scenario_id"], sym_side=manifest["sym_side"], host=manifest["host"], settings_hash=manifest["settings_sha256"], code_hash=manifest["code_sha256"], evidence_kind="independent_forward", status="RUNNING", started_at=manifest["started_at"], ended_at=None)
+    db.add_settings_snapshot(settings_hash=effective_hash, settings=effective_settings)
+    db.add_source_code_snapshot(code_hash=code_snapshot_hash, file_hashes=code_file_hashes)
+    db.add_run(run_id=manifest["run_id"], scenario_id=manifest["scenario_id"], sym_side=manifest["sym_side"], host=manifest["host"], settings_hash=manifest["settings_sha256"], code_hash=code_snapshot_hash, evidence_kind="independent_forward", status="RUNNING", started_at=manifest["started_at"], ended_at=None)
+    context_id = "paper-context-" + _digest([manifest["run_id"], manifest["epoch_id"], manifest["settings_sha256"]])
+    db.add_run_status(event_id=context_id, run_id=manifest["run_id"], recorded_at=manifest["started_at"], status="RUNNING", detail={"epoch_id": manifest["epoch_id"], "parent_settings_sha256": manifest["parent_settings_sha256"], "settings_sha256": manifest["settings_sha256"], "candidate_overrides": manifest["candidate_overrides"], "isolation_overrides": isolation_overrides, "paper_mask_release": paper_mask_release, "context": manifest.get("context", {})})
+    return {"base_settings": base_settings, "effective_settings": effective_settings}
 
 
 def _lifecycle(db: ScenarioDB, run_id: str, receipts: list[dict]) -> int:
@@ -93,7 +155,7 @@ def _lifecycle(db: ScenarioDB, run_id: str, receipts: list[dict]) -> int:
         ts = _utc(row["ts"])
         positions = row["receipt"]["positions"]
         for index, event in enumerate(row["receipt"]["events"]):
-            if not isinstance(event, Mapping) or str(event.get("status", "")).upper() != "FILLED":
+            if not isinstance(event, Mapping) or str(event.get("status", "")).upper() != "FILLED" or event.get("decision_only") is True:
                 continue
             key = str(event.get("position_key", ""))
             action = str(event.get("action", "")).upper()
@@ -102,62 +164,119 @@ def _lifecycle(db: ScenarioDB, run_id: str, receipts: list[dict]) -> int:
                 before, after = abs(float(before)), abs(float(after))
             except (TypeError, ValueError):
                 continue
-            if not key or before < 1e-12 <= after:
-                if key:
+            event_type = str(event.get("type", "")).lower()
+            qty = event.get("executed_qty", event.get("quantity"))
+            price = event.get("price")
+            try:
+                valid_execution = event_type in {"eta", "eta_real", "webhook", "exec_now"} and float(qty) > 0 and float(price) > 0
+            except (TypeError, ValueError):
+                valid_execution = False
+            if not valid_execution or not key:
+                continue
+            if before < 1e-12 <= after:
+                if action in {"OPEN", "AUGMENT", "QUICK_OPEN", "REENTRY", "HEDGE_OPEN"}:
                     opened[key] = {"ts": ts, "event": dict(event), "start_sequence": row["sequence"], "start_event": index}
                 continue
             if before < 1e-12 or after >= before:
                 continue
-            if after >= 1e-12:
+            if after >= 1e-12 or action not in {"CLOSE", "FULL_CLOSE", "QUICK_CLOSE"}:
                 continue
             start = opened.pop(key, None)
             if not start:
                 continue
-            close_id = "paper-close-" + _digest([run_id, row["sequence"], index, key])
             trade_id = "paper-trade-" + _digest([run_id, start["start_sequence"], start["start_event"], key])
             open_event = start["event"]
             close_event = dict(event)
             # Snapshot the observed terminal state when available; all returns and fees remain unknown.
             terminal = positions.get(key)
+            is_new = not db.query("SELECT 1 FROM trades WHERE trade_id=?", (trade_id,))
             db.add_trade(trade_id=trade_id, run_id=run_id, opened_at=start["ts"], closed_at=ts, net_return=None, fees=None,
                          payload={"position_key": key, "open_event": open_event, "close_event": close_event,
-                                  "lifecycle_evidence": "FILLED_EXECUTION_BEFORE_AFTER_ZERO_CROSSING",
+                                  "lifecycle_evidence": "ENGINE_FILLED_EVENT_AND_POSITION_ZERO_CROSSING",
                                   "terminal_position_snapshot": terminal, "net_return_status": "UNKNOWN", "fees_status": "UNKNOWN"})
-            count += 1
+            count += int(is_new)
     return count
 
 
-def ingest(db: ScenarioDB, journal_path: str | Path, manifest: Mapping[str, Any]) -> dict:
+def ingest(db: ScenarioDB, journal_path: str | Path, manifest: Mapping[str, Any], run_dir: str | Path | None = None) -> dict:
     identity, receipts = _journal(journal_path)
+    terminal_status = str(manifest.get("status", "COMPLETED" if manifest.get("finished") is True else "RUNNING")).upper()
+    is_terminal = terminal_status in {"COMPLETED", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT", "FAILED"}
     with db.transaction():
-        _ensure_run(db, manifest, identity)
+        _ensure_run(db, manifest, identity, run_dir)
+        if not receipts:
+            if is_terminal and terminal_status != "FAILED":
+                raise ValueError("finished worker manifest has no committed receipts")
+            return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": 0, "execution_events": 0, "completed_lifecycles": 0, "status": "WAITING_FOR_RECEIPTS", "evidence_kind": "independent_forward"}
+        if terminal_status in {"COMPLETED", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT"} and _journal_frame_count(journal_path) != len(receipts):
+            raise ValueError("finished worker manifest has incomplete frame receipts")
         sink = PaperSQLSink(db, str(manifest["run_id"]))
         inserted = 0
         for row in receipts:
             ids = sink.record_step(_utc(row["ts"]), row["receipt"])
             inserted += len(ids)
             status_id = "paper-heartbeat-" + _digest([manifest["run_id"], row["sequence"], row["receipt_hash"]])
-            db.add_run_status(event_id=status_id, run_id=manifest["run_id"], recorded_at=_utc(row["ts"]), status="RUNNING",
+            db.add_run_status(event_id=status_id, run_id=manifest["run_id"], recorded_at=str(row.get("observed_at_utc") or _utc(row["ts"])), status="RUNNING",
                               detail={"epoch_id": manifest["epoch_id"], "sequence": row["sequence"], "source_ts": _utc(row["ts"]), "receipt_hash": row["receipt_hash"]})
         completed = _lifecycle(db, str(manifest["run_id"]), receipts)
-        if manifest.get("finished") is True:
-            status_id = "paper-finished-" + _digest([manifest["run_id"], receipts[-1]["receipt_hash"]])
+        if is_terminal:
+            status_id = "paper-finished-" + _digest([manifest["run_id"], terminal_status, receipts[-1]["receipt_hash"]])
             completion_time = str(manifest.get("ended_at") or _utc(receipts[-1]["ts"] + 0.000001))
-            db.add_run_status(event_id=status_id, run_id=manifest["run_id"], recorded_at=completion_time, status="COMPLETED",
-                              detail={"epoch_id": manifest["epoch_id"], "receipts": len(receipts), "source_end": _utc(receipts[-1]["ts"])})
-    return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": len(receipts), "execution_events": inserted, "completed_lifecycles": completed, "status": "COMPLETED" if manifest.get("finished") is True else "RUNNING", "evidence_kind": "independent_forward"}
+            db.add_run_status(event_id=status_id, run_id=manifest["run_id"], recorded_at=completion_time, status=terminal_status,
+                              detail={"epoch_id": manifest["epoch_id"], "receipts": len(receipts), "source_end": _utc(receipts[-1]["ts"]), "reason": manifest.get("reason")})
+    return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": len(receipts), "execution_events": inserted, "completed_lifecycles": completed, "status": terminal_status if is_terminal else "RUNNING", "evidence_kind": "independent_forward"}
+
+
+def _journal_frame_count(path: str | Path) -> int:
+    uri = Path(path).resolve().as_uri() + "?mode=ro"
+    with sqlite3.connect(uri, uri=True) as connection:
+        return int(connection.execute("SELECT COUNT(*) FROM frames").fetchone()[0])
+
+
+def ingest_directory(db: ScenarioDB, root: str | Path) -> list[dict]:
+    """Ingest each worker's latest consistent receipt snapshot; retries are harmless."""
+    root = Path(root)
+    results = []
+    manifest_paths = sorted(set(root.rglob("manifest.json")) | set(root.rglob("worker.result_manifest.json")))
+    for manifest_path in manifest_paths:
+        run_dir = manifest_path.parent
+        journal_path = next((run_dir / name for name in ("receipt.snapshot.db", "receipts.snapshot.db", "receipts.sqlite3") if (run_dir / name).is_file()), None)
+        if journal_path is None:
+            continue
+        try:
+            raw = manifest_path.read_bytes()
+            manifest = json.loads(raw)
+            result = ingest(db, journal_path, manifest, run_dir)
+            result["manifest_sha256"] = hashlib.sha256(raw).hexdigest()
+            results.append(result)
+        except (OSError, sqlite3.Error, ValueError, KeyError) as exc:
+            results.append({"run_dir": str(run_dir), "status": "INGEST_ERROR", "error": str(exc)})
+    return results
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--db", type=Path, required=True)
-    parser.add_argument("--journal", type=Path, required=True)
-    parser.add_argument("--manifest", type=Path, required=True)
+    parser.add_argument("--journal", type=Path)
+    parser.add_argument("--manifest", type=Path)
+    parser.add_argument("--watch-dir", type=Path, help="Continuously ingest worker receipt snapshots beneath this directory")
+    parser.add_argument("--interval", type=float, default=5.0)
     args = parser.parse_args()
-    manifest = json.loads(args.manifest.read_text())
-    with ScenarioDB(args.db) as db:
-        result = ingest(db, args.journal, manifest)
-    print(json.dumps(result, indent=2, allow_nan=False))
+    if args.watch_dir:
+        if args.journal or args.manifest or not 0.2 <= args.interval <= 300:
+            parser.error("--watch-dir excludes --journal/--manifest; --interval must be 0.2..300")
+        while True:
+            with ScenarioDB(args.db) as db:
+                results = ingest_directory(db, args.watch_dir)
+            print(json.dumps({"ingests": results}, allow_nan=False), flush=True)
+            time.sleep(args.interval)
+    else:
+        if not args.journal or not args.manifest:
+            parser.error("--journal and --manifest are required unless --watch-dir is used")
+        manifest = json.loads(args.manifest.read_text())
+        with ScenarioDB(args.db) as db:
+            result = ingest(db, args.journal, manifest, args.journal.parent)
+        print(json.dumps(result, indent=2, allow_nan=False))
 
 
 if __name__ == "__main__":

@@ -15961,6 +15961,24 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _agg_w2h = _safe(npz, "wt2_1h", n)
         _agg_tr15 = _safe(npz, "wt_trough_structure_15m", n)
         _agg_pk15 = _safe(npz, "wt_peak_structure_15m", n)
+    _wt_aug_use_ltf = bool(getattr(cfg, "USE_1M_3M_SIGNALS_ENABLED", False))
+    _wt_aug_w115 = _safe(npz, "wt1_15m", n)
+    _wt_aug_w215 = _safe(npz, "wt2_15m", n)
+    if _wt_aug_use_ltf:
+        if "wt1_3m" in npz and "wt2_3m" in npz:
+            _wt_aug_w1ltf = _safe(npz, "wt1_3m", n)
+            _wt_aug_w2ltf = _safe(npz, "wt2_3m", n)
+        elif str(getattr(cfg, "BASE_TF", "")).lower() == "3m" and "wt1" in npz and "wt2" in npz:
+            _wt_aug_w1ltf = _base_safe(npz, "wt1", n, cfg)
+            _wt_aug_w2ltf = _base_safe(npz, "wt2", n, cfg)
+        else:
+            _wt_aug_w1ltf = np.zeros(n, dtype=np.float64)
+            _wt_aug_w2ltf = np.zeros(n, dtype=np.float64)
+    else:
+        _wt_aug_w1ltf = _wt_aug_w115
+        _wt_aug_w2ltf = _wt_aug_w215
+    _wt_aug_tr15 = _safe(npz, "wt_trough_structure_15m", n)
+    _wt_aug_pk15 = _safe(npz, "wt_peak_structure_15m", n)
     # WIRING LANE L2 2026-10-05: augment-at-loss structural mask (higher-low / lower-high on closed 15m bars + DC confirm). gain_arr=zeros decomposes the twin to its pure structural legs (at_loss forced True); the in-loop choke point ANDs the real live_pnl_pct<=0. OFF default -> None. Fail-open.
     _aal_struct = None
     try:
@@ -22513,12 +22531,42 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _qos_fire, _qos_reason = _qos_mod.augment_fire_from_state(cfg, pos, live_pnl_pct, is_long)
         except Exception:
             _qos_fire, _qos_reason = False, ""
+        _hw_fire, _hw_reason = False, ""
+        try:
+            from vec_decisions.wt_winner_pullback_augment import producer as _hw_producer
+            from vec_decisions.wt_winner_pullback_augment import final_gate as _hw_final_gate
+            _hw_fire, _hw_reason = _hw_producer(
+                is_long,
+                float(live_pnl_pct),
+                float(pos.get("peak_pnl_pct", 0.0)),
+                float(getattr(cfg, "MIN_GAIN", 3.0)),
+                float(_wt_aug_w1ltf[i]),
+                float(_wt_aug_w2ltf[i]),
+                float(_wt_aug_w115[i]),
+                float(_wt_aug_w215[i]),
+                float(_wt_aug_tr15[i]),
+                float(_wt_aug_pk15[i]),
+            )
+            _hw_fire = _hw_fire and _hw_final_gate(
+                is_long,
+                float(live_pnl_pct),
+                float(getattr(cfg, "MIN_GAIN", 3.0)),
+                float(_wt_aug_w1ltf[i]),
+                float(_wt_aug_w2ltf[i]),
+                float(_wt_aug_w115[i]),
+                float(_wt_aug_w215[i]),
+            )
+            if not _hw_fire:
+                _hw_reason = ""
+        except Exception:
+            _hw_fire, _hw_reason = False, ""
         _uag_src_ok = (
             _hq_fire
             or _dd_fire
             or _n4_fire
             or _aal_fire
             or _qos_fire
+            or _hw_fire
             or (
                 not _n4_live_only
                 and (
@@ -22614,6 +22662,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 or _hq_fire
                 or _aal_fire
                 or _qos_fire
+                or _hw_fire
             )
             and (_sa_cap is None or int(pos.get("n_augments", 0)) < _sa_cap)
         ):
@@ -22771,6 +22820,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 else ""
                             )
                             or _dd_reason
+                            or (f"{_hw_reason}_{live_pnl_pct:.2f}%" if _hw_fire else "")
                             or _n4_reason
                             or _gl_reason
                             or "VEC_AUGMENT_SIG",

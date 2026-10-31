@@ -45,7 +45,12 @@ def stage(sym_side, overrides, base_db, store_db, metrics=None, day=None):
         raise ValueError(f"{ss}: no 30D base row in {base_db} — a 7D set is laid on its 30D base and cannot exist without it")
     values = dict(row)
     defaults = json.loads(values.get("defaults_snapshot_json") or "{}")
-    full = {**defaults, **overrides}
+    base_full = json.loads(values.get("full_config_json") or "{}")
+    # Keys the publisher RETIRED (present in defaults, stripped from the base's full_config because the engine rejects
+    # them — MIN_HOLD_BARS_BEFORE_EXIT on 17 of men's rows) are not traded by men, so they must not reappear in fin's
+    # 7D config: the only difference from the control is what the 7D board changed. A key the board set explicitly stays.
+    retired = {k for k in defaults if k not in base_full and k not in overrides} if base_full else set()
+    full = {k: v for k, v in {**defaults, **overrides}.items() if k not in retired}
     try:
         meta = json.loads(values.get("meta_json") or "{}")
     except ValueError:
