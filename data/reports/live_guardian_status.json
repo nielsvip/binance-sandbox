@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T14:49:01Z",
+ "ts": "2026-10-31T14:54:09Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,8 +45,8 @@
   "men": {
    "fills_6h": 13,
    "open_positions": 22,
-   "unrealised_usd": 0.85,
-   "pos_mismatch": 0,
+   "unrealised_usd": 0.82,
+   "pos_mismatch": 7,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -61,8 +61,8 @@
   "ang": {
    "fills_6h": 12,
    "open_positions": 4,
-   "unrealised_usd": -0.23,
-   "pos_mismatch": 0,
+   "unrealised_usd": -0.25,
+   "pos_mismatch": 1,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -93,8 +93,8 @@
   "flz": {
    "fills_6h": 1,
    "open_positions": 4,
-   "unrealised_usd": -0.32,
-   "pos_mismatch": 0,
+   "unrealised_usd": -0.34,
+   "pos_mismatch": 1,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -127,65 +127,145 @@
     "43587"
    ],
    "starts_30m": 1,
-   "log_age_s": 11.0
+   "log_age_s": 47.0
   },
   "men": {
    "pids": [
     "7492"
    ],
    "starts_30m": 1,
-   "log_age_s": 2.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 46.0
+   "log_age_s": 41.0
   },
   "inf": {
    "pids": [
     "11994"
    ],
    "starts_30m": 1,
-   "log_age_s": 20.0
+   "log_age_s": 4.0
   },
   "flz": {
    "pids": [
     "73791"
    ],
    "starts_30m": 1,
-   "log_age_s": 1112.0
+   "log_age_s": 1420.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 36404.0
+   "log_age_s": 36712.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 36719.0
+   "log_age_s": 37028.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T14:49:02Z",
+   "ts": "2026-10-31T14:54:09Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:FLUXUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T11:14:33Z bar=2026-10-31T10:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T14:49:03Z",
+   "ts": "2026-10-31T14:54:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:STRKUSDT_LONG",
+   "evidence": "positions file amt 599.3 vs fill-ledger amt 2104.6"
+  },
+  {
+   "ts": "2026-10-31T14:54:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:RLCUSDT_LONG",
+   "evidence": "positions file amt 31.5 vs fill-ledger amt 92.8919"
+  },
+  {
+   "ts": "2026-10-31T14:54:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:ARBUSDC_LONG",
+   "evidence": "positions file amt 93.1 vs fill-ledger amt 184.9"
+  },
+  {
+   "ts": "2026-10-31T14:54:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:ZECUSDC_LONG",
+   "evidence": "positions file amt 0.011 vs fill-ledger amt 0.022"
+  },
+  {
+   "ts": "2026-10-31T14:54:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:AXSUSDT_SHORT",
+   "evidence": "positions file amt 17 vs fill-ledger amt 62"
+  },
+  {
+   "ts": "2026-10-31T14:54:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:COTIUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 12114"
+  },
+  {
+   "ts": "2026-10-31T14:54:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:FIDAUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 892"
+  },
+  {
+   "ts": "2026-10-31T14:54:10Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:ICXUSDT_SHORT",
+   "evidence": "31 14:49:56 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ICXUSDT_SHORT: bypass MAX_ORDER_VALUE $180 / MAX_POSITION_SIZE $320 \u2014 restoring $16665 on bounce (prior max 0.0000)"
+  },
+  {
+   "ts": "2026-10-31T14:54:10Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "men:ICXUSDT_SHORT",
+   "evidence": "order notional $16664.53 > MAX_ORDER_VALUE $300: 31 14:49:56 - INFO - [men] [execute_trade_action][men] \u2705 \u2705 \u2705 \u2705 OPEN men:ICXUSDT_SHORT @ 0.012875 qty=1294332.413766 ($16664.53) side=SELL | QUICK_OPEN_STRONG_SELL_k1:50/d150/k3:50.0/d3:50.0_@0.0129_RE"
+  },
+  {
+   "ts": "2026-10-31T14:54:10Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:GRAMUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 12.8"
+  },
+  {
+   "ts": "2026-10-31T14:54:11Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "flz:GRAMUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 12.8"
+  },
+  {
+   "ts": "2026-10-31T14:54:12Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 1112s"
+   "evidence": "ez_manage_flz.log not written for 1420s"
   }
  ],
  "alert_counts": {
   "VEC_DECISION_NOT_FILLED": 1,
+  "POSITION_STATE_MISMATCH": 9,
+  "CAP_BYPASS": 1,
+  "SIZE_ANOMALY": 1,
   "STALE_LOG": 1
  },
  "active_interventions": {
@@ -239,5 +319,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.99
+ "sweep_s": 2.87
 }
