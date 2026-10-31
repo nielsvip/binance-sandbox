@@ -29,17 +29,17 @@ class ProbabilitySurface:
             self.regimes = tuple(archive["regimes"].tolist())
             row, yellow = archive["cell_row"], archive["cell_yellow"]
             self.probability, self.measured = archive["cell_p_pos"], archive["cell_n_measured"]
-        if metadata.get("schema") != "v18_linknet/2" or metadata.get("cat_side") != category or metadata.get("label") != "PREDICTED_NOT_MEASURED":
+        if metadata.get("schema") != "v18_linknet_symbol_surface/1" or metadata.get("cat_side") != category or metadata.get("label") != "PREDICTED_NOT_MEASURED":
             raise ValueError("surface schema/category/prediction label differs")
         if metadata.get("production_scorer") != entry["production_scorer"] or metadata.get("model_trained_at") != entry["model_trained_at"] or canonical_sha(metadata.get("platt")) != entry["calibration_sha256"]:
             raise ValueError("surface model/calibration identity differs")
         calibration = metadata.get("platt")
         if not isinstance(calibration, dict) or set(calibration) != {"R", "F"} or any(not isinstance(values, (list, tuple)) or len(values) != 2 or not all(isinstance(value, (int, float)) and math.isfinite(value) for value in values) for values in calibration.values()):
             raise ValueError("surface calibration parameters are not finite R/F pairs")
-        contexts = metadata.get("contexts")
-        if entry.get("feature_mode") != "context_free" or metadata.get("production_scorer") not in ("v1", "hybrid_v1", "counts") or not isinstance(contexts, list) or len(contexts) != 1 or contexts[0].get("name") != "CAT_SIDE_DEFAULTS" or contexts[0].get("n_features") != 0:
-            raise ValueError("surface is not the supported context-free model")
-        if self.regimes != ("ALL", "FLAT", "UP", "DOWN", "STRONG_UP", "STRONG_DOWN") or len(set(self.rows)) != len(self.rows) or len(set(self.yellows)) != len(self.yellows):
+        context = {"symbol_side": entry["symbol_side"], "regime": "UNK", "tier": "U", "phase": "", "provenance": "log", "chain_features": []}
+        if entry.get("feature_mode") != "context_free" or metadata.get("feature_mode") != "context_free" or metadata.get("production_scorer") not in ("v1", "hybrid_v1", "counts") or metadata.get("symbol_side") != entry["symbol_side"] or metadata.get("model_context") != context:
+            raise ValueError("surface does not match the actual symbol and trained UNK context")
+        if self.regimes != ("UNK",) or len(set(self.rows)) != len(self.rows) or len(set(self.yellows)) != len(self.yellows):
             raise ValueError("surface regimes or keys are ambiguous")
         if any(not isinstance(key, str) or "|" not in key or "=" not in key.partition("|")[2] for key in self.rows) or any(not isinstance(header, str) or "=" not in header for header in self.yellows):
             raise ValueError("surface row/header key schema differs")
@@ -66,7 +66,7 @@ class ProbabilitySurface:
     def lookup(self, sheet, row_key, header, regime):
         item = self.row_index.get(str(sheet) + "|" + str(row_key))
         yellow = self.yellow_index.get(str(header))
-        column = self.regime_index.get(regime)
+        column = 0 if regime in ("ALL", "UNK", "FLAT", "UP", "DOWN", "STRONG_UP", "STRONG_DOWN") else None
         if item is None or yellow is None or column is None:
             return None
         offset = item[1].get(yellow)
@@ -86,7 +86,7 @@ def _cached_surface(path, surface_sha256, entry_json, category):
     return ProbabilitySurface(io.BytesIO(payload), json.loads(entry_json), category)
 
 
-def load_surface(environment, model_path, category, root):
+def load_surface(environment, model_path, category, root, sym_side=None):
     manifest = environment.get("V18_LINKNET_SURFACE_MANIFEST")
     if not manifest:
         return None, "off"
@@ -99,6 +99,8 @@ def load_surface(environment, model_path, category, root):
         if declaration.get("schema") != "v18_linknet_probability_surface/1":
             raise ValueError("surface manifest schema differs")
         entry = declaration["by_category"][category]
+        if not sym_side or entry.get("symbol_side") != sym_side:
+            raise ValueError("surface symbol identity differs")
         if entry["graph_model_sha256"] != sha(model_path):
             raise ValueError("graph model identity differs")
         template = Path(root) / "SPREADSHEETS" / ("TEMPLATE_" + category + ".xlsx")

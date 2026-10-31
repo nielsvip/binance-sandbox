@@ -2922,7 +2922,7 @@ class PilotBrainV18:
         self._probability_surface, self.surface_why = None, "off"
         if os.environ.get("V18_LINKNET_SURFACE_MANIFEST"):
             from tools.v18_probability_surface import load_surface
-            self._probability_surface, self.surface_why = load_surface(os.environ, path, cs, ROOT)
+            self._probability_surface, self.surface_why = load_surface(os.environ, path, cs, ROOT, sym_side)
         self.bi, self.bind_why = None, "model has no M/B heads"
         if all(h in self.w for h in BIND_HEADS):
             if binding_feature_mode(self.meta) == "unknown":
