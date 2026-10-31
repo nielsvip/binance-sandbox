@@ -12745,35 +12745,8 @@ def compute_entry_signals(npz, n, is_long, cfg, symbol=None):
         )
     except Exception:
         pass
-    # CLENOW — live SMA200 + momentum filter; vector twin reads sma_200_1h/NPZ with same thresholds
-    clenow_ok = np.ones(n, dtype=bool)
-    if bool(getattr(cfg, "CLENOW_ENABLED", False)):
-        sma200_1h = _safe(npz, "sma_200_1h", n)
-        if sma200_1h.sum() > 0:
-            if is_long:
-                clenow_ok = close > sma200_1h  # CLENOW long requires price above SMA200
-            else:
-                clenow_ok = close < sma200_1h
-        # CLENOW_GATE_MIN_SCORE threshold — when gate enabled, require clenow score >= min
-        if bool(getattr(cfg, "CLENOW_GATE_ENABLED", False)):
-            # Proxy score: use close vs sma distance as momentum proxy (live uses 252d momentum)
-            clenow_score = np.where(
-                sma200_1h > 0,
-                (close - sma200_1h) / np.maximum(sma200_1h, 1e-9) * 100,
-                0.0,
-            )
-            gate_min = float(getattr(cfg, "CLENOW_GATE_MIN_SCORE", 15.0))
-            gate_thr = (
-                gate_min / 5.0
-            )  # scale to NPZ proxy units (live 15 -> ~3.0% distance)
-            if is_long:
-                clenow_ok = clenow_ok & (clenow_score >= gate_thr)
-            else:
-                clenow_ok = clenow_ok & (clenow_score <= -gate_thr)
-    else:
-        if bool(getattr(cfg, "CLENOW_GATE_ENABLED", False)):
-            # Gate without CLENOW main is inert (matches live fail-open)
-            pass
+    from vec_decisions.clenow_entry_gate import pass_mask as _clenow_pass_mask
+    clenow_ok = _clenow_pass_mask(npz, n, is_long, cfg, close, _safe)
 
     # 2026-08-18 GOLDEN_RULE parity — live blocks entry when < MIN_TFS TFs each have >= MIN_IND bullish indicators
     # BNBUSDC divergence: live GOLDEN_RULE_CONSENSUS_BLOCK_ENTRY tfs=0/3req while vector had no gate → 0 vs vector trades mismatch

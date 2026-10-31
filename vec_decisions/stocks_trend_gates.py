@@ -47,9 +47,8 @@ def pass_mask(npz, n, is_long, cfg, close, safe):
         ok &= ~((m <= 0) if is_long else (m >= 0)); used = True
     if bool(_g(cfg, 'CT_VOLUME_SURGE_GATE_ENABLED', False)):
         ok &= ~(safe(npz, 'relative_volume_1h', n, 1.0) < float(_g(cfg, 'CT_REL_VOL_MIN', 1.3))); used = True
-    if bool(_g(cfg, 'CLENOW_ENABLED', False)):
-        sma = safe(npz, 'sma_200_D', n, 0.0)
-        ok &= ~((sma > 0) & (((close < sma) if is_long else (close > sma)))); used = True
-    if bool(_g(cfg, 'CLENOW_GATE_ENABLED', False)):
-        ok &= ~(safe(npz, 'clenow_score', n, 0.0) < float(_g(cfg, 'CLENOW_GATE_MIN_SCORE', 30.0))); used = True
+    if bool(_g(cfg, 'CLENOW_ENABLED', False)) or bool(_g(cfg, 'CLENOW_GATE_ENABLED', False)):
+        from vec_decisions.clenow_entry_gate import pass_mask as clenow_pass_mask
+        ok &= clenow_pass_mask(npz, n, is_long, cfg, close, safe)
+        used = True
     return ok if used else None

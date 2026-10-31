@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T09:00:30Z",
+ "ts": "2026-10-31T09:05:57Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 48,
+   "fills_6h": 47,
    "open_positions": 15,
-   "unrealised_usd": -0.52,
+   "unrealised_usd": -0.66,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 76,
    "open_positions": 13,
-   "unrealised_usd": -0.71,
+   "unrealised_usd": -0.69,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,85 +127,93 @@
     "23901"
    ],
    "starts_30m": 1,
-   "log_age_s": 1979.0
+   "log_age_s": 2306.0
   },
   "men": {
    "pids": [
     "84264"
    ],
    "starts_30m": 1,
-   "log_age_s": 896.0
+   "log_age_s": 1223.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 24.0
+   "log_age_s": 23.0
   },
   "inf": {
    "pids": [
     "68362"
    ],
    "starts_30m": 1,
-   "log_age_s": 673.0
+   "log_age_s": 1000.0
   },
   "flz": {
    "pids": [
     "68709"
    ],
    "starts_30m": 1,
-   "log_age_s": 406.0
+   "log_age_s": 733.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 15493.0
+   "log_age_s": 15819.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 15808.0
+   "log_age_s": 16135.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T09:00:31Z",
+   "ts": "2026-10-31T09:05:58Z",
+   "severity": "CRITICAL",
+   "kind": "RAPID_LOSS_KEY",
+   "key": "ang:RSRUSDT_SHORT",
+   "evidence": "unrealised -3.55% (60-min high +0.55%), amt 10366"
+  },
+  {
+   "ts": "2026-10-31T09:05:58Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:HYPEUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T06:26:14Z bar=2026-10-31T04:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T09:00:32Z",
+   "ts": "2026-10-31T09:05:59Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 1979s"
+   "evidence": "ez_manage_fin.log not written for 2306s"
   },
   {
-   "ts": "2026-10-31T09:00:32Z",
+   "ts": "2026-10-31T09:05:59Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 896s"
+   "evidence": "ez_manage_men.log not written for 1223s"
   },
   {
-   "ts": "2026-10-31T09:00:32Z",
+   "ts": "2026-10-31T09:05:59Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 673s"
+   "evidence": "ez_manage_inf.log not written for 1000s"
   },
   {
-   "ts": "2026-10-31T09:00:32Z",
+   "ts": "2026-10-31T09:05:59Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 406s"
+   "evidence": "ez_manage_flz.log not written for 733s"
   }
  ],
  "alert_counts": {
+  "RAPID_LOSS_KEY": 1,
   "VEC_DECISION_NOT_FILLED": 1,
   "STALE_LOG": 4
  },
@@ -281,5 +289,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.79
+ "sweep_s": 2.37
 }
