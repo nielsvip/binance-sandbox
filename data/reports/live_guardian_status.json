@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T11:15:49Z",
+ "ts": "2026-10-31T11:20:59Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -44,8 +44,8 @@
   },
   "men": {
    "fills_6h": 42,
-   "open_positions": 26,
-   "unrealised_usd": -0.29,
+   "open_positions": 25,
+   "unrealised_usd": -0.77,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 45,
    "open_positions": 13,
-   "unrealised_usd": 0.37,
+   "unrealised_usd": 0.5,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 12,
    "open_positions": 6,
-   "unrealised_usd": -0.25,
+   "unrealised_usd": -0.31,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,102 +127,117 @@
     "43587"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 7.0
   },
   "men": {
    "pids": [
     "20386"
    ],
    "starts_30m": 1,
-   "log_age_s": 1967.0
+   "log_age_s": 2277.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 1.0
   },
   "inf": {
    "pids": [
     "34297"
    ],
-   "starts_30m": 1,
-   "log_age_s": 1964.0
+   "starts_30m": 0,
+   "log_age_s": 2274.0
   },
   "flz": {
    "pids": [
     "78263"
    ],
    "starts_30m": 1,
-   "log_age_s": 2379.0
+   "log_age_s": 2690.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 23611.0
+   "log_age_s": 23921.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 23927.0
+   "log_age_s": 24237.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T11:15:49Z",
+   "ts": "2026-10-31T11:20:59Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:FIDAUSDT_SHORT",
    "evidence": "31 11:10:16 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:FIDAUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $19 on bounce (prior max 0.0000)"
   },
   {
-   "ts": "2026-10-31T11:15:49Z",
+   "ts": "2026-10-31T11:20:59Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:RIFUSDT_SHORT",
    "evidence": "31 11:13:47 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:RIFUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $707 on bounce (prior max 345.0000)"
   },
   {
-   "ts": "2026-10-31T11:15:49Z",
+   "ts": "2026-10-31T11:20:59Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "fin:RIFUSDT_SHORT",
    "evidence": "order notional $706.78 > MAX_ORDER_VALUE $300: 31 11:13:47 - INFO - [fin] [execute_trade_action][fin] \u2705 \u2705 \u2705 \u2705 OPEN fin:RIFUSDT_SHORT @ 0.064360 qty=10981.697145 ($706.78) side=SELL | QUICK_OPEN_STRONG_SELL_k1:85/d184/k3:84.73/d3:77.69_@0.0644_REEN"
   },
   {
-   "ts": "2026-10-31T11:15:50Z",
+   "ts": "2026-10-31T11:21:00Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:HYPEUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T06:26:14Z bar=2026-10-31T04:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T11:15:51Z",
+   "ts": "2026-10-31T11:21:01Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "ang:IMXUSDT_SHORT",
+   "evidence": "41 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-31T11:21:01Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "men:IMXUSDT_SHORT",
+   "evidence": "41 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-31T11:21:01Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 1967s"
+   "evidence": "ez_manage_men.log not written for 2277s"
   },
   {
-   "ts": "2026-10-31T11:15:51Z",
+   "ts": "2026-10-31T11:21:01Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 1964s"
+   "evidence": "ez_manage_inf.log not written for 2274s"
   },
   {
-   "ts": "2026-10-31T11:15:51Z",
+   "ts": "2026-10-31T11:21:01Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 2379s"
+   "evidence": "ez_manage_flz.log not written for 2690s"
   }
  ],
  "alert_counts": {
   "CAP_BYPASS": 2,
   "SIZE_ANOMALY": 1,
   "VEC_DECISION_NOT_FILLED": 1,
+  "ATTEMPT_STORM_KEY": 2,
   "STALE_LOG": 3
  },
  "active_interventions": {
@@ -276,5 +291,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.48
+ "sweep_s": 1.9
 }
