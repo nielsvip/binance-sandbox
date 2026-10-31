@@ -15585,6 +15585,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     base_tf = _base_tf(npz, cfg)
     ts = npz.get("timestamps", npz.get(f"timestamp_{base_tf}", np.array([])))
     n = len(ts)
+    _score_start_ts = float(getattr(cfg, "_DECISION_START_TS", 0.0) or 0.0)
     _partial_context = getattr(cfg, "_PARTIAL_EXECUTION_CONTEXT", None)
     _partial_audit = {"accepted_count": 0, "rejected_count": 0, "last_rejection": None, "rejection_counts": {}}
     _partial_context_error = None
@@ -15621,6 +15622,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         if int(_bar_ts) != _partial_observation_ts:
             _account_partial_reject("NO_FRESH_ACCOUNT_OBSERVATION_FOR_BAR")
             return False, 0.0, None
+        if _position.get("_account_partial_projection_consumed"):
+            _account_partial_reject("ACCOUNT_PARTIAL_ALREADY_PROJECTED_THIS_OBSERVATION")
+            return False, 0.0, None
         _account_qty = _position.get("_account_projected_qty") if isinstance(_position, dict) else None
         if _account_qty is None:
             _account_partial_reject("ACCOUNT_POSITION_NOT_SEEDED_AT_OBSERVATION")
@@ -15639,6 +15643,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         if _plan is None:
             return
         _position["_account_projected_qty"] = float(_plan["account_projected_qty_after"])
+        _position["_account_partial_projection_consumed"] = True
         _partial_audit["accepted_count"] += 1
         if isinstance(_event, dict):
             _event["account_partial_projection"] = {
@@ -19043,6 +19048,39 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _entry_or_srcs.append(("B_WT_TOP", _wte_pre_mask))
     except Exception:
         pass
+    # Native Tradier B12 is also a fresh-entry fallback: process_position checks
+    # it only while no earlier route selected OPEN. Use the same shared predicate
+    # and live key-presence fallback (3m WT -> 15m WT; velocity 3m -> 15m -> 1h).
+    if str(getattr(cfg, "MODE", "crypto")) == "tradier" and bool(
+        getattr(cfg, "REENTRY_B12_WT_MOM_ENABLED", False)
+    ):
+        try:
+            from vec_decisions.check_entry_b12_wt_mom import b12_mask_vec
+
+            _b12_3m_wt1_key = "wt1_3m" if npz.get("wt1_3m") is not None else "wt1_15m"
+            _b12_3m_wt2_key = "wt2_3m" if npz.get("wt2_3m") is not None else "wt2_15m"
+            _b12_vel_key = next(
+                (key for key in ("wt_velocity_3m", "wt_velocity_15m", "wt_velocity_1h") if npz.get(key) is not None),
+                None,
+            )
+            _b12_fresh = np.asarray(
+                b12_mask_vec(
+                    _safe(npz, _b12_3m_wt1_key, n),
+                    _safe(npz, _b12_3m_wt2_key, n),
+                    _safe(npz, "wt1_15m", n),
+                    _safe(npz, "wt2_15m", n),
+                    _safe(npz, "wt1_1h", n),
+                    _safe(npz, "wt2_1h", n),
+                    _safe(npz, _b12_vel_key, n) if _b12_vel_key else np.zeros(n),
+                    is_long,
+                ),
+                dtype=bool,
+            ) & ~np.asarray(entry_sig, dtype=bool)
+            if _b12_fresh.any():
+                entry_sig = np.asarray(entry_sig, dtype=bool) | _b12_fresh
+                _entry_or_srcs.append(("B12", _b12_fresh))
+        except Exception:
+            pass
     # 2026-10-13 VETO-FINAL (parity): re-apply the stashed KINDERGARTEN/EMA_9_21 hard-veto masks on the FINAL entry signal, after every OR-source (twin_entries_dead_a/b, twin_yellow_filters, ported_reentry, gr_htf_direct, wt_top_entry). Live vetoes the entry DECISION (tradier_manage.should_enter_long/short, ez_manage check_entry_alignment/execute_now); a veto applied before later ORs is silently undone (measured: AAPL_SHORT TF=D veto mask all-False yet 30 trades — teda OR restored 187 bars). No-op when vetoes disabled (stashes None) or later ORs inert. Masks NOT re-appended to _entry_filter_masks (single-count for REENTRY_ENTRY_FILTER_MIN_PASS; RAG capture above already includes the first application).
     if _lks_ok_final is not None:
         entry_sig = entry_sig & _lks_ok_final
@@ -19294,6 +19332,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _ssh_closes = []
         _ssh_idx = 0
     for i in range(n):
+        if _score_start_ts > 0 and float(ts[i]) <= _score_start_ts:
+            continue
         if _pending_exit_restore is not None:
             pos = _pending_exit_restore
             if _pending_exit_control_restore is not None:
@@ -19308,6 +19348,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             for _ws_e in list(events[_ws_ne:]):
                 if pos is None or _ws_e.get("type") != "REDUCE":
                     continue
+                if _ws_e.get("account_partial_projection"):
+                    continue  # exact account-lot projection already satisfies the venue step
                 _ws_q = float(_ws_e.get("qty") or 0.0)
                 _ws_ql = float(max(1, int(round(_ws_q))))
                 if abs(_ws_ql - _ws_q) < 1e-9:
@@ -22632,6 +22674,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     pos["deployed"] += abs(add_qty * px)
                     pos["fees"] += abs(add_qty * px) * half_fee
                     pos["qty"] = new_qty
+                    if _partial_context is not None and int(ts[i]) >= int(_partial_observation_ts or 0):
+                        pos["_account_projected_qty"] = None
                     pos["last_aug_px"] = float(px)
                     pos["last_aug_bar"] = int(i)
                     pos["n_augments"] = int(pos.get("n_augments", 0)) + 1
@@ -22930,6 +22974,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 pos["deployed"] += abs(_reaug_qty * px)
                 pos["fees"] += abs(_reaug_qty * px) * half_fee
                 pos["qty"] = _reaug_new
+                if _partial_context is not None and int(ts[i]) >= int(_partial_observation_ts or 0):
+                    pos["_account_projected_qty"] = None
                 pos["last_aug_px"] = float(px)
                 pos["last_aug_bar"] = int(i)
                 pos["n_augments"] = int(pos.get("n_augments", 0)) + 1
@@ -23066,6 +23112,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "reason": _dd_reason,
                     }
                 )
+                _account_partial_commit(pos, _dd_account_plan, events[-1])
                 pos["last_reduce_bar"] = int(i)
 
         _ty_fire, _ty_reason = False, ""
@@ -24071,14 +24118,20 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _xc_ok = _xc_loss or _wt_final_fire or _stdev_reject_fire or (
             _gftf.get("exit_confirm") is None or bool(_gftf["exit_confirm"][i])
         )
-        if _hold_bars_fire or ((exit_sig[i] or _stdev_reject_fire) and held_bars >= min_hold and _xc_ok):
-            if not _hold_bars_fire and 0 < satoshit_partial < 1.0 and not _sd_ok("REDUCE"):
+        _satoshi_account_ok, _satoshi_account_qty, _satoshi_account_plan = True, 0.0, None
+        _satoshi_partial_candidate = not _hold_bars_fire and 0 < satoshit_partial < 1.0 and (exit_sig[i] or _stdev_reject_fire) and held_bars >= min_hold and _xc_ok
+        if _satoshi_partial_candidate:
+            _satoshi_requested = float(pos["qty"]) * satoshit_partial
+            if _satoshi_requested < float(pos["qty"]) - 1e-12:
+                _satoshi_account_ok, _satoshi_account_qty, _satoshi_account_plan = _account_partial_plan(pos, _satoshi_requested, px, float(ts[i]) if i < len(ts) else 0.0)
+        if _hold_bars_fire or ((exit_sig[i] or _stdev_reject_fire) and held_bars >= min_hold and _xc_ok and (_satoshi_account_ok or _stdev_reject_fire or _wt_final_fire)):
+            if not _hold_bars_fire and 0 < satoshit_partial < 1.0 and _satoshi_account_ok and not _sd_ok("REDUCE"):
                 # SCALE_DIRECTION: the SATOSHIT partial sells momentum STRENGTH (long: RSI>=55 + K>=60) —
                 # 2,482 measured reduces. Price rising in favour is augment territory: hold this bar, do not
                 # fall through to the full technical exit below (that would CLOSE instead of scale out).
                 continue
-            if not _hold_bars_fire and 0 < satoshit_partial < 1.0:
-                reduce_qty = pos["qty"] * satoshit_partial
+            if not _hold_bars_fire and 0 < satoshit_partial < 1.0 and _satoshi_account_ok:
+                reduce_qty = _satoshi_account_qty if _satoshi_account_plan is not None else pos["qty"] * satoshit_partial
                 realized = (
                     (px - pos["avg_price"]) * reduce_qty
                     if is_long
@@ -24106,6 +24159,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "reason": f"SATOSHIT_EXIT_PARTIAL {satoshit_partial:.2f}",
                     }
                 )
+                _account_partial_commit(pos, _satoshi_account_plan, events[-1])
                 pos["last_reduce_bar"] = int(i)
                 if pos["qty"] <= 1e-9:
                     # Repeated 70% cuts can leave dust: without this the lifecycle never closed and was booked as
@@ -24132,6 +24186,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             "bars_held": int(i - pos["entry_bar"]),
                         }
                     )
+                    if _satoshi_account_plan is not None:
+                        _account_partial_commit(pos, _satoshi_account_plan, trades[-1])
                     pos = None
                     cd = cooldown_bars
                     has_closed_before = True
@@ -24507,6 +24563,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 )
             if not _hold_bars_fire and _htfv_block(i, _tech_reason):
                 continue  # lane-D: stocks HTF_TREND_VETO_ON_REDUCE
+            _bbr_account_rejected = False
             if _tech_reason.startswith("BB_RECOVERY_EXIT_TRADIER_"):
                 from vec_decisions.quick_missing_bb_recovery_sizing import (
                     bb_recovery_qty_limits,
@@ -24530,64 +24587,71 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     or _bbr_reduce_qty < _bbr_order_min
                 ):
                     continue
-                _bbr_realized = (
-                    (px - pos["avg_price"]) * _bbr_reduce_qty
-                    if is_long
-                    else (pos["avg_price"] - px) * _bbr_reduce_qty
+                _bbr_account_ok, _bbr_account_qty, _bbr_account_plan = _account_partial_plan(pos, _bbr_reduce_qty, px, float(ts[i]) if i < len(ts) else 0.0)
+                if not _bbr_account_ok:
+                    _bbr_account_rejected = True
+                else:
+                    _bbr_reduce_qty = _bbr_account_qty
+                    _bbr_realized = (
+                        (px - pos["avg_price"]) * _bbr_reduce_qty
+                        if is_long
+                        else (pos["avg_price"] - px) * _bbr_reduce_qty
+                    )
+                    pos["realized"] += _bbr_realized
+                    pos["fees"] += abs(_bbr_reduce_qty * px) * half_fee
+                    pos["qty"] -= _bbr_reduce_qty
+                    events.append(
+                        {
+                            "type": "REDUCE",
+                            "ts": float(ts[i]) if i < len(ts) else 0.0,
+                            "price": float(px),
+                            "qty": float(_bbr_reduce_qty),
+                            "pos_deployed": float(pos["deployed"]),
+                            "bar": int(i),
+                            "reason": _tech_reason,
+                        }
+                    )
+                    _account_partial_commit(pos, _bbr_account_plan, events[-1])
+                    pos["last_reduce_bar"] = int(i)
+                    continue
+            if not _bbr_account_rejected:
+                _exit_fee = abs(pos["qty"] * px) * half_fee
+                pnl_dollars = pnl_preview - (pos["fees"] + _exit_fee)
+                _fee_buffer_pct = 0.0 if is_tradier else max(
+                    0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0)
                 )
-                pos["realized"] += _bbr_realized
-                pos["fees"] += abs(_bbr_reduce_qty * px) * half_fee
-                pos["qty"] -= _bbr_reduce_qty
-                events.append(
+                _unmodeled_fee_pct = max(
+                    0.0, _fee_buffer_pct - float(commission_pct or 0.0)
+                )
+                if pnl_dollars - abs(pos["qty"] * px) * (_unmodeled_fee_pct / 100.0) <= 0.0:
+                    continue
+                pos["fees"] += _exit_fee
+                pnl_pct = pnl_dollars / pos["deployed"] * 100 if pos["deployed"] else 0.0
+                _ts_exit3 = (
+                    float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
+                )
+                trades.append(
                     {
-                        "type": "REDUCE",
-                        "ts": float(ts[i]) if i < len(ts) else 0.0,
-                        "price": float(px),
-                        "qty": float(_bbr_reduce_qty),
-                        "pos_deployed": float(pos["deployed"]),
-                        "bar": int(i),
+                        "pnl_dollars": pnl_dollars,
+                        "pnl_pct": float(pnl_pct),
+                        "deployed": pos["deployed"],
                         "reason": _tech_reason,
+                        "type": "CLOSE",
+                        "ts": _ts_exit3,
+                        "price": float(px),
+                        "bar_entry": int(pos["entry_bar"]),
+                        "bar_exit": int(i),
+                        "entry_price": float(pos.get("entry_price", pos["avg_price"])),
+                        "exit_price": float(px),
+                        "qty": float(pos["qty"]),
+                        "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
+                        "exit_reason": _tech_reason,
+                        "bars_held": int(i - pos["entry_bar"]),
                     }
                 )
-                pos["last_reduce_bar"] = int(i)
-                continue
-            _exit_fee = abs(pos["qty"] * px) * half_fee
-            pnl_dollars = pnl_preview - (pos["fees"] + _exit_fee)
-            _fee_buffer_pct = 0.0 if is_tradier else max(
-                0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0)
-            )
-            _unmodeled_fee_pct = max(
-                0.0, _fee_buffer_pct - float(commission_pct or 0.0)
-            )
-            if pnl_dollars - abs(pos["qty"] * px) * (_unmodeled_fee_pct / 100.0) <= 0.0:
-                continue
-            pos["fees"] += _exit_fee
-            pnl_pct = pnl_dollars / pos["deployed"] * 100 if pos["deployed"] else 0.0
-            _ts_exit3 = (
-                float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
-            )
-            trades.append(
-                {
-                    "pnl_dollars": pnl_dollars,
-                    "pnl_pct": float(pnl_pct),
-                    "deployed": pos["deployed"],
-                    "reason": _tech_reason,
-                    "type": "CLOSE",
-                    "ts": _ts_exit3,
-                    "price": float(px),
-                    "bar_entry": int(pos["entry_bar"]),
-                    "bar_exit": int(i),
-                    "entry_price": float(pos.get("entry_price", pos["avg_price"])),
-                    "exit_price": float(px),
-                    "qty": float(pos["qty"]),
-                    "entry_reason": pos.get("entry_reason", "VECTOR_ENTRY"),
-                    "exit_reason": _tech_reason,
-                    "bars_held": int(i - pos["entry_bar"]),
-                }
-            )
-            pos = None
-            cd = cooldown_bars
-            has_closed_before = True
+                pos = None
+                cd = cooldown_bars
+                has_closed_before = True
 
     if _pending_exit_restore is not None:
         pos = _pending_exit_restore
@@ -24600,6 +24664,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         for _ws_e in list(events[_ws_ne:]):
             if pos is None or _ws_e.get("type") != "REDUCE":
                 continue
+            if _ws_e.get("account_partial_projection"):
+                continue  # exact account-lot projection already satisfies the venue step
             _ws_q = float(_ws_e.get("qty") or 0.0)
             _ws_ql = float(max(1, int(round(_ws_q))))
             if abs(_ws_ql - _ws_q) < 1e-9:

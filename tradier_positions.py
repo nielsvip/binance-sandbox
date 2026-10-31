@@ -1,9 +1,4 @@
 
-import faulthandler
-
-if __name__ == "__main__":
-    faulthandler.dump_traceback_later(45, repeat=True)
-
 import asyncio
 import glob
 import json
@@ -3846,7 +3841,6 @@ async def main():
             logger.error(f"Failed to initialize manager for {acc_key}: {e}")
     if managers:
         await asyncio.gather(*(m.start() for m in managers))
-        faulthandler.cancel_dump_traceback_later()
         from tradier_account_events import group_managers_by_stream_identity, run_shared_account_event_transport
         account_stream_tasks = [
             asyncio.create_task(run_shared_account_event_transport(stream_api, stream_managers, config.BASE_PATH, stop_event))

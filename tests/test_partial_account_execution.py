@@ -67,6 +67,15 @@ def test_account_partial_quantizer_rejects_small_leg_and_preserves_dust_policy()
     assert dust["account_reduce_qty"] == pytest.approx(0.3)
 
 
+def test_whole_share_account_qty_one_rejects_fractional_partial_without_full_close():
+    one_share = plan_partial_reduce(0.5, 1.0, 1.0, 1.0, 1.0)
+    two_shares = plan_partial_reduce(0.5, 1.0, 2.0, 1.0, 1.0)
+    assert one_share["ok"] is False
+    assert one_share["reason"] == "PARTIAL_BELOW_MIN_QTY"
+    assert two_shares["ok"] is True
+    assert two_shares["account_reduce_qty"] == pytest.approx(1.0)
+
+
 def test_account_context_requires_exact_observation_window_and_identity():
     context = {
         "schema_version": 1,
@@ -86,7 +95,7 @@ def test_account_context_requires_exact_observation_window_and_identity():
 
 
 def test_canonical_engine_no_context_ledger_matches_exact_pre_edit_backup():
-    backup = Path(__file__).resolve().parents[1] / "backups/before_account_partial_test_audit_202610310257.py"
+    backup = Path(__file__).resolve().parents[1] / "backups/before_account_partial_context_20261031_024950.py"
     spec = importlib.util.spec_from_file_location("_v12_pre_account_partial", backup)
     old = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = old
@@ -139,8 +148,67 @@ def test_canonical_cycle_tp_rejects_unexecutable_actual_lot_without_consuming_ti
     ctp_rows = [row for row in result["ledger"] if str(row.get("reason", "")).startswith("CYCLE_TP_TIERED_T0_")]
     assert not ctp_rows
     assert result["account_partial_audit"]["rejected_count"] >= 1
+    assert result["account_partial_audit"]["rejection_counts"]["PARTIAL_BELOW_MIN_QTY"] >= 1
     assert result["account_partial_audit"]["last_rejection"] in {
         "PARTIAL_BELOW_MIN_QTY",
         "NO_FRESH_ACCOUNT_OBSERVATION_FOR_BAR",
     }
     assert all(row.get("projection_only_not_a_fill") is not True for row in result["ledger"])
+
+
+def test_accepted_cycle_tp_is_labeled_projection_not_exchange_fill():
+    npz = _npz_fixture()
+    baseline = engine.simulate_one(npz, "QNTUSDT", True, _cfg(), force_initial_seed=True)
+    first = next(row for row in baseline["ledger"] if str(row.get("reason", "")).startswith("CYCLE_TP_TIERED_T0_"))
+    ts = npz["timestamps"]
+    cfg = _cfg()
+    cfg._PARTIAL_EXECUTION_CONTEXT = {
+        "schema_version": 1,
+        "account_key": "ang",
+        "symbol": "QNTUSDT",
+        "side": "LONG",
+        "window_first_ts": int(ts[0]),
+        "window_last_ts": int(ts[-1]),
+        "observation_bar_ts": int(first["ts"]),
+        "observed_qty": 0.4,
+        "market_lot": {"step_size": 0.001, "min_qty": 0.1},
+        "decision_generation": "g-test-accepted",
+        "config_sha256": "b" * 64,
+    }
+    result = engine.simulate_one(npz, "QNTUSDT", True, cfg, force_initial_seed=True)
+    row = next(row for row in result["ledger"] if str(row.get("reason", "")).startswith("CYCLE_TP_TIERED_T0_"))
+    projection = row["account_partial_projection"]
+    assert projection["projected_reduce_qty"] == pytest.approx(0.1)
+    assert projection["projection_only_not_a_fill"] is True
+    assert result["account_partial_audit"]["accepted_count"] == 1
+
+
+@pytest.mark.parametrize(
+    "gate_name",
+    [
+        "_cs_ok",
+        "_bbr_ok_early",
+        "_lec_ok",
+        "_sfk_ok",
+        "_hq_account_ok",
+        "_afb_account_ok",
+        "_ctp_account_ok",
+        "_ppl_account_ok",
+        "_qr_account_ok",
+        "_dd_account_ok",
+        "_w2_account_ok",
+        "_red_account_ok",
+        "_satoshi_account_ok",
+        "_bbr_account_ok",
+    ],
+)
+def test_each_canonical_partial_mutation_family_has_account_gate_and_projection_commit(gate_name):
+    source = (Path(__file__).resolve().parents[1] / "v12_quick_engine.py").read_text()
+    call = source.index(f"{gate_name},")
+    assert "_account_partial_plan(" in source[max(0, call - 1200) : call + 1800]
+    assert "_account_partial_commit(" in source[call : call + 5000]
+
+
+def test_stock_whole_share_postprocessor_preserves_account_quantized_projection():
+    source = (Path(__file__).resolve().parents[1] / "v12_quick_engine.py").read_text()
+    assert source.count('if _ws_e.get("account_partial_projection")') == 2

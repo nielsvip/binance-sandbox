@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-31T02:54:46.479881+00:00",
+  "recorded_at": "2026-10-31T03:00:44.666289+00:00",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -174,7 +174,10 @@
       "forward_action": "new historical feature work under already excluded v15_nextgen_*.py or isolated review patches; no revert"
     }
   },
-  "previous_goal_turn_classification": "progress: fullbaseline launched and sourcecorpus capacity checked; subsequent audit invalidated baseline and required routing repair",
+  "previous_goal_turn_classification": {
+    "classification": "progress",
+    "evidence": "Prior turn completed three actual authority arms, stock prior/corrected baseline captures, historical protection quartets and source-preservation components. Current turn strengthens exploration measurement provenance and launches corrected-runtime quartets."
+  },
   "restored_archive_consumers": {
     "consumer_audit_CRYPTO_LONG": {
       "consumer_status": "complete rc0; output 616 B, SHA256 b71adaf0bf48b4e6d9a8f33c9bf5b933ee46122470d5e77120117cc85a41c05e; report SHA256 d9383e38a0f24a62720d0e1ec037470be70979dc595b115fffb486c91a143fb2; driver SHA256 6cc2f336331025fd4f73ad059df7b77ad0f01832a1e9c0ee3bb5b3b9c3eaec03",
@@ -542,6 +545,20 @@
       "evidence_dir": "data/reports/nextgen_authority_repair_20261031/actual_evidence/ibm_both",
       "agent_verified_selected_fields_restored": 28,
       "qualification": "Same frozen input cutoff; original oracle preserved; config/ledger/result changes are code-repair effects, not NN gain."
+    },
+    "priority_measurement_binding": {
+      "status": "REVIEW_IMPLEMENTED_SEVEN_TESTS_PASS_NOT_PRODUCTION_INTEGRATED",
+      "helper": "tools/v15_nextgen_protection_priority.py",
+      "sha256": "24b4c1e0a72f1c9c5c9025b08be56e4ad0b23ea12cd4e69614d7626f905c09bb",
+      "tests_sha256": "67bbc086ecc827b5017e24cd8a429c93a3eeb7850ec8be531179dfe81a4f759b",
+      "tests": "7 passed in0.61s; both files compiled",
+      "scope": "Immutable source snapshot, batch-boundary revalidation, stale booleans not measurement coverage; source-bound actual engine receipt plus same row/scientific identity required. Unit timing is not backtest performance."
+    },
+    "corrected_quartets": {
+      "status": "LAUNCHED_ROOT_SESSION44988_TERMINAL_NOT_YET_INSPECTED",
+      "stage": "/home/niels/v15_bench/reviews/protection_quartets_authority_20261031_06",
+      "expected_baseline_sha256": "328fd8c00b334c4b1d2e08a920c8a792c237f40d0159a1ddc25a8e3f1f964746",
+      "stage_receipt_sha256": "288c8acfa46a9df115795dbb1644279d4619beda865bbeefbf074c72aa0801b0"
     }
   },
   "required_before_s2_comparison": {

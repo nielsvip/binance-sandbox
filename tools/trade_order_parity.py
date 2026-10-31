@@ -3,6 +3,7 @@ import argparse
 import collections
 import json
 import math
+import re
 from pathlib import Path
 
 def _number(value, field):
@@ -78,16 +79,46 @@ def compare_orders(vector, native, initial_positions=None, quantity_tolerances=N
     verdict = "INVALID" if invalid else "FAIL" if differences else "PASS" if vector or native else "NO_EVENTS"
     return {"verdict": verdict, "vector_orders": len(vector), "native_orders": len(native), "timestamp_tolerance_seconds": 0, "quantity_tolerances": tolerances, "differences": differences, "vector_errors": vector_errors, "native_errors": native_errors, "vector_final": {"|".join(k): v for k, v in vector_final.items()}, "native_final": {"|".join(k): v for k, v in native_final.items()}}
 
+def audit_replay_logs(paths):
+    findings = []
+    counts = collections.Counter()
+    for value in paths:
+        path = Path(value)
+        if not path.is_file():
+            findings.append({"file": str(path), "kind": "MISSING_LOG"})
+            counts["MISSING_LOG"] += 1
+            continue
+        if path.stat().st_size == 0:
+            findings.append({"file": str(path), "kind": "EMPTY_LOG"})
+            counts["EMPTY_LOG"] += 1
+            continue
+        with path.open(errors="replace") as stream:
+            for line_number, line in enumerate(stream, 1):
+                kinds = []
+                if re.search(r"\b(?:ERROR|CRITICAL)\b|Traceback \(most recent call last\)", line):
+                    kinds.append("RUNTIME_ERROR")
+                if "VEC_" in line or "WOULD-BLOCK" in line:
+                    kinds.append("VECTOR_DIAGNOSTIC_REQUIRES_REVIEW")
+                for kind in kinds:
+                    counts[kind] += 1
+                    if len(findings) < 100:
+                        findings.append({"file": str(path), "line": line_number, "kind": kind, "text": line.rstrip("\n")})
+    return {"verdict": "UNREVIEWED" if counts else "PASS" if paths else "NOT_CHECKED", "counts": dict(counts), "first_findings": findings, "source_logs_unchanged": True}
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--vector", required=True)
     parser.add_argument("--native", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--log", action="append", default=[])
     args = parser.parse_args()
     report = compare_orders(json.loads(Path(args.vector).read_text()), json.loads(Path(args.native).read_text()))
+    report["validation_scope"] = "Supplied executed-order ledgers and logs only; data coverage and all-path completeness are separate requirements"
+    report["log_audit"] = audit_replay_logs(args.log)
+    report["order_and_log_verdict"] = "PASS" if report["verdict"] == "PASS" and report["log_audit"]["verdict"] == "PASS" else "NOT_ACCEPTED"
     Path(args.output).write_text(json.dumps(report, indent=2) + "\n")
-    print(report["verdict"])
-    return 0 if report["verdict"] == "PASS" else 1
+    print(json.dumps({"orders": report["verdict"], "logs": report["log_audit"]["verdict"], "orders_and_logs": report["order_and_log_verdict"]}))
+    return 0 if report["order_and_log_verdict"] == "PASS" else 1
 
 if __name__ == "__main__":
     raise SystemExit(main())

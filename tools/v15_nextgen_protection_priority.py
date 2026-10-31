@@ -1,5 +1,7 @@
 """Review-only finite-quota allocation from an existing evaluation budget; no defaults or execution hook."""
 import copy
+import hashlib
+import json
 import math
 from pathlib import Path
 import re
@@ -10,8 +12,54 @@ except ModuleNotFoundError:
     from tools import v15_nextgen_interaction_executor as evidence
 
 
-class VerifiedEpoch(dict):
+class FrozenRecord(dict):
+    def _refuse(self, *args, **kwargs):
+        raise TypeError('source-bound record is immutable')
+    __setitem__ = __delitem__ = clear = pop = popitem = setdefault = update = __ior__ = _refuse
+    def __deepcopy__(self, memo):
+        return self
+
+
+def _freeze(value):
+    if isinstance(value, dict):
+        return FrozenRecord({key: _freeze(item) for key, item in value.items()})
+    if isinstance(value, list):
+        return tuple(_freeze(item) for item in value)
+    return value
+
+
+class VerifiedEpoch(FrozenRecord):
     pass
+
+
+class SourceBoundMeasurement(FrozenRecord):
+    pass
+
+
+def bind_measurement(source):
+    payload = Path(source['path']).read_bytes()
+    if hashlib.sha256(payload).hexdigest() != source['sha256']:
+        raise ValueError('measurement source content mismatch')
+    record = json.loads(payload)
+    if record.get('schema') != 'current_yellow_measurement/1':
+        raise ValueError('current yellow measurement receipt required')
+    return SourceBoundMeasurement(record=_freeze(record), source=_freeze(dict(source)))
+
+
+def _measurement_state(resolved, identity, scientific):
+    bound = resolved.get('measurement_proof')
+    if not isinstance(bound, SourceBoundMeasurement):
+        return False, 'no_source_bound_measurement'
+    record = bound['record']
+    if record.get('cell_identity') != identity or evidence.guard.fingerprint(record.get('scientific_identity')) != evidence.guard.fingerprint(scientific):
+        return False, 'different_cell_or_scientific_context'
+    proof = record.get('engine_proof') or {}
+    keys = ('effective_config_sha256', 'execution_ledger_sha256', 'result_sha256', 'input_cutoff_sha256')
+    if any(not re.fullmatch('[a-f0-9]{64}', str(proof.get(key))) for key in keys) or proof.get('input_cutoff_sha256') != scientific['window']['input_cutoff_sha256']:
+        return False, 'missing_or_different_actual_engine_proof'
+    if record.get('evaluation_status') not in ('evaluated_valid', 'evaluated_inadmissible'):
+        return False, 'not_a_completed_measurement'
+    return True, 'source_bound_current_measurement'
 
 
 def bind_epoch(sources):
@@ -24,15 +72,28 @@ def bind_epoch(sources):
             raise ValueError('wiring source identity/content mismatch')
         checked[asset] = expected
     identity = evidence.guard.fingerprint(sorted(checked.items()))
-    result = VerifiedEpoch(schema='verified_wiring_sources/1', id=identity, sources=copy.deepcopy(sources))
+    result = VerifiedEpoch(schema='verified_wiring_sources/1', id=identity, sources=_freeze(sources))
     result.bound_id = identity
+    result.bound_sources = evidence.guard.fingerprint(result['sources'])
     return result
+
+
+def validate_epoch_sources(epoch):
+    _check_epoch(epoch)
+    for source in epoch['sources']:
+        if evidence.sha(Path(source['path'])) != source['sha256']:
+            raise ValueError('wiring source changed during evaluation batch')
+    return True
+
+
+def _check_epoch(epoch):
+    if not isinstance(epoch, VerifiedEpoch) or epoch.get('id') != getattr(epoch, 'bound_id', None) or evidence.guard.fingerprint(epoch.get('sources')) != getattr(epoch, 'bound_sources', None):
+        raise ValueError('current epoch must be source-bound and unchanged')
 
 
 def scientific_identity(context):
     epoch = context.get('current_epoch')
-    if not isinstance(epoch, VerifiedEpoch) or epoch.get('id') != getattr(epoch, 'bound_id', None):
-        raise ValueError('current epoch must be source-bound, never None or an unchecked dictionary')
+    _check_epoch(epoch)
     raw = context.get('scientific_identity') or {}
     keys = ('engine_sha256', 'npz_sha256', 'accepted_chain_sha256', 'wiring_epoch_sha256', 'sym_side')
     if any(key not in raw for key in keys) or raw['wiring_epoch_sha256'] != epoch['id']:
@@ -136,11 +197,15 @@ def first_pass_yellows(cells, row_identity, state, context, evaluation_budget, c
         if not isinstance(resolved, dict) or resolved.get('eligible') is not True:
             rejected.append({'cell': cell, 'reason': 'not_actual_row_yellow'})
             continue
+        for source in resolved.get('evidence_refs', []):
+            if evidence.sha(Path(source['path'])) != source['sha256']:
+                raise ValueError('yellow domain evidence source changed')
         actual_row = {name: resolved.get(name) for name in ('tab', 'row', 'switch', 'cand')}
         if evidence.guard.fingerprint(actual_row) != evidence.guard.fingerprint(row_identity):
             raise ValueError('first-pass yellow allocator cannot change or rerank the current row')
         identity = evidence.guard.fingerprint({'row': actual_row, 'filter': cell['filter'], 'opt': cell['opt'], 'scientific_context': scientific})
-        eligible.setdefault(identity, {'cell': cell, 'identity': identity, 'current_epoch_measured': resolved.get('current_epoch_measured') is True})
+        measured, measurement_status = _measurement_state(resolved, identity, scientific)
+        eligible.setdefault(identity, {'cell': cell, 'identity': identity, 'current_epoch_measured': measured, 'measurement_status': measurement_status})
     if eligible and evaluation_budget == 0:
         raise ValueError('mandatory yellow exploration has no existing budget; row remains incomplete, never a measured zero')
     new_row = context.get('row_status') in ('new', 'newly_wired', 'unobserved')

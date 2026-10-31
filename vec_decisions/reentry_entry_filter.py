@@ -17,8 +17,7 @@ class SnapshotConfigView:
 
     def __copy__(self):
         clone = type(self).__new__(type(self))
-        object.__setattr__(clone, "_base", object.__getattribute__(self, "_base"))
-        object.__setattr__(clone, "_getter", object.__getattribute__(self, "_getter"))
+        clone.__dict__.update(self.__dict__)
         return clone
 
 

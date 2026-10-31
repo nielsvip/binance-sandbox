@@ -1,5 +1,5 @@
 from copy import deepcopy
-from tools.trade_order_parity import compare_orders
+from tools.trade_order_parity import audit_replay_logs, compare_orders
 
 def ledger():
     return [
@@ -47,3 +47,23 @@ def test_different_accounts_are_not_silently_matched():
     for row in actual:
         row["account"] = "inf"
     assert compare_orders(ledger(), actual)["verdict"] == "FAIL"
+
+def test_errors_and_vector_messages_remain_visible_and_prevent_clean_log_verdict(tmp_path):
+    log = tmp_path / "native.log"
+    content = "INFO normal\nERROR failed native action\nWARNING [VEC_MISMATCH] original text\n"
+    log.write_text(content)
+    report = audit_replay_logs([log])
+    assert report["verdict"] == "UNREVIEWED"
+    assert report["counts"]["RUNTIME_ERROR"] == 1
+    assert report["counts"]["VECTOR_DIAGNOSTIC_REQUIRES_REVIEW"] == 1
+    assert log.read_text() == content
+
+def test_absent_logs_cannot_prove_error_free_execution(tmp_path):
+    assert audit_replay_logs([])["verdict"] == "NOT_CHECKED"
+    assert audit_replay_logs([tmp_path / "absent.log"])["verdict"] == "UNREVIEWED"
+
+
+def test_empty_file_is_not_an_error_free_run_log(tmp_path):
+    log = tmp_path / "empty.log"
+    log.touch()
+    assert audit_replay_logs([log])["verdict"] == "UNREVIEWED"

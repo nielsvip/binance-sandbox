@@ -1,0 +1,56 @@
+{
+  "bytes": 1409458298,
+  "created_at_utc": "2026-10-31T02:58:14.624356+00:00",
+  "dedup_audit": {
+    "known_WD_AB_model_receipt_tree": "/Volumes/WD25/binance_archive/learning_preserve_20261030T231425Z/s6_v20_u4_AB_model_receipts",
+    "known_WD_AB_tree_contains_pkls": false,
+    "known_WD_s6_rebuild_scratch_contains_matching_state_path": false,
+    "known_WD_s6_rebuild_scratch_copy": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_rebuild_scratch"
+  },
+  "destination_root": "/Volumes/WD25/binance_archive/s5_ab_training_states_20261031T024827Z",
+  "destination_sha256_verified": true,
+  "destination_volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+  "file_count": 2,
+  "files": [
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s5_ab_training_states_20261031T024827Z/A/brain_state/v18_brain_state.pkl",
+      "destination_sha256": "bd00104fa8d70d6842c4580367869058e7b7a576e227232852a398061cf63e76",
+      "destination_size": 672575817,
+      "mtime_ns": 1793144034134937302,
+      "path": "A/brain_state/v18_brain_state.pkl",
+      "sha256": "bd00104fa8d70d6842c4580367869058e7b7a576e227232852a398061cf63e76",
+      "size": 672575817,
+      "source_pre_mtime_ns": 1793144034134937302,
+      "source_pre_sha256": "bd00104fa8d70d6842c4580367869058e7b7a576e227232852a398061cf63e76",
+      "source_pre_size": 672575817,
+      "source_unchanged_pre_to_post": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s5_ab_training_states_20261031T024827Z/B/brain_state/v18_brain_state.pkl",
+      "destination_sha256": "8cb3abf9b8f5b21cd2f79cee9a41cb68af56ddd250757e7f6d355bbad77d37e9",
+      "destination_size": 736882481,
+      "mtime_ns": 1793165317957262019,
+      "path": "B/brain_state/v18_brain_state.pkl",
+      "sha256": "8cb3abf9b8f5b21cd2f79cee9a41cb68af56ddd250757e7f6d355bbad77d37e9",
+      "size": 736882481,
+      "source_pre_mtime_ns": 1793165317957262019,
+      "source_pre_sha256": "8cb3abf9b8f5b21cd2f79cee9a41cb68af56ddd250757e7f6d355bbad77d37e9",
+      "source_pre_size": 736882481,
+      "source_unchanged_pre_to_post": true
+    }
+  ],
+  "no_active_state_file_handles_observed_after_copy": true,
+  "no_source_mutation": true,
+  "provenance_boundary": {
+    "S5_AB_brain_state_directories_were_empty_at_census": true,
+    "S5_AB_manifests_do_not_list_or_hash_state_PKLS": true,
+    "S5_AB_manifests_reference_S6_brain_union_payloads_that_match_manifest_MD5_and_size": true,
+    "source_is_S6": true,
+    "therefore": "Preserved as S6 A/B training-state checkpoints; no claim these PKLs are byte-proven S5-side checkpoints."
+  },
+  "source_host": "s6",
+  "source_root": "/home/niels/v20_u4",
+  "source_sha256_pre_post_stable": true
+}

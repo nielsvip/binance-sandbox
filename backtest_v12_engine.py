@@ -1879,17 +1879,8 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
     # --- Patch datetime.now/utcnow ---
     _real_dt = datetime
 
-    class _SimDatetimeMeta(type(_real_dt)):
-        def __instancecheck__(cls, instance):
-            return isinstance(instance, _real_dt) or type.__instancecheck__(cls, instance)
-
-    class _PatchedDatetime(_real_dt, metaclass=_SimDatetimeMeta):
-        @classmethod
-        def now(cls, tz=None):
-            return _sim_datetime_now(tz)
-        @classmethod
-        def utcnow(cls):
-            return _sim_datetime_utcnow()
+    from tools.replay_clock import sim_datetime_class
+    _PatchedDatetime = sim_datetime_class(_real_dt, _sim_datetime_now, _sim_datetime_utcnow)
 
     # Patch datetime — `from datetime import datetime` binds at import time.
     # Can't monkey-patch immutable C datetime. Instead, inject _PatchedDatetime
@@ -3129,7 +3120,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             trade = {"timestamp": _sim_ts[0], "params": kw, "status": "FILLED",
                      "avgPrice": str(px), "executedQty": str(qty),
                      "position_key": pk, "side": side, "quantity": qty, "price": px,
-                     "position_before": before_amt, "sym_side": pk.split(":", 1)[-1]}
+                     "position_before": before_amt,
+                     "position_before_signed": before_amt if pk.endswith("_LONG") else -before_amt,
+                     "position_state_found": bool(pos), "sym_side": pk.split(":", 1)[-1]}
             executed_trades.append(trade)
             # Update positionAmt (what exchange would do)
             if not pos:
@@ -4750,7 +4743,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     for sym, store in stores.items():
         for t in store.timestamps:
             t_int = int(t)
-            if t_int >= max(start_ts_filter, float(getattr(store, "decision_start_ts", start_ts_filter))) and (not end_ts_filter or t_int <= end_ts_filter):
+            _decision_start = float(getattr(store, "decision_start_ts", start_ts_filter - 1))
+            if t_int >= start_ts_filter and t_int > _decision_start and (not end_ts_filter or t_int <= end_ts_filter):
                 all_ts.add(t_int)
     sorted_ts = sorted(all_ts)
     if (
@@ -10357,6 +10351,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 _ep.was_reduced = False; _ep.augmented_count = 0; _ep.max_quantity = 0
                 _ep.mark_price_last_updated = None
                 manager.position_manager.positions[_pk] = _ep
+            _eta_state_marker = {"position_key": _pk, "execute_now_applied": False}
+            _eta_prior_marker = manager.__dict__.get("_bt_active_eta_state_marker")
+            manager.__dict__["_bt_active_eta_state_marker"] = _eta_state_marker
             try:
                 _c5_events_before = len(executed_trades)
                 manager.__dict__["_c5_pending_requested_qty"] = abs(float(
@@ -10368,13 +10365,18 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return f"ERROR_{type(_eta_err).__name__}"
             finally:
                 manager.__dict__.pop("_c5_pending_requested_qty", None)
+                if _eta_prior_marker is None:
+                    manager.__dict__.pop("_bt_active_eta_state_marker", None)
+                else:
+                    manager.__dict__["_bt_active_eta_state_marker"] = _eta_prior_marker
             _r = str(result or '')
             if "BLOCKED" not in _r:
                 v8_logger.warning(f"[V8_REAL_ETA] {position_key} {_act} {side} → {_r[:80]}")
             # Backtest: real ETA calls place_order/queue but positionAmt never gets WS-updated.
             # Update positionAmt here so queue_trade_action CLOSE checks pass on subsequent bars.
             if (
-                "BLOCKED" not in _r
+                not _eta_state_marker["execute_now_applied"]
+                and "BLOCKED" not in _r
                 and "ERROR" not in _r
                 and "PENDING_NEXT_AVAIL" not in _r
             ):
@@ -11057,6 +11059,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             if hasattr(manager, 'positions_service') and manager.positions_service:
                 manager.positions_service.positions[position_key] = _pos_ref
                 manager.positions_service.positions_by_account.setdefault(account_key_en, {})[position_key] = _pos_ref
+        _eta_state_marker = manager.__dict__.get("_bt_active_eta_state_marker")
+        if isinstance(_eta_state_marker, dict) and _eta_state_marker.get("position_key") == position_key:
+            _eta_state_marker["execute_now_applied"] = True
         manager.recently_processed_signals[position_key] = _sim_ts[0]
         return "SUCCESS"
     if os.environ.get("V12_REAL_EXECUTE") == "1":
@@ -18575,7 +18580,12 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
     stores = {}; resolution = "3m" if mode == "crypto" else "5m"
     executed = []
     try:
-        stores, resolution = load_stores(mode, symbols=[sym], start_date=start_date)
+        _load_start_date = "2000-01-01" if not is_crypto else start_date
+        stores, resolution = load_stores(mode, symbols=[sym], start_date=_load_start_date)
+        if not is_crypto and stores and sym in stores:
+            _stock_store_ts = stores[sym].timestamps
+            if len(_stock_store_ts):
+                stores[sym].decision_start_ts = float(_stock_store_ts[-1]) - int(window_days) * 86400.0
         if is_crypto and int(offset_days) == 0 and stores and sym in stores:
             from tools.opt import evaluate_v12 as _window_eval
             _window_raw = _window_eval._store(sym, mode, "2000-01-01")
@@ -18758,7 +18768,7 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
         m["ledger"] = [{"ts": float(getattr(e,"ts",0)), "type": getattr(e,"type",""), "price": float(getattr(e,"value",0)/max(1e-9,float(getattr(e,"qty",0)))) if getattr(e,"qty",0) else 0.0, "qty": float(getattr(e,"qty",0)), "pnl_pct": float(getattr(e,"pnl_pct",0)), "reason": ""} for e in events if getattr(e,"type","")=="CLOSE"]
         # 2026-10-06 trade-parity (tools/v15_trade_parity.py): every executed live-path event with its action + reason,
         # so vec and live ledgers can be matched trade-by-trade. Output only — no simulation change.
-        m["execution_ledger"] = [{"ts": float(getattr(e, "ts", 0)), "type": getattr(e, "type", ""), "action": str(ev.get("action", "") or "").upper(), "reason": str(ev.get("reason", "") or "")[:160], "qty": float(getattr(e, "qty", 0)), "price": float(ev.get("price", 0) or 0), "pnl_pct": float(getattr(e, "pnl_pct", 0)), "raw_type": str(ev.get("type", "") or ""), "position_key": str(ev.get("position_key", "") or ""), "position_side": str(ev.get("position_side", "") or ""), "side": str(ev.get("side", "") or ""), "status": str(ev.get("status", "") or ""), "position_before": ev.get("position_before"), "position_after": ev.get("position_after"), "position_after_signed": ev.get("position_after_signed"), "sym_side": str(ev.get("sym_side", "") or ""), "account": str(ev.get("position_key", "").split(":", 1)[0]) if ev.get("position_key") else ""} for e, ev in zip(events, executed or [])]
+        m["execution_ledger"] = [{"ts": float(getattr(e, "ts", 0)), "type": getattr(e, "type", ""), "action": str(ev.get("action", "") or "").upper(), "reason": str(ev.get("reason", "") or "")[:160], "qty": float(getattr(e, "qty", 0)), "price": float(ev.get("price", 0) or 0), "pnl_pct": float(getattr(e, "pnl_pct", 0)), "raw_type": str(ev.get("type", "") or ""), "position_key": str(ev.get("position_key", "") or ""), "position_side": str(ev.get("position_side", "") or ""), "side": str(ev.get("side", "") or ""), "status": str(ev.get("status", "") or ""), "position_before": ev.get("position_before"), "position_before_signed": ev.get("position_before_signed"), "position_after": ev.get("position_after"), "position_after_signed": ev.get("position_after_signed"), "position_state_found": ev.get("position_state_found"), "sym_side": str(ev.get("sym_side", "") or ""), "account": str(ev.get("position_key", "").split(":", 1)[0]) if ev.get("position_key") else ""} for e, ev in zip(events, executed or [])]
         m["sim_account"] = str(_run_one_sim_account or os.environ.get("V12_SIM_ACCOUNT") or "trb").lower() if mode == "tradier" else None
         m["exit_guarantee_replay"] = _xg_rp.replay_stats() if _xg_rp is not None else None  # 2026-10-14: would-escalate / would-retry counts (pass-through)
         return m

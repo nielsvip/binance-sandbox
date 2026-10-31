@@ -1,4 +1,7 @@
 from pathlib import Path
+import ast
+import asyncio
+import copy
 from types import SimpleNamespace
 
 import numpy as np
@@ -7,6 +10,7 @@ import pytest
 from vec_decisions.generic_filter_tf import FILTER_TF_MAP, _cond
 from vec_decisions.entry_dc_gate import pass_mask as entry_dc_pass_mask
 from vec_decisions.reentry_entry_filter import (
+    SnapshotConfigView,
     compare_mask_coverage,
     generic_filter_tf_live_masks,
     live_15m_masks,
@@ -18,6 +22,7 @@ from vec_decisions.reentry_entry_filter import (
     vector_entry_mask_snapshot,
     wave4_live_masks,
 )
+from vec_decisions.reentry_triggers import should_apply_fresh_open_ftf
 import vec_decisions.twin_yellow_filters as yellow_filters
 
 
@@ -323,6 +328,8 @@ def test_live_reentry_min_pass_enabled_count_boundaries_and_disabled_lane():
         EMA_BLANKET_FILTER_ENABLED=False,
         WT_PERCENTILE_ENTRY_GATE_ENABLED=False,
         MOM3_FILTER_TF="15m",
+        MOM3_LONG_THRESHOLD=-1.0,
+        MOM3_SHORT_THRESHOLD=1.0,
         DC_BREAK_FILTER_TF="15m",
         ENTRY_DC_TF="15m",
         ENTRY_DC_BUFFER_PCT=0.1,
@@ -355,14 +362,183 @@ def test_live_reentry_min_pass_enabled_count_boundaries_and_disabled_lane():
     assert live_reentry_min_pass(
         {"wt1_15m": "invalid"}, True, cfg, 10.0, min_pass=1, enabled=False
     ) == (True, 0, 0, 0, {})
+    from vec_decisions.reentry_triggers import should_apply_fresh_open_ftf
+
+    assert not should_apply_fresh_open_ftf(0.0, True, True)
+    assert should_apply_fresh_open_ftf(0.0, False, True)
+    assert one and passed1 == 3
+    reached_queue = False
+    if one:
+        reached_queue = True
+    assert reached_queue
 
 
 def test_native_epq_min_pass_is_reentry_only_and_fail_closed_on_invalid_masks():
     source = (Path(__file__).resolve().parents[1] / "ez_positions_quick.py").read_text()
     assert "if curr_amt == 0 and _vec_reentry_fire and _reentry_ftf_enabled:" in source
     assert "_live_reentry_min_pass(indicators, is_long, _reentry_cfg_view" in source
+    assert "if _should_apply_fresh_open_ftf(curr_amt, _vec_reentry_fire):" in source
     assert "[REENTRY_MIN_PASS_INVALID]" in source
     assert "[WORKER_FTF_VETO]" in source
+
+
+def _epq_reentry_native_harness(source):
+    tree = ast.parse(source)
+    target = None
+
+    def find_suite(statements):
+        nonlocal target
+        for index, statement in enumerate(statements):
+            if isinstance(statement, ast.If) and ast.unparse(statement.test) == "curr_amt == 0 and _vec_reentry_fire and _reentry_ftf_enabled":
+                target = statements[index:]
+                return True
+            for field in ("body", "orelse", "finalbody"):
+                children = getattr(statement, field, None)
+                if isinstance(children, list) and find_suite(children):
+                    return True
+        return False
+
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and find_suite(node.body):
+            break
+    assert target is not None
+    statements = []
+    for statement in target:
+        statements.append(copy.deepcopy(statement))
+        if isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Await):
+            call = statement.value.value
+            if isinstance(call, ast.Call) and ast.unparse(call.func) == "tracker_manager.set_processing":
+                break
+    else:
+        raise AssertionError("native harness did not include awaited tracker set_processing")
+    function = ast.AsyncFunctionDef(
+        name="native_epq_reentry_harness",
+        args=ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]),
+        body=statements,
+        decorator_list=[],
+    )
+    module = ast.fix_missing_locations(ast.Module(body=[function], type_ignores=[]))
+    return compile(module, "ez_positions_quick.py:native_reentry_harness", "exec")
+
+
+def test_actual_epq_branch_minpass_controls_awaited_queue_and_fresh_lane(monkeypatch):
+    source = (Path(__file__).resolve().parents[1] / "ez_positions_quick.py").read_text()
+    code = _epq_reentry_native_harness(source)
+    config = SimpleNamespace(
+        MODE="crypto",
+        BASE_TF="15m",
+        ENTRY_CHOKE_GATES_ON_FINAL=False,
+        ENTRY_VET_RELAX_MODE=3,
+        FUNDING_GATE_ENABLED=False,
+        WT_DIV_ENTRY_GATE_ENABLED=False,
+        OI_CONFIRM_ENABLED=False,
+        HTF_DIRECTION_GATE_ENABLED=False,
+        EMA_BLANKET_FILTER_ENABLED=False,
+        WT_PERCENTILE_ENTRY_GATE_ENABLED=False,
+        MOM3_FILTER_TF="15m",
+        MOM3_LONG_THRESHOLD=-1.0,
+        MOM3_SHORT_THRESHOLD=1.0,
+        DC_BREAK_FILTER_TF="15m",
+        ENTRY_DC_TF="15m",
+        ENTRY_DC_BUFFER_PCT=0.1,
+        REENTRY_ENTRY_FILTER_ENABLED=True,
+        REENTRY_FILTER_MIN_PASS=1,
+    )
+    indicators = {
+        "close_3bar_15m": 11.0,
+        "dc_high_15m_prev": 11.0,
+        "dc_low_15m": 9.0,
+        "dc_high_15m": 9.0,
+    }
+    queue_calls = []
+    log_rows = []
+    logger = SimpleNamespace(
+        info=lambda *args, **kwargs: log_rows.append(("info", args)),
+        warning=lambda *args, **kwargs: log_rows.append(("warning", args)),
+        error=lambda *args, **kwargs: log_rows.append(("error", args)),
+    )
+
+    class Tracker:
+        async def set_processing(self, key):
+            queue_calls.append(key)
+
+    class Policy:
+        def __init__(self):
+            self.calls = 0
+
+        def parity_filter_tf_gates(self, *args, **kwargs):
+            self.calls += 1
+            return True, "PASS"
+
+    policy = Policy()
+
+    def run(min_pass=1, reentry=True):
+        namespace = {
+            "config": config,
+            "_psym_get": lambda symbol, side, name, default=None: (
+                min_pass if name == "REENTRY_FILTER_MIN_PASS" else
+                True if name == "REENTRY_ENTRY_FILTER_ENABLED" else default
+            ),
+            "symbol": "TESTUSDC",
+            "position_side": "long",
+            "position_key": "TESTUSDC_LONG",
+            "curr_amt": 0.0,
+            "_vec_reentry_fire": reentry,
+            "_reentry_ftf_enabled": True,
+            "_should_apply_fresh_open_ftf": should_apply_fresh_open_ftf,
+            "indicators": indicators,
+            "is_long": True,
+            "current_price": 10.0,
+            "now": 1_800_000_000.0,
+            "logger": logger,
+            "trading_policy": policy,
+            "_family_lane_tags": lambda *args: [],
+            "tracker_manager": Tracker(),
+            "account_key": "test",
+            "qty": 1.0,
+            "reason": "REENTRY_HIGHER_LOW",
+        }
+        exec(code, namespace)
+        asyncio.run(namespace["native_epq_reentry_harness"]())
+
+    run(min_pass=1, reentry=True)
+    assert queue_calls == ["TESTUSDC_LONG"], log_rows
+    assert policy.calls == 0
+
+    queue_calls.clear()
+    run(min_pass=5, reentry=True)
+    assert queue_calls == []
+    assert policy.calls == 0
+
+    run(min_pass=1, reentry=False)
+    assert queue_calls == ["TESTUSDC_LONG"]
+    assert policy.calls == 1
+
+
+def test_snapshot_config_view_supports_predicate_local_switch_copy():
+    base = SimpleNamespace(
+        MODE="crypto",
+        BASE_TF="15m",
+        ENTRY_CHOKE_GATES_ON_FINAL=False,
+        FUNDING_GATE_ENABLED=False,
+        WT_DIV_ENTRY_GATE_ENABLED=False,
+        OI_CONFIRM_ENABLED=False,
+        HTF_DIRECTION_GATE_ENABLED=False,
+        EMA_BLANKET_FILTER_ENABLED=False,
+        WT_PERCENTILE_ENTRY_GATE_ENABLED=False,
+        BREAKOUT_RETEST_FILTER_TF="15m",
+        BREAKOUT_RETEST_ARMED_ENABLED=False,
+        DC_BREAK_FILTER_TF="OFF",
+        ENTRY_DC_TF="OFF",
+    )
+    view = SnapshotConfigView(base, lambda name, default: getattr(base, name, default))
+    masks = vector_entry_mask_snapshot(
+        {"dc_high_15m_prev": 9.0, "low_15m": 8.0}, True, view, 10.0
+    )
+    assert "BREAKOUT_RETEST_FILTER_TF" not in masks
+    view.BREAKOUT_RETEST_ARMED_ENABLED = True
+    cloned = copy.copy(view)
+    assert cloned.BREAKOUT_RETEST_ARMED_ENABLED is True
 
 
 def test_full_provider_matches_active_vector_names_for_single_generic_gate():

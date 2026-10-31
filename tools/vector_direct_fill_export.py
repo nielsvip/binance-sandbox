@@ -437,6 +437,8 @@ def export(
         }
         if isinstance(r.get("decision_provenance"), dict):
             emitted["decision_provenance"] = r["decision_provenance"]
+        if isinstance(r.get("account_execution_context"), dict):
+            emitted["account_execution_context"] = account_snapshot_for_export(root, r.get("acct"), r.get("ss"), r["account_execution_context"])
         if isinstance(r.get("actual_profit_check"), dict):
             emitted["actual_profit_check"] = r["actual_profit_check"]
         if isinstance(r.get("stop_trigger_authorization"), dict):
@@ -447,6 +449,30 @@ def export(
     stats["broker_calls"] = calls
     emit(json.dumps({"_stats": stats, "venue": venue, "host_now": now}))
     return stats
+
+
+def account_snapshot_for_export(root, account, symbol_side, reference):
+    result = dict(reference)
+    try:
+        digest = str(reference.get("snapshot_sha256") or "")
+        relative = str(reference.get("snapshot_path") or "")
+        if not re.fullmatch(r"[a-z0-9]+", str(account)) or not re.fullmatch(r"[A-Z0-9_.-]+_(LONG|SHORT)", str(symbol_side)) or not re.fullmatch(r"[0-9a-f]{64}", digest):
+            raise ValueError("invalid snapshot identity")
+        expected = f"snapshots/{account}/{symbol_side}/{digest}.json"
+        base = (Path(root) / "data" / "vector_direct" / "account_execution").resolve()
+        path = (base / relative).resolve()
+        if relative != expected or not path.is_relative_to(base):
+            raise ValueError("snapshot reference escapes account scope")
+        snapshot = json.loads(path.read_text())
+        if snapshot.get("account") != account or snapshot.get("sym_side") != symbol_side or snapshot.get("snapshot_sha256") != digest:
+            raise ValueError("snapshot identity differs from order")
+        canonical = json.dumps({key: value for key, value in snapshot.items() if key != "snapshot_sha256"}, sort_keys=True, separators=(",", ":"), default=str).encode()
+        if hashlib.sha256(canonical).hexdigest() != digest:
+            raise ValueError("snapshot content hash mismatch")
+        result.update(snapshot=snapshot, snapshot_verification="VERIFIED")
+    except (OSError, ValueError, TypeError, AttributeError) as exc:
+        result.update(snapshot_verification="UNVERIFIED", snapshot_error=str(exc)[:200])
+    return result
 
 
 def export_decision_states(root: Path, hashes, emit=print, max_states=32) -> dict:

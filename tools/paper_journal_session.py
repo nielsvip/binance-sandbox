@@ -69,12 +69,14 @@ class JournalForwardSession:
         *,
         code_path: str | Path,
         mode: str,
+        result_sink=None,
     ):
         self.journal = journal
         self.stores = stores
         self.apply_frame = apply_frame
         self.code_path = Path(code_path)
         self.mode = mode
+        self.result_sink = result_sink
         self._identity = json.loads(journal.identity)
         self._frames = None
         self._cursor = 0
@@ -221,6 +223,8 @@ class JournalForwardSession:
             "positions": self._position_snapshot(),
         }
         self.journal.record_receipt(ts, receipt)
+        if self.result_sink is not None:
+            self.result_sink.record_step(ts, receipt)
         self._event_offset = len(self._executed_trades)
         self._cursor += 1
         self._pending_ts = None
