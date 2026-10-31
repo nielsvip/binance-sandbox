@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T17:41:01Z",
+ "ts": "2026-10-31T17:46:12Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 0,
    "open_positions": 17,
-   "unrealised_usd": 2.72,
+   "unrealised_usd": 2.73,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -59,7 +59,7 @@
    }
   },
   "ang": {
-   "fills_6h": 7,
+   "fills_6h": 4,
    "open_positions": 3,
    "unrealised_usd": -0.0,
    "pos_mismatch": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 0,
    "open_positions": 3,
-   "unrealised_usd": 0.03,
+   "unrealised_usd": 0.01,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -120,93 +120,93 @@
    "flz": 26
   }
  },
- "reconcile": {},
+ "reconcile": {
+  "fin": {
+   "symbols": 0,
+   "broker_fills": 0,
+   "matched": 0,
+   "appended": 0
+  },
+  "men": {
+   "symbols": 17,
+   "broker_fills": 0,
+   "matched": 0,
+   "appended": 0
+  }
+ },
  "process": {
   "fin": {
    "pids": [
-    "19581"
+    "53191"
    ],
-   "starts_30m": 1,
-   "log_age_s": 1725.0
+   "starts_30m": 2,
+   "log_age_s": -0.0
   },
   "men": {
-   "pids": [],
+   "pids": [
+    "49513"
+   ],
    "starts_30m": 1,
-   "log_age_s": 3263.0
+   "log_age_s": 16.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 26.0
+   "log_age_s": 22.0
   },
   "inf": {
    "pids": [
     "72669"
    ],
    "starts_30m": 1,
-   "log_age_s": 24.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "79093"
    ],
    "starts_30m": 1,
-   "log_age_s": 13.0
+   "log_age_s": 262.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 46723.0
+   "log_age_s": 47045.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 47039.0
+   "log_age_s": 47361.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T17:41:01Z",
+   "ts": "2026-10-31T17:46:13Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:BANDUSDT_LONG",
    "evidence": "REDUCE CYCLE_TP_TIERED_T2_0.50pct_gain0.86 decided 2026-10-31T15:08:43Z bar=2026-10-31T13:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T17:41:01Z",
+   "ts": "2026-10-31T17:46:13Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:BANDUSDT_LONG",
    "evidence": "REDUCE SATOSHIT_EXIT_PARTIAL 0.70 decided 2026-10-31T15:08:43Z bar=2026-10-31T13:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T17:41:03Z",
+   "ts": "2026-10-31T17:46:26Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
-   "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 1725s"
-  },
-  {
-   "ts": "2026-10-31T17:41:03Z",
-   "severity": "CRITICAL",
-   "kind": "PROCESS_DOWN",
-   "key": "men",
-   "evidence": "no ez_manage.py --account men process"
-  },
-  {
-   "ts": "2026-10-31T17:41:03Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "men",
-   "evidence": "ez_manage_men.log not written for 3263s"
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 262s"
   }
  ],
  "alert_counts": {
   "VEC_DECISION_NOT_FILLED": 2,
-  "STALE_LOG": 2,
-  "PROCESS_DOWN": 1
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -266,5 +266,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.77
+ "sweep_s": 14.09
 }
