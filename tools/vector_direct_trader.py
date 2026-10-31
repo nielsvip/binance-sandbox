@@ -352,7 +352,7 @@ def entry_allowed(root: Path, venue: str, acct: str, ss: str) -> bool:
 
 
 def deterioration_halts(root: Path) -> dict:
-    """Read daily same-settings 30D gain drops of at least 15 pp. Exits remain allowed."""
+    """Read daily same-settings 30D gain drops of at least 15 pp. Crypto held sides close on a halt."""
     doc = read_json(root / "data" / "deterioration_halt.json", {}) or {}
     return {str(k).upper(): v for k, v in (doc.get("halts") or {}).items()} if isinstance(doc, dict) else {}
 

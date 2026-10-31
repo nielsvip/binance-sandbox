@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import numpy as np
+import pytest
 
 from vec_decisions.generic_filter_tf import FILTER_TF_MAP, _cond
 from vec_decisions.reentry_entry_filter import (
@@ -221,3 +222,28 @@ def test_full_provider_matches_active_vector_names_for_single_generic_gate():
     assert native == {name: True for name in vector_names}
     assert coverage["vector_active_count"] == coverage["native_active_count"] == 2
     assert coverage["producer_sets_equal"]
+
+
+def test_snapshot_provider_ignores_unrelated_text_metadata_but_rejects_bad_indicator_values():
+    cfg = SimpleNamespace(
+        MODE="crypto",
+        BASE_TF="15m",
+        ENTRY_CHOKE_GATES_ON_FINAL=False,
+        ENTRY_VET_RELAX_MODE=3,
+        FUNDING_GATE_ENABLED=False,
+        WT_DIV_ENTRY_GATE_ENABLED=False,
+        HTF_DIRECTION_GATE_ENABLED=False,
+        OI_CONFIRM_ENABLED=False,
+        EMA_BLANKET_FILTER_ENABLED=False,
+        WT_PERCENTILE_ENTRY_GATE_ENABLED=False,
+        DC_BREAK_FILTER_TF="OFF",
+        ENTRY_DC_TF="OFF",
+    )
+    assert vector_entry_mask_snapshot(
+        {"symbol": "1000PEPEUSDC", "side": "LONG", "reason": "metadata"},
+        True,
+        cfg,
+        1.0,
+    ) == {}
+    with pytest.raises(ValueError, match="wt1_15m"):
+        vector_entry_mask_snapshot({"wt1_15m": "unknown"}, True, cfg, 1.0)

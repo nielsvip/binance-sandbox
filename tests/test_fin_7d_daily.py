@@ -19,7 +19,8 @@ spec.loader.exec_module(F)
 
 GOOD_PROGRESS = {"window_days": 7, "result_done_utc": "2026-10-31T01:00:00Z", "final_path": "/x.xlsx",
                  "publish_class": "FULL", "not_compliant": None, "unprotected": None,
-                 "source_30d_sha256": "abc", "live_verified": {"parity": [True]}}
+                 "source_30d_sha256": "abc", "live_verified": {"parity": [True]},
+                 "baseline_gain": 3.0, "cumulative_gain": 7.8621926202429995}
 
 
 def result(valid=True, rc=0, why=None, progress=None):
@@ -70,7 +71,7 @@ def _row(tier, age_s=0.0):
 def test_vector_only_sets_are_not_tradeable_by_default(monkeypatch, tmp_path):
     on_disk, doc = _publish(monkeypatch, tmp_path, {"AUSDT_LONG": _row("vector_only")}, False)
     assert on_disk["sides"] == {}, "fin must stay flat rather than trade an unverified set"
-    assert doc["counts"] == {"tradeable": 0, "vector_only": 1, "validated": 0}
+    assert doc["counts"] == {"tradeable": 0, "vector_only": 1, "validated": 0, "redo": 0}
     assert on_disk["detail"]["AUSDT_LONG"]["tier"] == "vector_only", "the set is still RECORDED, just not tradeable"
 
 
@@ -102,3 +103,28 @@ def test_the_published_window_matches_the_traders_window():
 def test_s1_is_not_a_compute_worker():
     """S1 trades the venue and runs the NPZ/state chain; the trc runner gives it 0 slots for the same reason."""
     assert not any(h.startswith("s1") for h in F.WORKERS)
+
+
+def test_a_board_that_schedules_its_own_redo_is_never_a_result():
+    """"[NOT-FINISHED] <ss> REDO scheduled — herd relaunches into a fresh fill" is a request, not an answer."""
+    r = result(valid=False, why="7D optimization has not completed",
+               progress=dict(GOOD_PROGRESS, result_done_utc=None, final_path=None, live_verified={}))
+    r["redo"] = True
+    tier, why = F.classify(r)
+    assert tier == "redo" and "relaunched, not published" in why
+
+
+def test_a_redo_is_not_tradeable_even_with_the_opt_in(monkeypatch, tmp_path):
+    on_disk, doc = _publish(monkeypatch, tmp_path, {"AUSDT_LONG": _row("redo")}, True)
+    assert on_disk["sides"] == {} and doc["counts"]["redo"] == 1
+
+
+def test_a_board_with_no_gain_of_its_own_is_refused():
+    for gain in (None, 0.0):
+        p = dict(GOOD_PROGRESS, result_done_utc=None, final_path=None, live_verified={}, cumulative_gain=gain)
+        assert F.classify(result(valid=False, why="x", progress=p))[0] is None, gain
+
+
+def test_a_real_vector_only_board_still_passes():
+    p = dict(GOOD_PROGRESS, result_done_utc=None, final_path=None, live_verified={}, cumulative_gain=7.86)
+    assert F.classify(result(valid=False, why="x", progress=p))[0] == "vector_only"

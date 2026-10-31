@@ -116,7 +116,7 @@ def _wt_4h_vel(npz, n, is_long, cfg, _safe):
     mask = (against & kx_ok) if enabled else np.zeros(n, dtype=bool)
     # gate: live requires _pos_age_s > 360 (strict, 360s == 6.0 min) AND, if REQUIRE_PROFIT,
     #   _pp_g >= COMMISSION_BUFFER_PCT (gain in %, default 0.10%).
-    gate = {"age_min_minutes": 6.0}
+    gate = {"age_min_minutes": 6.0, "exit_family": "WT_4H_VEL_EXIT"}
     if _fbool(cfg, "WT_4H_VEL_EXIT_REQUIRE_PROFIT", True):
         gate["gain_op"] = ">="
         gate["gain_thr"] = _fnum(cfg, "COMMISSION_BUFFER_PCT", 0.10)

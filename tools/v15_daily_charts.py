@@ -837,7 +837,7 @@ def enforce(manifest=None, partial=False) -> dict:
     doc = {"schema": "daily-chart-catchup-v1", "run_id": manifest["run_id"], "generated_utc": iso(utcnow()), "until": time.time() + 36 * 3600, "rows": rows, "threshold_halt_pp": 15.0, "mode": "V18_CATCHUP=1"}
     atomic_write(CATCHUP_FILE, json.dumps(doc, indent=1, sort_keys=True))
     halts = {r["symside"]: {"halted_utc": iso(utcnow()), "rechecked_utc": r["calculated_utc"], "drop_pp": r["drop_pp"], "board_published_utc": r["board_published_utc"], "set_md5": r["set_md5"], "reason": "same-settings 30D gain fell by at least 15 pp"} for r in rows if r["drop_pp"] >= 15.0}
-    halt_doc = {"updated_utc": iso(utcnow()), "semantics": "no OPEN or AUGMENT for drops >=15 pp; CLOSE and REDUCE allowed", "halts": halts}
+    halt_doc = {"updated_utc": iso(utcnow()), "semantics": "drops >=15 pp forbid OPEN/AUGMENT; live crypto closes held positions; stock held positions follow strategy exits", "halts": halts}
     atomic_write(HALT_FILE, json.dumps(halt_doc, indent=1, sort_keys=True))
     status = sync_catchup_queue(doc)
     halt_status = push_halts(halt_doc)

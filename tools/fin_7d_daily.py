@@ -44,6 +44,8 @@ BOARD_TIMEOUT_S = int(os.environ.get("FIN7D_BOARD_TIMEOUT_S", "3600"))
 POLL_S = int(os.environ.get("FIN7D_POLL_S", "60"))
 DEADLINE_S = int(os.environ.get("FIN7D_DEADLINE_S", str(10 * 3600)))
 ALLOW_VECTOR_ONLY = os.environ.get("FIN7D_ALLOW_VECTOR_ONLY", "0") == "1"
+# a board that declares itself NOT-FINISHED is relaunched this many times before the side is given up on
+REDO_ATTEMPTS = int(os.environ.get("FIN7D_REDO_ATTEMPTS", "2"))
 MAX_AGE_S = float(os.environ.get("FIN7D_MAX_AGE_S", str(30 * 3600)))
 SSH = ["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "StrictHostKeyChecking=accept-new"]
 S1 = ("s1-int", "s1-pub", "niels@10.0.0.3")
@@ -114,16 +116,24 @@ def fetch_result(host, ss, day):
         verdict = json.loads(out)
     except ValueError:
         return None
+    # the progress file reaches 8 MB (its `done` map holds every cell), so only the scalars are pulled out of it
     rc2, out2, _ = sh(host, f"python3 -c \"import json;d=json.load(open('/home/niels/{rdir}/progress/{ss}_7d_progress.json'));"
                             f"print(json.dumps({{k:d.get(k) for k in ('window_days','result_done_utc','final_path','publish_class',"
-                            f"'not_compliant','unprotected','source_30d_sha256','live_verified')}}))\" 2>/dev/null", 40)
+                            f"'not_compliant','unprotected','source_30d_sha256','live_verified','baseline_gain','cumulative_gain')}}))\" 2>/dev/null", 60)
     progress = {}
     if not rc2 and out2.strip():
         try:
             progress = json.loads(out2)
         except ValueError:
             progress = {}
-    return {"verdict": verdict, "progress": progress, "host": host}
+    # A board can declare ITSELF unfinished and ask to be relaunched: "[NOT-FINISHED] <ss> REDO scheduled — no publish
+    # this run, herd relaunches into a fresh fill". That is not a result, however complete the sheet looks.
+    _, redo, _ = sh(host, f"grep -c -e 'NOT-FINISHED' -e 'REDO scheduled' ~/{rdir}/pilot.log 2>/dev/null", 30)
+    try:
+        redo_n = int(redo.strip() or 0)
+    except ValueError:
+        redo_n = 0
+    return {"verdict": verdict, "progress": progress, "host": host, "redo": redo_n > 0}
 
 
 def classify(result):
@@ -141,6 +151,11 @@ def classify(result):
         return None, f"not a 7D board: {why[:120]}"
     if progress.get("not_compliant") or progress.get("unprotected") or progress.get("publish_class") == "BEST_EFFORT":
         return None, f"failed the pilot qualification gate: {why[:120]}"
+    if result.get("redo"):
+        return "redo", "the board declared itself NOT-FINISHED and scheduled a REDO — it must be relaunched, not published"
+    gain = progress.get("cumulative_gain")
+    if gain is None or float(gain) == 0.0:
+        return None, f"no result of its own (cumulative_gain={gain}, baseline_gain={progress.get('baseline_gain')})"
     live = progress.get("live_verified") or {}
     if not progress.get("result_done_utc") or not progress.get("final_path") or not live:
         return "vector_only", "computed and vector-verified; the pilot never recorded live/vector parity"
@@ -153,12 +168,14 @@ def publish(sides, day, meta):
     fresh = {ss: row for ss, row in sides.items() if now - float(row["staged_epoch"]) <= MAX_AGE_S}
     tradeable = {ss: row["staged_epoch"] for ss, row in fresh.items()
                  if row["tier"] == "validated" or (row["tier"] == "vector_only" and ALLOW_VECTOR_ONLY)}
+    # "redo" is recorded for the report and is NEVER tradeable under any flag
     doc = {"source": "fin_7d_daily", "venue": "crypto", "scope": SCOPE, "account": "fin", "book": "men",
            "day": day, "epoch": now, "written_at": stamp(now), "max_age_s": MAX_AGE_S,
            "allow_vector_only": ALLOW_VECTOR_ONLY, "sides": tradeable,
            "detail": {ss: {k: row[k] for k in ("tier", "why", "host", "staged_utc")} for ss, row in fresh.items()},
            "counts": {"tradeable": len(tradeable), "vector_only": sum(1 for r in fresh.values() if r["tier"] == "vector_only"),
-                      "validated": sum(1 for r in fresh.values() if r["tier"] == "validated")},
+                      "validated": sum(1 for r in fresh.values() if r["tier"] == "validated"),
+                      "redo": sum(1 for r in fresh.values() if r["tier"] == "redo")},
            "meta": meta,
            "contract": "sides{} are the ONLY sym_sides fin may enter; a side absent or older than max_age_s is exit-only"}
     PUBLISHED.parent.mkdir(parents=True, exist_ok=True)
@@ -202,7 +219,7 @@ def run(day=None, dry_run=False):
         + (" | DRY RUN" if dry_run else ""))
     if dry_run:
         return 0
-    pending, inflight, done = list(sides), {}, {}
+    pending, inflight, done, attempts = list(sides), {}, {}, {}
     while (pending or inflight) and time.time() - started < DEADLINE_S:
         for host in hosts:
             free = WORKERS[host] - sum(1 for h in inflight.values() if h == host)
@@ -214,8 +231,14 @@ def run(day=None, dry_run=False):
                     free -= 1
                     log(f"launched {ss} on {host}")
                 elif answer.startswith("HOLD_MEM"):
-                    pending.append(ss)
+                    pending.append(ss)   # the host is short of memory right now; try it again next poll
                     free = 0
+                elif fetch_result(host, ss, day) is not None:
+                    # a launcher.json already exists from an earlier pass, so the board will never relaunch here
+                    # (`test ! -e`). Hand it to the fetch path to be classified instead of re-queueing it forever.
+                    inflight[ss] = host
+                    free -= 1
+                    log(f"{ss} already has a result on {host} — classifying it instead of relaunching")
                 else:
                     pending.append(ss)
                     log(f"{ss} on {host}: {answer}")
@@ -226,6 +249,19 @@ def run(day=None, dry_run=False):
                 continue
             inflight.pop(ss, None)
             tier, why = classify(result)
+            if tier == "redo":
+                # the board asked for a fresh fill; give it one, bounded, instead of losing the side for the day
+                n = attempts.get(ss, 0) + 1
+                attempts[ss] = n
+                if n <= REDO_ATTEMPTS:
+                    sh(host, f"rm -f ~/binance-sandbox/data/preopen_7d/fin_run/{day}/results/{ss}/launcher.json", 30)
+                    pending.append(ss)
+                    log(f"REDO {ss} on {host}: relaunching (attempt {n + 1} of {REDO_ATTEMPTS + 1})")
+                else:
+                    done[ss] = {"tier": "redo", "why": f"{why} (gave up after {n} relaunches)", "host": host,
+                                "staged_epoch": time.time(), "staged_utc": stamp()}
+                    log(f"GAVE UP {ss} on {host}: still asking for a REDO after {n} relaunches")
+                continue
             if tier:
                 done[ss] = {"tier": tier, "why": why, "host": host, "staged_epoch": time.time(), "staged_utc": stamp()}
                 log(f"FINISHED {ss} on {host}: {tier} — {why}")

@@ -20,12 +20,19 @@ _INDICATOR_STRING_CODES = {
     "wt_composite_bias": {"SHORT": -1, "NEUTRAL": 0, "LONG": 1},
     "ha": {"red": -1, "neutral": 0, "green": 1},
 }
+_ENTRY_INDICATOR_PREFIXES = (
+    "wt", "stoch_", "k_", "d_", "ha_", "ema_", "sma_", "bb_", "dc_",
+    "rsi_", "atr_", "oi_", "mfi_", "close_", "open_", "high_", "low_",
+    "volume_", "relative_volume", "choppiness_", "clenow", "bar_", "funding_",
+    "squeeze_", "div_", "momentum_", "vwap_", "adx_", "basis_",
+)
 
 
 def _snapshot_code(key, value):
-    if isinstance(value, str):
+    if isinstance(value, (str, np.str_)):
+        value = str(value)
         for prefix, mapping in _INDICATOR_STRING_CODES.items():
-            if key.startswith(prefix + "_") and value in mapping:
+            if (key == prefix or key.startswith(prefix + "_")) and value in mapping:
                 return mapping[value]
     return value
 
@@ -112,7 +119,10 @@ def vector_entry_mask_snapshot(indicators, is_long, cfg, current_price, timestam
             value = _snapshot_code(key, value.decode() if isinstance(value, bytes) else value)
             npz[key] = np.asarray([float(value)], dtype=np.float64)
         except (TypeError, ValueError, OverflowError):
-            continue
+            if key == "timestamp" or key == "_tick_ts" or key.startswith("timestamp_"):
+                continue
+            if key.startswith(_ENTRY_INDICATOR_PREFIXES):
+                raise ValueError(f"unmapped native indicator field for vector mask parity: {key}={value!r}")
     n = 1
     close = np.asarray([float(current_price or 0.0)], dtype=np.float64)
 

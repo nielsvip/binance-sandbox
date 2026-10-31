@@ -16034,7 +16034,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         try:
             _mh_type = str(event.get("type") or "").upper()
             if _mh_type in ("CLOSE", "REDUCE"):
-                _mh_reason = str(event.get("exit_reason") or event.get("reason") or "")
+                _mh_reason = str(event.get("exit_family") or event.get("exit_reason") or event.get("reason") or "")
                 # USER 2026-10-27: ONE name, ONE function, ONE value. The old
                 # second call to a MIN_HOLD_BARS_BEFORE_EXIT gate is gone; this
                 # single hold is overridden only by FIXED_STOP (live=False here
@@ -16047,8 +16047,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _mh_gain = event.get("pnl_pct")
                 if _mh_gain is None:
                     _mh_gain = event.get("gain")
+                _mh_held_bars = int(event.get("bars_held", i - int((_bar_pos_snapshot or {}).get("entry_bar", i - bars_in_pos))))
                 _mh_refuse, _mh_why = _min_hold_gate.refuse_bars(
-                    bars_in_pos, cfg, _mh_type, _mh_reason, live=False,
+                    _mh_held_bars, cfg, _mh_type, _mh_reason, live=False,
                     gain_pct=_mh_gain,
                 )
                 if _mh_refuse:
@@ -21276,6 +21277,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "pnl_pct": float(_pct),
                         "deployed": pos["deployed"],
                         "reason": _sx_reason,
+                        "exit_family": _sg.get("exit_family", ""),
                         "type": "CLOSE",
                         "ts": _tssx,
                         "price": float(px),

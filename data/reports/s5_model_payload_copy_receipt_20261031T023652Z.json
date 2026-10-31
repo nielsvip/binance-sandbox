@@ -1,0 +1,195 @@
+{
+  "bytes": 78917651,
+  "created_at_utc": "2026-10-31T02:38:48.868832+00:00",
+  "destination_root": "/Volumes/WD25/binance_archive/s5_model_payloads_20261031T023652Z",
+  "destination_volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+  "file_count": 8,
+  "files": [
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s5_model_payloads_20261031T023652Z/A/brain_union/v18_brain_CRYPTO_LONG.json",
+      "matches_s5_manifest_size_md5": true,
+      "md5": "039e22dc97db0719c6d77e79f8ed31eb",
+      "mtime_ns": 1793144074914953941,
+      "path": "A/brain_union/v18_brain_CRYPTO_LONG.json",
+      "pre_copy_md5": "039e22dc97db0719c6d77e79f8ed31eb",
+      "pre_copy_mtime_ns": 1793144074914953941,
+      "pre_copy_sha256": "54be19684fedc86750e1b54c5c75983d17456c4bd77ac180ced9e3a69bae3e0c",
+      "pre_copy_size": 9803036,
+      "sha256": "54be19684fedc86750e1b54c5c75983d17456c4bd77ac180ced9e3a69bae3e0c",
+      "size": 9803036,
+      "source_unchanged_from_pre_copy_to_post_copy": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s5_model_payloads_20261031T023652Z/A/brain_union/v18_brain_CRYPTO_SHORT.json",
+      "matches_s5_manifest_size_md5": true,
+      "md5": "83cd79779c6810f9fe09c32c1a42186d",
+      "mtime_ns": 1793144097718963434,
+      "path": "A/brain_union/v18_brain_CRYPTO_SHORT.json",
+      "pre_copy_md5": "83cd79779c6810f9fe09c32c1a42186d",
+      "pre_copy_mtime_ns": 1793144097718963434,
+      "pre_copy_sha256": "ef6445e415f1a8e7a7ab1461b83119af2b01e9474d460a25520567f81b3ba1a9",
+      "pre_copy_size": 9787483,
+      "sha256": "ef6445e415f1a8e7a7ab1461b83119af2b01e9474d460a25520567f81b3ba1a9",
+      "size": 9787483,
+      "source_unchanged_from_pre_copy_to_post_copy": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s5_model_payloads_20261031T023652Z/A/brain_union/v18_brain_STOCKS_LONG.json",
+      "matches_s5_manifest_size_md5": true,
+      "md5": "9456e29ca2bf07a1a20030295823d189",
+      "mtime_ns": 1793144125414975133,
+      "path": "A/brain_union/v18_brain_STOCKS_LONG.json",
+      "pre_copy_md5": "9456e29ca2bf07a1a20030295823d189",
+      "pre_copy_mtime_ns": 1793144125414975133,
+      "pre_copy_sha256": "a82e97fd6bf0c06907ceb9f855c645369be3e03f406f00d68a9a10bbac43dd24",
+      "pre_copy_size": 9847158,
+      "sha256": "a82e97fd6bf0c06907ceb9f855c645369be3e03f406f00d68a9a10bbac43dd24",
+      "size": 9847158,
+      "source_unchanged_from_pre_copy_to_post_copy": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s5_model_payloads_20261031T023652Z/A/brain_union/v18_brain_STOCKS_SHORT.json",
+      "matches_s5_manifest_size_md5": true,
+      "md5": "6107e18da1f193a3adcf030a82bd500d",
+      "mtime_ns": 1793144153042986982,
+      "path": "A/brain_union/v18_brain_STOCKS_SHORT.json",
+      "pre_copy_md5": "6107e18da1f193a3adcf030a82bd500d",
+      "pre_copy_mtime_ns": 1793144153042986982,
+      "pre_copy_sha256": "21cdffb06b9262ed47d4d7665ec280ec6514b2988d711835ee940d080b933923",
+      "pre_copy_size": 9929703,
+      "sha256": "21cdffb06b9262ed47d4d7665ec280ec6514b2988d711835ee940d080b933923",
+      "size": 9929703,
+      "source_unchanged_from_pre_copy_to_post_copy": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s5_model_payloads_20261031T023652Z/B/brain_union/v18_brain_CRYPTO_LONG.json",
+      "matches_s5_manifest_size_md5": true,
+      "md5": "da6cefb2212259e032b10d37a40593d3",
+      "mtime_ns": 1793165364285313791,
+      "path": "B/brain_union/v18_brain_CRYPTO_LONG.json",
+      "pre_copy_md5": "da6cefb2212259e032b10d37a40593d3",
+      "pre_copy_mtime_ns": 1793165364285313791,
+      "pre_copy_sha256": "2b6c4b639ec42648da805ef52c296df894bfecdcebfd90b0c67cb0869c9bb216",
+      "pre_copy_size": 9932348,
+      "sha256": "2b6c4b639ec42648da805ef52c296df894bfecdcebfd90b0c67cb0869c9bb216",
+      "size": 9932348,
+      "source_unchanged_from_pre_copy_to_post_copy": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s5_model_payloads_20261031T023652Z/B/brain_union/v18_brain_CRYPTO_SHORT.json",
+      "matches_s5_manifest_size_md5": true,
+      "md5": "feb6df1f1885d390f53b36e8679902ee",
+      "mtime_ns": 1793165391277344272,
+      "path": "B/brain_union/v18_brain_CRYPTO_SHORT.json",
+      "pre_copy_md5": "feb6df1f1885d390f53b36e8679902ee",
+      "pre_copy_mtime_ns": 1793165391277344272,
+      "pre_copy_sha256": "27b22b93eb83486c98d2c2261879a7444cea8e5d2ab01331d6fd4138635cc5db",
+      "pre_copy_size": 9832434,
+      "sha256": "27b22b93eb83486c98d2c2261879a7444cea8e5d2ab01331d6fd4138635cc5db",
+      "size": 9832434,
+      "source_unchanged_from_pre_copy_to_post_copy": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s5_model_payloads_20261031T023652Z/B/brain_union/v18_brain_STOCKS_LONG.json",
+      "matches_s5_manifest_size_md5": true,
+      "md5": "ae8b00f04a89670d76f8c530416a9489",
+      "mtime_ns": 1793165421925379146,
+      "path": "B/brain_union/v18_brain_STOCKS_LONG.json",
+      "pre_copy_md5": "ae8b00f04a89670d76f8c530416a9489",
+      "pre_copy_mtime_ns": 1793165421925379146,
+      "pre_copy_sha256": "e863c7677368668ff4ba26632f7caad0a958a9b61bd01a91eada682c1bc0a59a",
+      "pre_copy_size": 9855567,
+      "sha256": "e863c7677368668ff4ba26632f7caad0a958a9b61bd01a91eada682c1bc0a59a",
+      "size": 9855567,
+      "source_unchanged_from_pre_copy_to_post_copy": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s5_model_payloads_20261031T023652Z/B/brain_union/v18_brain_STOCKS_SHORT.json",
+      "matches_s5_manifest_size_md5": true,
+      "md5": "3c80df61ee162c230ce44277ad853d66",
+      "mtime_ns": 1793165450577411989,
+      "path": "B/brain_union/v18_brain_STOCKS_SHORT.json",
+      "pre_copy_md5": "3c80df61ee162c230ce44277ad853d66",
+      "pre_copy_mtime_ns": 1793165450577411989,
+      "pre_copy_sha256": "3995ed664d98e6e97a1a74c41ac3c162653b4dfe6581ab42f90ba6e6a6737b76",
+      "pre_copy_size": 9929922,
+      "sha256": "3995ed664d98e6e97a1a74c41ac3c162653b4dfe6581ab42f90ba6e6a6737b76",
+      "size": 9929922,
+      "source_unchanged_from_pre_copy_to_post_copy": true
+    }
+  ],
+  "no_source_mutation": true,
+  "reference_manifest_host": "s5",
+  "reference_manifests": {
+    "A": {
+      "files": [
+        {
+          "built_from": "s6:/home/niels/v20_u4/A/brain_union",
+          "md5": "039e22dc97db0719c6d77e79f8ed31eb",
+          "name": "CRYPTO_LONG.json",
+          "size": 9803036
+        },
+        {
+          "built_from": "s6:/home/niels/v20_u4/A/brain_union",
+          "md5": "83cd79779c6810f9fe09c32c1a42186d",
+          "name": "CRYPTO_SHORT.json",
+          "size": 9787483
+        },
+        {
+          "built_from": "s6:/home/niels/v20_u4/A/brain_union",
+          "md5": "9456e29ca2bf07a1a20030295823d189",
+          "name": "STOCKS_LONG.json",
+          "size": 9847158
+        },
+        {
+          "built_from": "s6:/home/niels/v20_u4/A/brain_union",
+          "md5": "6107e18da1f193a3adcf030a82bd500d",
+          "name": "STOCKS_SHORT.json",
+          "size": 9929703
+        }
+      ],
+      "manifest_sha256": "3cbb2295bbfbb3502af4f7a1382b261b37e9a1019653838f92aab9e03ab52c0b"
+    },
+    "B": {
+      "files": [
+        {
+          "built_from": "s6:/home/niels/v20_u4/B/brain_union",
+          "md5": "da6cefb2212259e032b10d37a40593d3",
+          "name": "CRYPTO_LONG.json",
+          "size": 9932348
+        },
+        {
+          "built_from": "s6:/home/niels/v20_u4/B/brain_union",
+          "md5": "feb6df1f1885d390f53b36e8679902ee",
+          "name": "CRYPTO_SHORT.json",
+          "size": 9832434
+        },
+        {
+          "built_from": "s6:/home/niels/v20_u4/B/brain_union",
+          "md5": "ae8b00f04a89670d76f8c530416a9489",
+          "name": "STOCKS_LONG.json",
+          "size": 9855567
+        },
+        {
+          "built_from": "s6:/home/niels/v20_u4/B/brain_union",
+          "md5": "3c80df61ee162c230ce44277ad853d66",
+          "name": "STOCKS_SHORT.json",
+          "size": 9929922
+        }
+      ],
+      "manifest_sha256": "47d873fd7c6b015f734f90317b2e7954538c6b9eeca6605750b230fec4a51a2d"
+    }
+  },
+  "scope": "A/B brain_union model JSON payloads only; training state PKLs excluded (each >500MB)",
+  "source_host": "s6",
+  "source_root": "/home/niels/v20_u4",
+  "verification": "Pre-copy S6 size/SHA256/MD5/mtime records captured before rsync and reproduced exactly post-copy. All eight payloads match S5 A/B manifest MD5+size. WD SHA256/MD5/length match. No active trainer or open model output handles observed."
+}

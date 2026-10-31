@@ -74,16 +74,23 @@ def test_shared_scalar_and_vector_predicate_match_and_reject_invalid_bands():
     assert actual.shape == (4,)
 
 
-def test_bb_recovery_books_only_enabled_fee_positive_long_and_short_closes():
+def test_bb_recovery_books_only_enabled_fee_positive_long_and_short_reductions():
     for is_long, target, expected in ((True, 101.0, "LONG"), (False, 99.0, "SHORT")):
         result, cfg, npz = _simulate(is_long, target, enabled=True)
         assert cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER is True
         row = next(
             item for item in result["ledger"]
-            if item.get("type") == "CLOSE" and item.get("reason") == f"BB_RECOVERY_EXIT_TRADIER_{expected}"
+            if item.get("type") == "REDUCE"
+            and item.get("bar") == 12
+            and item.get("reason") == f"BB_RECOVERY_EXIT_TRADIER_{expected}"
         )
-        assert row["bar_exit"] == 12
-        assert row["pnl_dollars"] > 0.0
+        assert 0.0 < row["qty"] < cfg.START_POSITION_SIZE / npz["close"][0]
+        assert all(
+            item.get("reason") != f"BB_RECOVERY_EXIT_TRADIER_{expected}"
+            for item in result["ledger"]
+            if item.get("type") == "CLOSE"
+        )
+        assert positive_after_estimated_fees(1.0, cfg.COMMISSION_BUFFER_PCT)
         assert bb_recovery_exit_mask(
             npz["close"], npz["bb_upper_1h"], npz["bb_lower_1h"], npz["stoch_k_1h"], is_long
         )[12]
@@ -94,12 +101,13 @@ def test_bb_recovery_switch_off_and_below_fee_floor_do_not_book_close():
     assert cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER is False
     assert not [
         item for item in off["ledger"]
-        if item.get("type") == "CLOSE" and str(item.get("reason", "")).startswith("BB_RECOVERY_EXIT_TRADIER_")
+        if item.get("type") in ("CLOSE", "REDUCE") and str(item.get("reason", "")).startswith("BB_RECOVERY_EXIT_TRADIER_")
     ]
     below_fee, _, _ = _simulate(True, 100.01, enabled=True)
     assert not [
         item for item in below_fee["ledger"]
-        if item.get("type") == "CLOSE" and str(item.get("reason", "")).startswith("BB_RECOVERY_EXIT_TRADIER_")
+        if item.get("type") in ("CLOSE", "REDUCE")
+        and str(item.get("reason", "")).startswith("BB_RECOVERY_EXIT_TRADIER_")
     ]
     assert not positive_after_estimated_fees(0.08, 0.08)
     assert positive_after_estimated_fees(0.09, 0.08)
@@ -180,19 +188,21 @@ def test_tradier_recovery_only_bypasses_existing_noloss_when_fee_positive():
         assert cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER is True
         close = next(
             row for row in admitted["ledger"]
-            if row.get("type") == "CLOSE" and row.get("bar_exit") == 12
+            if row.get("type") == "REDUCE" and row.get("bar") == 12
+            and row.get("reason") == f"BB_RECOVERY_EXIT_TRADIER_{side}"
         )
         assert close["reason"] == f"BB_RECOVERY_EXIT_TRADIER_{side}"
+        assert 0.0 < close["qty"] < 5.0
 
         disabled, _ = _simulate_tradier_bypass(False, target, is_long)
         assert not any(
-            row.get("type") == "CLOSE" and row.get("bar_exit") == 12
+            row.get("type") in ("CLOSE", "REDUCE") and row.get("bar", row.get("bar_exit")) == 12
             for row in disabled["ledger"]
         )
         fee_target = 100.03 if is_long else 99.97
         fee_blocked, _ = _simulate_tradier_bypass(True, fee_target, is_long)
         assert not any(
-            row.get("type") == "CLOSE" and row.get("bar_exit") == 12
+            row.get("type") in ("CLOSE", "REDUCE") and row.get("bar", row.get("bar_exit")) == 12
             for row in fee_blocked["ledger"]
         )
 
