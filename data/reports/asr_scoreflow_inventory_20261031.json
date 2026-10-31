@@ -1,8 +1,8 @@
 {
   "coverage_status": "Partial shared implementation only. Native scalar hooks and source-AST differential tests exist for listed pure slices. NumPy components are not yet consumed by v12; there is no complete ordered ASR array composer or entry-threshold/action path. Current rate() still has other score mutations; account/tracker, regime, MTS, historical/global ranking, time-dependent return gates, multiplier ordering and return semantics remain gaps.",
   "current_asr_mutation_semantics": "Count includes initialization plus direct score assignment/augmented-assignment statements still inside rate(); shared scalar hooks remove corresponding inline statements. It is a source mutation census, not the uncovered-component count.",
-  "current_native_score_mutations_including_initialization": 324,
-  "current_native_sha256": "ef661f182a7372ac6dc42269dc57be575d4f959a6adc63a8cd09fa6608395961",
+  "current_native_score_mutations_including_initialization": 303,
+  "current_native_sha256": "6a774a08a15a8321afdd0f114542039e9f965fc195cbb4343fbb45b5146c65df",
   "existing_vector_related_modules": [
     "vec_decisions/quick_missing_entry_score.py (partial, no v12 caller found)",
     "vec_paths/live_entry_engine.py (separate LIVE_ENTRY_ENGINE score, not AdvancedSignalRater aggregate)",
@@ -389,7 +389,7 @@
     ]
   },
   "pre_wire_source_sha256": "7634c897c67a28dbbfcbf99f39cabc1e564084bf82d07f632b6042267399d1a8",
-  "remaining_native_score_mutations_including_initialization": 324,
+  "remaining_native_score_mutations_including_initialization": 303,
   "score_updates": [
     {
       "expr": "8",
@@ -8527,7 +8527,7 @@
     {
       "baseline_block": "native final overbought multiplier, round/clamp and recommendation tail",
       "module": "vec_decisions/asr_score_tail.py",
-      "native_hook_line": 8336,
+      "native_hook_line": 8260,
       "owner": "root",
       "vector_api": [
         "finish_array"
@@ -8535,32 +8535,45 @@
     },
     {
       "baseline_block": "source-ordered score/gain thresholds: +12 when score>10 and gain>3, then +8 when updated score>8 and gain>1.5",
-      "module": "vec_decisions/asr_score_core.py",
-      "native_hook_line": 8243,
-      "test": "tests/test_asr_gain_quality_score.py",
+      "module": "vec_decisions/asr_late_score.py",
+      "native_hook_line": 8240,
+      "test": "tests/test_asr_late_score.py",
       "vector_api": [
-        "apply_gain_quality_bonus_vec"
+        "apply_asr_late_score_vec"
       ]
     },
     {
       "baseline_block": "ordered EMA pullback, BB/RSI/Stoch, MACD zero, RSI2, HA streak, BB breakout, triple confirmation, EMA200/StochRSI, RSI/MACD/EMA and Donchian breakout bonuses",
-      "module": "vec_decisions/asr_research_score.py",
-      "native_hook_line": 8259,
-      "test": "tests/test_asr_research_score.py",
+      "module": "vec_decisions/asr_late_score.py",
+      "native_hook_line": 8240,
+      "test": "tests/test_asr_late_score.py",
       "vector_api": [
-        "apply_research_score_vec"
+        "apply_asr_late_score_vec"
       ]
     },
     {
-      "baseline_block": "weighted five-timeframe DC position score and side-specific per-TF bonuses/penalties",
-      "module": "vec_decisions/asr_dc_position_score.py",
-      "native_hook_line": 8255,
+      "baseline_block": "contiguous late score aggregate: knife penalty, sequential gain thresholds, weighted DC position, and named research bonuses",
+      "module": "vec_decisions/asr_late_score.py",
+      "native_hook_line": 8182,
       "test": [
+        "tests/test_asr_late_score.py",
         "tests/test_asr_dc_position_score.py",
         "tests/test_asr_dc_position_native_call.py"
       ],
       "vector_api": [
-        "apply_dc_position_score_vec"
+        "apply_asr_late_score_vec"
+      ]
+    },
+    {
+      "baseline_block": "ordered K/stochastic, WT-cross/DC-basis and 1m-present/3m/15m/1h/4h channel breakout score additions",
+      "module": "vec_decisions/asr_channel_confluence_score.py",
+      "native_hook_line": 7994,
+      "test": [
+        "tests/test_asr_channel_confluence_score.py",
+        "tests/test_asr_channel_confluence_native_call.py"
+      ],
+      "vector_api": [
+        "apply_channel_confluence_vec"
       ]
     }
   ],

@@ -38,5 +38,5 @@ def test_native_rate_uses_shared_gain_bonus_adapter_in_ordered_position():
     source = (root / "ez_positions_quick.py").read_text()
     tree = ast.parse(source)
     rate = next(node for node in ast.walk(tree) if isinstance(node, ast.AsyncFunctionDef) and node.name == "rate" and node.lineno == 3616)
-    assert any(isinstance(node, ast.ImportFrom) and node.module == "vec_decisions.asr_score_core" for node in ast.walk(rate))
-    assert any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "apply_gain_quality_bonus_scalar" for node in ast.walk(rate))
+    assert any(isinstance(node, ast.ImportFrom) and node.module == "vec_decisions.asr_late_score" for node in ast.walk(rate))
+    assert any(isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "apply_asr_late_score_scalar" for node in ast.walk(rate))

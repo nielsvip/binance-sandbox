@@ -27,9 +27,9 @@ def test_live_rate_research_block_calls_shared_adapter_inside_entry_branch():
     root = Path(__file__).resolve().parents[1]
     tree = ast.parse((root / "ez_positions_quick.py").read_text())
     rate = next(node for node in ast.walk(tree) if isinstance(node, ast.AsyncFunctionDef) and node.name == "rate" and node.lineno == 3616)
-    calls = [node for node in ast.walk(rate) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_apply_asr_research_score"]
+    calls = [node for node in ast.walk(rate) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "apply_asr_late_score_scalar"]
     assert len(calls) == 1
-    assert any(isinstance(node, ast.ImportFrom) and node.module == "vec_decisions.asr_research_score" for node in ast.walk(rate))
+    assert any(isinstance(node, ast.ImportFrom) and node.module == "vec_decisions.asr_late_score" for node in ast.walk(rate))
 
 
 def _cfg():

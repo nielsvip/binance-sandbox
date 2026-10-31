@@ -30,6 +30,8 @@ from __future__ import annotations
 
 from typing import Any, Callable, Dict, Mapping, Optional, Tuple
 
+from vec_decisions.stock_ppl_params import stock_ppl_params
+
 Get = Callable[[str, Any], Any]
 
 _EPS = 1e-9
@@ -301,12 +303,9 @@ def ppl_step(get: Get, gain_pct: float, price: float, entry_px: float, pos_amt: 
         mq = _f(min_qty, 1.0)
         if not bool(account_ok):
             return {"action": "none", "qty": 0.0, "reason": "", "state": out_state}
-        if not bool(get("PARTIAL_PROFIT_LOCK_ENABLED", False)):
+        enabled, min_gain, arm_gain, be_buffer, frac = stock_ppl_params(get)
+        if not enabled:
             return {"action": "none", "qty": 0.0, "reason": "", "state": out_state}
-        min_gain = _f(get("PARTIAL_PROFIT_LOCK_GAIN_PCT", 1.5), 1.5)
-        arm_gain = _f(get("PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT", 1.75), 1.75)
-        be_buffer = _f(get("PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT", 0.1), 0.1)
-        frac = _f(get("PARTIAL_PROFIT_LOCK_FRAC", 0.5), 0.5)
         fired = bool(st.get("fired", False))
         first_exit_px = _f(st.get("first_exit_price", 0.0), 0.0)
         stop_level = _f(st.get("stop_level", 0.0), 0.0)

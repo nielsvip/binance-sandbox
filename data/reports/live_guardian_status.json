@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T05:59:55Z",
+ "ts": "2026-10-31T06:04:49Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 60,
-   "open_positions": 13,
-   "unrealised_usd": 0.04,
+   "fills_6h": 59,
+   "open_positions": 14,
+   "unrealised_usd": -0.34,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 108,
-   "open_positions": 16,
-   "unrealised_usd": -0.2,
+   "fills_6h": 107,
+   "open_positions": 17,
+   "unrealised_usd": -0.5,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -75,7 +75,7 @@
    }
   },
   "inf": {
-   "fills_6h": 4,
+   "fills_6h": 3,
    "open_positions": 0,
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
@@ -92,8 +92,8 @@
   },
   "flz": {
    "fills_6h": 23,
-   "open_positions": 9,
-   "unrealised_usd": 0.12,
+   "open_positions": 8,
+   "unrealised_usd": -0.02,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,21 +127,21 @@
     "67104"
    ],
    "starts_30m": 1,
-   "log_age_s": 957.0
+   "log_age_s": 1253.0
   },
   "men": {
    "pids": [
     "18080"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 16.0
   },
   "inf": {
    "pids": [
@@ -155,26 +155,26 @@
     "78871"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 12.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 4657.0
+   "log_age_s": 4953.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 4973.0
+   "log_age_s": 5269.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T05:59:57Z",
+   "ts": "2026-10-31T06:04:53Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 957s"
+   "evidence": "ez_manage_fin.log not written for 1253s"
   }
  ],
  "alert_counts": {
@@ -231,5 +231,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.82
+ "sweep_s": 3.25
 }

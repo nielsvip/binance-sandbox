@@ -28,10 +28,9 @@ def ppl_params(config, is_tradier: bool):
     """Venue-aware PPL thresholds with live defaults (tradier *_TRADIER names first)."""
     enabled = bool(getattr(config, "PARTIAL_PROFIT_LOCK_ENABLED", False))
     if is_tradier:
-        min_gain = float(getattr(config, "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER", 0.5) or 0.5)
-        arm_gain = float(getattr(config, "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER", 0.75) or 0.75)
-        be_buffer = float(getattr(config, "PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT_TRADIER", 0.02) or 0.02)
-        frac = float(getattr(config, "PARTIAL_PROFIT_LOCK_FRAC_TRADIER", 0.5) or 0.5)
+        from vec_decisions.stock_ppl_params import stock_ppl_params
+
+        return stock_ppl_params(lambda key, default: getattr(config, key, default))
     else:
         min_gain = float(getattr(config, "PARTIAL_PROFIT_LOCK_GAIN_PCT", getattr(config, "PARTIAL_PROFIT_LOCK_GAIN_PCT_TRADIER", 0.5)) or 0.5)
         arm_gain = float(getattr(config, "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT", getattr(config, "PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT_TRADIER", 0.75)) or 0.75)

@@ -7976,80 +7976,22 @@ class AdvancedSignalRater:
                 elif total_pnl > 50.0:
                     history_score_mod += 1.0
                     reasons.append("Historical_Winner")
-            if (is_long and k_3m > d_3m) or (not is_long and k_3m < d_3m):
-                score += 2.0
-            if (is_long and k_15m < 20) or (not is_long and k_15m > 80):
-                score += 2.0
-            if (is_long and k_15m > 80) or (not is_long and k_15m < 20):
-                score -= 3.0
-            if (is_long and k_3m < 20) or (not is_long and k_3m > 80):
-                score += 2.0
-            if (is_long and k_3m > 80) or (not is_long and k_3m < 20):
-                score -= 4.0
-            if (is_long and k_1h < d_1h) or (not is_long and k_1h > d_1h):
-                score -= 2.0
-            if (is_long and k_4h < d_4h) or (not is_long and k_4h > d_4h):
-                score -= 1.0
-            if (is_long and k_1h < 30 and k_1h > d_1h) or (
-                not is_long and k_1h > 70 and k_1h < d_1h
-            ):
-                score += 2.0
-            if (
-                is_long
-                and current_price > dc_basis_1h * 1.04
-                and current_price > dc_basis_15m
-            ) or (
-                not is_long
-                and current_price < dc_basis_15m * 0.96
-                and current_price < dc_basis_15m
-            ):
-                score += 3.0
-            elif (is_long and current_price > dc_basis_1h * 1.03) or (
-                not is_long and current_price < dc_basis_1h * 0.93
-            ):
-                score += 1.0
-            if (is_long and sco1h and current_price > dc_basis_1h) or (
-                not is_long and scu1h and current_price < dc_basis_1h * 0.93
-            ):
-                score += 1.0
-            if (is_long and sco15m and current_price > dc_basis_15m) or (
-                not is_long and scu15m and current_price < dc_basis_15m
-            ):
-                score += 2.0
-            if (is_long and current_price > dc_basis_1h) or (
-                not is_long and current_price < dc_basis_1h
-            ):
-                score += 1.0
-            if (is_long and current_price < dc_basis_4h) or (
-                not is_long and current_price > dc_basis_4h
-            ):
-                score -= 2.0
-            # 2026-05-08: 1m DC breakout added (smallest TF — never miss the trigger). 3m/15m/1h/4h existed.
-            # Guarded: 1m fields are present LIVE (epq:7311) but absent in NPZ (15m-basis precompute).
-            # Without guard, missing field defaults to 0 → current_price >= 0 always True → bogus bonus.
-            _dc_h1m = safe_fetch_float(ind.get("dc_high_1m"), 0.0)
-            _dc_l1m = safe_fetch_float(ind.get("dc_low_1m"), 0.0)
-            if _dc_h1m > 0 and _dc_l1m > 0:
-                if (is_long and current_price >= _dc_h1m) or (
-                    not is_long and current_price <= _dc_l1m
-                ):
-                    score += 0.5
-            if (is_long and current_price >= dc_high_3m) or (
-                not is_long and current_price <= dc_low_3m
-            ):
-                score += 1.0
-            if (is_long and current_price >= dc_high_15m) or (
-                not is_long and current_price <= dc_low_15m
-            ):
-                score += 1.5
-            if (is_long and current_price >= dc_high_1h) or (
-                not is_long and current_price <= dc_low_1h
-            ):
-                score += 2
-            if (is_long and current_price >= dc_high_4h) or (
-                not is_long and current_price <= dc_low_4h
-            ):
-                score += 2
+            from vec_decisions.asr_channel_confluence_score import apply_channel_confluence_scalar
+            _asr_channel_values = {
+                "current_price": current_price,
+                "k_3m": k_3m, "d_3m": d_3m, "k_15m": k_15m,
+                "k_1h": k_1h, "d_1h": d_1h, "k_4h": k_4h, "d_4h": d_4h,
+                "dc_basis_1h": dc_basis_1h, "dc_basis_15m": dc_basis_15m,
+                "dc_basis_4h": dc_basis_4h, "sco1h": sco1h, "scu1h": scu1h,
+                "sco15m": sco15m, "scu15m": scu15m,
+                "dc_high_1m": safe_fetch_float(ind.get("dc_high_1m"), 0.0),
+                "dc_low_1m": safe_fetch_float(ind.get("dc_low_1m"), 0.0),
+                "dc_high_3m": dc_high_3m, "dc_low_3m": dc_low_3m,
+                "dc_high_15m": dc_high_15m, "dc_low_15m": dc_low_15m,
+                "dc_high_1h": dc_high_1h, "dc_low_1h": dc_low_1h,
+                "dc_high_4h": dc_high_4h, "dc_low_4h": dc_low_4h,
+            }
+            score = apply_channel_confluence_scalar(score, _asr_channel_values, is_long)
             # 2026-05-08: REMOVED final_ai_score (0final_score_norm) bonus block — final_score is the GATE
             # (drives symbols_<acc>_long/short list); double-counting it as a score bonus is forbidden.
             # Bonuses now come from RANKINGS (0ranking_points, different params) and MARKET data (alpha) only.
@@ -8229,22 +8171,7 @@ class AdvancedSignalRater:
                     "NO_GAIN_WAIT_HAS BEEN AUGMENTED ALREADY",
                     "NO_GAIN_WAIT_NO DOUBLE AUG",
                 )
-            knife_penalty = 0.0
-            if is_long:
-                if (k_3m < d_3m and k_3m < 20 and k_3m < k_3m_prev) or k_15m < 30:
-                    knife_penalty = -10.0
-                    reasons.append("Falling_Knife_3m")
-            else:
-                if (k_3m > d_3m and k_3m > 80 and k_3m > k_3m_prev) or k_15m > 70:
-                    knife_penalty = -10.0
-                    reasons.append("Rocket_Ship_3m")
-            score += knife_penalty
-            from vec_decisions.asr_score_core import apply_gain_quality_bonus_scalar
-            score, _gain_quality_masks = apply_gain_quality_bonus_scalar(score, gain)
-
-            # ── DC POSITION SCORING (per-TF + cumulative) ─────────────────────
-            # Mirrors tradier_manage positioning logic: 0.0=bottom, 1.0=top of DC range
-            from vec_decisions.asr_dc_position_score import apply_dc_position_score_scalar
+            from vec_decisions.asr_late_score import apply_asr_late_score_scalar
             _dc_score_ind = {
                 "dc_low_3m": dc_low_3m, "dc_high_3m": dc_high_3m,
                 "dc_low_15m": dc_low_15m, "dc_high_15m": dc_high_15m,
@@ -8252,12 +8179,9 @@ class AdvancedSignalRater:
                 "dc_low_4h": dc_low_4h, "dc_high_4h": dc_high_4h,
                 "dc_low_D": dc_low_D, "dc_high_D": dc_high_D,
             }
-            score, reasons = apply_dc_position_score_scalar(
-                score, reasons, _dc_score_ind, current_price, is_long
-            )
-            from vec_decisions.asr_research_score import apply_research_score_scalar as _apply_asr_research_score
-            score, reasons = _apply_asr_research_score(
-                score, reasons, ind, current_price, is_long, config, is_exit
+            score, reasons = apply_asr_late_score_scalar(
+                score, reasons, ind, current_price, is_long, config, gain, _dc_score_ind,
+                k_3m, d_3m, k_3m_prev, k_15m, is_exit,
             )
             # BACKTEST_CHANGE_136: MACD cross-back exit for profitable positions
             if (
