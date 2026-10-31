@@ -34,6 +34,9 @@
       "templates": "K1M_EXTREME_REVERSE_ENABLED was added through tools/v15_switch_add.py to EXIT_STRUCTURAL in TEMPLATE_CRYPTO_LONG/SHORT with False bold default and True as second option. It is crypto-only because EPQ is crypto-only; VEC_PARITY_STATUS remains a status row, not a control row."
     },
     {
+      "backup_gaps": [
+        "vec_decisions/parabolic_delta.py and tests/test_parabolic_delta.py were edited before their mandatory pre-edit backups were made; no backdated backup is claimed."
+      ],
       "engine": "v12_quick_engine.py simulate_one initializes PARABOLIC state outside pos/bar snapshots and passes it only from eligible live_exit_chain.step; live_exit_chain prepares paired channel/crack arrays and advances the recurrence after K1M and BB_RECOVERY priority. A same-bar collision test establishes PARABOLIC before SRS. Actual simulate_one tests show ON books both long/short bars and OFF books neither.",
       "inputs": "15m mode: actual NPZ current/prior 15m OHLC and 4-bar Donchian channel; completed 15m timestamps; WT/DC fields consumed by DeltaTracker and DELTA_TF_WEIGHTS. LTF-on requires real 3m fields/timestamps; no 15m substitution is made.",
       "limitations": "Need reproduce delta_tracker bull_accel/bear_accel from causal arrays or pass its existing per-bar state; absent/error behavior must preserve native no-decel=True.",
@@ -48,7 +51,7 @@
         "PARABOLIC_K15M_HIGH",
         "PARABOLIC_K15M_LOW"
       ],
-      "templates": "Crypto long and short EXIT_STRUCTURAL have PARABOLIC_EXIT_ENABLED False/True candidates with True bold. No stock templates rows; EPQ is crypto path. Existing rows unchanged.",
+      "templates": "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_LONG.xlsx and TEMPLATE_CRYPTO_SHORT.xlsx each have EXIT_STRUCTURAL PARABOLIC_EXIT_ENABLED False/True; True is bold. STOCKS templates have no row; native EPQ scope is crypto.",
       "tests": "tests/test_parabolic_delta.py; tests/test_parabolic_delta_npz_parity.py (43,756 frozen bars, both sides); tests/test_parabolic_engine_hook.py (simulate_one ON/OFF both sides, AST-extracted native state cache/refusal persistence, same-bar account cache, and SRS collision). Latest focused suite: 14 passed."
     },
     {

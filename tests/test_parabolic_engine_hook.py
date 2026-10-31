@@ -161,6 +161,7 @@ def test_ast_extracted_native_parabolic_branch_caches_first_account_and_keeps_st
         row.update({
             "k_15m": 95.0 if extreme else 50.0,
             "dc_high4_15m": 100.0,
+                "dc_low4_15m": 50.0,
             "low_15m": 9.0 if extreme else 10.0,
             "low_15m_prev": 10.0,
             "high_15m": 11.0,

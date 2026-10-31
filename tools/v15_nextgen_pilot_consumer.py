@@ -347,7 +347,7 @@ class FirstPassConsumer:
         if illegal:
             raise ValueError('sampled headers escaped actual legal row census')
         if selected:
-            if result.get('kind') == 'skip' and not str(result.get('reason') or '').startswith(('CARRIED_', 'BRAIN_', 'PRIOR_', 'V20_', 'LOW_YIELD', 'ZERO_FORMULA', 'POS_SYM')):
+            if result.get('kind') == 'skip' and not str(result.get('reason') or '').startswith(('CARRIED_', 'BRAIN_', 'PRIOR_', 'V20_', 'LOW_YIELD', 'ZERO_FORMULA', 'POS_SYM', 'SKIPPED_SAMPLING')):
                 raise ValueError('structural skip cannot be rescued as exploration')
             result['kind'] = 'eval'
             result['reason'] = ''

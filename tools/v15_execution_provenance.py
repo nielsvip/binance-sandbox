@@ -19,15 +19,36 @@ from pathlib import Path
 
 _HOOK_LOCK = threading.RLock()
 _HOOK_LOCAL = threading.local()
-_SECRET_PARTS = ("APIKEY", "SECRET", "TOKEN", "PASSWORD", "PASSWD", "PRIVATEKEY", "ACCESSKEY")
+_SECRET_PARTS = (
+    "APIKEY",
+    "SECRET",
+    "TOKEN",
+    "PASSWORD",
+    "PASSWD",
+    "PRIVATEKEY",
+    "ACCESSKEY",
+)
 
 
 def canonical_bytes(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return json.dumps(
+        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
 
 
 def _identity_body(provenance):
-    return {key: value for key, value in provenance.items() if key not in ("provenance_sha256", "capture_ms", "capture_components_ms", "config", "npz_manifest")}
+    return {
+        key: value
+        for key, value in provenance.items()
+        if key
+        not in (
+            "provenance_sha256",
+            "capture_ms",
+            "capture_components_ms",
+            "config",
+            "npz_manifest",
+        )
+    }
 
 
 def _blob_reference(group, digest):
@@ -60,7 +81,11 @@ def _write_blob(root, group, digest, value):
 
 
 def _read_blob(root, group, digest, relative):
-    if len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest) or relative != _blob_reference(group, digest):
+    if (
+        len(digest) != 64
+        or any(char not in "0123456789abcdef" for char in digest)
+        or relative != _blob_reference(group, digest)
+    ):
         raise ValueError(f"invalid {group} provenance reference")
     value = json.loads(zlib.decompress((Path(root) / relative).read_bytes()))
     return value
@@ -79,21 +104,49 @@ def encode_value(value, path="", redactions=None, under_accounts=False):
     if isinstance(value, float):
         if math.isfinite(value):
             return {"__type__": "float", "value": value}
-        return {"__type__": "float", "value": "nan" if math.isnan(value) else ("+inf" if value > 0 else "-inf")}
+        return {
+            "__type__": "float",
+            "value": "nan" if math.isnan(value) else ("+inf" if value > 0 else "-inf"),
+        }
     if isinstance(value, Path):
-        return {"__type__": "path", "class": type(value).__name__, "value": value.as_posix()}
+        return {
+            "__type__": "path",
+            "class": type(value).__name__,
+            "value": value.as_posix(),
+        }
     if isinstance(value, datetime.timedelta):
-        return {"__type__": "timedelta", "days": value.days, "seconds": value.seconds, "microseconds": value.microseconds}
+        return {
+            "__type__": "timedelta",
+            "days": value.days,
+            "seconds": value.seconds,
+            "microseconds": value.microseconds,
+        }
     if isinstance(value, bytes):
         return {"__type__": "bytes", "base64": base64.b64encode(value).decode("ascii")}
     if isinstance(value, enum.Enum):
-        return {"__type__": "enum", "class": f"{type(value).__module__}.{type(value).__qualname__}", "value": encode_value(value.value, path, redactions, under_accounts)}
+        return {
+            "__type__": "enum",
+            "class": f"{type(value).__module__}.{type(value).__qualname__}",
+            "value": encode_value(value.value, path, redactions, under_accounts),
+        }
     try:
         import numpy as np
+
         if isinstance(value, np.generic):
-            return {"__type__": "numpy_scalar", "dtype": value.dtype.str, "value": encode_value(value.item(), path, redactions, under_accounts)}
+            return {
+                "__type__": "numpy_scalar",
+                "dtype": value.dtype.str,
+                "value": encode_value(value.item(), path, redactions, under_accounts),
+            }
         if isinstance(value, np.ndarray):
-            return {"__type__": "ndarray", "dtype": value.dtype.str, "shape": list(value.shape), "values": encode_value(value.tolist(), path, redactions, under_accounts)}
+            return {
+                "__type__": "ndarray",
+                "dtype": value.dtype.str,
+                "shape": list(value.shape),
+                "values": encode_value(
+                    value.tolist(), path, redactions, under_accounts
+                ),
+            }
     except ImportError:
         pass
     if isinstance(value, dict):
@@ -109,21 +162,45 @@ def encode_value(value, path="", redactions=None, under_accounts=False):
             if under_accounts and isinstance(child_value, (dict, list, tuple)):
                 redact = False
             if redact:
-                redactions.append({"path": child_path, "value_type": _type_name(value[key])})
+                redactions.append(
+                    {"path": child_path, "value_type": _type_name(value[key])}
+                )
                 encoded = {"__type__": "redacted", "value_type": _type_name(value[key])}
             else:
-                encoded = encode_value(child_value, child_path, redactions, under_accounts or str(key).upper() == "ACCOUNTS")
+                encoded = encode_value(
+                    child_value,
+                    child_path,
+                    redactions,
+                    under_accounts or str(key).upper() == "ACCOUNTS",
+                )
             pairs.append([encode_value(key), encoded])
         return {"__type__": "dict", "items": pairs}
     if isinstance(value, tuple):
-        return {"__type__": "tuple", "items": [encode_value(item, f"{path}[{index}]", redactions, under_accounts) for index, item in enumerate(value)]}
+        return {
+            "__type__": "tuple",
+            "items": [
+                encode_value(item, f"{path}[{index}]", redactions, under_accounts)
+                for index, item in enumerate(value)
+            ],
+        }
     if isinstance(value, list):
-        return {"__type__": "list", "items": [encode_value(item, f"{path}[{index}]", redactions, under_accounts) for index, item in enumerate(value)]}
+        return {
+            "__type__": "list",
+            "items": [
+                encode_value(item, f"{path}[{index}]", redactions, under_accounts)
+                for index, item in enumerate(value)
+            ],
+        }
     if isinstance(value, (set, frozenset)):
         items = [encode_value(item, path, redactions, under_accounts) for item in value]
         items.sort(key=canonical_bytes)
-        return {"__type__": "frozenset" if isinstance(value, frozenset) else "set", "items": items}
-    raise TypeError(f"unsupported value type at {path or '<root>'}: {_type_name(value)}")
+        return {
+            "__type__": "frozenset" if isinstance(value, frozenset) else "set",
+            "items": items,
+        }
+    raise TypeError(
+        f"unsupported value type at {path or '<root>'}: {_type_name(value)}"
+    )
 
 
 def _type_name(value):
@@ -136,12 +213,22 @@ def decode_value(value):
     kind = value["__type__"]
     if kind == "float":
         number = value["value"]
-        return {"nan": float("nan"), "+inf": float("inf"), "-inf": float("-inf")}.get(number, float(number)) if isinstance(number, str) else float(number)
+        return (
+            {"nan": float("nan"), "+inf": float("inf"), "-inf": float("-inf")}.get(
+                number, float(number)
+            )
+            if isinstance(number, str)
+            else float(number)
+        )
     if kind == "path":
         cls = Path if value.get("class") == "PosixPath" else Path
         return cls(value["value"])
     if kind == "timedelta":
-        return datetime.timedelta(days=value["days"], seconds=value["seconds"], microseconds=value["microseconds"])
+        return datetime.timedelta(
+            days=value["days"],
+            seconds=value["seconds"],
+            microseconds=value["microseconds"],
+        )
     if kind == "bytes":
         return base64.b64decode(value["base64"])
     if kind == "tuple":
@@ -156,10 +243,14 @@ def decode_value(value):
         return {decode_value(key): decode_value(item) for key, item in value["items"]}
     if kind == "numpy_scalar":
         import numpy as np
+
         return np.dtype(value["dtype"]).type(decode_value(value["value"]))
     if kind == "ndarray":
         import numpy as np
-        return np.asarray(decode_value(value["values"]), dtype=np.dtype(value["dtype"])).reshape(value["shape"])
+
+        return np.asarray(
+            decode_value(value["values"]), dtype=np.dtype(value["dtype"])
+        ).reshape(value["shape"])
     if kind == "redacted":
         value_type = str(value.get("value_type") or "")
         if value_type.endswith(".str"):
@@ -208,6 +299,7 @@ def restore_config(document, config_type):
 
 def _array_digest(array):
     import numpy as np
+
     dtype = array.dtype.str
     shape = list(array.shape)
     if array.dtype.hasobject:
@@ -216,13 +308,18 @@ def _array_digest(array):
     else:
         contiguous = np.ascontiguousarray(array)
         content_hash = hashlib.sha256(memoryview(contiguous).cast("B")).digest()
-    return {"dtype": dtype, "shape": shape, "content_sha256_b64": base64.b64encode(content_hash).decode("ascii")}
+    return {
+        "dtype": dtype,
+        "shape": shape,
+        "content_sha256_b64": base64.b64encode(content_hash).decode("ascii"),
+    }
 
 
 def npz_manifest(npz):
     if not isinstance(npz, dict):
         raise TypeError("engine NPZ input is not a dict")
     import numpy as np
+
     arrays = {}
     non_arrays = {}
     for key in sorted(npz):
@@ -231,7 +328,12 @@ def npz_manifest(npz):
             arrays[str(key)] = _array_digest(value)
             continue
         non_arrays[str(key)] = encode_value(value, str(key))
-    manifest = {"hash_algorithm": "sha256", "hash_encoding": "base64", "arrays": arrays, "non_arrays": non_arrays}
+    manifest = {
+        "hash_algorithm": "sha256",
+        "hash_encoding": "base64",
+        "arrays": arrays,
+        "non_arrays": non_arrays,
+    }
     manifest["sha256"] = hashlib.sha256(canonical_bytes(manifest)).hexdigest()
     return manifest
 
@@ -259,7 +361,11 @@ def _capture_call(args, kwargs, module, decision_context=None):
     manifest = npz_manifest(npz)
     npz_ms = (time.perf_counter() - npz_started) * 1000.0
     engine_file = getattr(module, "__file__", None)
-    engine_hash = hashlib.sha256(Path(engine_file).read_bytes()).hexdigest() if engine_file and Path(engine_file).is_file() else None
+    engine_hash = (
+        hashlib.sha256(Path(engine_file).read_bytes()).hexdigest()
+        if engine_file and Path(engine_file).is_file()
+        else None
+    )
     timestamps = npz.get("timestamps") if isinstance(npz, dict) else None
     bar_ts = int(timestamps[-1]) if timestamps is not None and len(timestamps) else None
     body = {
@@ -268,18 +374,30 @@ def _capture_call(args, kwargs, module, decision_context=None):
         "config": config,
         "effective_config_sha256": hashlib.sha256(canonical_bytes(config)).hexdigest(),
         "config_sha256": hashlib.sha256(canonical_bytes(config)).hexdigest(),
-        "config_path": _blob_reference("configs", hashlib.sha256(canonical_bytes(config)).hexdigest()),
+        "config_path": _blob_reference(
+            "configs", hashlib.sha256(canonical_bytes(config)).hexdigest()
+        ),
         "npz_manifest": manifest,
         "npz_manifest_sha256": manifest["sha256"],
         "npz_manifest_path": _blob_reference("npz_manifests", manifest["sha256"]),
         "engine_source_sha256": engine_hash,
         "engine_module": getattr(module, "__name__", None),
-        "invocation": {"symbol": symbol, "is_long": is_long, "force_initial_seed": force, "bar_ts": bar_ts},
+        "invocation": {
+            "symbol": symbol,
+            "is_long": is_long,
+            "force_initial_seed": force,
+            "bar_ts": bar_ts,
+        },
         "decision_context": decision_context or {},
-        "capture_components_ms": {"config": round(config_ms, 3), "npz_manifest": round(npz_ms, 3)},
+        "capture_components_ms": {
+            "config": round(config_ms, 3),
+            "npz_manifest": round(npz_ms, 3),
+        },
     }
     body["capture_ms"] = round((time.perf_counter() - started) * 1000.0, 3)
-    body["provenance_sha256"] = hashlib.sha256(canonical_bytes(_identity_body(body))).hexdigest()
+    body["provenance_sha256"] = hashlib.sha256(
+        canonical_bytes(_identity_body(body))
+    ).hexdigest()
     return body
 
 
@@ -308,8 +426,14 @@ class EngineInvocationCapture:
                     call_args = list(args)
                     call_kwargs = dict(kwargs)
                     npz = call_args[0] if call_args else call_kwargs.get("npz")
-                    symbol = call_args[1] if len(call_args) > 1 else call_kwargs.get("sym")
-                    is_long = call_args[2] if len(call_args) > 2 else call_kwargs.get("is_long")
+                    symbol = (
+                        call_args[1] if len(call_args) > 1 else call_kwargs.get("sym")
+                    )
+                    is_long = (
+                        call_args[2]
+                        if len(call_args) > 2
+                        else call_kwargs.get("is_long")
+                    )
                     cfg = call_args[3] if len(call_args) > 3 else call_kwargs.get("cfg")
                     resolver = getattr(owner.module, "ensure_template_layer", None)
                     if callable(resolver) and cfg is not None:
@@ -318,7 +442,12 @@ class EngineInvocationCapture:
                             call_args[3] = cfg
                         else:
                             call_kwargs["cfg"] = cfg
-                    capture = _capture_call(tuple(call_args), call_kwargs, owner.module, owner.decision_context)
+                    capture = _capture_call(
+                        tuple(call_args),
+                        call_kwargs,
+                        owner.module,
+                        owner.decision_context,
+                    )
                     owner.invocations.append(capture)
                     owner.elapsed_ms += capture["capture_ms"]
                 except Exception as exc:
@@ -347,9 +476,21 @@ class EngineInvocationCapture:
 
     def result(self):
         if self.errors:
-            return {"schema_version": 1, "capture_status": "UNVERIFIED", "capture_errors": list(self.errors), "capture_ms": round(self.elapsed_ms, 3)}
+            return {
+                "schema_version": 1,
+                "capture_status": "UNVERIFIED",
+                "capture_errors": list(self.errors),
+                "capture_ms": round(self.elapsed_ms, 3),
+            }
         if len(self.invocations) != 1:
-            return {"schema_version": 1, "capture_status": "UNVERIFIED", "capture_errors": [f"expected one engine call, observed {len(self.invocations)}"], "capture_ms": round(self.elapsed_ms, 3)}
+            return {
+                "schema_version": 1,
+                "capture_status": "UNVERIFIED",
+                "capture_errors": [
+                    f"expected one engine call, observed {len(self.invocations)}"
+                ],
+                "capture_ms": round(self.elapsed_ms, 3),
+            }
         return self.invocations[0]
 
 
@@ -358,7 +499,10 @@ def capture_engine_invocation(module=None, decision_context=None):
 
 
 def persist_provenance(root, provenance):
-    if not isinstance(provenance, dict) or provenance.get("capture_status") != "VERIFIED":
+    if (
+        not isinstance(provenance, dict)
+        or provenance.get("capture_status") != "VERIFIED"
+    ):
         raise ValueError("only verified execution provenance is immutable-persistable")
     body = _identity_body(provenance)
     expected = hashlib.sha256(canonical_bytes(body)).hexdigest()
@@ -374,12 +518,24 @@ def persist_provenance(root, provenance):
     if not isinstance(config, dict) or not isinstance(manifest, dict):
         raise ValueError("execution provenance is missing config or NPZ manifest")
     config_digest = hashlib.sha256(canonical_bytes(config)).hexdigest()
-    manifest_digest = hashlib.sha256(canonical_bytes({key: value for key, value in manifest.items() if key != "sha256"})).hexdigest()
-    if config_digest != provenance.get("config_sha256") or manifest_digest != provenance.get("npz_manifest_sha256"):
+    manifest_digest = hashlib.sha256(
+        canonical_bytes(
+            {key: value for key, value in manifest.items() if key != "sha256"}
+        )
+    ).hexdigest()
+    if config_digest != provenance.get(
+        "config_sha256"
+    ) or manifest_digest != provenance.get("npz_manifest_sha256"):
         raise ValueError("config or NPZ manifest hash mismatch")
-    config_path, config_raw_size, config_stored_size = _write_blob(root, "configs", config_digest, config)
-    manifest_path, manifest_raw_size, manifest_stored_size = _write_blob(root, "npz_manifests", manifest_digest, manifest)
-    if config_path != provenance.get("config_path") or manifest_path != provenance.get("npz_manifest_path"):
+    config_path, config_raw_size, config_stored_size = _write_blob(
+        root, "configs", config_digest, config
+    )
+    manifest_path, manifest_raw_size, manifest_stored_size = _write_blob(
+        root, "npz_manifests", manifest_digest, manifest
+    )
+    if config_path != provenance.get("config_path") or manifest_path != provenance.get(
+        "npz_manifest_path"
+    ):
         raise ValueError("config or NPZ manifest path mismatch")
     raw_payload = canonical_bytes(stored)
     payload = zlib.compress(raw_payload, level=6)
@@ -395,7 +551,9 @@ def persist_provenance(root, provenance):
             try:
                 existing = zlib.decompress(path.read_bytes())
             except zlib.error as exc:
-                raise ValueError("immutable execution provenance is not valid zlib") from exc
+                raise ValueError(
+                    "immutable execution provenance is not valid zlib"
+                ) from exc
             if existing != raw_payload:
                 raise ValueError("immutable execution provenance collision")
     finally:
@@ -405,27 +563,72 @@ def persist_provenance(root, provenance):
             pass
     total_stored = len(payload) + config_stored_size + manifest_stored_size
     total_raw = len(raw_payload) + config_raw_size + manifest_raw_size
-    return {"provenance_sha256": digest, "provenance_path": str(relative), "capture_status": "VERIFIED", "compression": "zlib", "stored_bytes": total_stored, "raw_bytes": total_raw, "config_sha256": config_digest, "config_path": config_path, "npz_manifest_sha256": manifest_digest, "npz_manifest_path": manifest_path, "capture_ms": provenance.get("capture_ms"), "capture_components_ms": provenance.get("capture_components_ms")}
+    return {
+        "provenance_sha256": digest,
+        "provenance_path": str(relative),
+        "capture_status": "VERIFIED",
+        "compression": "zlib",
+        "stored_bytes": total_stored,
+        "raw_bytes": total_raw,
+        "config_sha256": config_digest,
+        "config_path": config_path,
+        "npz_manifest_sha256": manifest_digest,
+        "npz_manifest_path": manifest_path,
+        "capture_ms": provenance.get("capture_ms"),
+        "capture_components_ms": provenance.get("capture_components_ms"),
+    }
 
 
 def load_provenance(root, reference):
     digest = str(reference.get("provenance_sha256") or "")
     relative = str(reference.get("provenance_path") or "")
     expected = f"provenance/{digest[:2]}/{digest}.json.zlib"
-    if reference.get("compression") != "zlib" or relative != expected or len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest):
+    if (
+        reference.get("compression") != "zlib"
+        or relative != expected
+        or len(digest) != 64
+        or any(char not in "0123456789abcdef" for char in digest)
+    ):
         raise ValueError("invalid execution provenance reference")
     payload = zlib.decompress((Path(root) / relative).read_bytes())
     provenance = json.loads(payload)
-    if provenance.get("provenance_sha256") != digest or hashlib.sha256(canonical_bytes(_identity_body(provenance))).hexdigest() != digest:
+    if (
+        provenance.get("provenance_sha256") != digest
+        or hashlib.sha256(canonical_bytes(_identity_body(provenance))).hexdigest()
+        != digest
+    ):
         raise ValueError("execution provenance content hash mismatch")
-    for key in ("config_sha256", "config_path", "npz_manifest_sha256", "npz_manifest_path"):
+    for key in (
+        "config_sha256",
+        "config_path",
+        "npz_manifest_sha256",
+        "npz_manifest_path",
+    ):
         if provenance.get(key) != reference.get(key):
             raise ValueError("execution provenance blob reference mismatch")
-    config = _read_blob(root, "configs", str(reference.get("config_sha256") or ""), str(reference.get("config_path") or ""))
-    manifest = _read_blob(root, "npz_manifests", str(reference.get("npz_manifest_sha256") or ""), str(reference.get("npz_manifest_path") or ""))
-    if hashlib.sha256(canonical_bytes(config)).hexdigest() != reference.get("config_sha256"):
+    config = _read_blob(
+        root,
+        "configs",
+        str(reference.get("config_sha256") or ""),
+        str(reference.get("config_path") or ""),
+    )
+    manifest = _read_blob(
+        root,
+        "npz_manifests",
+        str(reference.get("npz_manifest_sha256") or ""),
+        str(reference.get("npz_manifest_path") or ""),
+    )
+    if hashlib.sha256(canonical_bytes(config)).hexdigest() != reference.get(
+        "config_sha256"
+    ):
         raise ValueError("effective config content hash mismatch")
-    manifest_digest = hashlib.sha256(canonical_bytes({key: value for key, value in manifest.items() if key != "sha256"})).hexdigest()
-    if manifest.get("sha256") != reference.get("npz_manifest_sha256") or manifest_digest != reference.get("npz_manifest_sha256"):
+    manifest_digest = hashlib.sha256(
+        canonical_bytes(
+            {key: value for key, value in manifest.items() if key != "sha256"}
+        )
+    ).hexdigest()
+    if manifest.get("sha256") != reference.get(
+        "npz_manifest_sha256"
+    ) or manifest_digest != reference.get("npz_manifest_sha256"):
         raise ValueError("NPZ manifest content hash mismatch")
     return {**provenance, "config": config, "npz_manifest": manifest}

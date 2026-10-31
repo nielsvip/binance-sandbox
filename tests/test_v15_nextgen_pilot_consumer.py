@@ -67,12 +67,17 @@ def test_actual_row_disc_captures_exact_legal_domain_before_sampling(tmp_path):
     assert tuple(info['nextgen_legal']['h2f']) == ('FILTER=15m',)
     with pytest.raises(TypeError):
         info['nextgen_legal']['h2f']['FILTER=15m']['opt'] = 'D'
+    ns.update(wb={'EXIT': SimpleNamespace(cell=lambda *args, **kwargs: SimpleNamespace(font=None))}, UNWIRED_SWITCHES=set(), UNWIRED_FILTERS=set(), GLOBAL_ONLY_KEYS=set(), known_config_fields=lambda: {'FLAG'}, _switch_overrides=lambda switch, cand: {switch: cand}, _parse_opt_value=lambda cand, default: cand, _switch_type_violation=lambda *args: None, _maxaug_is_zero=lambda *args: False, _brain_naked=True, carry_decide=lambda *args: pytest.fail('prepolicy census must not invoke carry suppression'), _brain_row_out=lambda *args: pytest.fail('prepolicy census must not invoke old brain suppression'))
+    original = extract('_nextgen_prepolicy_discovery', ns)('EXIT', 3, 'FLAG', True)
+    assert original['kind'] == 'eval'
+    assert original['nextgen_legal']['hdrs'] == ('FILTER=15m',)
 
 
-def test_actual_row_plan_restores_low_frequency_new_yellow_without_static_measurement_cache(tmp_path):
+@pytest.mark.parametrize('reason', ['BRAIN_SAMPLED_OUT', 'CARRIED_DEAD: old era', 'SKIPPED_SAMPLING(pos_sym=0)', 'ZERO_FORMULA_ROW: old zeros'])
+def test_actual_row_plan_restores_low_frequency_new_yellow_without_static_measurement_cache(tmp_path, reason):
     row, consumer, contexts, reservations = fixture(tmp_path)
     legal = C.capture_legal(dict(hdrs=['FILTER=15m', 'FILTER=1h'], h2f={'FILTER=15m': dict(filter='FILTER', opt='15m'), 'FILTER=1h': dict(filter='FILTER', opt='1h')}))
-    sampled = dict(kind='skip', reason='BRAIN_SAMPLED_OUT', hdrs=[], h2f={}, nextgen_legal=legal)
+    sampled = dict(kind='skip', reason=reason, hdrs=[], h2f={}, nextgen_prepolicy=dict(kind='eval', nextgen_legal=legal))
     ns = dict(_nextgen_consumer=consumer, _row_static=lambda *args: sampled, cumulative_overrides={'FLAG': False}, defaults={}, _parse_opt_value=lambda value, default: value, _switch_overrides=lambda switch, cand: {switch: cand}, _same_val=lambda a,b:a==b, sanitize_overrides=lambda value, defaults:(value, {}), initial_overrides={'FLAG': False}, _v17_on=True, _SETTLED_NAKED_ON=False)
     plan = extract('_row_plan', ns)
     first = plan('EXIT', 3, 'FLAG', True)

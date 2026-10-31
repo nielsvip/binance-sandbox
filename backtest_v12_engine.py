@@ -2856,8 +2856,6 @@ def _refresh_sim_position_marks(trade_manager, price_cache, sim_dt):
             _pos.prev_gain = getattr(_pos, 'prev_gain', _pos.gain)
             if _pos.gain > getattr(_pos, 'max_gain', 0):
                 _pos.max_gain = _pos.gain
-        if not isinstance(getattr(_pos, 'opened_at', None), datetime):
-            _pos.opened_at = sim_dt
         _pos.last_updated = sim_dt
 
 
@@ -3141,6 +3139,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 "action": (("CLOSE" if actual_after <= 1e-12 else "REDUCE") if is_reduce
                            else ("OPEN" if before < 0.0001 else "AUGMENT"))}
 
+    _simulation_loop = asyncio.get_running_loop()
+    _simulation_loop_thread = threading.current_thread()
+
     # Mock the Binance client on trade_manager to record trades
     # MUST be sync (called via asyncio.to_thread) and MUST update positionAmt
     class _RecordingClient:
@@ -3165,39 +3166,34 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             pk = f"{account_key}:{sym}_{'LONG' if pos_side == 'LONG' else 'SHORT'}"
             pos = trade_manager.positions.get(pk)
             before_amt = abs(float(getattr(pos, "positionAmt", 0) or 0)) if pos else 0.0
-            trade = {"timestamp": _sim_ts[0], "params": kw, "status": "FILLED",
+            trade = {"timestamp": _sim_ts[0], "params": kw, "status": "PENDING",
                      "avgPrice": str(px), "executedQty": str(qty),
                      "position_key": pk, "side": side, "quantity": qty, "price": px,
                      "position_before": before_amt,
                      "position_before_signed": before_amt if pk.endswith("_LONG") else -before_amt,
                      "position_state_found": bool(pos), "sym_side": pk.split(":", 1)[-1]}
-            executed_trades.append(trade)
-            # Update positionAmt (what exchange would do)
             if not pos:
                 v8_logger.warning(f"[MOCK_FCO] No position for pk={pk} (available: {list(trade_manager.positions.keys())[:5]})")
             if pos and qty > 0:
-                is_long = pk.endswith("_LONG")
-                is_reduce = (side == "SELL" and is_long) or (side == "BUY" and not is_long)
-                if is_reduce:
-                    pos.positionAmt = max(0.0, abs(pos.positionAmt) - abs(qty))
-                else:
-                    _old_amt = abs(pos.positionAmt)
-                    if _old_amt < 0.0001:
-                        _f1_new_lifecycle(pos, px, qty)
-                        pos.entry_price = px
-                        pos.opened_at = datetime.utcfromtimestamp(_sim_ts[0]).replace(tzinfo=timezone.utc)
-                        pos.initial_quantity = abs(qty)
-                    else:
-                        pos.entry_price = (_old_amt * pos.entry_price + abs(qty) * px) / (_old_amt + abs(qty))
-                    pos.positionAmt = _old_amt + abs(qty)
-                after_amt = abs(float(getattr(pos, "positionAmt", 0) or 0))
-                trade["action"] = ("CLOSE" if after_amt <= 1e-12 else "REDUCE") if is_reduce else ("OPEN" if before_amt < 0.0001 else "AUGMENT")
+                if threading.current_thread() is _simulation_loop_thread:
+                    raise RuntimeError("synchronous mock order ran on simulation event loop thread")
+                _fill_future = asyncio.run_coroutine_threadsafe(
+                    _replay_apply_service_fill(pk, account_key, sym, side, pos_side, qty, px,
+                                               bool(((side == "SELL" and pk.endswith("_LONG")) or (side == "BUY" and pk.endswith("_SHORT"))) and qty >= before_amt - 1e-12),
+                                               str(kw.get("newClientOrderId") or "mock_client_fill")),
+                    _simulation_loop)
+                _fill_state = _fill_future.result(timeout=45)
+                after_amt = _fill_state["after"]
+                trade["action"] = _fill_state["action"]
                 trade["position_after"] = after_amt
-                trade["position_after_signed"] = after_amt if is_long else -after_amt
+                trade["position_after_signed"] = after_amt if pk.endswith("_LONG") else -after_amt
+                trade["status"] = "FILLED"
             else:
                 trade["action"] = "UNKNOWN"
                 trade["position_after"] = before_amt
                 trade["position_after_signed"] = before_amt if pk.endswith("_LONG") else -before_amt
+                trade["status"] = "NO_POSITION_STATE" if not pos else "NO_QUANTITY"
+            executed_trades.append(trade)
             return {"orderId": len(executed_trades), "status": "FILLED",
                     "avgPrice": str(px), "executedQty": str(qty)}
         def futures_position_information(self, **kw):
@@ -4382,7 +4378,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     import tempfile as _tf_replay
     _replay_position_root = Path(_tf_replay.mkdtemp(prefix="v8_position_fixture_"))
     _replay_symbols = sorted(str(s).upper() for s in stores)
+    _replay_position_keys = sorted(f"{account_key}:{_sym}_{_side}" for _sym in _replay_symbols for _side in ("LONG", "SHORT"))
     (_replay_position_root / "symbols.json").write_text(json.dumps(_replay_symbols))
+    (_replay_position_root / "symbols_active.json").write_text(json.dumps(_replay_symbols))
+    (_replay_position_root / "tradeable_keys.json").write_text(json.dumps(_replay_position_keys))
     for _replay_side in ("LONG", "SHORT"):
         (_replay_position_root / f"symbols_{account_key}_{_replay_side.lower()}.json").write_text(json.dumps(_replay_symbols))
     _replay_account_dir = _replay_position_root / account_key.lower()
@@ -4405,6 +4404,15 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         _cfg = _service_config_type()
         _cfg.BASE_PATH = _replay_position_root
         _cfg.SYMBOLS_FILE = _replay_position_root / "symbols.json"
+        _cfg.SYMBOLS = _replay_position_root / "symbols.json"
+        _cfg.SYMBOLS_ACTIVE_FILE = _replay_position_root / "symbols_active.json"
+        _cfg.SYMBOLS_ACTIVE = _replay_position_root / "symbols_active.json"
+        _cfg.TRADEABLE_KEYS = _replay_position_root / "tradeable_keys.json"
+        _cfg.DATA_DIR = _replay_position_root / "data"
+        for _replay_side in ("LONG", "SHORT"):
+            _side_attr = f"SYMBOLS_{account_key.upper()}_{_replay_side}"
+            if hasattr(_cfg, _side_attr):
+                setattr(_cfg, _side_attr, _replay_position_root / f"symbols_{account_key}_{_replay_side.lower()}.json")
         return _cfg
 
     ez_positions_service.Config = _replay_service_config

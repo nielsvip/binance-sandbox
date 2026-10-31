@@ -16,6 +16,7 @@ from vec_decisions.parabolic_delta import (
     snapshot_from_npz,
     step,
     step_native,
+    validate_parabolic_inputs,
     validate_npz_inputs,
 )
 from wt_dc_delta import DEFAULT_CFG, DeltaTracker
@@ -136,6 +137,21 @@ def test_native_state_key_is_symbol_side_and_same_bar_is_account_independent():
     second = step_native(states, "TESTUSDC", True, indicators, False, DEFAULT_CFG["tf_weights"])
     assert second == first
     assert list(states) == [("TESTUSDC", True)]
+
+
+def test_native_path_fails_closed_for_missing_timestamp_or_required_delta_field():
+    with pytest.raises(ValueError, match="completed-bar timestamp"):
+        step_native({}, "TESTUSDC", True, {"wt1_15m": 1.0}, False, DEFAULT_CFG["tf_weights"])
+    missing = _bar_indicators(1, True)
+    del missing["wt1_15m"]
+    with pytest.raises(ValueError, match="wt1_15m"):
+        step_native({}, "TESTUSDC", True, missing, False, DEFAULT_CFG["tf_weights"])
+
+
+def test_ltf_on_parabolic_requires_real_3m_arrays_and_timestamp():
+    arrays = _parabolic_npz(2)
+    with pytest.raises(ValueError, match="missing NPZ fields|dc_high4_3m|timestamp_3m"):
+        validate_parabolic_inputs(arrays, 2, ltf_enabled=True)
 
 
 def _parabolic_npz(n=2):

@@ -86,17 +86,19 @@ def main():
                     raise ValueError(f'FALSE wiring control changed prior actual output: {key}')
             requested = dict(settings, **variant)
             evidence.update(false_control_evaluated_at_utc=base_time, false_control_proof=base, requested_variant=variant, requested_settings_sha256=runner.fingerprint(requested), baseline_accepted_settings_sha256=runner.fingerprint(settings))
+            variant_time = base_time
             if variant:
                 evidence['phase'] = 'explicit_variant'
                 if raw:
                     os.environ['V15_BASELINE_RAW_CAPTURE'] = raw + '.explicit_variant.pickle'
                 result, proof = capture(prepared, requested, evaluate, window_days)
+                variant_time = utc()
             else:
                 result, proof = base_result, base
             for field in FIELDS:
                 if proof['effective_config_values'][0][field] is not requested[field]:
                     raise ValueError('requested real boolean field did not reach actual effective configuration')
-            evidence.update(variant_evaluated_at_utc=utc(), native_observations=native, native_scorer_sha256=sha(scorer.__file__))
+            evidence.update(variant_evaluated_at_utc=variant_time, variant_capture_kind='second_actual_engine_evaluation' if variant else 'same_actual_false_control_capture', native_observations=native, native_scorer_sha256=sha(scorer.__file__))
             evidence.pop('phase', None)
             return result, proof
         finally:
