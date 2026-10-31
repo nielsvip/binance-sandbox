@@ -16,6 +16,7 @@ def trader(tmp_path, stop_failure=None, verify_failure=None, resting_missing=Fal
     obj = module.Trader.__new__(module.Trader)
     obj.venue = "crypto"
     obj.out = tmp_path
+    obj.root = tmp_path
     obj.a = SimpleNamespace(dry_run=False)
     obj.quiet = set()
     obj.done = set()

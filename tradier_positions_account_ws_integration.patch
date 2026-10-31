@@ -1,0 +1,41 @@
+--- a/tradier_positions.py
++++ b/tradier_positions.py
+@@ -543,6 +543,7 @@
+         self.load_all_symbols() 
+         self.running = False
+         self._positions_lock = asyncio.Lock()
++        self._api_sync_lock = asyncio.Lock()
+         self.redis_manager = None
+         self.order_queue = None
+         self.position_manager = None
+@@ -2864,7 +2865,8 @@
+                 if not _is_trading_hours():
+                     await asyncio.sleep(30)
+                     continue
+-                await self.process_account_update()
++                async with self._api_sync_lock:
++                    await self.process_account_update()
+                 await asyncio.sleep(5)
+             except asyncio.CancelledError:
+                 break
+@@ -3839,11 +3841,20 @@
+             logger.error(f"Failed to initialize manager for {acc_key}: {e}")
+     if managers:
+         await asyncio.gather(*(m.start() for m in managers))
++        from tradier_account_events import group_managers_by_stream_identity, make_rest_reconciler, run_account_event_stream
++        account_stream_tasks = []
++        for stream_api, stream_managers in group_managers_by_stream_identity(managers):
++            reconciler = make_rest_reconciler(stream_managers)
++            account_stream_tasks.append(asyncio.create_task(run_account_event_stream(stream_api, reconciler, status={})))
+         try:
+             await stop_event.wait()
+         except asyncio.CancelledError:
+             pass
+         finally:
++            logger.info("Stopping account event streams...")
++            for task in account_stream_tasks:
++                task.cancel()
++            await asyncio.gather(*account_stream_tasks, return_exceptions=True)
+             logger.info("Stopping all managers...")
+             await asyncio.gather(*(m.stop() for m in managers), return_exceptions=True)
+ 

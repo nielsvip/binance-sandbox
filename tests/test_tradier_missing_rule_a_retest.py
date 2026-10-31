@@ -70,6 +70,16 @@ def test_long_and_short_fire_on_15m_stochastic_turn_only():
     assert rule_a_retest_mask(_fixture(False), 3, False, cfg, _safe).tolist() == [False, True, False]
 
 
+def test_mask_prefers_real_previous_stochastic_array():
+    cfg = SimpleNamespace(
+        BREAKOUT_RETEST_ARMED_ENABLED=True,
+        BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT=0.30,
+    )
+    data = _fixture(True)
+    data["stoch_k_15m_prev"] = np.array([20.0, 40.0, 20.0])
+    assert rule_a_retest_mask(data, 3, True, cfg, _safe).tolist() == [False, False, False]
+
+
 def test_data_and_strict_retest_band_fail_closed():
     cfg = SimpleNamespace(
         BREAKOUT_RETEST_ARMED_ENABLED=True,

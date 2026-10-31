@@ -140,3 +140,55 @@ def test_an_arbiter_fault_keeps_the_primary_trading_and_the_backup_down(tmp_path
         t.alert = lambda kind, **f: None
         out.append((role, t.lease_ok(time.time()), expected))
     assert [(r, got) for r, got, _ in out] == [("primary", True), ("backup", False)], out
+
+
+def _host(role, ready, venue="crypto", tmp_path=None):
+    import importlib.util, types
+    spec = importlib.util.spec_from_file_location("vdt_ready_host", ROOT / "tools" / "vector_direct_trader.py")
+    m = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = m
+    spec.loader.exec_module(m)
+    t = m.Trader.__new__(m.Trader)
+    t.venue, t.out = venue, tmp_path
+    t.a = types.SimpleNamespace(role=role)
+    t.accounts = ["ang"]
+    rung = []
+    t._ledger = lambda row: None
+    t.alert = lambda kind, **f: rung.append(kind)
+
+    class Broker:
+        def positions(self, acct):
+            if not ready:
+                raise RuntimeError('HTTP 401 -2015 Invalid API-key, IP, or permissions')
+            return {}
+    t.broker = Broker()
+
+    class Lease:
+        HOSTS = L.HOSTS
+        @staticmethod
+        def decide(venue, r, out, now=None, state=None):
+            return True, "takeover", dict(state or {})
+        @staticmethod
+        def write_beat(*a, **k):
+            return {}
+    t.lease, t.lease_state = Lease, {}
+    return t, rung
+
+
+def test_a_backup_that_cannot_reach_the_broker_refuses_the_lease(tmp_path):
+    """Otherwise the primary stands down behind a backup that cannot trade — zero traders."""
+    t, rung = _host("backup", ready=False, tmp_path=tmp_path)
+    assert t.lease_ok(time.time()) is False
+    assert "VD_BACKUP_NOT_BROKER_READY" in rung
+
+
+def test_a_broker_ready_backup_takes_the_lease(tmp_path):
+    t, rung = _host("backup", ready=True, tmp_path=tmp_path)
+    assert t.lease_ok(time.time()) is True
+    assert "VD_BACKUP_NOT_BROKER_READY" not in rung
+
+
+def test_a_primary_is_never_gated_on_the_readiness_probe(tmp_path):
+    """The primary must not be stopped by a probe wobble; losing the primary is the thing to avoid."""
+    t, rung = _host("primary", ready=False, tmp_path=tmp_path)
+    assert t.lease_ok(time.time()) is True

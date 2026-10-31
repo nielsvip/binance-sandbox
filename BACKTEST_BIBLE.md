@@ -25,6 +25,11 @@ Operator: "without it giving up to the seccond positions data from websocket the
   - S5: `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEejERTap7v4nrItOvgip6jsl99h7X9cQFEuIebE+3aV s5-storagebox`
   - S6: `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILs1KPCwN+bNToYxl8Kbp9N20OUz2rtiknc8/lRs+jKL s6-storagebox`
 - **Private keys** stay on their own machine only. Never copy them into the repo, the bible or chat.
+- **Easy access (set up 2026-10-30 on Mac, S1, S2, S5, S6):** the SSH config has a `5t` alias (host, port, user, key). Use it everywhere:
+  - `sftp 5t` to browse and copy files
+  - `rsync -a /path/to/folder/ 5t:s1/folder/` to copy a folder to the box (use `s1/`, `s2/`, `s5/` or `s6/` as the source server)
+  - `ssh 5t` opens the box's transfer shell. It cannot run commands, so use `sftp` to look around.
+  - Verified on all five machines with a `df` check. Config backups are `~/.ssh/config.bak_5t_*`.
 - **Not** `u705131` (an old box that no longer exists).
 
 # 📖 BACKTEST BIBLE — Single Source of Truth — 2026-09-26 Redo, updated 2026-10-07

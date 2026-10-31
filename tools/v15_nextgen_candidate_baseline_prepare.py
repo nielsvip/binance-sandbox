@@ -54,13 +54,17 @@ def main():
     for relative, expected in files.items():
         if sha(bundle / relative) != expected:
             raise ValueError('candidate bundle source mismatch')
-    size = sum((bundle / relative).stat().st_size for relative in files) + (16 << 20)
+    size = sum((bundle / relative).stat().st_size for relative in ['tools/v15_v18_planner.py', 'tools/v18_brain.py', 'tools/v18_model_bundle.json']) + Path(args.pilot).stat().st_size * 3 + Path(args.helper).stat().st_size + (16 << 20)
     if shutil.disk_usage(base).free - size < 20000 * (1 << 20):
         raise ValueError('candidate preparation would breach original disk reserve')
-    shutil.copytree(previous, root, copy_function=os.link)
+    shutil.copytree(previous, root, copy_function=os.link, ignore=shutil.ignore_patterns("harness_backups", "__pycache__"))
     side.mkdir()
     for relative in files:
-        atomic_copy(bundle / relative, root / relative)
+        target = root / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_name(target.name + '.immutable_link_tmp')
+        os.link(bundle / relative, temporary)
+        os.replace(temporary, target)
     for relative in ['tools/v15_v18_planner.py', 'tools/v18_brain.py', 'tools/v18_model_bundle.json']:
         atomic_copy(bundle / relative, root / relative)
     atomic_copy(args.pilot, root / 'v15_pilot.py')

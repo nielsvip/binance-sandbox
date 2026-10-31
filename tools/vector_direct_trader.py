@@ -220,6 +220,8 @@ PROTECTION_AUDIT_S = float(os.environ.get("VD_PROTECTION_AUDIT_S", "300"))
 # universe emptied every crypto account). 0 disables the brake.
 DETERIORATION_MASS_PCT = float(os.environ.get("VD_DETERIORATION_MASS_PCT", "0.25"))
 DETERIORATION_MASS_MIN = int(os.environ.get("VD_DETERIORATION_MASS_MIN", "3"))
+# How often a BACKUP re-proves it can actually reach the broker before it would ever claim the lease.
+BROKER_READY_EVERY_S = float(os.environ.get("VD_BROKER_READY_EVERY_S", "60"))
 MAX_ATTEMPTS = 3
 VENUE_WIDE_KINDS_IGNORED = ("account_dead", "broker_unreachable_account")
 
@@ -1206,7 +1208,8 @@ class Trader:
         {"epoch": ..., "sides": {ss: staged_epoch}} — then the older data/preopen_7d/active/current.json. An artifact
         that cannot be parsed yields {}, which refuses every entry rather than guessing one is fresh."""
         out, stamps = {}, []
-        paths = (self.out / f"sevenday_{self.venue}.json", self.root / "data" / "preopen_7d" / "active" / "current.json")
+        root = getattr(self, "root", None) or self.out
+        paths = (self.out / f"sevenday_{self.venue}.json", Path(root) / "data" / "preopen_7d" / "active" / "current.json")
         for path in paths:
             try:
                 stamps.append((str(path), path.stat().st_mtime_ns))
@@ -1316,6 +1319,20 @@ class Trader:
             self.lease.write_beat(self.out, self.venue, self.a.role, may, why)
         except OSError as exc:
             log(f"lease beat write failed: {exc}")
+        if may and self.a.role == "backup":
+            # A backup that claims the lease makes the primary stand down. If it then cannot reach the broker the venue
+            # has ZERO traders — worse than having no backup at all. Measured 2026-10-31: S2 cannot authenticate to
+            # Binance (-2015, its egress 2.29.22.116 is not on the API key allowlist, while S1 binds an allowlisted
+            # address), so it must never take the lease. Readiness is a real read-only broker call, cached briefly.
+            ready, detail = self.broker_ready(now)
+            if not ready:
+                self.lease.write_beat(self.out, self.venue, self.a.role, False, f"NOT broker-ready: {detail}"[:200])
+                if getattr(self, "lease_why", None) != detail:
+                    self.lease_why = detail
+                    self.alert("VD_BACKUP_NOT_BROKER_READY", venue=self.venue, severity="CRITICAL", detail=detail[:200])
+                    log(f"CRITICAL LEASE {self.venue} backup REFUSING the lease: {detail} — the primary must keep the venue")
+                    self._ledger({"event": "LEASE", "venue": self.venue, "role": "backup", "may_trade": False, "why": f"not broker-ready: {detail}"})
+                return False
         if why != getattr(self, "lease_why", None):
             self.lease_why = why
             log(f"LEASE {self.venue} {self.a.role}: {'TRADING' if may else 'STOOD DOWN'} — {why}")
@@ -1323,6 +1340,22 @@ class Trader:
             if not may:
                 self.alert("VD_LEASE_STOOD_DOWN", venue=self.venue, role=self.a.role, why=why[:200])
         return bool(may)
+
+    def broker_ready(self, now):
+        """(ready, detail) from a real read-only broker call on this host. Cached for VD_BROKER_READY_EVERY_S."""
+        hit = self.__dict__.get("broker_ready_cache")
+        if hit and now - hit[0] < BROKER_READY_EVERY_S:
+            return hit[1], hit[2]
+        acct = (self.accounts or (None,))[0]
+        if not acct:
+            return False, "no account configured"
+        try:
+            self.broker.positions(acct)
+            ready, detail = True, f"broker reachable for {acct} from this host"
+        except Exception as exc:
+            ready, detail = False, f"broker unreachable for {acct} from this host: {str(exc)[:200]}"
+        self.broker_ready_cache = (now, ready, detail)
+        return ready, detail
 
     def mac_positions(self):
         """The Mac books as pushed by tools/mac_positions_push_executors.py, re-read only when the file changes."""
@@ -1619,9 +1652,9 @@ class Trader:
         orders_n = 0
         # USER 2026-10-31: exactly one trader per venue, and never zero for long. The lease decides; a trader without it
         # places NO order of any kind, because two traders exiting the same position is double-trading just as much as
-        # two opening it. States, positions and the heartbeat keep refreshing so a handover is instant.
-        if not self.lease_ok(now):
-            return orders_n
+        # two opening it. Only the ORDER phase is skipped — states, positions, the beat and the status file keep
+        # refreshing, so a handover costs nothing and a stood-down trader is still fully observable.
+        lease_held = self.lease_ok(now)
         untradeable = (read_json(self.out / f"untradeable_{self.venue}.json", {}) or {}).get("sides") or {}
         untradeable_close = not (self.out / "UNTRADEABLE_CLOSE_DISABLED").exists()
         if self.__dict__.pop("plan_now", False):
@@ -1629,7 +1662,7 @@ class Trader:
         consumed = self.__dict__.setdefault("consumed", {})
         consumed_dirty = False
         acct_notional = {a: sum((self.__dict__.get("held_notional") or {}).get(a, {}).values()) for a in active}
-        for acct in sorted(active, key=lambda a: -acct_notional.get(a, 0.0)) if market_ok else []:
+        for acct in sorted(active, key=lambda a: -acct_notional.get(a, 0.0)) if (market_ok and lease_held) else []:
             acct_sides = set(keys.get(acct, ())) | set(self.held.get(acct, ()))
             acct_changed = any(ss in changed for ss in acct_sides)
             if not acct_changed and now - self.last_plan.get(acct, 0) < REPLAN_S:

@@ -16,9 +16,15 @@ def rule_a_retest_mask(npz, n, is_long, cfg, safe):
     close = safe(npz, "close", n, 0.0)
     k_15m = safe(npz, "stoch_k_15m", n, 50.0)
     d_15m = safe(npz, "stoch_d_15m", n, 50.0)
-    k_15m_prev = np.roll(k_15m, 1)
-    if n:
-        k_15m_prev[0] = k_15m[0]
+    k_15m_prev = npz.get("stoch_k_15m_prev")
+    if k_15m_prev is None:
+        k_15m_prev = npz.get("k_15m_prev")
+    if k_15m_prev is None or len(k_15m_prev) != n:
+        k_15m_prev = np.roll(k_15m, 1)
+        if n:
+            k_15m_prev[0] = k_15m[0]
+    else:
+        k_15m_prev = np.asarray(k_15m_prev, dtype=float)
     return check_rule_a_retest_vec(
         cfg,
         close,

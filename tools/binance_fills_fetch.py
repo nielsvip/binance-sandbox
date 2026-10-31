@@ -73,11 +73,23 @@ def fetch_income(session, key, secret, income_type, start_ms, end_ms):
 def fetch_trades(session, key, secret, symbol, start_ms, end_ms):
     rows, cursor = [], start_ms
     while cursor < end_ms:
-        batch = _get(session, key, secret, "/fapi/v1/userTrades", {"symbol": symbol, "startTime": cursor, "endTime": min(end_ms, cursor + 7 * 86400000 - 1), "limit": 1000})
+        chunk_end = min(end_ms, cursor + 7 * 86400000 - 1)
+        batch = _get(session, key, secret, "/fapi/v1/userTrades", {"symbol": symbol, "startTime": cursor, "endTime": chunk_end, "limit": 1000})
         rows.extend(batch)
         if len(batch) < 1000:
-            break
-        cursor = max(int(r["time"]) for r in batch) + 1
+            cursor = chunk_end + 1
+        else:
+            cursor = max(int(r["time"]) for r in batch) + 1
+    return rows
+
+
+def fetch_orders(session, key, secret, symbol, start_ms, end_ms):
+    rows, cursor = [], start_ms
+    while cursor < end_ms:
+        chunk_end = min(end_ms, cursor + 7 * 86400000 - 1)
+        batch = _get(session, key, secret, "/fapi/v1/allOrders", {"symbol": symbol, "startTime": cursor, "endTime": chunk_end, "limit": 1000})
+        rows.extend(batch)
+        cursor = chunk_end + 1 if len(batch) < 1000 else max(int(row["time"]) for row in batch) + 1
     return rows
 
 
@@ -87,6 +99,7 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--accounts", default=",".join(ACCOUNTS))
     ap.add_argument("--orders", action="store_true", help="also GET /fapi/v1/allOrders per traded symbol (order type + clientOrderId)")
+    ap.add_argument("--include-book-symbols", action="store_true", help="also query permanent account-book symbols, including zero-fee/no-realized-income entries")
     args = ap.parse_args()
     import env_gpg
 
@@ -102,17 +115,32 @@ def main():
             if not key or not secret:
                 out["accounts"][acct] = {"error": "NO_KEYS"}
                 continue
+            position_snapshot_started_ms = int(time.time() * 1000)
             positions = _get(session, key, secret, "/fapi/v2/positionRisk", {})
             end_ms = int(time.time() * 1000)
             pnl = fetch_income(session, key, secret, "REALIZED_PNL", start_ms, end_ms)
             fee = fetch_income(session, key, secret, "COMMISSION", start_ms, end_ms)
-            symbols = sorted({r["symbol"] for r in pnl + fee if r.get("symbol")})
-            trades, orders = {}, {}
+            symbols = {r["symbol"] for r in pnl + fee if r.get("symbol")}
+            symbols.update(r["symbol"] for r in positions if r.get("symbol") and abs(float(r.get("positionAmt") or 0)) > 0)
+            if args.include_book_symbols:
+                for side in ("long", "short"):
+                    path = ROOT / acct / f"{side}_positions.json"
+                    book = json.loads(path.read_text()) if path.exists() else {}
+                    symbols.update(str(row.get("symbol") or name.split(":")[-1].rsplit("_", 1)[0]) for name, row in book.items() if isinstance(row, dict))
+            symbols = sorted(symbols)
+            trades, orders, symbol_errors = {}, {}, {}
             for symbol in symbols:
-                trades[symbol] = fetch_trades(session, key, secret, symbol, start_ms, end_ms)
-                if args.orders and trades[symbol]:
-                    orders[symbol] = _get(session, key, secret, "/fapi/v1/allOrders", {"symbol": symbol, "startTime": max(start_ms, end_ms - 7 * 86400000 + 60000), "endTime": end_ms, "limit": 1000})
-            out["accounts"][acct] = {"income_realized": pnl, "income_commission": fee, "trades": trades, "orders": orders, "positions": [r for r in positions if abs(float(r.get("positionAmt") or 0)) > 0], "end_ms": end_ms}
+                try:
+                    trades[symbol] = fetch_trades(session, key, secret, symbol, start_ms, end_ms)
+                    if args.orders and trades[symbol]:
+                        orders[symbol] = fetch_orders(session, key, secret, symbol, start_ms, end_ms)
+                except requests.HTTPError as exc:
+                    response = exc.response
+                    if response is None or response.status_code != 400 or response.json().get("code") != -1121:
+                        raise
+                    symbol_errors[symbol] = "broker rejected invalid/delisted symbol; history coverage unverified"
+            out["accounts"][acct] = {"income_realized": pnl, "income_commission": fee, "trades": trades, "orders": orders, "positions": [r for r in positions if abs(float(r.get("positionAmt") or 0)) > 0], "end_ms": end_ms, "position_snapshot_started_ms": position_snapshot_started_ms, "queried_symbols": symbols, "included_book_symbols": args.include_book_symbols, "symbol_errors": symbol_errors}
+            Path(args.out).write_text(json.dumps(out))
             print(f"{acct}: {len(pnl)} pnl rows, {len(fee)} fee rows, {len(symbols)} symbols, {sum(len(v) for v in trades.values())} fills, {sum(len(v) for v in orders.values())} orders", flush=True)
     except BanStop as exc:
         out["stopped"] = str(exc)

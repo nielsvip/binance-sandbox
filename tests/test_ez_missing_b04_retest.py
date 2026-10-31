@@ -1,4 +1,5 @@
 import numpy as np
+import v12_quick_engine as V
 
 from vec_decisions.ez_missing_b04_retest import (
     dc_high_break_retest_live_adapter,
@@ -114,3 +115,68 @@ def test_b04_uses_only_prior_bar_when_explicit_stochastic_previous_is_absent():
     }
     mask, _, _ = dc_high_break_retest_mask(npz, 3, True, Config(), _safe)
     assert mask.tolist() == [False, True, False]
+
+
+def test_b04_switch_flips_simulate_one_trade_ledger():
+    n = 120
+    close = np.empty(n)
+    close[:8] = 100.0 * (1.005 ** np.arange(8))
+    close[8:] = close[7] * (0.999 ** np.arange(1, n - 7))
+    npz = {
+        "close": close,
+        "close_15m": close,
+        "timestamps": np.arange(n, dtype=float) * 900 + 1_700_000_000.0,
+        "timestamp_15m": np.arange(n, dtype=float) * 900 + 1_700_000_000.0,
+        "open_15m": close,
+        "high_15m": close,
+        "low_15m": close * 0.999,
+        "volume_15m": np.ones(n),
+        "wt1_15m": np.array([5.0] * 7 + [20.0] * (n - 7)),
+        "wt2_15m": np.zeros(n),
+        "dc_low_15m": np.full(n, 10.0),
+        "dc_high_15m": np.full(n, 200.0),
+        "stoch_k_15m": np.full(n, 62.0),
+        "stoch_d_15m": np.full(n, 58.0),
+        "stoch_k_15m_prev": np.full(n, 60.0),
+        "stoch_k_1h": np.full(n, 50.0),
+        "stoch_k": np.full(n, 50.0),
+        "wt1_1h": np.full(n, 5.0),
+        "wt2_1h": np.zeros(n),
+        "wt1_4h": np.full(n, 5.0),
+        "wt2_4h": np.zeros(n),
+        "wt1_D": np.full(n, 5.0),
+        "wt2_D": np.zeros(n),
+        "wt_velocity_1h": np.zeros(n),
+        "dc_high_4h": np.full(n, 102.0),
+        "dc_high_4h_ant": np.full(n, 101.0),
+    }
+
+    def ledger_with_b04(enabled, winning_tf):
+        fixture = dict(npz)
+        if winning_tf == "4h":
+            fixture["dc_high_4h_ant"] = np.full(n, 100.0)
+        else:
+            fixture["dc_high_15m"] = np.full(n, 102.0)
+            fixture["dc_high_15m_ant"] = np.full(n, 100.0)
+        cfg = V.QuickConfig()
+        cfg.PARTIAL_PROFIT_LOCK_ENABLED = False
+        cfg.REENTRY_B04_DC_RETEST_ENABLED = enabled
+        cfg.MIN_HOLD_BARS = 0
+        cfg.ENTRY_ISOLATE_FAMILY = "B04"
+        cfg.CYCLE_TP_ENABLED = False
+        for name, value in vars(cfg).items():
+            if name.startswith("REENTRY_") and isinstance(value, bool) and name != "REENTRY_B04_DC_RETEST_ENABLED":
+                setattr(cfg, name, False)
+        return V.simulate_one(fixture, "B04_LEDGER", True, cfg, force_initial_seed=True)["ledger"]
+
+    off_ledger = ledger_with_b04(False, "4h")
+    on_ledger = ledger_with_b04(True, "4h")
+    one_x_ledger = ledger_with_b04(True, "15m")
+    off_b04 = [row for row in off_ledger if row.get("reason") == "B04"]
+    on_b04 = [row for row in on_ledger if row.get("reason") == "B04"]
+    one_x_b04 = [row for row in one_x_ledger if row.get("reason") == "B04"]
+    assert off_b04 == []
+    assert len(on_b04) == 1 and on_b04[0].get("type") == "OPEN"
+    assert len(one_x_b04) == 1 and one_x_b04[0].get("type") == "OPEN"
+    assert np.isclose(on_b04[0]["qty"], 2.0 * one_x_b04[0]["qty"])
+    assert np.isclose(on_b04[0]["pos_deployed"], 2.0 * one_x_b04[0]["pos_deployed"])

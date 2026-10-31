@@ -18386,6 +18386,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _entry_blocks_cache = _setup_memo("reentry_blocks", compute_reentry_blocks, cfg, npz, n, is_long, lambda: compute_reentry_blocks(npz, n, is_long, cfg))
     except Exception:
         _entry_blocks_cache = {}
+    _b04_size_mult = np.ones(n, dtype=float)
+    if bool(cfg.REENTRY_B04_DC_RETEST_ENABLED):
+        try:
+            from vec_decisions.ez_missing_b04_retest import dc_high_break_retest_mask
+
+            _, _b04_size_mult, _ = dc_high_break_retest_mask(npz, n, is_long, cfg, _safe)
+        except Exception:
+            pass
 
     # 2026-09-30 GREY-SWITCH WIRING — exits shared with live stocks (tradier_manage GREY_WIRE hook) via
     # vec_decisions.grey_wire_exits (crypto live source of truth: ez_manage.process_position). Every enable
@@ -20165,6 +20173,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 )
                 if _lr_flat_open_target is not None and _fire_src == "LR_BAND_LADDER_PARITY_TARGET":
                     _dollar = float(_lr_flat_open_target.add_notional_usd)
+                _b04_selected = False
+                if entry_sig[i] and _fire_src is None:
+                    for _b04_name, _b04_mask in _entry_blocks_cache.items():
+                        if _b04_name == "B04":
+                            _b04_selected = bool(_b04_mask[i])
+                            break
+                        if bool(_b04_mask[i]):
+                            break
+                if _b04_selected:
+                    _dollar *= float(_b04_size_mult[i])
                 if _wirec_size_mult is not None and i < len(_wirec_size_mult):
                     _dollar = _dollar * float(_wirec_size_mult[i])  # WIRING LANE C L1c
                 if _grd_open_mult is not None and i < len(_grd_open_mult):

@@ -31,6 +31,32 @@ def operation_identity(change):
     return guard.fingerprint({'field': change['field'], 'value': change['value']})
 
 
+def pair_identity(x, y):
+    return guard.fingerprint(sorted((operation_identity(x), operation_identity(y))))
+
+
+def prepared_arrays_identity(prepared):
+    arrays = []
+    def visit(value, path):
+        if hasattr(value, 'dtype') and hasattr(value, 'shape') and hasattr(value, 'tobytes'):
+            content = guard.fingerprint(value) if value.dtype.kind == 'O' else hashlib.sha256(value.tobytes(order='C')).hexdigest()
+            arrays.append((path, str(value.dtype), list(value.shape), content))
+        elif isinstance(value, dict):
+            for key, item in sorted(value.items(), key=lambda item: str(item[0])):
+                visit(item, path + '/' + str(key))
+        elif isinstance(value, (list, tuple)):
+            for index, item in enumerate(value):
+                visit(item, path + '/' + str(index))
+    visit(prepared, '')
+    if not arrays:
+        raise ValueError('actual prepared arrays required')
+    return guard.fingerprint(arrays)
+
+
+def derived_effects(gains):
+    return {'X_minus_B': gains['X'] - gains['B'], 'Y_minus_B': gains['Y'] - gains['B'], 'Z_minus_X': gains['Z'] - gains['X'], 'Z_minus_Y': gains['Z'] - gains['Y'], 'Z_minus_B': gains['Z'] - gains['B'], 'interaction_Z_minus_X_minus_Y_plus_B': gains['Z'] - gains['X'] - gains['Y'] + gains['B']}
+
+
 def pure_factorial(records, x, y):
     configs = {}
     for name, row in records.items():
@@ -84,14 +110,23 @@ def validate_inputs(context, evaluate):
     materialized = json.loads(Path(receipt_pin['path']).read_text())
     if materialized.get('reference_root') != str(root):
         raise ValueError('materialized runtime root differs')
+    routing_pin, runtime_pin = context['routing_manifest'], context['runtime_manifest']
+    if sha(routing_pin['path']) != routing_pin['sha256'] or sha(runtime_pin['path']) != runtime_pin['sha256']:
+        raise ValueError('runtime or routing manifest changed')
+    routing = json.loads(Path(routing_pin['path']).read_text())
+    runtime = json.loads(Path(runtime_pin['path']).read_text())
     for relative, metadata in materialized['files'].items():
         path = root / relative
+        if relative in routing.get('source_sha256', {}):
+            if runtime['files'].get(relative) != routing['source_sha256'][relative] or sha(path) != routing['candidate_sha256'][relative]:
+                raise ValueError('explicit routing transformation lineage changed')
+            continue
         stat = path.stat()
         if path.is_symlink() or any(getattr(stat, 'st_' + field) != metadata[key] for field, key in [('size', 'bytes'), ('mtime_ns', 'mtime_ns'), ('ino', 'inode')]):
             raise ValueError('materialized source changed since verified hashes: ' + relative)
 
 
-def execute_quartet(prepared, pin, x, y, context, output, eligible):
+def execute_quartet(prepared, pin, x, y, context, output, eligible, pin_loading=None):
     from tools.opt.v12_pilot import evaluate_prepared_sanitized
     if context.get('phase') != 'postbaseline_research' or eligible(x, y, pin['settings']) is not True:
         raise ValueError('explicit postbaseline phase and actual current-domain proof required')
@@ -110,23 +145,33 @@ def execute_quartet(prepared, pin, x, y, context, output, eligible):
     accepted = json.loads(Path(source['path']).read_text())
     for key in source.get('settings_pointer', []):
         accepted = accepted[key]
-    expected_reader = dict(accepted)
-    expected_reader.update({key: guard.decoded(entry['value']) for key, entry in pin.get('neutral_new_keys', {}).items()})
-    if guard.fingerprint(baseline) != guard.fingerprint(expected_reader):
-        raise ValueError('accepted reader inputs were removed, expanded or replaced')
+    if pin_loading is not None:
+        resolved = guard.load_pin(**pin_loading)
+        if guard.fingerprint(resolved) != guard.fingerprint(pin):
+            raise ValueError('reader projection differs from actual guard.load_pin result')
+    else:
+        expected_reader = dict(accepted)
+        expected_reader.update({key: guard.decoded(entry['value']) for key, entry in pin.get('neutral_new_keys', {}).items()})
+        if guard.fingerprint(baseline) != guard.fingerprint(expected_reader):
+            raise ValueError('accepted reader inputs were removed, expanded or replaced')
     for change in (x, y):
         if change['field'] in baseline and guard.fingerprint(baseline[change['field']]) == guard.fingerprint(change['value']):
             raise ValueError('identity treatment is not an interaction experiment')
     validate_inputs(context, evaluate_prepared_sanitized)
+    original_arrays = prepared_arrays_identity(prepared)
     output = Path(output)
     output.mkdir(parents=True, exist_ok=False)
-    manifest = {'schema': 'prospective_quartet/1', 'status': 'measuring', 'context': context, 'x': x, 'y': y, 'components': {}, 'baseline_modified': False, 'runtime_hooked': False, 'source_sha256': sha(__file__), 'recorded_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
+    manifest = {'schema': 'prospective_quartet/1', 'status': 'measuring', 'context': context, 'x': x, 'y': y, 'canonical_pair_id': pair_identity(x, y), 'components': {}, 'baseline_modified': False, 'runtime_hooked': False, 'source_sha256': sha(__file__), 'recorded_at': datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
     configs = {'B': baseline, 'X': dict(baseline, **{x['field']: x['value']}), 'Y': dict(baseline, **{y['field']: y['value']}), 'Z': dict(baseline, **{x['field']: x['value'], y['field']: y['value']})}
     try:
         for name, settings in configs.items():
-            result, proof = guard.capture_actual(prepared, settings, evaluate_prepared_sanitized, context['window_days'])
+            case = copy.deepcopy(prepared)
+            before_arrays = prepared_arrays_identity(case)
+            if before_arrays != original_arrays:
+                raise ValueError('component prepared arrays differ before execution')
+            result, proof = guard.capture_actual(case, settings, evaluate_prepared_sanitized, context['window_days'])
             ledger = result.get('execution_ledger')
-            record = {'component': name, 'requested_reader_settings': settings, 'actual_engine_proof': proof, 'gain_pct': guard.normalized(result.get('gain_pct')), 'valid': result.get('valid'), 'invalid_reason': result.get('invalid_reason'), 'trades': result.get('trades'), 'reader_transformations': proof['reader_transformations']}
+            record = {'component': name, 'requested_reader_settings': settings, 'actual_engine_proof': proof, 'prepared_arrays_before_sha256': before_arrays, 'prepared_arrays_after_sha256': prepared_arrays_identity(case), 'gain_pct': guard.normalized(result.get('gain_pct')), 'valid': result.get('valid'), 'invalid_reason': result.get('invalid_reason'), 'trades': result.get('trades'), 'reader_transformations': proof['reader_transformations']}
             ledger_path = output / (name + '_execution_ledger.json')
             write_new(ledger_path, guard.normalized(ledger))
             record['ledger'] = {'file': ledger_path.name, 'sha256': sha(ledger_path)}
@@ -137,14 +182,19 @@ def execute_quartet(prepared, pin, x, y, context, output, eligible):
             if name == 'B':
                 assert_baseline(pin, baseline, proof, context['window_context'])
             validate_inputs(context, evaluate_prepared_sanitized)
+            if prepared_arrays_identity(prepared) != original_arrays:
+                raise ValueError('shared original prepared arrays mutated')
         gains = {name: json.loads((output / item['file']).read_text()) for name, item in manifest['components'].items()}
         valid = all(row['valid'] is True and isinstance(row['gain_pct'], (float, int)) and math.isfinite(row['gain_pct']) and not row['invalid_reason'] for row in gains.values())
         factorial = pure_factorial(gains, x, y)
         manifest['pure_effective_config_factorial'] = factorial
-        manifest['status'] = 'measured_valid_quartet' if valid and factorial else 'measured_diagnostic_constraint_dependency_or_noop'
-        if valid and factorial:
+        manifest['status'] = 'measured_operation_interaction' if valid else 'measured_diagnostic_constraint_or_invalid'
+        if valid:
             manifest['interaction_delta'] = gains['Z']['gain_pct'] - gains['X']['gain_pct'] - gains['Y']['gain_pct'] + gains['B']['gain_pct']
             manifest['joint_delta_vs_baseline'] = gains['Z']['gain_pct'] - gains['B']['gain_pct']
+            manifest['derived_diagnostics'] = derived_effects({name: row['gain_pct'] for name, row in gains.items()})
+        baseline_effective = gains['B']['actual_engine_proof']['effective_config_values'][0]
+        manifest['effective_expanded_fields_by_component'] = {name: sorted(key for key in set(baseline_effective) | set(row['actual_engine_proof']['effective_config_values'][0]) if guard.fingerprint(baseline_effective.get(key)) != guard.fingerprint(row['actual_engine_proof']['effective_config_values'][0].get(key))) for name, row in gains.items()}
         if guard.fingerprint(pin['settings']) != guard.fingerprint(baseline):
             raise ValueError('accepted baseline mutated')
     except BaseException as error:
@@ -160,7 +210,7 @@ def load_measured_quartet(path, expected_sha256):
     if sha(path) != expected_sha256:
         raise ValueError('quartet receipt changed')
     proof = json.loads(path.read_text())
-    if proof.get('schema') != 'prospective_quartet/1' or proof.get('status') != 'measured_valid_quartet' or set(proof.get('components') or {}) != {'B', 'X', 'Y', 'Z'}:
+    if proof.get('schema') != 'prospective_quartet/1' or proof.get('status') != 'measured_operation_interaction' or set(proof.get('components') or {}) != {'B', 'X', 'Y', 'Z'}:
         raise ValueError('complete valid measured quartet required')
     gains, records = {}, {}
     for name, item in proof['components'].items():
@@ -178,12 +228,20 @@ def load_measured_quartet(path, expected_sha256):
             raise ValueError('ledger differs from actual engine capture')
         gains[name] = record['gain_pct']
         records[name] = record
-    if not pure_factorial(records, proof['x'], proof['y']):
-        raise ValueError('effective configurations do not isolate the two interventions')
+    if proof['pure_effective_config_factorial'] != pure_factorial(records, proof['x'], proof['y']):
+        raise ValueError('effective configuration evidence tier changed')
+    baseline = records['B']['requested_reader_settings']
+    expected = {'B': baseline, 'X': dict(baseline, **{proof['x']['field']: proof['x']['value']}), 'Y': dict(baseline, **{proof['y']['field']: proof['y']['value']}), 'Z': dict(baseline, **{proof['x']['field']: proof['x']['value'], proof['y']['field']: proof['y']['value']})}
+    if any(guard.fingerprint(records[name]['requested_reader_settings']) != guard.fingerprint(settings) for name, settings in expected.items()):
+        raise ValueError('requested operations differ beyond the two interventions')
+    if len({row['prepared_arrays_before_sha256'] for row in records.values()}) != 1:
+        raise ValueError('component prepared arrays differ')
     if len({row['actual_engine_proof']['input_cutoff_sha256'] for row in records.values()}) != 1:
         raise ValueError('component input windows differ')
     if proof['interaction_delta'] != gains['Z'] - gains['X'] - gains['Y'] + gains['B'] or proof['joint_delta_vs_baseline'] != gains['Z'] - gains['B']:
         raise ValueError('measured quartet arithmetic changed')
+    if proof['derived_diagnostics'] != derived_effects(gains) or proof['canonical_pair_id'] != pair_identity(proof['x'], proof['y']):
+        raise ValueError('derived marginals or canonical pair identity changed')
     return proof
 
 
@@ -195,7 +253,7 @@ def prioritize_confirmation(proposals, measured, current_context, eligible):
             proof = load_measured_quartet(path, digest)
             if proof['context'] != current_context or eligible(proof['x'], proof['y'], proposal) is not True:
                 continue
-            if operation_identity(proposal['x']) == operation_identity(proof['x']) and operation_identity(proposal['y']) == operation_identity(proof['y']):
+            if pair_identity(proposal['x'], proposal['y']) == proof['canonical_pair_id']:
                 item['measured_priority'] = max(item['measured_priority'], proof['joint_delta_vs_baseline'])
                 item['measured_sources'].append(digest)
         result.append(item)

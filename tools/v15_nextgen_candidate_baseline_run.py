@@ -1,9 +1,11 @@
 """Run only the actual candidate pilot's initial pinned-baseline verification."""
 import argparse
+import ast
 import json
 import os
 from pathlib import Path
 import runpy
+import shutil
 import sys
 from v15_nextgen_bench_isolation import install_audit
 
@@ -16,8 +18,8 @@ def main():
     args = parser.parse_args()
     root, side = Path(args.root), Path(args.side)
     memory = next(int(line.split()[1]) / 1024 for line in Path('/proc/meminfo').read_text().splitlines() if line.startswith('MemAvailable:'))
-    if memory < 7000:
-        raise ValueError('original gate memory floor not met; no candidate baseline evaluation')
+    if memory < 7000 or shutil.disk_usage(root).free < 20000 * (1 << 20):
+        raise ValueError('original gate memory/disk floor not met; no candidate baseline evaluation')
     os.chdir(root)
     protected = {str(path.resolve()) for path in root.rglob('*') if path.is_file()}
     def immutable_inputs(event, values):
@@ -33,7 +35,12 @@ def main():
     install_audit(root, side)
     sys.path.insert(0, str(root))
     os.environ['V15_BASELINE_RAW_CAPTURE'] = str(side / 'candidate_raw_capture.pickle')
-    sys.argv = [str(root / 'v15_pilot.py'), '--sym-side', args.sym_side, '--template', str(root / 'SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx'), '--seq-mode', 'worst2best', '--window-days', '30', '--vector-only', '--workers', '2']
+    tree = ast.parse((root / 'v15_pilot.py').read_bytes())
+    node = next(node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == 'map_key_for_symside')
+    namespace = {}
+    exec(compile(ast.Module(body=[node], type_ignores=[]), str(root / 'v15_pilot.py'), 'exec'), namespace)
+    template = 'TEMPLATE_' + namespace['map_key_for_symside'](args.sym_side) + '.xlsx'
+    sys.argv = [str(root / 'v15_pilot.py'), '--sym-side', args.sym_side, '--template', str(root / 'SPREADSHEETS/TEMPLATE_FINAL_NORM' / template), '--seq-mode', 'worst2best', '--window-days', '30', '--vector-only', '--workers', '2']
     runpy.run_path(str(root / 'v15_pilot.py'), run_name='__main__')
     if not (side / 'candidate_baseline_parity.json').exists():
         raise ValueError('candidate returned without real baseline-parity receipt')
