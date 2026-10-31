@@ -1,0 +1,104 @@
+{
+  "copied_files": [
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s5_code_provenance_20261031T0212Z/code/tools/manifest_u4.py",
+      "sha256": "2f8497957163c8acf0fa0cabc8783e85c2b4a7b577bd0953b2dc5be2e7c6e27f",
+      "size_bytes": 4757,
+      "source_host": "s5",
+      "source_path": "/home/niels/v20_u4/code/tools/manifest_u4.py",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s5_code_provenance_20261031T0212Z/code/tools/must_build_u4.py",
+      "sha256": "e6bfd8138bb542bac12f02144a5b7af19f52521fdad63dba0c1b3e57ad4c366a",
+      "size_bytes": 2592,
+      "source_host": "s5",
+      "source_path": "/home/niels/v20_u4/code/tools/must_build_u4.py",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s5_code_provenance_20261031T0212Z/code/tools/must_union_u4.py",
+      "sha256": "a98f9fb26a2268358ab8efd91741011478859ccf0407a1894d2353f7437e8e3f",
+      "size_bytes": 4944,
+      "source_host": "s5",
+      "source_path": "/home/niels/v20_u4/code/tools/must_union_u4.py",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s5_code_provenance_20261031T0212Z/pcode/tools/bolds_current.json",
+      "sha256": "d0ddb1eb01d589bac1ceca4b8393d1ee599a9246ee7ac6de698fa0d8815297a7",
+      "size_bytes": 180204,
+      "source_host": "s5",
+      "source_path": "/home/niels/v20_u4/pcode/tools/bolds_current.json",
+      "source_pre_post_stable": true
+    }
+  ],
+  "created_at_utc": "2026-10-31T02:16:14Z",
+  "destination_root": "/Volumes/WD25/binance_archive/s5_code_provenance_20261031T0212Z",
+  "existing_exact_manifest_copies": [
+    {
+      "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T231425Z/s6_v20_u4_AB_model_receipts/A/MANIFEST.json",
+      "sha256": "3cbb2295bbfbb3502af4f7a1382b261b37e9a1019653838f92aab9e03ab52c0b",
+      "source": "/home/niels/v20_u4/A/MANIFEST.json",
+      "verified_equal": true
+    },
+    {
+      "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T231425Z/s6_v20_u4_AB_model_receipts/B/MANIFEST.json",
+      "sha256": "47d873fd7c6b015f734f90317b2e7954538c6b9eeca6605750b230fec4a51a2d",
+      "source": "/home/niels/v20_u4/B/MANIFEST.json",
+      "verified_equal": true
+    }
+  ],
+  "existing_exact_must_receipts": [
+    {
+      "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/build_stats.json",
+      "sha256": "f310ae704b94a285f80d1f5d515b7e222d052294c2bdb8bb91df7357a0bd9094",
+      "source": "/home/niels/v20_u4/must/A2/build_stats.json",
+      "verified_equal": true
+    },
+    {
+      "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/build_stats.json",
+      "sha256": "e72cdde532f625753f07e2d50df346ca2fe978993fa17f902a38a5e5c5905ffc",
+      "source": "/home/niels/v20_u4/must/B2/build_stats.json",
+      "verified_equal": true
+    },
+    {
+      "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/union_report.json",
+      "sha256": "91e6eabb6d318ddfc16587a83cbe8327827a347c8a71eceaff094c4bbce21056",
+      "source": "/home/niels/v20_u4/must/union_A/union_report.json",
+      "verified_equal": true
+    },
+    {
+      "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/union_report.json",
+      "sha256": "76305dc59e59643c140a1de98e62bc2077352cdbf9e90ab685a8e0a729bf4f88",
+      "source": "/home/niels/v20_u4/must/union_B/union_report.json",
+      "verified_equal": true
+    }
+  ],
+  "manifest_findings": [
+    "S5 root A/B MANIFEST.json are exact duplicates of the preserved WD25 S6 A/B manifests above.",
+    "Bounded search of S5 must/code/pcode found no standalone code or pcode MANIFEST.json; code/tools/manifest_u4.py is the manifest generator, not a generated manifest.",
+    "S5 must seed_v3u3 and selected must/A/B/A2/B2/union_A/union_B source receipts have prior independent WD25 receipts.",
+    "S5 code/pcode full trees and mutable linked targets are not represented by these selected provenance copies."
+  ],
+  "no_deletion": true,
+  "schema": "s5_code_provenance_copy_receipt/1",
+  "source_retained": true,
+  "symlink_target_map": [
+    {
+      "followed": false,
+      "literal_target": "/home/niels/binance-sandbox/SPREADSHEETS",
+      "source_path": "/home/niels/v20_u4/code/SPREADSHEETS"
+    },
+    {
+      "followed": false,
+      "literal_target": "/home/niels/binance-sandbox/data/learn/_cache",
+      "source_path": "/home/niels/v20_u4/code/data/learn/_cache"
+    }
+  ],
+  "wd25_volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28"
+}

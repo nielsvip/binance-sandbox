@@ -1,6 +1,7 @@
 import sys
 
 import numpy as np
+import pytest
 
 sys.path.insert(0, ".")
 sys.path.insert(0, "tests")
@@ -214,6 +215,14 @@ def test_k5m_gain_uses_open_cost_basis_after_augment_and_partial_reduce():
     assert fires[0]["reason"] == "K5M_REAL_DROP_DC_k5:20.0<dc5:104.50_gain:3.60%"
 
 
+
+def test_active_stdev_reject_reports_old_npz_as_unsupported():
+    npz = _base_npz()
+    cfg = _cfg()
+    cfg.STDEV_REJECT_EXIT_ENABLED = True
+    with pytest.raises(ValueError, match="STDEV_REJECT_EXIT_ENABLED unsupported"):
+        V.simulate_one(npz, "SYNTH", True, cfg, force_initial_seed=True)
+
 def test_stdev_reject_stock_switch_changes_simulate_one_ledger():
     npz = _base_npz()
     n = len(npz["close"])
@@ -225,12 +234,11 @@ def test_stdev_reject_stock_switch_changes_simulate_one_ledger():
     if "close_15m" in npz:
         npz["close_15m"][fire_bar] = 103.0
     npz["bb_pct_b_D"] = np.full(n, 0.5)
-    npz["timestamp_D"] = np.full(n, float(np.datetime64("2026-10-16T00:00:00").astype("datetime64[s]").astype(np.int64)))
+    npz["_completed_bb_pct_b_D"] = np.full(n, 0.9)
+    npz["_completed_bb_pct_b_D_prev"] = np.full(n, 0.9)
     npz["wt_velocity_1h"] = np.zeros(n)
-    npz["bb_pct_b_D"][:] = 0.9
     monday_open = int(np.searchsorted(ts, int(np.datetime64("2026-10-19T13:30:00").astype("datetime64[s]").astype(np.int64))))
-    npz["timestamp_D"][monday_open:] = float(np.datetime64("2026-10-19T00:00:00").astype("datetime64[s]").astype(np.int64))
-    npz["bb_pct_b_D"][monday_open:] = 0.6
+    npz["_completed_bb_pct_b_D"][monday_open:] = 0.6
     npz["wt_velocity_1h"][fire_bar] = -1.0
     off = _run(npz, "STDEV_REJECT_EXIT_ENABLED", False)
     on = _run(npz, "STDEV_REJECT_EXIT_ENABLED", True)

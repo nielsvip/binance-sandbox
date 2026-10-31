@@ -9,6 +9,12 @@ from tools.paper_frame_stream import FrameJournal, historical_or_forward_steps
 from tools.paper_journal_session import JournalForwardSession, preserve_source_times
 
 
+def test_engine_session_exposes_timestamp_preservation():
+    result = {"timestamp_1m": "invented", "age_5m": 0, "current_price": 5}
+    JournalForwardSession.preserve_source_times(result, {"timestamp_1m": "source"})
+    assert result == {"timestamp_1m": "source", "current_price": 5}
+
+
 class Store:
     def __init__(self):
         self.timestamps = []

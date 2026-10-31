@@ -200,9 +200,19 @@ def _eval_step(sf: StepFrames, fn: Callable, tfs, j: int) -> Dict[str, Dict[str,
         lf = b.get(tf)
         if lf is None or len(lf) == 0:
             per_tf[tf] = {}
+            per_tf[tf][f"_completed_bb_pct_b_{tf}"] = np.nan
+            per_tf[tf][f"_completed_bb_pct_b_{tf}_prev"] = np.nan
             continue
         arrs = fn(from_live_frame(lf), tf)
         per_tf[tf] = {k: v[-1] for k, v in arrs.items() if isinstance(v, np.ndarray) and v.ndim == 1 and len(v) == len(lf)}
+        from tradier_indicators import bb_features, completed_candle_frame
+        target_close = sf.ts[j] + pd.Timedelta(minutes=15)
+        completed = completed_candle_frame(lf, tf, target_close)
+        close = pd.to_numeric(completed.get("close"), errors="coerce") if len(completed) else None
+        current = bb_features(close, length=20, std_mult=2.0)[2] if close is not None else None
+        previous = bb_features(close.iloc[:-1], length=20, std_mult=2.0)[2] if close is not None else None
+        per_tf[tf][f"_completed_bb_pct_b_{tf}"] = float(current) if current is not None else np.nan
+        per_tf[tf][f"_completed_bb_pct_b_{tf}_prev"] = float(previous) if previous is not None else np.nan
     return per_tf
 
 

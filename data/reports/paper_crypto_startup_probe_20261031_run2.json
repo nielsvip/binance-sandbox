@@ -1,0 +1,18 @@
+{
+  "observed_at": "2026-10-31T02:18:17.634155Z",
+  "scope": "ONE_FRAME_STARTUP_PROBE",
+  "venue": "crypto",
+  "symbol": "BTCUSDC",
+  "source": "data/market_data_20261031_020418.json",
+  "promotion_eligible": false,
+  "trading_parity_verified": false,
+  "source_sha256": "b87520c85c458b4db694f024bfcb741ebe2954e58d56de882795d77d73e603cc",
+  "engine_sha256": "bc63df14c2fd79cacfc0fcac5b12e02852d94d4950b274bb5d7347815caf43c6",
+  "returncode": 0,
+  "result": {
+    "receipts": 1,
+    "frame_count": 1,
+    "state": "DIAGNOSTIC_ONLY",
+    "settings_verified": false
+  }
+}

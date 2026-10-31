@@ -1807,7 +1807,7 @@ async def drain_pending_v8_tasks():
 def _isolate_frozen_data_feeds(service_module, quick_module):
     async def _frozen_feed(*args, **kwargs):
         return None
-    for owner, methods in ((getattr(service_module, 'IndicatorsBridge', None), ('_hot_path_loop', '_cold_data_loop', '_redis_fallback_loop', '_refresh_from_source')), (getattr(quick_module, 'FastDataManager', None), ('_maintain_shared_memory_connection', '_maintain_cold_data_sync'))):
+    for owner, methods in ((getattr(service_module, 'IndicatorsBridge', None), ('_hot_path_loop', '_cold_data_loop', '_redis_fallback_loop', '_refresh_from_source')), (getattr(quick_module, 'FastDataManager', None), ('_maintain_shared_memory_connection', '_maintain_cold_data_sync')), (getattr(service_module, 'PositionService', None), ('_periodic_phantom_kill',))):
         if owner is not None:
             for method in methods:
                 if hasattr(owner, method):

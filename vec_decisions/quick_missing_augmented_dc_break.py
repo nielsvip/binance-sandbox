@@ -4,10 +4,16 @@ import numpy as np
 
 
 def augmented_dc_break_channel(indicators, is_long, ltf_enabled):
-    """Select the native source channel or its paired cached 15m channel for AUG only."""
-    if ltf_enabled:
-        return float((indicators or {}).get("dc_low_3m" if is_long else "dc_high_3m", 0.0) or 0.0)
-    return float((indicators or {}).get("dc_low4_15m" if is_long else "dc_high4_15m", 0.0) or 0.0)
+    """Select native 3m or paired 15m prior-channel data for AUG only."""
+    data = indicators or {}
+    key = "dc_low_3m" if is_long else "dc_high_3m"
+    if not ltf_enabled:
+        key = "dc_low4_15m_prev" if is_long else "dc_high4_15m_prev"
+    try:
+        value = float(data.get(key) or 0.0)
+    except (TypeError, ValueError, OverflowError):
+        return 0.0
+    return value if np.isfinite(value) and value > 0.0 else 0.0
 
 
 def augmented_dc_break_pos_min_qty(symbol, price, min_position_usd):

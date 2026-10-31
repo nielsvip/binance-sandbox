@@ -87,7 +87,9 @@ def ship_queue(host, local_queue, day):
 
 
 def launch(host, ss, day):
-    rdir = f"binance-sandbox/data/preopen_7d/fin_run/{day}/results"
+    # relative to ~/binance-sandbox, which the command cd's into; prefixing it with binance-sandbox/ again made mkdir
+    # create a doubled path and the redirect then had no directory to write into (measured 2026-10-31)
+    rdir = f"data/preopen_7d/fin_run/{day}/results"
     env = ("V18_CATCHUP=1 V15_7D_PILOT_FILE=v15_pilot.py V15_7D_ALREADY_PAUSED=1 "
            f"V15_7D_MIN_MEM_MB=3000 V15_7D_ANYTIME=1 V15_7D_OVERLAY=0 ")
     cmd = (f"avail=$(awk '/MemAvailable/{{print int($2/1024)}}' /proc/meminfo); "
@@ -96,15 +98,15 @@ def launch(host, ss, day):
            f"test ! -e {rdir}/{ss}/launcher.json && "
            f"{env} setsid -f nice -n 15 {PY_REMOTE} -u tools/v15_preopen_7d_launch.py "
            f"--queue ~/binance-sandbox/data/preopen_7d/queue_{day}.json --sym-side {ss} "
-           f"--result-dir ~/{rdir} --workers 7 --timeout-sec {BOARD_TIMEOUT_S} --python {PY_REMOTE} "
-           f"> ~/{rdir}/{ss}/launcher.json 2> ~/{rdir}/{ss}/launcher.stderr < /dev/null && echo LAUNCHED")
+           f"--result-dir ~/binance-sandbox/{rdir} --workers 7 --timeout-sec {BOARD_TIMEOUT_S} --python {PY_REMOTE} "
+           f"> ~/binance-sandbox/{rdir}/{ss}/launcher.json 2> ~/binance-sandbox/{rdir}/{ss}/launcher.stderr < /dev/null && echo LAUNCHED")
     rc, out, err = sh(host, cmd, 60)
     return out or f"rc={rc} {err[-120:]}"
 
 
 def fetch_result(host, ss, day):
     """The finished board's launcher verdict and its progress fields, read straight off the worker."""
-    rdir = f"binance-sandbox/data/preopen_7d/fin_run/{day}/results/{ss}"
+    rdir = f"binance-sandbox/data/preopen_7d/fin_run/{day}/results/{ss}"  # fetch_result reads absolute-from-home
     rc, out, _ = sh(host, f"cat ~/{rdir}/launcher.json 2>/dev/null", 30)
     if rc or not out.strip():
         return None

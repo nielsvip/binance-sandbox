@@ -171,6 +171,7 @@ def test_hold_bars_switch_flips_simulate_one_close_ledger():
         cfg.REENTRY_B04_DC_RETEST_ENABLED = True
         cfg.CYCLE_TP_ENABLED = False
         cfg.PARTIAL_PROFIT_LOCK_ENABLED = False
+        cfg.AUGMENTED_DC_BREAK_ENABLED = False
         return V.simulate_one(npz, "HOLD_BARS", True, cfg, force_initial_seed=True)["ledger"]
 
     off = [row for row in ledger(False) if row.get("reason") == "HOLD_BARS_EXIT"]
@@ -239,6 +240,7 @@ def test_satoshit_protection_switch_suppresses_hold_in_source_tagged_ledger(monk
         cfg.CYCLE_TP_ENABLED = False
         cfg.CYCLE_TP_TIERED_ENABLED = False
         cfg.PARTIAL_PROFIT_LOCK_ENABLED = False
+        cfg.AUGMENTED_DC_BREAK_ENABLED = False
         result = V.simulate_one(npz, "SATOSHIT_HOLD", True, cfg, force_initial_seed=False)
         opened = [row for row in result["ledger"] if row.get("type") == "OPEN"]
         assert opened and "SATOSHIT" in str(opened[0].get("reason", ""))

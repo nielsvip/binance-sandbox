@@ -15584,6 +15584,19 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     base_tf = _base_tf(npz, cfg)
     ts = npz.get("timestamps", npz.get(f"timestamp_{base_tf}", np.array([])))
     n = len(ts)
+    if str(getattr(cfg, "MODE", "crypto")) == "tradier" and bool(
+        getattr(cfg, "STDEV_REJECT_EXIT_ENABLED", False)
+    ):
+        _sre_tf_required = str(getattr(cfg, "STDEV_REJECT_EXIT_TF", "D"))
+        for _sre_field in (
+            f"_completed_bb_pct_b_{_sre_tf_required}",
+            f"_completed_bb_pct_b_{_sre_tf_required}_prev",
+        ):
+            _sre_values = np.asarray(npz.get(_sre_field, []))
+            if _sre_values.ndim != 1 or len(_sre_values) != n:
+                raise ValueError(
+                    f"STDEV_REJECT_EXIT_ENABLED unsupported: NPZ missing aligned completed field {_sre_field}"
+                )
     # PARITY LOOP STOCKS 2026-10-06: tradier_vec_exact (PARITY_VEC_EXACT_MODE) evaluates bar-by-bar prefixes of the live buffer; the first 99 bars of a
     # window must be decidable exactly as in the full-window run (NPZ indicators are precomputed, no warm-up). Oracle-only attribute, never a QuickConfig field.
     if n < 100 and not (getattr(cfg, "_PARITY_PREFIX_EVAL", False) and n >= 2):
@@ -18190,20 +18203,16 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         getattr(cfg, "STDEV_REJECT_EXIT_ENABLED", False)
     )
     _sre_tf = str(getattr(cfg, "STDEV_REJECT_EXIT_TF", "D"))
-    _sre_pctb_now = _sre_velocity = _sre_parent_ts = None
+    _sre_velocity = None
     _sre_completed_now = _sre_completed_prev = None
     if _sre_on:
-        _sre_pctb_now = np.asarray(_safe(npz, f"bb_pct_b_{_sre_tf}", n, np.nan), dtype=float)
+        _sre_completed_now = np.asarray(
+            _safe(npz, f"_completed_bb_pct_b_{_sre_tf}", n, np.nan), dtype=float
+        )
+        _sre_completed_prev = np.asarray(
+            _safe(npz, f"_completed_bb_pct_b_{_sre_tf}_prev", n, np.nan), dtype=float
+        )
         _sre_velocity = np.asarray(_safe(npz, "wt_velocity_1h", n, 0.0), dtype=float)
-        _sre_parent_key = f"timestamp_{_sre_tf}"
-        if _sre_parent_key in npz:
-            _sre_parent_ts = np.asarray(_safe(npz, _sre_parent_key, n, 0.0), dtype=float)
-            _sre_eval_seconds = {"5m": 300, "15m": 900}.get(base_tf, 900)
-            _sre_target_close = np.asarray(ts, dtype=float) + _sre_eval_seconds
-            from vec_decisions.tradier_missing_stdev_parent import completed_parent_snapshot_values
-            _sre_completed_now, _sre_completed_prev = completed_parent_snapshot_values(
-                _sre_pctb_now, _sre_parent_ts, _sre_target_close, _sre_tf
-            )
     _rule_b_exit_on = _tr_exit15 and bool(getattr(cfg, "RULE_B_5M_EXIT_ENABLED", False))
     if _rule_b_exit_on:
         _rule_b_low15 = np.asarray(_safe(npz, "low_15m", n, 0.0), dtype=float)

@@ -13,13 +13,6 @@
     "symbol": "KAVAUSDT",
     "side": "LONG"
   },
-  "ang:EIGENUSDT_SHORT": {
-    "orderId": "4000002013419374",
-    "stopPrice": 0.1927,
-    "entry_sig": "2026-10-31 01:00:30.092000+00:00",
-    "symbol": "EIGENUSDT",
-    "side": "SHORT"
-  },
   "ang:ZROUSDT_LONG": {
     "orderId": "4000002013249512",
     "stopPrice": 1.6441,
@@ -32,20 +25,6 @@
     "stopPrice": 0.5789,
     "entry_sig": "2026-10-30 23:25:21.458000+00:00",
     "symbol": "GRASSUSDT",
-    "side": "LONG"
-  },
-  "ang:NEARUSDC_LONG": {
-    "orderId": "4000002013240929",
-    "stopPrice": 4.208,
-    "entry_sig": "2026-10-30 23:25:28.977000+00:00",
-    "symbol": "NEARUSDC",
-    "side": "LONG"
-  },
-  "ang:BATUSDT_LONG": {
-    "orderId": "4000002013240424",
-    "stopPrice": 0.12734,
-    "entry_sig": "2026-10-30 23:25:06.826000+00:00",
-    "symbol": "BATUSDT",
     "side": "LONG"
   },
   "ang:XMRUSDT_LONG": {
@@ -90,18 +69,18 @@
     "symbol": "WIFUSDC",
     "side": "SHORT"
   },
-  "ang:SKYUSDT_SHORT": {
-    "orderId": "4000002013516863",
-    "stopPrice": 0.06786,
-    "entry_sig": "2026-10-31 01:45:51.798846+00:00",
-    "symbol": "SKYUSDT",
-    "side": "SHORT"
-  },
   "ang:NOTUSDT_SHORT": {
     "orderId": "4000002013582278",
     "stopPrice": 0.0003743,
     "entry_sig": "2026-10-31 02:15:43.997000+00:00",
     "symbol": "NOTUSDT",
     "side": "SHORT"
+  },
+  "ang:AWEUSDT_LONG": {
+    "orderId": "4000002013581807",
+    "stopPrice": 0.06809,
+    "entry_sig": "2026-10-31 02:15:30.705000+00:00",
+    "symbol": "AWEUSDT",
+    "side": "LONG"
   }
 }

@@ -24,10 +24,8 @@ def _arrays():
     close[5] = 99.3
     low[5] = 99.0
     high[5] = 99.6
-    dc_low4_15m = np.full(n, 99.0)
-    dc_low4_15m[0:4] = 98.0
-    dc_low4_15m[4] = 100.5
-    dc_low4_15m[5] = 99.0
+    dc_low4_15m = np.array([np.min(low[max(0, i - 3):i + 1]) for i in range(n)])
+    dc_high4_15m = np.array([np.max(high[max(0, i - 3):i + 1]) for i in range(n)])
     return {
         "timestamps": np.arange(n, dtype=float) * 900.0 + 1700000000.0,
         "close": close,
@@ -39,7 +37,7 @@ def _arrays():
         "dc_low_15m": np.full(n, 90.0),
         "dc_high_15m_prev": np.full(n, 110.0),
         "dc_low_15m_prev": np.full(n, 90.0),
-        "dc_high4_15m": np.full(n, 110.0),
+        "dc_high4_15m": dc_high4_15m,
         "dc_low4_15m": dc_low4_15m,
         "dc_high_4h": np.full(n, 150.0),
         "dc_low_4h": np.full(n, 50.0),
@@ -157,9 +155,27 @@ def test_simulate_one_books_augmented_dc_break_only_when_switch_is_on():
     assert np.isclose(on_rows[0]["qty"], expected)
 
 
-def test_native_aug_channel_switch_preserves_ltf_and_pairs_only_this_path():
+def test_native_adapter_uses_causal_previous_channel_and_matches_vector_each_bar():
+    npz = _arrays()
+    n = len(npz["close"])
+    safe = lambda data, key, size, default: np.asarray(data.get(key, np.full(size, default)), dtype=float)
+    for is_long, low_key, high_key, channel_key in (
+        (True, "dc_low4_15m_prev", "dc_high4_15m_prev", "dc_low4_15m"),
+        (False, "dc_low4_15m_prev", "dc_high4_15m_prev", "dc_high4_15m"),
+    ):
+        prepared = lec.prepare(npz, n, is_long, _config(True), npz["close"], safe, symbol="1000PEPEUSDC")
+        for i in range(1, n):
+            native = augmented_dc_break_channel(
+                {low_key: npz["dc_low4_15m"][i - 1], high_key: npz["dc_high4_15m"][i - 1]},
+                is_long,
+                False,
+            )
+            assert native == prepared["augmented_dc_lvl"][i]
+            assert native == npz[channel_key][i - 1]
     indicators = {"dc_low_3m": 98.0, "dc_high_3m": 102.0, "dc_low4_15m": 99.0, "dc_high4_15m": 101.0}
     assert augmented_dc_break_channel(indicators, True, True) == 98.0
     assert augmented_dc_break_channel(indicators, False, True) == 102.0
-    assert augmented_dc_break_channel(indicators, True, False) == 99.0
-    assert augmented_dc_break_channel(indicators, False, False) == 101.0
+    assert augmented_dc_break_channel(indicators, True, False) == 0.0
+    indicators.update({"dc_low4_15m_prev": 97.0, "dc_high4_15m_prev": 103.0})
+    assert augmented_dc_break_channel(indicators, True, False) == 97.0
+    assert augmented_dc_break_channel(indicators, False, False) == 103.0

@@ -642,8 +642,9 @@ def publish(boards: dict, results: list, run_id: str, started: str, partial: boo
 
 def index_page(manifest: dict) -> str:
     rows = []
-    catchup_n = sum(e.get("status") == "OK" and (e.get("deltas") or {}).get("gain_pct") is not None and float(e["deltas"]["gain_pct"]) < -1e-9 for e in manifest["entries"])
-    severe_n = sum(e.get("status") == "OK" and (e.get("deltas") or {}).get("gain_pct") is not None and float(e["deltas"]["gain_pct"]) <= -15.0 for e in manifest["entries"])
+    active = {r["symside"]: r["drop_pp"] for r in catchup_rows(manifest)}
+    catchup_n = len(active)
+    severe_n = sum(drop >= 15.0 for drop in active.values())
     for e in sorted(manifest["entries"], key=lambda e: (e["status"] != "OK", -(e.get("metrics") or {}).get("gain_pct", -1e9) if e["status"] == "OK" else 0, e["symside"])):
         m, d, o = e.get("metrics") or {}, e.get("deltas") or {}, e.get("orig_metrics") or {}
         chart_path = CHARTS / e["chart"]
@@ -662,7 +663,7 @@ def index_page(manifest: dict) -> str:
         link = f"<a href='{_html.escape(e['chart'])}' title='{_html.escape(chart_title + ' · ' + direction, quote=True)}' style='color:{title_color}'>{_html.escape(chart_title)}</a> <span style='color:{title_color}'>{_html.escape(direction)}</span>"
         if e["status"] == "OK":
             drop = d.get("gain_pct")
-            queue_status = "HALTED · CATCH-UP" if drop is not None and float(drop) <= -15.0 else "CATCH-UP · TRADING" if drop is not None and float(drop) < -1e-9 else "OK"
+            queue_status = "HALTED · CATCH-UP" if active.get(e["symside"], 0) >= 15.0 else "CATCH-UP · TRADING" if e["symside"] in active else "SUPERSEDED" if drop is not None and float(drop) < -1e-9 else "OK"
             rows.append(f"<tr><td>{link}</td><td>{queue_status}</td><td>{_fmt(m.get('gain_pct'))}</td><td>{_fmt(o.get('gain_pct'))}</td><td>{_fmt(d.get('gain_pct'), 2, True)}</td><td>{_fmt(m.get('bh_pct'))}</td><td>{m.get('trades')}</td><td>{_fmt(m.get('max_dd_pct'))}</td><td>{_fmt(m.get('tim_pct'))}</td><td>{e.get('board_cells_vintage') or 'UNAVAILABLE'}</td><td>{e.get('board_age_at_calc')}</td><td>{e.get('calculated_utc')}</td></tr>")
         else:
             rows.append(f"<tr style='color:#ef4444'><td>{link}</td><td>FAIL</td><td colspan=10>{_html.escape(e.get('error', '')[:200])}</td></tr>")
@@ -683,8 +684,8 @@ def index_page(manifest: dict) -> str:
 # vector_direct_trader root (no OPEN / AUGMENT; exits never blocked). Today vs the published board, same set:
 DETERIORATION_RULES = (("gain_pct", "drop", 5.0), ("delta_vs_bh", "drop", 5.0), ("max_dd_pct", "rise", 2.0), ("wr_pct", "drop", 15.0))
 HALT_FILE = ROOT / "data" / "deterioration_halt.json"
-HALT_TARGETS = (("s1", "~/binance/data"), ("s5", "~/binance/data"), ("s5", "~/trc7d_root/data"))
-PRIORITY_HOSTS = ("s1", "s2")
+HALT_TARGETS = (("s1-int", "~/binance/data"), ("s5", "~/binance/data"), ("s5", "~/trc7d_root/data"))
+PRIORITY_HOSTS = ("s1-int", "s2")
 PRIORITY_REMOTE = "~/binance-sandbox/data/fleet_priority.json"
 PRIORITY_MINE = ROOT / "data" / "reports" / "daily_charts_priority_added.json"
 CATCHUP_FILE = ROOT / "data" / "fleet_catchup.json"

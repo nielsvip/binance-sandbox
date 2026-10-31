@@ -184,6 +184,7 @@ def test_b04_switch_flips_simulate_one_trade_ledger(monkeypatch):
             fixture["dc_high_15m_ant"] = np.full(n, 100.0)
         cfg = V.QuickConfig()
         cfg.PARTIAL_PROFIT_LOCK_ENABLED = False
+        cfg.AUGMENTED_DC_BREAK_ENABLED = False
         cfg.REENTRY_B04_DC_RETEST_ENABLED = enabled
         cfg.MIN_HOLD_BARS = 0
         cfg.MAX_ORDER_VALUE = 10000.0

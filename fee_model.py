@@ -27,6 +27,7 @@ import glob
 import json
 import os
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 CACHE_NAME = "fee_model.json"
@@ -89,6 +90,218 @@ def _bnb_usd() -> float:
     except Exception:
         pass
     return _BNB_USD_FALLBACK
+
+
+def _quote_asset(row: dict) -> str:
+    asset = str(row.get("marginAsset") or "").upper()
+    if asset in ("USDT", "USDC"):
+        return asset
+    symbol = str(row.get("symbol") or row.get("pair") or "").upper()
+    if symbol.endswith("USDT"):
+        return "USDT"
+    if symbol.endswith("USDC"):
+        return "USDC"
+    return ""
+
+
+def _timestamp_ms(row: dict) -> int:
+    try:
+        return int(row.get("time") or row.get("timestamp_ms") or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _candle_time_ms(row) -> int:
+    if isinstance(row, (list, tuple)) and row:
+        try:
+            return int(row[0]) // 60000 * 60000
+        except (TypeError, ValueError):
+            return 0
+    if not isinstance(row, dict):
+        return 0
+    try:
+        stamp = row.get("timestamp_ms") or row.get("open_time") or row.get("openTime")
+        if stamp:
+            return int(stamp) // 60000 * 60000
+        stamp = row.get("timestamp")
+        if stamp:
+            return int(datetime.fromisoformat(str(stamp).replace("Z", "+00:00")).timestamp() * 1000) // 60000 * 60000
+    except (TypeError, ValueError, OverflowError):
+        return 0
+    return 0
+
+
+def _candle_bounds(row):
+    try:
+        if isinstance(row, (list, tuple)) and len(row) > 4:
+            low, high = float(row[3]), float(row[2])
+        elif isinstance(row, dict):
+            low, high = float(row.get("low")), float(row.get("high"))
+        else:
+            return None
+        if low > 0 and high >= low:
+            return low, high
+    except (TypeError, ValueError):
+        pass
+    return None
+
+
+def _load_bnb_minute_candles(root: Path) -> dict:
+    out = {"BNBUSDT": {}, "BNBUSDC": {}}
+    for pair in out:
+        for folder in ("klines_cache", "klines_cache_gateway"):
+            path = root / folder / f"{pair}_1m.json"
+            try:
+                rows = json.loads(path.read_text())
+            except Exception:
+                continue
+            for row in rows if isinstance(rows, list) else []:
+                minute = _candle_time_ms(row)
+                bounds = _candle_bounds(row)
+                if minute and bounds:
+                    out[pair][minute] = bounds
+    return out
+
+
+def _rates_from_stats(stats, complete=True) -> dict:
+    out = {
+        "fills": stats["fills"],
+        "fee_bearing_fills": stats["fee_bearing_fills"],
+        "quote_notional": round(stats["notional"], 8),
+        "bnb_fee": round(stats["bnb_fee"], 12),
+        "quote_fee_low": round(stats["fee_low"], 8),
+        "quote_fee_high": round(stats["fee_high"], 8),
+        "conversion_complete": bool(complete),
+    }
+    if complete and stats["notional"] > 0:
+        out["fee_pct_per_leg_low"] = 100.0 * stats["fee_low"] / stats["notional"]
+        out["fee_pct_per_leg_high"] = 100.0 * stats["fee_high"] / stats["notional"]
+        out["round_trip_pct_low"] = 200.0 * stats["fee_low"] / stats["notional"]
+        out["round_trip_pct_high"] = 200.0 * stats["fee_high"] / stats["notional"]
+    return out
+
+
+def measure_execution_rates(
+    window_days: int = LONG_WINDOW_DAYS,
+    base_path: Path = None,
+    now_ms: int = None,
+    bnb_minute_candles: dict = None,
+) -> dict:
+    """Measure historical quote/liquidity rates without substituting a live BNB price.
+
+    `bnb_minute_candles` may inject `{pair: {minute_ms: (low, high)}}` for offline audits.
+    Missing historical BNB minutes make the affected rate group UNVERIFIED.
+    """
+    root = Path(base_path) if base_path else _base_path()
+    cutoff_ms = (float(now_ms) if now_ms is not None else time.time() * 1000.0) - window_days * 86400.0 * 1000.0
+    candles = bnb_minute_candles if bnb_minute_candles is not None else _load_bnb_minute_candles(root)
+    groups = {}
+    missing = {}
+    fill_count = fee_bearing_count = 0
+    unknown_quote_count = 0
+    for path in glob.glob(str(root / "data" / "exchange_fills" / "*" / "*.json")):
+        try:
+            rows = json.loads(Path(path).read_text()).get("rows") or []
+        except Exception:
+            continue
+        for row in rows:
+            try:
+                ts = _timestamp_ms(row)
+                if not ts or ts < cutoff_ms:
+                    continue
+                notional = abs(float(row.get("quoteQty") or 0.0))
+                if notional <= 0:
+                    continue
+                commission = abs(float(row.get("commission") or 0.0))
+            except (TypeError, ValueError):
+                continue
+            quote = _quote_asset(row)
+            if quote not in ("USDT", "USDC"):
+                unknown_quote_count += 1
+                continue
+            liquidity = "MAKER" if bool(row.get("maker")) else "TAKER"
+            order_type = str(row.get("orderType") or row.get("type") or "UNSPECIFIED").upper()
+            client_id = str(row.get("clientOrderId") or row.get("client_order_id") or "")
+            prefix = "vds" if client_id.startswith("vds") else "vd" if client_id.startswith("vd") else client_id[:2] or "UNSPECIFIED"
+            keys = (("quote", quote), ("liquidity", quote, liquidity), ("execution", quote, order_type, liquidity), ("prefix", quote, prefix, liquidity))
+            fill_count += 1
+            if commission > 0:
+                fee_bearing_count += 1
+            converted = None
+            bnb_fee = commission if str(row.get("commissionAsset") or "").upper() == "BNB" else 0.0
+            asset = str(row.get("commissionAsset") or "").upper()
+            if commission > 0 and asset == "BNB":
+                minute = ts // 60000 * 60000
+                candle = (candles.get("BNB" + quote) or {}).get(minute)
+                if candle:
+                    bounds = _candle_bounds({"low": candle[0], "high": candle[1]}) if isinstance(candle, (list, tuple)) else _candle_bounds(candle)
+                    if bounds:
+                        converted = commission * bounds[0], commission * bounds[1]
+                if converted is None:
+                    missing["BNB" + quote] = missing.get("BNB" + quote, 0) + 1
+            elif commission > 0 and asset == quote:
+                converted = (commission, commission)
+            elif commission > 0:
+                unknown_quote_count += 1
+            if converted is None:
+                converted = (0.0, 0.0)
+            for key in keys:
+                stats = groups.setdefault(key, {"fills": 0, "fee_bearing_fills": 0, "notional": 0.0, "bnb_fee": 0.0, "fee_low": 0.0, "fee_high": 0.0})
+                stats["fills"] += 1
+                stats["fee_bearing_fills"] += int(commission > 0)
+                stats["notional"] += notional
+                stats["bnb_fee"] += bnb_fee
+                stats["fee_low"] += converted[0]
+                stats["fee_high"] += converted[1]
+    result = {
+        "window_days": window_days,
+        "fills": fill_count,
+        "fee_bearing_fills": fee_bearing_count,
+        "unconverted_bnb_fee_fills": sum(missing.values()),
+        "unconverted_by_pair": missing,
+        "unknown_quote_or_fee_asset_fills": unknown_quote_count,
+        "conversion_method": "same-minute, quote-specific BNB candle low/high; no live mark fallback",
+        "by_quote": {},
+        "by_quote_liquidity": {},
+        "by_quote_execution_type": {},
+        "by_quote_client_prefix": {},
+    }
+    for key, stats in groups.items():
+        kind = key[0]
+        if kind == "quote":
+            quote = key[1]
+            complete = missing.get("BNB" + quote, 0) == 0 and unknown_quote_count == 0
+            result["by_quote"][quote] = _rates_from_stats(stats, complete)
+        elif kind == "liquidity":
+            _, quote, liquidity = key
+            complete = missing.get("BNB" + quote, 0) == 0 and unknown_quote_count == 0
+            result["by_quote_liquidity"].setdefault(quote, {})[liquidity] = _rates_from_stats(stats, complete)
+        elif kind == "execution":
+            _, quote, order_type, liquidity = key
+            complete = missing.get("BNB" + quote, 0) == 0 and unknown_quote_count == 0
+            result["by_quote_execution_type"].setdefault(quote, {}).setdefault(order_type, {})[liquidity] = _rates_from_stats(stats, complete)
+        else:
+            _, quote, prefix, liquidity = key
+            complete = missing.get("BNB" + quote, 0) == 0 and unknown_quote_count == 0
+            result["by_quote_client_prefix"].setdefault(quote, {}).setdefault(prefix, {})[liquidity] = _rates_from_stats(stats, complete)
+    result["conversion_complete"] = not missing and unknown_quote_count == 0
+    return result
+
+
+def round_trip_pct_for_execution(measurement: dict, quote: str, execution_type: str) -> float:
+    """Select an observed quote-specific rate; MARKET is charged at observed taker rate."""
+    quote = str(quote or "").upper()
+    execution_type = str(execution_type or "").upper()
+    if execution_type == "MARKET":
+        liquidity = "TAKER"
+    elif execution_type == "LIMIT_MAKER":
+        liquidity = "MAKER"
+    else:
+        raise ValueError("LIMIT execution needs its actual maker/taker outcome")
+    row = ((measurement.get("by_quote_liquidity") or {}).get(quote) or {}).get(liquidity)
+    if not row or not row.get("conversion_complete") or "round_trip_pct_high" not in row:
+        raise ValueError(f"historical {quote} {liquidity} fee rate is unverified")
+    return float(row["round_trip_pct_high"])
 
 
 def measure(window_days: int = LONG_WINDOW_DAYS, base_path: Path = None) -> dict:

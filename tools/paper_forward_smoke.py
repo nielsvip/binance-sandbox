@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Bounded isolated real-engine startup probe; never forward performance evidence."""
 import argparse
+import hashlib
 import json
 import os
 import subprocess
@@ -22,6 +23,7 @@ from tools.paper_journal_session import JournalForwardSession
 symbol=sys.argv[2]; mode=sys.argv[3]
 values=json.loads((root/"input.json").read_text())
 ts=float(int(time.time()))
+start_date=engine.datetime.fromtimestamp(ts,engine.timezone.utc).strftime("%Y-%m-%d")
 stores={symbol:PaperSnapshotStore([{"ts":ts,"indicators":values}])}
 identity={"scenario_id":"startup-diagnostic-only","settings_sha256":hashlib.sha256(b"startup-defaults-unverified").hexdigest(),"code_sha256":hashlib.sha256(Path(engine.__file__).read_bytes()).hexdigest()}
 journal=FrameJournal(root/"frames.db",identity)
@@ -31,9 +33,9 @@ async def apply_frame(payload,stores):
         stores[symbol].append(ts,values)
 session=JournalForwardSession(journal,stores,apply_frame,code_path=engine.__file__,mode=mode)
 if mode=="crypto":
-    asyncio.run(engine.run_simulation("crypto","ang","2026-10-31",10000,stores,"1m",forward_session=session))
+    asyncio.run(engine.run_simulation("crypto","ang",start_date,10000,stores,"1m",forward_session=session))
 else:
-    asyncio.run(engine.run_simulation_tradier("trb","2026-10-31",10000,stores,"5m",forward_session=session))
+    asyncio.run(engine.run_simulation_tradier("trb",start_date,10000,stores,"5m",forward_session=session))
 frames=journal.frames()
 (root/"probe-result.json").write_text(json.dumps({"receipts":sum(row['receipt_hash'] is not None for row in frames),"frame_count":len(frames),"state":"DIAGNOSTIC_ONLY","settings_verified":False}))
 journal.close()
@@ -56,6 +58,8 @@ def main():
         raise ValueError("snapshot exceeds 32 MiB bounded reader")
     values = json.loads(raw)[args.symbol]
     report = {"observed_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"), "scope": "ONE_FRAME_STARTUP_PROBE", "venue": args.venue, "symbol": args.symbol, "source": str(args.snapshot), "promotion_eligible": False, "trading_parity_verified": False}
+    report["source_sha256"] = hashlib.sha256(raw).hexdigest()
+    report["engine_sha256"] = hashlib.sha256((ROOT / "backtest_v12_engine.py").read_bytes()).hexdigest()
     with tempfile.TemporaryDirectory(prefix="paper_engine_probe_") as folder:
         folder = Path(folder)
         (folder / "input.json").write_text(json.dumps(values, allow_nan=False))

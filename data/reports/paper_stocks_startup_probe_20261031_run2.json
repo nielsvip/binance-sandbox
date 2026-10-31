@@ -1,0 +1,18 @@
+{
+  "observed_at": "2026-10-31T02:18:49.808342Z",
+  "scope": "ONE_FRAME_STARTUP_PROBE",
+  "venue": "stocks",
+  "symbol": "AAPL",
+  "source": "data/tradier/tradier_indicators_1793390428.json",
+  "promotion_eligible": false,
+  "trading_parity_verified": false,
+  "source_sha256": "8261b9a7043c0062656f4c7240a4512ed6d6e35b8d4904334a6d8796dcfff37a",
+  "engine_sha256": "bc63df14c2fd79cacfc0fcac5b12e02852d94d4950b274bb5d7347815caf43c6",
+  "returncode": 0,
+  "result": {
+    "receipts": 1,
+    "frame_count": 1,
+    "state": "DIAGNOSTIC_ONLY",
+    "settings_verified": false
+  }
+}

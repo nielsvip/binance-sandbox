@@ -1,0 +1,43 @@
+{
+  "created_at_utc": "2026-10-31T02:17:01Z",
+  "exact_existing_s5_duplicates": [
+    {
+      "sha256": "3cbb2295bbfbb3502af4f7a1382b261b37e9a1019653838f92aab9e03ab52c0b",
+      "source": "/home/niels/v20_u4/A/MANIFEST.json",
+      "wd": "/Volumes/WD25/binance_archive/learning_preserve_20261030T231425Z/s6_v20_u4_AB_model_receipts/A/MANIFEST.json"
+    },
+    {
+      "sha256": "47d873fd7c6b015f734f90317b2e7954538c6b9eeca6605750b230fec4a51a2d",
+      "source": "/home/niels/v20_u4/B/MANIFEST.json",
+      "wd": "/Volumes/WD25/binance_archive/learning_preserve_20261030T231425Z/s6_v20_u4_AB_model_receipts/B/MANIFEST.json"
+    }
+  ],
+  "no_deletion": true,
+  "no_source_mutation": true,
+  "schema": "learning_preservation_increment/1",
+  "scope": "S1 small ancillary source copies plus S5 must/code/pcode provenance; no deletions or live DB copies",
+  "unresolved": [
+    "S1 causal_learner.db (2.74GB) and v17_combo_library.sqlite (937MB) remain live and uncopied; no consistent snapshot/hash proof.",
+    "S5 full code/pcode trees and the mutable code/SPREADSHEETS and code/data/learn/_cache symlink targets remain unpreserved.",
+    "S5 must payload trees outside the already verified seed/union/A2/B2 selective copies remain unresolved."
+  ],
+  "verified_copy_receipts": [
+    {
+      "bytes": 59087602,
+      "destination_verified": true,
+      "files": 99,
+      "path": "/Users/niels/Documents/binance/data/reports/s1_ancillary_copy_receipt_20261031T0210Z.json",
+      "sha256": "ded43cf45eaf1288f430c3d586cf60d60b0a80980da1651c49ab721d9987677c",
+      "source_pre_post_stable": true,
+      "wd_copy": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/s1_ancillary_copy_receipt_20261031T0210Z.json"
+    },
+    {
+      "copied_small_files": 4,
+      "destination_verified": true,
+      "path": "/Users/niels/Documents/binance/data/reports/s5_must_code_pcode_provenance_20261031T0216Z.json",
+      "sha256": "3071b004e86e690119e6cb4d9aef5e580384d703e7a1e197a950cb283b885738",
+      "source_pre_post_stable": true,
+      "wd_copy": "/Volumes/WD25/binance_archive/s5_code_provenance_20261031T0212Z/s5_must_code_pcode_provenance_20261031T0216Z.json"
+    }
+  ]
+}

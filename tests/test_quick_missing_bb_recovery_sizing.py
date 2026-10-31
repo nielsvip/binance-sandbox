@@ -107,6 +107,7 @@ class BBRecoveryReduceSizingTests(unittest.TestCase):
         cfg.MIN_HOLD_BARS = 0
         cfg.CYCLE_TP_TIERED_ENABLED = False
         cfg.PARTIAL_PROFIT_LOCK_ENABLED = False
+        cfg.AUGMENTED_DC_BREAK_ENABLED = False
         original_entry = v12.compute_entry_signals
         original_exit = v12.compute_exit_signals
         try:
@@ -164,6 +165,7 @@ class BBRecoveryReduceSizingTests(unittest.TestCase):
         cfg._template_layer = "CRYPTO_LONG"
         cfg.CYCLE_TP_TIERED_ENABLED = False
         cfg.PARTIAL_PROFIT_LOCK_ENABLED = False
+        cfg.AUGMENTED_DC_BREAK_ENABLED = False
         original_entry = v12.compute_entry_signals
         original_exit = v12.compute_exit_signals
         try:
