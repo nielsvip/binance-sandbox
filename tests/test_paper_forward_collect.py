@@ -192,3 +192,29 @@ def test_remote_bundle_pull_imports_versioned_artifacts(tmp_path):
         assert Path(imported["bundle_path"]).is_dir()
         assert db.query("SELECT COUNT(*) FROM forward_receipts WHERE run_id='paper-run-1'")[0][0] == 1
         assert db.query("SELECT COUNT(*) FROM paper_coordinator_jobs")[0][0] == 1
+
+
+def test_local_collector_copies_manifest_pinned_accounting_artifact(tmp_path):
+    plan, run_dir = _plan_and_worker(tmp_path)
+    manifest_path = run_dir / "worker.result_manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    journal = sqlite3.connect(run_dir / "receipts.snapshot.db")
+    input_hash = journal.execute("SELECT input_hash FROM frames").fetchone()[0]
+    journal.close()
+    accounting = {
+        "schema_version": 1, "run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"],
+        "scenario_id": manifest["scenario_id"], "sym_side": manifest["sym_side"],
+        "settings_sha256": manifest["settings_sha256"], "code_sha256": manifest["code_sha256"],
+        "source_input_sha256s": [input_hash], "cost_model": "engine_simulated_round_trip_cost",
+        "costs_are_exchange_actual": False, "trades": [],
+    }
+    body = _canon(accounting) + "\n"
+    (run_dir / "accounting.json").write_text(body)
+    manifest["accounting_file"] = "accounting.json"
+    manifest["accounting_sha256"] = hashlib.sha256(body.encode()).hexdigest()
+    manifest_path.write_text(_canon(manifest))
+    with _collector_db(tmp_path / "data" / "paper_forward_lab" / "central.sqlite") as db:
+        result = PaperForwardCollector(tmp_path, db, hosts=("s1",)).collect_once(plan)
+        imported = next(row for row in result["collected_artifacts"] if row.get("run_id") == "paper-run-1")
+        assert imported["accounting_fills"] == 0
+        assert (Path(imported["bundle_path"]) / "accounting.json").is_file()

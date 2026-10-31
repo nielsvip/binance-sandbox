@@ -11,12 +11,14 @@ try:
     from .paper_scenario_catalog import inventory
     from .paper_fleet_budget import stable_host
     from .paper_inventory import digest, ingest_plan
+    from .paper_forward_parameters import resolve_catalog
     from .paper_scenario_db import ScenarioDB
 except ImportError:
     from paper_forward_lab import utc_now
     from paper_scenario_catalog import inventory
     from paper_fleet_budget import stable_host
     from paper_inventory import digest, ingest_plan
+    from paper_forward_parameters import resolve_catalog
     from paper_scenario_db import ScenarioDB
 
 def write_once(path, value):
@@ -31,7 +33,7 @@ def write_once(path, value):
 
 def build(root):
     root = Path(root)
-    catalog = inventory(root)
+    catalog = resolve_catalog(inventory(root), root / "SPREADSHEETS/TEMPLATE_FINAL_NORM")
     database = root / "data/hourly_reconfig/per_sym_store.db"
     groups, missing = [], []
     with sqlite3.connect(database.resolve().as_uri() + "?mode=ro", uri=True) as source:
@@ -60,9 +62,10 @@ def build(root):
 
 def export(plan, destination, remote_root, engine_root):
     destination = Path(destination)
+    destination.mkdir(parents=True, exist_ok=True)
     remote_root = Path(remote_root)
     for group in plan["groups"]:
-        group["epoch_id"] = digest({"sym_side": group["sym_side"], "settings": group["settings_sha256"], "sources": plan["catalog"]["file_sha256"], "runtime": str(engine_root), "experiment": "isolated_all_blanket_paths_blocked_except_candidate_v1"})
+        group["epoch_id"] = digest({"sym_side": group["sym_side"], "settings": group["settings_sha256"], "sources": plan["catalog"]["file_sha256"], "runtime": str(engine_root), "window": plan.get("experiment_window"), "experiment": "isolated_all_blanket_paths_blocked_except_candidate_v1"})
     code_hash = digest(plan["catalog"]["file_sha256"])
     batch_id = digest({"groups": plan["groups"], "code": code_hash})[:20]
     batch = destination / batch_id
@@ -70,7 +73,7 @@ def export(plan, destination, remote_root, engine_root):
     counts = {host: {"jobs": 0, "launchable": 0, "pending_parameters": 0} for host in ("s1", "s2", "s5", "s6")}
     jobs = {host: [] for host in counts}
     write_once(batch / "plan.json", plan)
-    with tempfile.TemporaryDirectory(prefix="paper-launch-registry-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="paper-launch-registry-", dir=destination) as temporary:
         with ScenarioDB(Path(temporary) / "registry.db") as db:
             ingest_plan(db, plan)
             for group in plan["groups"]:
@@ -87,7 +90,7 @@ def export(plan, destination, remote_root, engine_root):
                     native = sorted({entry for entry in ("1m", "3m", "5m") if ("_" + entry + "_") in ("_" + str(parameters["catalog"].get("switch") or "").lower() + "_")})
                     timeframe = "1m"
                     launchable = row["status"] != "PENDING_PARAMETERS"
-                    spec = {"schema_version": 1, "is_baseline": parameters["catalog"]["kind"] == "baseline", "source_journal": str(remote_root / "data/paper_forward_lab" / ("native_journal_" + group["venue"] + ".sqlite3")), "run_id": run_id, "epoch_id": group["epoch_id"], "scenario_id": row["scenario_id"], "planned_run_id": row["run_id"], "sym_side": group["sym_side"], "venue": group["venue"], "host": host, "plan_code_hash": code_hash, "parent_settings_sha256": base_hash, "full_settings": str(remote_batch / host / "inputs/settings" / (base_hash + ".json")), "candidate_overrides": str(remote_batch / host / "inputs/overrides" / (override_hash + ".json")), "registered_candidate_overrides": overrides, "paper_mask_release": sorted(overrides), "experiment_context": {"name": "isolated_all_blanket_paths_blocked_except_candidate_v1", "release_nonvectorizable": True, "release_sub15m": True}, "engine_root": str(engine_root), "frame_timeframe": timeframe, "required_timeframes": sorted(set([timeframe] + native)), "poll_seconds": 10, "max_age_seconds": 120, "launchable": launchable, "pending_reason": None if launchable else "PENDING_PARAMETER_VALUES", "snapshot": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".json")), "receipt": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".receipt.json"))}
+                    spec = {"schema_version": 1, "experiment_window": plan.get("experiment_window"), "is_baseline": parameters["catalog"]["kind"] == "baseline", "source_journal": str(remote_root / "data/paper_forward_lab" / ("native_journal_" + group["venue"] + ".sqlite3")), "run_id": run_id, "epoch_id": group["epoch_id"], "scenario_id": row["scenario_id"], "planned_run_id": row["run_id"], "sym_side": group["sym_side"], "venue": group["venue"], "host": host, "plan_code_hash": code_hash, "parent_settings_sha256": base_hash, "full_settings": str(remote_batch / host / "inputs/settings" / (base_hash + ".json")), "candidate_overrides": str(remote_batch / host / "inputs/overrides" / (override_hash + ".json")), "registered_candidate_overrides": overrides, "paper_mask_release": sorted(overrides), "experiment_context": {"name": "isolated_all_blanket_paths_blocked_except_candidate_v1", "release_nonvectorizable": True, "release_sub15m": True}, "engine_root": str(engine_root), "frame_timeframe": timeframe, "required_timeframes": sorted(set([timeframe] + native)), "poll_seconds": 10, "max_age_seconds": 120, "launchable": launchable, "pending_reason": None if launchable else "PENDING_PARAMETER_VALUES", "snapshot": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".json")), "receipt": str(remote_root / "data/paper_forward_lab/feed" / (group["venue"] + ".receipt.json"))}
                     filename = run_id + ".json"
                     write_once(batch / host / "specs" / filename, spec)
                     jobs[host].append({"spec_file": filename, **{key: spec[key] for key in ("run_id", "epoch_id", "scenario_id", "sym_side", "venue", "host")}})

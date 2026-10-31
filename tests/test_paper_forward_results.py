@@ -23,7 +23,7 @@ def _fixture(tmp_path):
     journal.append_frame(100, {"close": 10})
     journal.record_receipt(100, {"events": [{"type": "eta", "action": "OPEN", "status": "FILLED", "position_key": "inf:BTCUSDC_LONG", "position_before": 0, "position_after": 2, "price": 10, "quantity": 2}], "positions": {"inf:BTCUSDC_LONG": {"quantity": 2}}})
     journal.append_frame(200, {"close": 12})
-    journal.record_receipt(200, {"events": [{"params": {"type": "MARKET", "side": "SELL"}, "action": "CLOSE", "status": "FILLED", "position_key": "inf:BTCUSDC_LONG", "position_before": 2, "position_after": 0, "price": 12, "quantity": 2}], "positions": {"inf:BTCUSDC_LONG": {"quantity": 0}}})
+    journal.record_receipt(200, {"events": [{"type": "webhook", "params": {"type": "MARKET", "side": "SELL"}, "action": "CLOSE", "status": "FILLED", "position_key": "inf:BTCUSDC_LONG", "position_before": 2, "position_after": 0, "price": 12, "quantity": 2}], "positions": {"inf:BTCUSDC_LONG": {"quantity": 0}}})
     journal.close()
     return db, tmp_path / "worker.sqlite", manifest
 
@@ -141,26 +141,32 @@ def test_paired_readiness_reports_shared_inputs_without_claiming_outcomes(tmp_pa
     import sqlite3
 
     db, journal_path, candidate_manifest = _fixture(tmp_path)
-    ingest(db, journal_path, candidate_manifest)
+    candidate_artifact = _accounting_artifact(journal_path, candidate_manifest)
+    _write_accounting(journal_path.parent, candidate_manifest, candidate_artifact)
+    ingest(db, journal_path, candidate_manifest, journal_path.parent)
     baseline_id = "baseline-scenario"
     base = {"BOOL_SWITCH": False, "START_POSITION_SIZE": 25}
     parent_hash = candidate_manifest["parent_settings_sha256"]
     db.add_scenario(scenario_id=baseline_id, path_id="p", side="LONG", parameters={"overrides": {}}, created_at=candidate_manifest["started_at"])
     epoch = candidate_manifest["epoch_id"]
     db.add_run(run_id="planned-" + _digest([baseline_id, epoch]), scenario_id=baseline_id, sym_side=candidate_manifest["sym_side"], host=candidate_manifest["host"], settings_hash=parent_hash, code_hash="c" * 64, evidence_kind="catalog_only", status="PENDING", started_at=candidate_manifest["started_at"], ended_at=None)
-    baseline = dict(candidate_manifest, run_id="actual-baseline", scenario_id=baseline_id, settings_sha256=parent_hash, candidate_overrides={}, effective_settings=base, finished=False)
+    baseline = dict(candidate_manifest, run_id="actual-baseline", scenario_id=baseline_id, settings_sha256=parent_hash, candidate_overrides={}, effective_settings=base, finished=True)
+    baseline.pop("accounting_file", None)
+    baseline.pop("accounting_sha256", None)
     identity = {"scenario_id": baseline_id, "run_id": baseline["run_id"], "epoch_id": epoch, "sym_side": baseline["sym_side"], "settings_sha256": parent_hash, "code_sha256": baseline["code_sha256"]}
     baseline_journal = tmp_path / "baseline.sqlite"
     from tools.paper_frame_stream import FrameJournal
 
     journal = FrameJournal(baseline_journal, identity)
     source_frames = sqlite3.connect(journal_path)
-    for sequence, ts, payload in source_frames.execute("SELECT sequence,closed_ts,payload FROM frames ORDER BY sequence"):
+    for sequence, ts, payload, receipt_json in source_frames.execute("SELECT sequence,closed_ts,payload,receipt_json FROM frames ORDER BY sequence"):
         journal.append_frame(ts, json.loads(payload))
-        journal.record_receipt(ts, {"events": [], "positions": {"inf:BTCUSDC_LONG": {"positionAmt": 0}}})
+        journal.record_receipt(ts, json.loads(receipt_json))
     source_frames.close()
     journal.close()
-    ingest(db, baseline_journal, baseline)
+    baseline_artifact = _accounting_artifact(baseline_journal, baseline)
+    _write_accounting(baseline_journal.parent, baseline, baseline_artifact)
+    ingest(db, baseline_journal, baseline, baseline_journal.parent)
     rows = db.query("SELECT * FROM paper_paired_readiness")
     pair = next(row for row in rows if {row["run_a"], row["run_b"]} == {"actual-run-1", "actual-baseline"})
     assert pair["candidate_config_differs"] == 1
@@ -168,8 +174,106 @@ def test_paired_readiness_reports_shared_inputs_without_claiming_outcomes(tmp_pa
     assert (pair["frames_a"], pair["frames_b"], pair["identical_input_frames"]) == (2, 2, 2)
     assert pair["identical_inputs_ready"] == 1
     lifecycles = {pair["run_a"]: pair["lifecycles_a"], pair["run_b"]: pair["lifecycles_b"]}
-    assert lifecycles == {"actual-run-1": 1, "actual-baseline": 0}
+    assert lifecycles == {"actual-run-1": 1, "actual-baseline": 1}
     assert pair["known_return_lifecycles_a"] == pair["known_return_lifecycles_b"] == 0
     assert pair["known_fee_lifecycles_a"] == pair["known_fee_lifecycles_b"] == 0
     assert pair["outcomes_computable"] == 0
+    cost_pair = next(row for row in db.query("SELECT * FROM paper_paired_simulated_cost_readiness") if {row["run_a"], row["run_b"]} == {"actual-run-1", "actual-baseline"})
+    assert cost_pair["outcome_label"] == "diagnostic_simulated_cost"
+    assert cost_pair["paired_simulated_cost_ready"] == 1
+    assert cost_pair["diagnostic_simulated_cost_ready"] == 1
+    assert cost_pair["diagnostic_simulated_net_pnl_dollars_delta"] == 0
+    db.close()
+
+
+def _accounting_artifact(journal_path, manifest):
+    import sqlite3
+
+    connection = sqlite3.connect(journal_path)
+    rows = connection.execute("SELECT sequence,closed_ts,input_hash,receipt_json FROM frames ORDER BY sequence").fetchall()
+    connection.close()
+    trades = []
+    for sequence, ts, input_hash, receipt_json in rows:
+        receipt = json.loads(receipt_json)
+        for event_index, event in enumerate(receipt["events"]):
+            if event.get("type") not in {"eta", "webhook"}:
+                continue
+            close = event["action"] == "CLOSE"
+            trades.append({
+                "source_frame_sequence": sequence, "source_event_index": event_index,
+                "source_frame_input_hash": input_hash,
+                "source_event_sha256": hashlib.sha256(json.dumps(event, sort_keys=True, separators=(",", ":")).encode()).hexdigest(),
+                "source_event": event, "event_type": event["type"], "status": "FILLED",
+                "timestamp": "1970-01-01T00:03:20.000000Z" if ts == 200 else "1970-01-01T00:01:40.000000Z",
+                "position_key": event["position_key"], "action": event["action"], "position_side": "LONG",
+                "price": event["price"], "quantity": event["quantity"],
+                "gross_pnl_dollars": 4.0 if close else None, "net_pnl_dollars": 3.8 if close else None,
+                "gross_pnl_pct": 20.0 if close else None, "net_pnl_pct": 19.0 if close else None,
+                "round_trip_cost_pct_simulated": 1.0 if close else None,
+                "fees_dollars_simulated": 0.2 if close else None, "pnl_currency": "USD_SIMULATED",
+            })
+    return {
+        "schema_version": 1, "run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"],
+        "scenario_id": manifest["scenario_id"], "sym_side": manifest["sym_side"],
+        "settings_sha256": manifest["settings_sha256"], "code_sha256": manifest["code_sha256"],
+        "source_input_sha256s": sorted(row[2] for row in rows),
+        "cost_model": "engine_simulated_round_trip_cost", "costs_are_exchange_actual": False,
+        "trades": trades,
+    }
+
+
+def _write_accounting(path, manifest, artifact):
+    raw = (json.dumps(artifact, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n").encode()
+    (path / "accounting.json").write_bytes(raw)
+    manifest["accounting_file"] = "accounting.json"
+    manifest["accounting_sha256"] = hashlib.sha256(raw).hexdigest()
+
+
+def test_authenticated_engine_accounting_fills_ingest_as_simulated_diagnostic(tmp_path):
+    db, journal, manifest = _fixture(tmp_path)
+    artifact = _accounting_artifact(journal, manifest)
+    _write_accounting(journal.parent, manifest, artifact)
+    result = ingest(db, journal, manifest, journal.parent)
+    assert result["accounting_fills"] == 2
+    rows = db.query("SELECT action,gross_pnl_dollars,modeled_net_pnl_dollars,modeled_cost_dollars,cost_model FROM paper_forward_accounting_fills ORDER BY source_frame_sequence")
+    assert rows[0]["gross_pnl_dollars"] is None
+    assert (rows[1]["gross_pnl_dollars"], rows[1]["modeled_net_pnl_dollars"], rows[1]["modeled_cost_dollars"]) == (4.0, 3.8, 0.2)
+    assert all(row["cost_model"] == "engine_simulated_round_trip_cost" for row in rows)
+    pair = db.query("SELECT outcome_label,diagnostic_simulated_cost_ready FROM paper_paired_simulated_cost_readiness")
+    assert pair == []
+    db.close()
+
+
+def test_accounting_rejects_tampered_execution_quantity(tmp_path):
+    db, journal, manifest = _fixture(tmp_path)
+    artifact = _accounting_artifact(journal, manifest)
+    artifact["trades"][0]["quantity"] = 3
+    _write_accounting(journal.parent, manifest, artifact)
+    try:
+        ingest(db, journal, manifest, journal.parent)
+    except ValueError as exc:
+        assert "quantity differs" in str(exc)
+    else:
+        raise AssertionError("expected accounting/raw execution mismatch")
+    db.close()
+
+
+def test_accounting_rejects_modified_artifact_hash_and_missing_fills(tmp_path):
+    db, journal, manifest = _fixture(tmp_path)
+    artifact = _accounting_artifact(journal, manifest)
+    artifact["trades"].pop()
+    _write_accounting(journal.parent, manifest, artifact)
+    try:
+        ingest(db, journal, manifest, journal.parent)
+    except ValueError as exc:
+        assert "omits" in str(exc)
+    else:
+        raise AssertionError("expected missing execution accounting rejection")
+    manifest["accounting_sha256"] = "f" * 64
+    try:
+        ingest(db, journal, manifest, journal.parent)
+    except ValueError as exc:
+        assert "hash" in str(exc)
+    else:
+        raise AssertionError("expected accounting hash rejection")
     db.close()

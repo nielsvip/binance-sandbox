@@ -14,12 +14,14 @@ def formation_exit_mask(npz, n, cfg, is_long):
     if not any(bool(getattr(cfg, k, False)) for k in _FAMILY_KEYS):
         return np.zeros(n, dtype=bool)
     import classic_formations as CF
-    key = (id(npz), n)
-    fields = _CACHE.get(key)
+    timeframes = CF._formation_timeframes(cfg)
+    key = (id(npz), n, timeframes)
+    cached = _CACHE.get(key)
+    fields = cached[1] if cached is not None and cached[0] is npz else None
     if fields is None:
         arrays = {k: npz[k] for k in npz.files} if hasattr(npz, "files") else dict(npz)
         fields = dict(arrays)
-        fields.update(CF.ensure_npz_formation_fields(arrays, timeframes=CF._formation_timeframes(cfg)))
-        _CACHE.clear(); _CACHE[key] = fields
+        fields.update(CF.ensure_npz_formation_fields(arrays, timeframes=timeframes))
+        _CACHE.clear(); _CACHE[key] = (npz, fields)
     mask, _score, _fam = CF.formation_vector_mask(fields, is_long=is_long, action="EXIT", config=cfg, n=n)
     return np.asarray(mask, dtype=bool)

@@ -38,12 +38,14 @@ from pathlib import Path
 
 try:
     from .paper_fleet_budget import DEFAULT_THRESHOLDS, HOSTS_BY_VENUE, collect_observed, decide_admission, stable_host
+    from .paper_forward_window import resolve_source_window, validate_window
 except ImportError:
     from paper_fleet_budget import DEFAULT_THRESHOLDS, HOSTS_BY_VENUE, collect_observed, decide_admission, stable_host
+    from paper_forward_window import resolve_source_window, validate_window
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_SPEC_FIELDS = ("run_id", "epoch_id", "scenario_id", "sym_side", "venue", "host", "plan_code_hash", "engine_root")
-TERMINAL_STATES = {"COMPLETED", "FAILED", "INTERRUPTED", "INVALID_SPEC", "UNMANIFESTED_SPEC", "MISSING_SPEC", "SPEC_CHANGED", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT"}
+TERMINAL_STATES = {"COMPLETED", "FAILED", "INTERRUPTED", "INVALID_SPEC", "INVALID_EXPERIMENT_WINDOW", "UNMANIFESTED_SPEC", "MISSING_SPEC", "SPEC_CHANGED", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT"}
 WORKER_STATES = {"WAITING_FRESH_INPUT", "RUNNING", "RESOURCE_LIMIT_STOPPING", "FAILED", "COMPLETED", "COMPLETED_MULTI_FRAME_ENGINE_RUN", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT"}
 DEFAULT_WORKER_MEMORY_BYTES = 512 * 1024**2
 DEFAULT_WORKER_DISK_BYTES = 1024**3
@@ -219,9 +221,6 @@ def worker_command(spec_row, root):
     specs_dir = Path(spec_row["spec_path"]).parent
     symbol = spec["sym_side"].rsplit("_", 1)[0]
     venue = spec["venue"].lower()
-    feed_root = Path(spec.get("feed_root", Path(root) / "data" / "paper_forward_lab" / "feed"))
-    snapshot = _resolve_input(specs_dir, spec.get("snapshot", feed_root / f"{venue}.json"))
-    receipt = _resolve_input(specs_dir, spec.get("receipt", feed_root / f"{venue}.receipt.json"))
     full_settings = _resolve_input(specs_dir, spec["full_settings"])
     candidate = _resolve_input(specs_dir, spec["candidate_overrides"])
     engine_root = _resolve_input(specs_dir, spec["engine_root"])
@@ -232,14 +231,50 @@ def worker_command(spec_row, root):
         raise ValueError("engine_root must contain tools/paper_forward_worker.py")
     run_dir = Path(root) / "data" / "paper_forward_lab" / "runs" / spec_row["spec_id"]
     command = [sys.executable, str(worker_script), "--workspace-root", str(Path(root).resolve()), "--follow", "--sym-side", spec["sym_side"], "--venue", venue,
-               "--snapshot", str(snapshot), "--receipt", str(receipt), "--manifest", spec_row["spec_path"], "--full-settings", str(full_settings),
+               "--manifest", spec_row["spec_path"], "--full-settings", str(full_settings),
                "--candidate-overrides", str(candidate), "--run-dir", str(run_dir)]
     command.extend(("--engine-root", str(engine_root)))
+    if spec.get("source_journal"):
+        source_journal = _resolve_input(specs_dir, spec["source_journal"])
+        command.extend(("--source-journal", str(source_journal)))
+    else:
+        feed_root = Path(spec.get("feed_root", Path(root) / "data" / "paper_forward_lab" / "feed"))
+        snapshot = _resolve_input(specs_dir, spec.get("snapshot", feed_root / f"{venue}.json"))
+        receipt = _resolve_input(specs_dir, spec.get("receipt", feed_root / f"{venue}.receipt.json"))
+        command.extend(("--snapshot", str(snapshot), "--receipt", str(receipt)))
     if "poll_seconds" in spec:
         command.extend(("--poll-seconds", str(spec["poll_seconds"])))
     if "max_age_seconds" in spec:
         command.extend(("--max-age-seconds", str(spec["max_age_seconds"])))
     return command, run_dir
+
+
+def source_window_available(spec, specs_dir, root):
+    """Check inclusive finite-window coverage for this sym_side without writing to the journal."""
+    window = spec.get("experiment_window")
+    if window is None:
+        return (spec.get("execution_mode") == "continuous", "FINITE_EXPERIMENT_WINDOW_REQUIRED")
+    try:
+        normalized = validate_window(window, spec.get("frame_timeframe", "1m"))
+    except (TypeError, ValueError):
+        return False, "INVALID_EXPERIMENT_WINDOW"
+    journal_value = spec.get("source_journal")
+    if not isinstance(journal_value, str) or not journal_value.strip():
+        return False, "SOURCE_JOURNAL_REQUIRED"
+    raw_database = Path(journal_value)
+    if not raw_database.is_absolute():
+        raw_database = Path(specs_dir) / raw_database
+    if raw_database.is_symlink():
+        return False, "SOURCE_JOURNAL_INVALID"
+    database = raw_database.resolve()
+    if not database.is_relative_to(Path(root).resolve()):
+        return False, "SOURCE_JOURNAL_OUTSIDE_WORKSPACE"
+    if not database.is_file():
+        return False, "WAITING_FOR_SOURCE_JOURNAL"
+    symbol = spec["sym_side"].rsplit("_", 1)[0]
+    venue = spec["venue"].lower()
+    resolved = resolve_source_window(database, spec["host"], venue, symbol, normalized)
+    return resolved["ready"], resolved["status"]
 
 
 def _connect(db_path):
@@ -250,7 +285,7 @@ def _connect(db_path):
     connection.execute("PRAGMA synchronous=FULL")
     connection.execute("""CREATE TABLE IF NOT EXISTS jobs (
         spec_id TEXT PRIMARY KEY, spec_path TEXT NOT NULL, spec_sha256 TEXT,
-        run_id TEXT, epoch_id TEXT, scenario_id TEXT, sym_side TEXT, venue TEXT,
+        run_id TEXT, epoch_id TEXT, scenario_id TEXT, sym_side TEXT, venue TEXT, window_id TEXT,
         assigned_host TEXT, status TEXT NOT NULL, detail TEXT, pid INTEGER,
         registered_at TEXT NOT NULL, updated_at TEXT NOT NULL, heartbeat_at TEXT,
         exit_code INTEGER, run_dir TEXT, command_json TEXT, is_baseline INTEGER NOT NULL DEFAULT 0
@@ -258,6 +293,8 @@ def _connect(db_path):
     columns = {row[1] for row in connection.execute("PRAGMA table_info(jobs)")}
     if "is_baseline" not in columns:
         connection.execute("ALTER TABLE jobs ADD COLUMN is_baseline INTEGER NOT NULL DEFAULT 0")
+    if "window_id" not in columns:
+        connection.execute("ALTER TABLE jobs ADD COLUMN window_id TEXT")
     connection.execute("CREATE INDEX IF NOT EXISTS jobs_status_host ON jobs(status, assigned_host)")
     connection.execute("""CREATE TABLE IF NOT EXISTS events (
         event_id INTEGER PRIMARY KEY AUTOINCREMENT, spec_id TEXT NOT NULL,
@@ -379,21 +416,22 @@ def _upsert_discovered(connection, rows, host, now):
         if old and old[3] and row.get("spec_sha256") and old[3] != row["spec_sha256"] and not was_pending:
             status = "SPEC_CHANGED"
             row["error"] = "spec changed without a new run_id/epoch_id; refusing duplicate-epoch execution"
-        elif old and old[0] in {"STARTING", "RUNNING", "WAITING_FRESH_INPUT", "WAITING_FOR_CAPACITY", "RESOURCE_BLOCKED", "ASSIGNED_OTHER_HOST", "COMPLETED", "FAILED", "INTERRUPTED", "SPEC_CHANGED", "PENDING_PARAMETERS"} and not ready_from_pending:
+        elif old and old[0] in {"STARTING", "RUNNING", "WAITING_FRESH_INPUT", "WAITING_FOR_CAPACITY", "RESOURCE_BLOCKED", "WAITING_FOR_SOURCE_WINDOW", "WAITING_FOR_BASELINE", "ASSIGNED_OTHER_HOST", "COMPLETED", "FAILED", "INTERRUPTED", "SPEC_CHANGED", "PENDING_PARAMETERS"} and not ready_from_pending:
             status = old[0]
         registered_at = old[2] if old else now
         detail = {"error": row.get("error")} if row.get("error") else {}
         detail["launchable"] = bool(spec.get("launchable", True))
         if not spec.get("launchable", True):
             detail["pending_reason"] = spec.get("pending_reason", "PENDING_PARAMETER_VALUES")
-        connection.execute("""INSERT INTO jobs(spec_id,spec_path,spec_sha256,run_id,epoch_id,scenario_id,sym_side,venue,
-            assigned_host,status,detail,registered_at,updated_at,is_baseline) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        window_id = (spec.get("experiment_window") or {}).get("window_id")
+        connection.execute("""INSERT INTO jobs(spec_id,spec_path,spec_sha256,run_id,epoch_id,scenario_id,sym_side,venue,window_id,
+            assigned_host,status,detail,registered_at,updated_at,is_baseline) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(spec_id) DO UPDATE SET spec_path=excluded.spec_path,spec_sha256=excluded.spec_sha256,
             run_id=excluded.run_id,epoch_id=excluded.epoch_id,scenario_id=excluded.scenario_id,
-            sym_side=excluded.sym_side,venue=excluded.venue,assigned_host=excluded.assigned_host,
-            status=CASE WHEN jobs.status IN ('RUNNING','WAITING_FRESH_INPUT','COMPLETED','FAILED','INTERRUPTED') THEN jobs.status ELSE excluded.status END,
+            sym_side=excluded.sym_side,venue=excluded.venue,window_id=excluded.window_id,assigned_host=excluded.assigned_host,
+            status=CASE WHEN jobs.status IN ('RUNNING','WAITING_FRESH_INPUT','COMPLETED','FAILED','INTERRUPTED','SPEC_CHANGED','WAITING_FOR_SOURCE_WINDOW','WAITING_FOR_BASELINE') THEN jobs.status ELSE excluded.status END,
             detail=excluded.detail,updated_at=excluded.updated_at,is_baseline=excluded.is_baseline""",
-            (row["spec_id"], row["spec_path"], row.get("spec_sha256"), spec.get("run_id"), spec.get("epoch_id"), spec.get("scenario_id"), spec.get("sym_side"), venue,
+            (row["spec_id"], row["spec_path"], row.get("spec_sha256"), spec.get("run_id"), spec.get("epoch_id"), spec.get("scenario_id"), spec.get("sym_side"), venue, window_id,
              assigned, status, json.dumps(detail, sort_keys=True), registered_at, now, int(spec.get("is_baseline", False) is True)))
         if not old or old[0] != status:
             connection.execute("INSERT INTO events(spec_id,at_utc,status,detail) VALUES(?,?,?,?)",
@@ -497,6 +535,10 @@ def reconcile(specs_dir, db_path, root=ROOT, host=None, once=True, dry_run=False
     capacity, admission = resource_worker_limit(observed, venue, host, max_workers=max_workers)
     if dry_run:
         plan = []
+        dry_baselines = set()
+        if Path(db_path).is_file():
+            with sqlite3.connect(f"{Path(db_path).resolve().as_uri()}?mode=ro", uri=True) as state:
+                dry_baselines = {(row[0], row[1], row[2]) for row in state.execute("SELECT DISTINCT sym_side,epoch_id,window_id FROM jobs WHERE assigned_host=? AND is_baseline=1 AND status='COMPLETED'", (host,))}
         for row in rows:
             spec = row.get("spec")
             status = row["status"]
@@ -507,7 +549,14 @@ def reconcile(specs_dir, db_path, root=ROOT, host=None, once=True, dry_run=False
                 if assigned != host:
                     status = "ASSIGNED_OTHER_HOST"
                 elif status == "REGISTERED":
-                    status = "WAITING_FOR_CAPACITY" if capacity else "RESOURCE_BLOCKED"
+                    ready, reason = source_window_available(spec, Path(row["spec_path"]).parent, root)
+                    baseline_key = (spec.get("sym_side"), spec.get("epoch_id"), (spec.get("experiment_window") or {}).get("window_id"))
+                    if not spec.get("is_baseline", False) and baseline_key not in dry_baselines:
+                        status = "WAITING_FOR_BASELINE"
+                    else:
+                        status = ("WAITING_FOR_CAPACITY" if capacity else "RESOURCE_BLOCKED") if ready else "WAITING_FOR_SOURCE_WINDOW"
+                    if reason == "INVALID_EXPERIMENT_WINDOW":
+                        status = "INVALID_EXPERIMENT_WINDOW"
             command = worker_command(row, root)[0] if spec and status == "REGISTERED" else None
             plan.append({"spec_id": row["spec_id"], "spec_path": row["spec_path"], "status": status, "assigned_host": assigned, "command": command})
         return {"host": host, "mode": "DRY_RUN", "capacity": capacity, "admission": admission, "jobs": plan}
@@ -515,8 +564,32 @@ def reconcile(specs_dir, db_path, root=ROOT, host=None, once=True, dry_run=False
     connection = _connect(db_path)
     now = utc_now()
     _upsert_discovered(connection, rows, host, now)
+    for row in rows:
+        spec = row.get("spec")
+        if not spec or row.get("status") != "REGISTERED" or spec.get("launchable", True) is False:
+            continue
+        if stable_host(spec["venue"], *spec["sym_side"].rsplit("_", 1)) != host:
+            continue
+        ready, reason = source_window_available(spec, Path(row["spec_path"]).parent, root)
+        previous = connection.execute("SELECT status FROM jobs WHERE spec_id=?", (row["spec_id"],)).fetchone()
+        if not ready:
+            state = "INVALID_EXPERIMENT_WINDOW" if reason == "INVALID_EXPERIMENT_WINDOW" else "WAITING_FOR_SOURCE_WINDOW"
+            if previous and previous[0] != state:
+                _mark(connection, row["spec_id"], state, utc_now(), {"reason": reason})
+        elif previous and previous[0] == "WAITING_FOR_SOURCE_WINDOW":
+            _mark(connection, row["spec_id"], "REGISTERED", utc_now(), {"reason": reason})
     connection.execute("INSERT INTO coordinator_heartbeat(host,at_utc,status,detail) VALUES(?,?,?,?) ON CONFLICT(host) DO UPDATE SET at_utc=excluded.at_utc,status=excluded.status,detail=excluded.detail",
                        (host, now, "RECONCILING", json.dumps({"spec_count": len(rows)})))
+    connection.commit()
+    baseline_complete = {(item[0], item[1], item[2]) for item in connection.execute("SELECT DISTINCT sym_side,epoch_id,window_id FROM jobs WHERE assigned_host=? AND is_baseline=1 AND status='COMPLETED'", (host,))}
+    for spec_id, is_baseline, sym_side, epoch_id, window_id, status in connection.execute("SELECT spec_id,is_baseline,sym_side,epoch_id,window_id,status FROM jobs WHERE assigned_host=?", (host,)).fetchall():
+        if is_baseline or status not in {"REGISTERED", "WAITING_FOR_CAPACITY", "RESOURCE_BLOCKED", "WAITING_FOR_BASELINE"}:
+            continue
+        baseline_key = (sym_side, epoch_id, window_id)
+        if baseline_key not in baseline_complete and status != "WAITING_FOR_BASELINE":
+            _mark(connection, spec_id, "WAITING_FOR_BASELINE", utc_now(), {"reason": "matching sym_side baseline has not completed"})
+        elif baseline_key in baseline_complete and status == "WAITING_FOR_BASELINE":
+            _mark(connection, spec_id, "REGISTERED", utc_now(), {"reason": "matching sym_side baseline completed"})
     connection.commit()
     row_by_id = {row["spec_id"]: row for row in rows}
     # Refresh worker heartbeats and preserve stale-input waiters as live workers.
@@ -542,15 +615,31 @@ def reconcile(specs_dir, db_path, root=ROOT, host=None, once=True, dry_run=False
     max_slots = capacity
     free_slots = max(0, max_slots - active_count)
     if free_slots:
-        pending = connection.execute("SELECT spec_id FROM jobs WHERE assigned_host=? AND status IN ('REGISTERED','WAITING_FOR_CAPACITY','RESOURCE_BLOCKED') ORDER BY is_baseline DESC,registered_at,scenario_id,sym_side,spec_id", (host,)).fetchall()
-        for (spec_id,) in pending[:free_slots]:
-            row = row_by_id.get(spec_id)
-            if row is None or row.get("spec") is None:
-                continue
+        for _ in range(free_slots):
+            baseline_complete = {(item[0], item[1], item[2]) for item in connection.execute("SELECT DISTINCT sym_side,epoch_id,window_id FROM jobs WHERE assigned_host=? AND is_baseline=1 AND status='COMPLETED'", (host,))}
+            candidates = connection.execute("SELECT spec_id,is_baseline,sym_side,epoch_id,window_id FROM jobs WHERE assigned_host=? AND status IN ('REGISTERED','WAITING_FOR_CAPACITY','RESOURCE_BLOCKED','WAITING_FOR_BASELINE') ORDER BY registered_at,scenario_id,sym_side,spec_id", (host,)).fetchall()
+            ready = []
+            for candidate_id, is_baseline, sym_side, epoch_id, window_id in candidates:
+                baseline_key = (sym_side, epoch_id, window_id)
+                if not is_baseline and baseline_key not in baseline_complete:
+                    current = connection.execute("SELECT status FROM jobs WHERE spec_id=?", (candidate_id,)).fetchone()
+                    if current and current[0] != "WAITING_FOR_BASELINE":
+                        _mark(connection, candidate_id, "WAITING_FOR_BASELINE", utc_now(), {"reason": "matching sym_side baseline has not completed"})
+                    continue
+                if current := row_by_id.get(candidate_id):
+                    if current.get("spec") is not None:
+                        ready.append((candidate_id, bool(is_baseline), sym_side, current))
+            if not ready:
+                break
+            counts = dict(connection.execute("SELECT is_baseline,COUNT(*) FROM jobs WHERE assigned_host=? AND pid IS NOT NULL AND status IN ('STARTING','RUNNING','WAITING_FRESH_INPUT','COMPLETED') GROUP BY is_baseline", (host,)).fetchall())
+            preferred_baseline = counts.get(1, 0) <= counts.get(0, 0)
+            ready.sort(key=lambda item: (item[1] != preferred_baseline, item[2], item[3]["spec"].get("scenario_id", ""), item[0]))
+            spec_id, _, _, row = ready[0]
             try:
                 _launch(connection, row, root, utc_now(), launcher=launcher)
             except (OSError, subprocess.SubprocessError, ValueError) as exc:
                 _mark(connection, spec_id, "FAILED", utc_now(), {"launch_error": str(exc)})
+            connection.commit()
     elif not admission["admit"]:
         _set_pending_state(connection, host, "RESOURCE_BLOCKED", ("REGISTERED", "WAITING_FOR_CAPACITY"), utc_now(), {"reasons": admission["reasons"] or ["no per-worker headroom"]})
     else:
@@ -610,6 +699,12 @@ def main(argv=None):
         try:
             while True:
                 result = reconcile(args.specs_dir, db_path, args.root, args.host, once=args.once, max_workers=args.max_workers, rows=spec_cache.get())
+                snapshot_path = Path(args.root) / "data" / "paper_forward_lab" / f"fleet_{args.host}.snapshot.sqlite3"
+                try:
+                    snapshot = snapshot_state_database(db_path, snapshot_path)
+                    result["fleet_snapshot"] = {"path": snapshot["snapshot_path"], "bytes": snapshot["snapshot_bytes"], "sha256": snapshot["snapshot_sha256"]}
+                except (OSError, sqlite3.Error, RuntimeError) as exc:
+                    result["fleet_snapshot_error"] = str(exc)
                 print(json.dumps(result, sort_keys=True), flush=True)
                 if args.once or stop:
                     break

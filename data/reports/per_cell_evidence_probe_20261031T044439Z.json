@@ -1,0 +1,80 @@
+{
+  "assessment": "Not eligible for >=101 reusable per-cell evidence counts: legacy row schema has no per-row event/eval identity, engine/source hash, explicit row NPZ hash/tag, template hash, or naked_binding; top-level NPZ identity and defaults_round are not row-level evidence. Numeric yellows remain unverified observations.",
+  "defaults_round": "run26_s64pure_20261003",
+  "nonempty_reason_counts": {
+    "DEAD_VEC_PATH: wire07 purged \u2014 no real vector wiring": 39,
+    "LIVE_ONLY: portfolio-level state, not single-symbol vectorizable": 28,
+    "trades 0 < 10 (wd=30)": 6,
+    "trades 7 < 10 (wd=30)": 1,
+    "trades 9 < 10 (wd=30)": 3
+  },
+  "npz_id_fields": [
+    "mtime_ns",
+    "n",
+    "path",
+    "size",
+    "ts_first",
+    "ts_last"
+  ],
+  "per_row_provenance_fields_missing_from_all_rows": [
+    "engine_md5",
+    "npz",
+    "naked_binding",
+    "delta_invalid",
+    "result_id",
+    "eval_id",
+    "source_sha256",
+    "template_sha256",
+    "ts"
+  ],
+  "row_and_yellow_counts": {
+    "rows": 2826,
+    "rows_nonempty_reason": 77,
+    "yellow_marked_reason": 284,
+    "yellow_nonzero_numeric": 1165,
+    "yellow_numeric": 18299,
+    "yellow_observations": 18299
+  },
+  "row_count": 2826,
+  "sample_cell_keys": [
+    "STDEV_SLOPE_SIZING!3:STDEV_SLOPE_SIZING_ENABLED=True",
+    "ENTRY_REVERSAL_BOUNCE!3:BB_PULLBACK_GATE_FILTER_TF=15m",
+    "ENTRY_BREAKOUT_CHANNEL!3:WT_DC_DETAILED_TF=OFF",
+    "ENTRY_CONFIRMATION_GATES!3:BB_PULLBACK_GATE_FILTER_TF=15m",
+    "EXIT_STRUCTURAL!3:TECHNICAL_DC_STOP_TF=OFF"
+  ],
+  "schema": "per_cell_evidence_probe/1",
+  "source_bytes": 1915829,
+  "source_file_metadata": {
+    "mtime_ns": 1791067874997256819,
+    "size": 1915829
+  },
+  "source_join_search": {
+    "matching_source_manifest_or_engine_receipt_paths": [],
+    "scope": "rg --files data for matching run26/ADBE paths",
+    "searched_exact_round_tag": "run26_s64pure_20261003",
+    "searched_exact_sym_side": "ADBE_SHORT"
+  },
+  "source_path": "/Users/niels/Documents/binance/data/reports/lifecycle_pilot/ADBE_SHORT_v14_progress.json",
+  "source_sha256_post": "4fbcb46422b7a263595face1eccf943fab830caa636e8bab61d5591cb7855e2c",
+  "source_sha256_pre": "4fbcb46422b7a263595face1eccf943fab830caa636e8bab61d5591cb7855e2c",
+  "source_stable_during_read": true,
+  "status": "complete_single_source_probe_only",
+  "sym_side": "ADBE_SHORT",
+  "top_level_keys": [
+    "baseline_gain",
+    "bh",
+    "cumulative_gain",
+    "cumulative_overrides",
+    "defaults_round",
+    "done",
+    "final_filter_recheck",
+    "final_gain_fresh_vec",
+    "initial_baseline_gain",
+    "needs_redo",
+    "npz_id",
+    "symside",
+    "window_days"
+  ],
+  "window_days": 30
+}

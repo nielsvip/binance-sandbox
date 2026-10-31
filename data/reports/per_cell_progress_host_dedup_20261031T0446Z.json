@@ -1,0 +1,40 @@
+{
+  "dedup_interpretation": "S1 and S5 files are byte-identical mirrors; they must not be counted as separate trial events. No source join proof for current template/engine.",
+  "hosts": {
+    "s1": {
+      "bytes": 534727,
+      "defaults_round": "run27_complete_20261003",
+      "identity_rows": 25,
+      "noop_yellows": 189,
+      "rows": 72,
+      "sha256": "a89b3b75d8209757a2983df3128bb9fb4c12a6da147beca51906f346bc0aa93a",
+      "status": "read_hash_and_parse",
+      "sym_side": "CMC_SHORT",
+      "yellow_observations": 196,
+      "zero_trades_rows": 46
+    },
+    "s2": {
+      "status": "file_absent_at_expected_path"
+    },
+    "s5": {
+      "bytes": 534727,
+      "defaults_round": "run27_complete_20261003",
+      "identity_rows": 25,
+      "noop_yellows": 189,
+      "rows": 72,
+      "sha256": "a89b3b75d8209757a2983df3128bb9fb4c12a6da147beca51906f346bc0aa93a",
+      "status": "read_hash_and_parse_stable",
+      "sym_side": "CMC_SHORT",
+      "yellow_observations": 196,
+      "zero_trades_rows": 46
+    },
+    "s6": {
+      "detail": "SSH command produced no result in bounded call; absence not established",
+      "status": "bounded_probe_no_result"
+    }
+  },
+  "sampled_at_utc": "2026-10-31T04:46Z",
+  "schema": "progress_host_sample_dedup/1",
+  "source_relative_path": "data/reports/lifecycle_pilot/CMC_SHORT_v14_progress.json",
+  "status": "bounded_sample"
+}

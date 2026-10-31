@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 from tools.paper_runtime_bundle import build_bundle
+from tools.paper_forward_worker import validate_runtime_root
 
 
 def _write(root, relative, text):
@@ -45,6 +46,7 @@ def test_bundle_is_content_addressed_read_only_and_excludes_data(tmp_path):
     assert not (runtime / "tests").exists()
     assert os.stat(runtime).st_mode & 0o222 == 0
     assert all(os.stat(runtime / name).st_mode & 0o222 == 0 for name in names)
+    assert validate_runtime_root(runtime)["runtime_sha256"] == first["runtime_sha256"]
 
 
 def test_bundle_changes_identity_when_source_changes(tmp_path):

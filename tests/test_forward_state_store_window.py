@@ -32,11 +32,31 @@ def store(tmp_path, name, window=None):
     return p
 
 
-def test_a_30d_lane_refuses_the_7d_store(tmp_path, monkeypatch):
+def test_a_30d_lane_pointed_at_a_7d_store_fails_over_to_the_canonical_30d_store(tmp_path, monkeypatch):
+    """USER 2026-10-31: 7D is an experiment and may never endanger 30D trading. A 30D refusal would leave 30D states
+    stale, and stale states feed the path that CLOSES held positions — so a 30D lane fails OVER, never refuses."""
+    p7 = store(tmp_path, "per_sym_store_trc7d.db", 7)
+    canon = store(tmp_path / "canon", "per_sym_store.db", 30) if (tmp_path / "canon").mkdir() is None else None
+    monkeypatch.setenv("PER_SYM_STORE_DB", str(p7))
+    m = load(monkeypatch)
+    monkeypatch.setattr(m, "DEFAULT_STORE_DBS", (canon,))
+    assert m.EXPECTED_WINDOW_DAYS == 30 and m.store_db() == str(canon), "30D states must come from a 30D store"
+
+
+def test_the_30d_lane_never_returns_none_even_with_no_verifiable_store(tmp_path, monkeypatch):
     p7 = store(tmp_path, "per_sym_store_trc7d.db", 7)
     monkeypatch.setenv("PER_SYM_STORE_DB", str(p7))
     m = load(monkeypatch)
-    assert m.EXPECTED_WINDOW_DAYS == 30 and m.store_db() is None, "a 30D lane pointed at a 7D store must publish nothing"
+    monkeypatch.setattr(m, "DEFAULT_STORE_DBS", (tmp_path / "absent.db",))
+    assert m.store_db() is not None, "a 30D lane must never stop publishing because of the 7D separation"
+
+
+def test_a_canonical_30d_store_with_a_corrupted_stamp_is_still_used(tmp_path, monkeypatch):
+    bad = store(tmp_path, "per_sym_store.db", 7)   # the canonical file, wrongly stamped
+    monkeypatch.delenv("PER_SYM_STORE_DB", raising=False)
+    m = load(monkeypatch)
+    monkeypatch.setattr(m, "DEFAULT_STORE_DBS", (bad,))
+    assert m.store_db() == str(bad), "a bad label must never halt 30D trading"
 
 
 def test_a_7d_lane_that_declares_7_reads_the_7d_store(tmp_path, monkeypatch):
@@ -54,7 +74,9 @@ def test_a_7d_lane_refuses_the_30d_store(tmp_path, monkeypatch):
 def test_the_matching_30d_store_resolves(tmp_path, monkeypatch):
     p30 = store(tmp_path, "per_sym_store.db", 30)
     monkeypatch.setenv("PER_SYM_STORE_DB", str(p30))
-    assert load(monkeypatch).store_db() == str(p30)
+    m = load(monkeypatch)
+    monkeypatch.setattr(m, "DEFAULT_STORE_DBS", (tmp_path / "absent.db",))
+    assert m.store_db() == str(p30)
 
 
 def test_an_unstamped_store_still_resolves_so_no_lane_is_cut_off(tmp_path, monkeypatch):

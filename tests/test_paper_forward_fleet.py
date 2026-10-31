@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 
 from tools.paper_fleet_budget import stable_host
-from tools.paper_forward_fleet import DEFAULT_MAX_WORKERS, DEFAULT_POLL_SECONDS, _map_worker_status, coverage_summary, discover_specs, main, reconcile, resource_worker_limit, snapshot_state_database, SpecCache
+from tools.paper_forward_fleet import DEFAULT_MAX_WORKERS, DEFAULT_POLL_SECONDS, _map_worker_status, coverage_summary, discover_specs, main, reconcile, resource_worker_limit, snapshot_state_database, source_window_available, SpecCache
 
 
 def _symbol_for_host(host):
@@ -30,6 +30,7 @@ def _spec(root, sym_side, scenario_id, venue="crypto"):
         "run_id": f"run-{scenario_id}", "epoch_id": f"epoch-{scenario_id}", "scenario_id": scenario_id,
         "sym_side": sym_side, "venue": venue, "plan_code_hash": "codehash", "host": host,
         "full_settings": "config/full.json", "candidate_overrides": "config/candidate.json", "engine_root": str(engine_root),
+        "execution_mode": "continuous",
     }
 
 
@@ -137,6 +138,7 @@ def test_dry_run_registers_every_manifest_item_without_writes_or_launch(tmp_path
     specs = tmp_path / "specs"
     symbol = _symbol_for_host("s1")
     rows = {f"scenario-{number}.json": _spec(tmp_path, f"{symbol}_LONG", f"scenario-{number}") for number in range(3)}
+    rows["scenario-0.json"]["is_baseline"] = True
     _write_specs(specs, rows)
     db = tmp_path / "state.sqlite3"
     root = tmp_path
@@ -146,7 +148,8 @@ def test_dry_run_registers_every_manifest_item_without_writes_or_launch(tmp_path
     result = reconcile(specs, db, root, "s1", dry_run=True, max_workers=1, observed=observed)
 
     assert len(result["jobs"]) == 3
-    assert all(row["status"] == "WAITING_FOR_CAPACITY" for row in result["jobs"])
+    statuses = {row["status"] for row in result["jobs"]}
+    assert statuses == {"WAITING_FOR_CAPACITY", "WAITING_FOR_BASELINE"}
     assert not db.exists()
 
 
@@ -154,6 +157,7 @@ def test_once_persists_all_jobs_and_launches_only_bounded_worker(tmp_path):
     specs = tmp_path / "specs"
     symbol = _symbol_for_host("s1")
     rows = {f"scenario-{number}.json": _spec(tmp_path, f"{symbol}_LONG", f"scenario-{number}") for number in range(3)}
+    rows["scenario-0.json"]["is_baseline"] = True
     _write_specs(specs, rows)
     root = tmp_path
     (root / "data").mkdir()
@@ -173,7 +177,7 @@ def test_once_persists_all_jobs_and_launches_only_bounded_worker(tmp_path):
     with sqlite3.connect(db) as connection:
         rows_in_db = connection.execute("SELECT status, COUNT(*) FROM jobs GROUP BY status").fetchall()
         all_count = connection.execute("SELECT COUNT(*) FROM jobs").fetchone()[0]
-        waiting = connection.execute("SELECT COUNT(*) FROM jobs WHERE status='WAITING_FOR_CAPACITY'").fetchone()[0]
+        waiting = connection.execute("SELECT COUNT(*) FROM jobs WHERE status='WAITING_FOR_BASELINE'").fetchone()[0]
         heartbeat = connection.execute("SELECT status FROM coordinator_heartbeat WHERE host='s1'").fetchone()[0]
         event_count = connection.execute("SELECT COUNT(*) FROM events").fetchone()[0]
     assert len(launched) == 1
@@ -192,14 +196,15 @@ def test_once_persists_all_jobs_and_launches_only_bounded_worker(tmp_path):
     assert heartbeat == "IDLE"
     assert event_count >= 4
     assert result["status_counts"]["STARTING"] == 1
-    assert dict(rows_in_db)["WAITING_FOR_CAPACITY"] == 2
+    assert dict(rows_in_db)["WAITING_FOR_BASELINE"] == 2
 
 
-def test_baseline_is_scheduled_before_candidates_even_when_registered_later(tmp_path):
+def test_baseline_completes_before_matching_candidate_and_queue_alternates_classes(tmp_path, monkeypatch):
     specs = tmp_path / "specs"
     symbol = _symbol_for_host("s1")
     candidate = _spec(tmp_path, f"{symbol}_LONG", "a-candidate")
     baseline = _spec(tmp_path, f"{symbol}_LONG", "z-baseline")
+    baseline["epoch_id"] = candidate["epoch_id"]
     baseline["is_baseline"] = True
     _write_specs(specs, {"a-candidate.json": candidate, "z-baseline.json": baseline})
     root = tmp_path
@@ -214,15 +219,99 @@ def test_baseline_is_scheduled_before_candidates_even_when_registered_later(tmp_
               launcher=lambda command, **kwargs: (launched.append(command) or Process()))
 
     with sqlite3.connect(tmp_path / "fleet.sqlite3") as connection:
+        run_dir = connection.execute("SELECT run_dir FROM jobs WHERE is_baseline=1").fetchone()[0]
+    Path(run_dir, "worker.status.json").write_text(json.dumps({"status": "COMPLETED", "heartbeat_at_utc": "2026-10-31T00:00:00Z"}), encoding="utf-8")
+    monkeypatch.setattr("tools.paper_forward_fleet._pid_alive", lambda *_args: True)
+    reconcile(specs, tmp_path / "fleet.sqlite3", root, "s1", max_workers=1, observed=observed,
+              launcher=lambda command, **kwargs: (launched.append(command) or Process()))
+
+    with sqlite3.connect(tmp_path / "fleet.sqlite3") as connection:
         selected = connection.execute("SELECT scenario_id,is_baseline FROM jobs WHERE status='STARTING'").fetchone()
-    assert selected == ("z-baseline", 1)
+    assert selected == ("a-candidate", 0)
+    assert len(launched) == 2
+
+
+def test_source_window_waits_until_exact_start_and_end_are_archived(tmp_path):
+    spec = _spec(tmp_path, "BTCUSDT_LONG", "window")
+    spec["execution_mode"] = "finite_epoch"
+    spec["source_journal"] = "data/paper_forward_lab/native_journal_crypto.sqlite3"
+    spec["frame_timeframe"] = "1m"
+    spec["experiment_window"] = {"window_id": "epoch-1", "source_timeframe": "1m", "start_source_ts": 100.0, "end_source_ts": 160.0}
+    database = tmp_path / spec["source_journal"]
+    database.parent.mkdir(parents=True)
+    with sqlite3.connect(database) as connection:
+        connection.execute("CREATE TABLE journal_meta(key TEXT PRIMARY KEY,value TEXT)")
+        connection.executemany("INSERT INTO journal_meta VALUES(?,?)", [("host", spec["host"]), ("venue", "crypto"), ("retention_floor_sequence", "0")])
+        connection.execute("CREATE TABLE frames(sequence INTEGER,host TEXT,venue TEXT,symbol TEXT,timeframe TEXT,source_ts REAL)")
+        connection.executemany("INSERT INTO frames VALUES(?,?,?,?,?,?)", [(1, spec["host"], "crypto", "BTCUSDT", "1m", 100.0), (2, spec["host"], "crypto", "BTCUSDT", "1m", 140.0)])
+
+    ready, reason = source_window_available(spec, tmp_path, tmp_path)
+    assert not ready
+    assert reason == "WAITING_FOR_SOURCE_WINDOW_END"
+
+    with sqlite3.connect(database) as connection:
+        connection.execute("INSERT INTO frames VALUES(?,?,?,?,?,?)", (3, spec["host"], "crypto", "BTCUSDT", "1m", 160.0))
+    ready, reason = source_window_available(spec, tmp_path, tmp_path)
+    assert ready
+    assert reason == "SOURCE_WINDOW_READY"
+
+
+def test_finite_window_pair_waits_for_archive_end_then_runs_baseline_before_candidate(tmp_path):
+    specs = tmp_path / "specs"
+    symbol = _symbol_for_host("s1")
+    baseline = _spec(tmp_path, f"{symbol}_LONG", "baseline-window")
+    candidate = _spec(tmp_path, f"{symbol}_LONG", "candidate-window")
+    candidate["epoch_id"] = baseline["epoch_id"]
+    window = {"window_id": "window-001", "source_timeframe": "1m", "start_source_ts": 100.0, "end_source_ts": 160.0}
+    journal = tmp_path / "data" / "paper_forward_lab" / "native_journal_crypto.sqlite3"
+    for spec, is_baseline in ((baseline, True), (candidate, False)):
+        spec.update(is_baseline=is_baseline, execution_mode="finite_epoch", source_journal=str(journal), frame_timeframe="1m", experiment_window=window)
+    _write_specs(specs, {"baseline.json": baseline, "candidate.json": candidate})
+    journal.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(journal) as connection:
+        connection.execute("CREATE TABLE journal_meta(key TEXT PRIMARY KEY,value TEXT)")
+        connection.executemany("INSERT INTO journal_meta VALUES(?,?)", [("host", "s1"), ("venue", "crypto"), ("retention_floor_sequence", "0")])
+        connection.execute("CREATE TABLE frames(sequence INTEGER,host TEXT,venue TEXT,symbol TEXT,timeframe TEXT,source_ts REAL)")
+        connection.execute("INSERT INTO frames VALUES(?,?,?,?,?,?)", (1, "s1", "crypto", symbol, "1m", 100.0))
+    observed = {"mem_available_bytes": 16 * 1024**3, "disk_free_bytes": 16 * 1024**3, "load1": 1.0, "ncpu": 16, "cpu_psi_avg10": 0.0}
+    launched = []
+
+    class Process:
+        pid = 123456
+
+    db = tmp_path / "fleet.sqlite3"
+    reconcile(specs, db, tmp_path, "s1", max_workers=1, observed=observed,
+              launcher=lambda command, **kwargs: (launched.append(command) or Process()))
+    with sqlite3.connect(db) as connection:
+        assert dict(connection.execute("SELECT status,COUNT(*) FROM jobs GROUP BY status")) == {"WAITING_FOR_SOURCE_WINDOW": 2}
+    assert launched == []
+
+    with sqlite3.connect(journal) as connection:
+        connection.execute("INSERT INTO frames VALUES(?,?,?,?,?,?)", (2, "s1", "crypto", symbol, "1m", 160.0))
+    reconcile(specs, db, tmp_path, "s1", max_workers=1, observed=observed,
+              launcher=lambda command, **kwargs: (launched.append(command) or Process()))
     assert len(launched) == 1
+    assert "--source-journal" in launched[0]
+    assert "--snapshot" not in launched[0]
+    with sqlite3.connect(db) as connection:
+        run_dir = connection.execute("SELECT run_dir FROM jobs WHERE is_baseline=1").fetchone()[0]
+    Path(run_dir, "worker.status.json").write_text(json.dumps({"status": "COMPLETED", "heartbeat_at_utc": "2026-10-31T00:00:00Z"}), encoding="utf-8")
+    monkeypatch = __import__("pytest").MonkeyPatch()
+    monkeypatch.setattr("tools.paper_forward_fleet._pid_alive", lambda *_args: True)
+    reconcile(specs, db, tmp_path, "s1", max_workers=1, observed=observed,
+              launcher=lambda command, **kwargs: (launched.append(command) or Process()))
+    monkeypatch.undo()
+    with sqlite3.connect(db) as connection:
+        assert connection.execute("SELECT status FROM jobs WHERE is_baseline=0").fetchone()[0] == "STARTING"
+    assert len(launched) == 2
 
 
 def test_worker_death_is_recorded_and_not_automatically_restarted(tmp_path, monkeypatch):
     specs = tmp_path / "specs"
     symbol = _symbol_for_host("s1")
-    _write_specs(specs, {"job.json": _spec(tmp_path, f"{symbol}_LONG", "only")})
+    baseline = _spec(tmp_path, f"{symbol}_LONG", "only")
+    baseline["is_baseline"] = True
+    _write_specs(specs, {"job.json": baseline})
     root = tmp_path
     (root / "data").mkdir()
     observed = {"mem_available_bytes": 16 * 1024**3, "disk_free_bytes": 16 * 1024**3, "load1": 1.0, "ncpu": 16, "cpu_psi_avg10": 0.0}
@@ -245,7 +334,9 @@ def test_worker_death_is_recorded_and_not_automatically_restarted(tmp_path, monk
 def test_waiting_for_fresh_input_keeps_worker_alive_without_restart(tmp_path, monkeypatch):
     specs = tmp_path / "specs"
     symbol = _symbol_for_host("s1")
-    _write_specs(specs, {"job.json": _spec(tmp_path, f"{symbol}_LONG", "waiter")})
+    baseline = _spec(tmp_path, f"{symbol}_LONG", "waiter")
+    baseline["is_baseline"] = True
+    _write_specs(specs, {"job.json": baseline})
     root = tmp_path
     (root / "data").mkdir()
     observed = {"mem_available_bytes": 16 * 1024**3, "disk_free_bytes": 16 * 1024**3, "load1": 1.0, "ncpu": 16, "cpu_psi_avg10": 0.0}
@@ -273,6 +364,7 @@ def test_changed_spec_requires_new_epoch_and_is_not_launched(tmp_path):
     specs = tmp_path / "specs"
     symbol = _symbol_for_host("s1")
     job = _spec(tmp_path, f"{symbol}_LONG", "stable-id")
+    job["is_baseline"] = True
     _write_specs(specs, {"job.json": job})
     root = tmp_path
     (root / "data").mkdir()
@@ -293,7 +385,7 @@ def test_changed_spec_requires_new_epoch_and_is_not_launched(tmp_path):
 def test_pending_spec_can_be_resolved_without_changing_planned_identity(tmp_path):
     specs = tmp_path / "specs"
     symbol = _symbol_for_host("s1")
-    pending = dict(_spec(tmp_path, f"{symbol}_LONG", "resolve-me"), launchable=False, pending_reason="PENDING_PARAMETER_VALUES")
+    pending = dict(_spec(tmp_path, f"{symbol}_LONG", "resolve-me"), launchable=False, pending_reason="PENDING_PARAMETER_VALUES", is_baseline=True)
     _write_specs(specs, {"job.json": pending})
     root = tmp_path
     (root / "data").mkdir()
@@ -312,7 +404,9 @@ def test_pending_spec_can_be_resolved_without_changing_planned_identity(tmp_path
 def test_cli_once_and_dry_run_are_bounded(tmp_path, monkeypatch, capsys):
     specs = tmp_path / "specs"
     symbol = _symbol_for_host("s1")
-    _write_specs(specs, {"job.json": _spec(tmp_path, f"{symbol}_LONG", "cli")})
+    baseline = _spec(tmp_path, f"{symbol}_LONG", "cli")
+    baseline["is_baseline"] = True
+    _write_specs(specs, {"job.json": baseline})
     root = tmp_path
     (root / "data").mkdir()
     db = tmp_path / "fleet.sqlite3"
@@ -336,6 +430,8 @@ def test_database_snapshot_is_atomic_and_reports_per_host_coverage(tmp_path, cap
     specs = tmp_path / "specs"
     symbols = {host: _symbol_for_host(host) for host in ("s1", "s2")}
     rows = {f"{host}-{number}.json": _spec(tmp_path, f"{symbols[host]}_LONG", f"coverage-{host}-{number}") for host in ("s1", "s2") for number in range(2)}
+    rows["s1-0.json"]["is_baseline"] = True
+    rows["s2-0.json"]["is_baseline"] = True
     _write_specs(specs, rows)
     root = tmp_path
     (root / "data").mkdir()
@@ -354,7 +450,7 @@ def test_database_snapshot_is_atomic_and_reports_per_host_coverage(tmp_path, cap
     assert coverage["total_jobs"] == 4
     assert coverage["by_host"]["s1"]["sym_sides"] == 1
     assert coverage["by_host"]["s2"]["sym_sides"] == 1
-    assert coverage["by_host"]["s1"]["statuses"] == {"RESOURCE_BLOCKED": 2}
+    assert coverage["by_host"]["s1"]["statuses"] == {"RESOURCE_BLOCKED": 1, "WAITING_FOR_BASELINE": 1}
     assert coverage["by_host"]["s2"]["statuses"] == {"ASSIGNED_OTHER_HOST": 2}
     cli_destination = tmp_path / "upload" / "fleet_cli_snapshot.sqlite3"
     assert main(["--state-db", str(db), "--snapshot-to", str(cli_destination)]) == 0

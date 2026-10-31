@@ -80,14 +80,40 @@ def _window_ok(db):
 def store_db():
     """PER_SYM_STORE_DB when set and present, else the canonical store. 2026-10-27: S2's quarter lane ran this tool with
     no PER_SYM_STORE_DB and rsynced 64 "missing live settings" states over S1's good ones (22:09:50Z); a missing store
-    now resolves to the canonical one, and when none exists main() refuses to publish anything. A store whose stated
-    window differs from PER_SYM_WINDOW_DAYS resolves to None as well, so the same refusal covers it."""
+    now resolves to the canonical one, and when none exists main() refuses to publish anything.
+
+    The window check is ASYMMETRIC on purpose (USER 2026-10-31: "7D is just a comparison experiment make sure it can
+    never put in danger any of the existing 30D trading"):
+      * a 7D/60D producer (PER_SYM_WINDOW_DAYS != 30) REFUSES a store that is not its window — the experiment fails
+        closed and simply publishes nothing;
+      * the 30D producer NEVER refuses. A refusal there would leave 30D states stale, and stale states feed the
+        untradeable/no-verdict path that CLOSES held 30D positions. A 30D lane that inherited the wrong PER_SYM_STORE_DB
+        fails OVER to the canonical 30D store instead, loudly, so 30D trading always runs on 30D settings."""
     db = os.environ.get("PER_SYM_STORE_DB")
+    if EXPECTED_WINDOW_DAYS != 30:
+        if db and Path(db).is_file():
+            return str(db) if _window_ok(str(db)) else None
+        for cand in DEFAULT_STORE_DBS:
+            if cand.is_file():
+                return str(cand) if _window_ok(str(cand)) else None
+        return None
     if db and Path(db).is_file():
-        return str(db) if _window_ok(str(db)) else None
+        if _window_ok(str(db)):
+            return str(db)
+        for cand in DEFAULT_STORE_DBS:
+            if cand.is_file() and str(cand.resolve()) != str(Path(db).resolve()) and _window_ok(str(cand)):
+                print(f"CRITICAL: PER_SYM_STORE_DB={db} is not a 30D store; 30D states fail OVER to the canonical {cand} "
+                      f"rather than stop (stale 30D states would close held positions)", file=sys.stderr, flush=True)
+                return str(cand)
+        print(f"CRITICAL: no 30D store verifies its window; keeping {db} so 30D trading is not stopped — FIX the stamp",
+              file=sys.stderr, flush=True)
+        return str(db)
     for cand in DEFAULT_STORE_DBS:
         if cand.is_file():
-            return str(cand) if _window_ok(str(cand)) else None
+            if not _window_ok(str(cand)):
+                print(f"CRITICAL: canonical 30D store {cand} carries another window's stamp; used anyway so 30D trading "
+                      f"is not stopped — FIX the stamp", file=sys.stderr, flush=True)
+            return str(cand)
     return None
 
 

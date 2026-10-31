@@ -31,10 +31,21 @@ def ingest_plan(db, plan):
         for item in plan["catalog"]["scenarios"]:
             path_id = "catalog-path-" + digest([item["venue"], item["switch"], item["coverage_kind"], item["provenance"]])
             db.add_path(path_id=path_id, venue=item["venue"], path_name=item["switch"] or "BASELINE", switch_name=item["switch"] or "", classification=item["coverage_kind"], provenance=item["provenance"])
-            candidates = [None] if item["kind"] == "baseline" or item["default_kind"] != "boolean" else [False, True]
+            authoritative = item.get("candidate_values")
+            if item["kind"] == "baseline":
+                candidates = [None]
+            elif item["default_kind"] == "boolean":
+                candidates = [False, True]
+            elif isinstance(authoritative, list) and authoritative:
+                candidates = authoritative
+            else:
+                candidates = [None]
             by_catalog[item["scenario_id"]] = []
             for value in candidates:
+                resolved_value = item["kind"] == "baseline" or (item["default_kind"] != "boolean" and isinstance(authoritative, list) and bool(authoritative))
                 parameters = {"overrides": {} if value is None else {item["switch"]: value}, "parameter_status": "RESOLVED" if item["kind"] == "baseline" or value is not None else "NEEDS_AUTHORITATIVE_VALUES", "catalog": item}
+                if resolved_value and item["kind"] != "baseline":
+                    parameters["candidate_resolution"] = {"source": item.get("candidate_source"), "source_xlsx_sha256": item.get("candidate_source_xlsx_sha256"), "value_types": item.get("candidate_value_types", [type(value).__name__])}
                 scenario_id = "scenario-" + digest([path_id, item["side"], parameters])
                 ensure_scenario(db, scenario_id, path_id, item["side"], parameters)
                 by_catalog[item["scenario_id"]].append((scenario_id, parameters["parameter_status"]))
@@ -47,7 +58,7 @@ def ingest_plan(db, plan):
                     if db.query("SELECT 1 FROM runs WHERE run_id=?", (run_id,)):
                         continue
                     db.add_run(run_id=run_id, scenario_id=scenario_id, sym_side=group["sym_side"], host=group["host"], settings_hash=group["settings_sha256"], code_hash=code_hash, evidence_kind="catalog_only", status="PENDING_VALIDATED_EXECUTION" if parameter_status == "RESOLVED" else "PENDING_PARAMETERS", started_at=plan["planned_at"], ended_at=None)
-        token = "plan-" + digest({"codes": code_hash, "groups": plan["groups"], "uncovered": plan["uncovered"], "universe_sha256": plan["universe_sha256"]})
+        token = "plan-" + digest({"codes": code_hash, "catalog_scenarios": plan["catalog"]["scenarios"], "groups": plan["groups"], "uncovered": plan["uncovered"], "universe_sha256": plan["universe_sha256"]})
         if not db.query("SELECT 1 FROM imports WHERE import_id=?", (token,)):
             db.record_import(import_id=token, source_path=plan["universe_source"], source_hash=plan["universe_sha256"], imported_at=now(), source_computed_at=None)
         for gap in plan["uncovered"]:

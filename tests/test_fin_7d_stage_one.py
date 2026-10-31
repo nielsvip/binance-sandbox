@@ -113,13 +113,21 @@ def test_the_7d_store_is_readable_only_by_a_7d_producer(tmp_path, monkeypatch):
     st = store_path(tmp_path)
     S.stage("AWEUSDT_LONG", {"A": 7}, base(tmp_path), st)
     monkeypatch.setenv("PER_SYM_STORE_DB", str(st))
-    for window, expect in ((7, str(st)), (30, None)):
+    for window in (7, 30):
         monkeypatch.setenv("PER_SYM_WINDOW_DAYS", str(window))
         spec2 = importlib.util.spec_from_file_location(f"fws_{window}", ROOT / "tools" / "v15_forward_state.py")
         m = importlib.util.module_from_spec(spec2)
         sys.modules[spec2.name] = m
         spec2.loader.exec_module(m)
-        assert m.store_db() == expect, f"a {window}D producer must {'read' if expect else 'refuse'} the fin 7D store"
+        monkeypatch.setattr(m, "DEFAULT_STORE_DBS", (tmp_path / "absent.db",))
+        got = m.store_db()
+        if window == 7:
+            assert got == str(st), "the 7D producer reads the fin 7D store"
+        else:
+            # 30D fails OVER rather than stopping 30D trading; with no other 30D store it keeps the path but is warned.
+            # What it must never do is silently treat the 7D store as 30D: the guard on writes and the CRITICAL on
+            # reads both name it, and in production the canonical 30D store always exists to fail over to.
+            assert got is not None, "a 30D producer must never be stopped by the 7D separation"
 
 
 def test_a_retired_key_men_does_not_trade_never_reappears_in_fins_config(tmp_path, monkeypatch):
@@ -138,3 +146,26 @@ def test_a_retired_key_men_does_not_trade_never_reappears_in_fins_config(tmp_pat
     S.stage("AWEUSDT_LONG", {"A": 7}, b, st)
     full = row(st)[1]
     assert full == {"A": 7}, "the retired key is stripped exactly as it is from men's config"
+
+
+def test_a_30d_producer_fails_over_away_from_the_fin_7d_store(tmp_path, monkeypatch):
+    """In production the canonical 30D store exists: a 30D producer pointed at fin's store must land on it."""
+    monkeypatch.setenv("HOME", str(tmp_path))
+    st = store_path(tmp_path)
+    S.stage("AWEUSDT_LONG", {"A": 7}, base(tmp_path), st)
+    canon_dir = tmp_path / "canon" / "x" / "data" / "hourly_reconfig"
+    canon_dir.mkdir(parents=True)
+    canon = canon_dir / "per_sym_store.db"
+    con = sqlite3.connect(str(canon))
+    con.execute("CREATE TABLE kv_json (key TEXT PRIMARY KEY, value_json TEXT, updated_at TEXT, epoch REAL)")
+    con.execute("INSERT INTO kv_json (key, value_json) VALUES ('store_identity', ?)", (json.dumps({"window_days": 30, "kind": "30d"}),))
+    con.commit()
+    con.close()
+    monkeypatch.setenv("PER_SYM_STORE_DB", str(st))
+    monkeypatch.delenv("PER_SYM_WINDOW_DAYS", raising=False)
+    spec2 = importlib.util.spec_from_file_location("fws_failover", ROOT / "tools" / "v15_forward_state.py")
+    m = importlib.util.module_from_spec(spec2)
+    sys.modules[spec2.name] = m
+    spec2.loader.exec_module(m)
+    monkeypatch.setattr(m, "DEFAULT_STORE_DBS", (canon,))
+    assert m.store_db() == str(canon), "30D states must never be built from the fin 7D store"

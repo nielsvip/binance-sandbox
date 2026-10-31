@@ -300,7 +300,7 @@ class PaperForwardCollector:
 
     @staticmethod
     def _immutable_identity(manifest: Mapping[str, Any]) -> tuple:
-        keys = ("run_id", "epoch_id", "scenario_id", "sym_side", "host", "started_at", "settings_sha256", "parent_settings_sha256", "base_settings_file", "effective_settings_file", "code_sha256", "code_file_hashes", "candidate_overrides", "isolation_overrides", "paper_mask_release", "context", "candidate_getter_resolution", "worker_isolation", "engine_root", "plan_code_hash")
+        keys = ("run_id", "epoch_id", "scenario_id", "sym_side", "host", "started_at", "settings_sha256", "parent_settings_sha256", "base_settings_file", "effective_settings_file", "code_sha256", "code_file_hashes", "candidate_overrides", "isolation_overrides", "paper_mask_release", "context", "candidate_getter_resolution", "worker_isolation", "engine_root", "plan_code_hash", "accounting_file", "accounting_sha256")
         return tuple(_canonical(manifest.get(key)) for key in keys)
 
     def _stage_bundle(self, host: str, remote_manifest_path: str | None = None, local_run_dir: Path | None = None) -> dict:
@@ -326,6 +326,18 @@ class PaperForwardCollector:
                     self._copy_local_file(source, destination)
                 else:
                     self._sync_file(host, source, destination)
+            if manifest.get("accounting_file") or manifest.get("accounting_sha256"):
+                if not manifest.get("accounting_file") or not manifest.get("accounting_sha256"):
+                    raise ValueError("manifest accounting artifact reference is incomplete")
+                relative = _safe_relative(manifest["accounting_file"])
+                source = local_run_dir / relative if local_run_dir is not None else str(Path(remote_manifest_path).parent / relative)
+                destination = stage / relative
+                if local_run_dir is not None:
+                    self._copy_local_file(source, destination)
+                else:
+                    self._sync_file(host, source, destination)
+                if _sha256_file(destination) != manifest["accounting_sha256"]:
+                    raise ValueError("staged accounting artifact hash does not match manifest")
             snapshot_source = local_run_dir / "receipts.snapshot.db" if local_run_dir is not None else str(Path(remote_manifest_path).parent / "receipts.snapshot.db")
             snapshot_target = stage / "receipts.snapshot.db"
             if local_run_dir is not None:
@@ -436,7 +448,7 @@ class PaperForwardCollector:
 
     def collect_once(self, plan: Mapping[str, Any]) -> dict:
         plan_code_hash = hashlib.sha256(_canonical(plan["catalog"]["file_sha256"]).encode()).hexdigest()
-        plan_token = "plan-" + _digest({"codes": plan_code_hash, "groups": plan["groups"], "uncovered": plan["uncovered"], "universe_sha256": plan["universe_sha256"]})
+        plan_token = "plan-" + _digest({"codes": plan_code_hash, "catalog_scenarios": plan["catalog"]["scenarios"], "groups": plan["groups"], "uncovered": plan["uncovered"], "universe_sha256": plan["universe_sha256"]})
         if self.db.query("SELECT 1 FROM imports WHERE import_id=?", (plan_token,)):
             plan_result = {"registered": False, "plan_import_id": plan_token}
         else:

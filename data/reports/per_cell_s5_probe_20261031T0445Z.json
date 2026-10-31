@@ -1,0 +1,96 @@
+{
+  "assessment": "Six cells meet basic row/cell completeness in this one source, but cannot count toward 101 because there is no row-level engine/source/template hash or event ID, and no matching version manifest. Candidate row/filter identities are not asserted to match current template or trained-reader context.",
+  "candidate_cells": [
+    {
+      "delta_invalid": false,
+      "header_option": "EXIT_TOP_FADE_FILTER_TF=OFF",
+      "naked_binding": true,
+      "reason": "",
+      "row_key": "ENTRY_REVERSAL_BOUNCE!43:MOM3_FILTER_TF=OFF",
+      "row_npz": "ts1791207000.0_n14399"
+    },
+    {
+      "delta_invalid": false,
+      "header_option": "EXIT_TOP_FADE_FILTER_TF=D",
+      "naked_binding": true,
+      "reason": "",
+      "row_key": "ENTRY_REVERSAL_BOUNCE!43:MOM3_FILTER_TF=OFF",
+      "row_npz": "ts1791207000.0_n14399"
+    },
+    {
+      "delta_invalid": false,
+      "header_option": "EXIT_TOP_FADE_FILTER_TF=4h",
+      "naked_binding": true,
+      "reason": "",
+      "row_key": "ENTRY_REVERSAL_BOUNCE!43:MOM3_FILTER_TF=OFF",
+      "row_npz": "ts1791207000.0_n14399"
+    },
+    {
+      "delta_invalid": false,
+      "header_option": "EXIT_TOP_FADE_FILTER_TF=1h",
+      "naked_binding": true,
+      "reason": "",
+      "row_key": "ENTRY_REVERSAL_BOUNCE!43:MOM3_FILTER_TF=OFF",
+      "row_npz": "ts1791207000.0_n14399"
+    },
+    {
+      "delta_invalid": false,
+      "header_option": "COUNTER_TREND_ADD_BLOCK_ENABLED=True",
+      "naked_binding": true,
+      "reason": "",
+      "row_key": "ENTRY_REVERSAL_BOUNCE!43:MOM3_FILTER_TF=OFF",
+      "row_npz": "ts1791207000.0_n14399"
+    },
+    {
+      "delta_invalid": false,
+      "header_option": "HTF_DIRECTION_GATE_ENABLED=True",
+      "naked_binding": true,
+      "reason": "",
+      "row_key": "ENTRY_REVERSAL_BOUNCE!43:MOM3_FILTER_TF=OFF",
+      "row_npz": "ts1791207000.0_n14399"
+    }
+  ],
+  "counts": {
+    "candidate_cells_after_row/cell_level_exclusions": 6,
+    "nonzero_numeric_yellows": 196,
+    "noop_yellows": 189,
+    "numeric_yellow_observations": 196,
+    "reason_running_identity": 25,
+    "reason_zero_trades": 46,
+    "rows_nonempty_reason": 71
+  },
+  "defaults_round": "run27_complete_20261003",
+  "joins": {
+    "matches": [],
+    "run_tag_source_search": "run27_complete_20261003",
+    "search": "S5 data/reports maxdepth 3 for run27 / complete_20261003 named manifests"
+  },
+  "npz_id_fields": [
+    "md5",
+    "mtime_ns",
+    "n",
+    "path",
+    "size",
+    "ts_first",
+    "ts_last"
+  ],
+  "per_row_fields_absent": [
+    "engine_md5",
+    "eval_id",
+    "result_id",
+    "source_sha256",
+    "template_sha256",
+    "evaluation_timestamp"
+  ],
+  "row_count": 72,
+  "schema": "per_cell_progress_probe/1",
+  "source_bytes": 534727,
+  "source_host": "s5",
+  "source_path": "/home/niels/binance-sandbox/data/reports/lifecycle_pilot/CMC_SHORT_v14_progress.json",
+  "source_sha256_post": "a89b3b75d8209757a2983df3128bb9fb4c12a6da147beca51906f346bc0aa93a",
+  "source_sha256_pre": "a89b3b75d8209757a2983df3128bb9fb4c12a6da147beca51906f346bc0aa93a",
+  "stable_during_read": true,
+  "status": "complete_single_remote_source_probe",
+  "sym_side": "CMC_SHORT",
+  "window_days": 30
+}

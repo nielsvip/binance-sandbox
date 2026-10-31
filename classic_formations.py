@@ -514,17 +514,19 @@ def formation_vector_mask(
     if action == "EXIT":
         wanted = "bear" if is_long else "bull"
     minimum = float(getattr(config, "FORMATION_MIN_SCORE", 0.65) or 0.0)
-    best = np.zeros(n, dtype=np.float32)
+    best = np.zeros(n, dtype=np.float64)
     family_index = np.full(n, -1, dtype=np.int8)
     for idx, (family, prefix) in enumerate(CONFIG_FAMILY_PREFIX.items()):
         if not bool(getattr(config, f"{prefix}_{action}_ENABLED", False)):
             continue
         for tf in _formation_timeframes(config):
             values = arrays.get(f"formation_{family}_{wanted}_score_{tf}")
-            if values is None or len(values) != n:
+            if values is None:
+                values = np.zeros(n, dtype=np.float64)
+            if len(values) != n:
                 continue
-            scores = np.nan_to_num(np.asarray(values, dtype=np.float32), nan=0.0)
-            take = (scores >= minimum) & (scores > best)
+            scores = np.asarray(values, dtype=np.float64)
+            take = ~(scores < minimum) & ((family_index < 0) | (scores > best))
             best[take] = scores[take]
             family_index[take] = idx
-    return best >= minimum, best, family_index
+    return family_index >= 0, best.astype(np.float32), family_index

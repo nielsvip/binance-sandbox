@@ -126,6 +126,7 @@ class ContinuousJournalForwardSession(JournalForwardSession):
         self._source_cursor = 0
         self.experiment_window = dict(experiment_window) if experiment_window else None
         self._window_complete = False
+        self.coverage_gaps = []
         self.max_frames = int(max_frames)
         self.stop_requested = False
         self.wait_reason = "STARTING"
@@ -264,8 +265,9 @@ class ContinuousJournalForwardSession(JournalForwardSession):
                     return None, "SOURCE_WINDOW_COMPLETE"
             return None, "WAITING_FOR_ARCHIVE_TAIL" if status not in {"ARCHIVE_FULL", "DISK_RESERVE_BLOCKED"} else status
         sequence, observed_ts, source_ts, source_hash, input_hash, encoding, blob = row
-        if self.experiment_window and self._source_cursor == 0 and abs(float(source_ts) - float(self.experiment_window["start_source_ts"])) > 0.001:
-            raise RuntimeError("ARCHIVE_GAP: experiment window start source timestamp is missing")
+        gap = None
+        if self.experiment_window and self._source_cursor == 0 and float(source_ts) > float(self.experiment_window["start_source_ts"]):
+            gap = {"kind": "WINDOW_START_COVERAGE_GAP", "requested_start_source_ts": float(self.experiment_window["start_source_ts"]), "first_source_ts": float(source_ts), "missing_seconds": float(source_ts) - float(self.experiment_window["start_source_ts"])}
         if sequence <= int(metadata.get("retention_floor_sequence", "0")):
             raise RuntimeError("ARCHIVE_GAP: required native source sequence was pruned")
         if encoding != "zlib":
@@ -315,6 +317,9 @@ class ContinuousJournalForwardSession(JournalForwardSession):
                 "source_time_semantics": "native source timestamp; closed-bar status unverified",
             },
         }
+        if self.experiment_window and self._source_cursor == 0 and float(source_ts) > float(self.experiment_window["start_source_ts"]):
+            frame["observation"]["window_start_coverage_gap"] = gap
+            self.coverage_gaps.append(gap)
         return frame, None
     async def prime_first_frame(self):
         """Wait for one fresh input before engine initialization/assert_ready."""
@@ -432,7 +437,7 @@ import signal
 from datetime import datetime, timezone
 from pathlib import Path
 from tools.paper_worker_isolation import install, require_installed
-from tools.paper_forward_worker import ContinuousJournalForwardSession, _atomic_json, build_effective_settings
+from tools.paper_forward_worker import ContinuousJournalForwardSession, _atomic_json, build_effective_settings, validate_runtime_root
 from tools.paper_frame_stream import FrameJournal
 from tools.paper_snapshot_store import PaperSnapshotStore
 
@@ -440,6 +445,11 @@ root = Path(sys.argv[1]).resolve()
 request = json.loads((root / "request.json").read_text(encoding="utf-8"))
 source_journal = request.get("source_journal") or None
 install(root, readonly_sqlite_paths=[source_journal] if source_journal else [])
+def _persist_uncaught(exc_type, exc_value, exc_traceback):
+    import traceback
+    body = {"error_type": getattr(exc_type, "__name__", str(exc_type)), "error": str(exc_value), "traceback": "".join(traceback.format_exception(exc_type, exc_value, exc_traceback))}
+    _atomic_json(root / "child_error.json", body)
+sys.excepthook = _persist_uncaught
 symbol = request["symbol"]
 mode = request["mode"]
 manifest = request["manifest"]
@@ -449,8 +459,13 @@ engine_root = Path(request["engine_root"]).resolve()
 repo_root = Path(request["repo_root"]).resolve()
 if engine_root.is_symlink() or not engine_root.is_dir() or not (engine_root / "backtest_v12_engine.py").is_file():
     raise RuntimeError("private engine_root must contain backtest_v12_engine.py")
-if not engine_root.is_relative_to(repo_root):
-    raise RuntimeError("engine_root must remain inside the repository workspace")
+if request.get("diagnostic_workspace_engine"):
+    worker_code_root = Path(request["worker_code_root"]).resolve()
+    if engine_root != worker_code_root or manifest.get("context", {}).get("evidence_label") != "DIAGNOSTIC_REPLAY" or manifest.get("context", {}).get("performance_claim") is not False:
+        raise RuntimeError("workspace engine exception is limited to explicitly diagnostic no-performance runs")
+    engine_runtime_manifest = None
+else:
+    engine_runtime_manifest = validate_runtime_root(engine_root)
 sys.path.insert(0, str(engine_root))
 import tools as _tools_pkg
 _tools_pkg.__path__ = [str(engine_root / "tools"), str(repo_root / "tools")]
@@ -521,10 +536,13 @@ result_manifest = {
     "paper_mask_release": paper_mask_release, "context": {**manifest.get("context", {}), "experiment_context": manifest.get("experiment_context", {})},
     "candidate_getter_resolution": {}, "worker_isolation": require_installed(root),
     "engine_root": str(engine_root),
+    "engine_runtime_sha256": engine_runtime_manifest.get("runtime_sha256") if engine_runtime_manifest else None,
+    "engine_runtime_kind": "IMMUTABLE_BUNDLE" if engine_runtime_manifest else "WORKSPACE_DIAGNOSTIC",
     "promotion_eligible": False,
     "execution_mode": "V12_REAL_EXECUTE=1; real manager execute_now path with process-local broker/network I/O denial",
     "source_time_semantics": "native source timeframe timestamp; observed_at_utc is separate; closed-bar status unverified",
     "experiment_window": manifest.get("experiment_window"),
+    "source_journal": request.get("source_journal") or None,
     "effective_settings_file": effective_settings_path.name,
     "base_settings_file": base_settings_path.name,
     "finished": False, "status": "RUNNING",
@@ -596,6 +614,8 @@ if not first_frame:
 else:
     session._source_frame_count = journal._db.execute("SELECT COUNT(*) FROM frames").fetchone()[0]
     session.last_source_ts = float(journal._db.execute("SELECT closed_ts FROM frames ORDER BY sequence DESC LIMIT 1").fetchone()[0])
+result_manifest["coverage_gaps"] = session.coverage_gaps
+_atomic_json(result_manifest_path, result_manifest)
 session._snapshot_sqlite()
 result_manifest["status"] = "RUNNING"
 _atomic_json(result_manifest_path, result_manifest)
@@ -611,6 +631,83 @@ try:
         trades = asyncio.run(engine.run_simulation("crypto", request.get("account", "ang"), start_date, float(request.get("capital", 10000)), stores, "1m", forward_session=session))
     else:
         trades = asyncio.run(engine.run_simulation_tradier(request.get("account", "trb"), start_date, float(request.get("capital", 10000)), stores, "5m", forward_session=session))
+    engine._compute_trade_pnl(trades)
+    source_hashes = set()
+    source_input_hashes = set()
+    def _is_accounting_fill(event):
+        event_type = str(event.get("type", "")).lower()
+        recording_client_fill = (
+            isinstance(event.get("params"), dict) and bool(event.get("position_key"))
+            and event.get("position_before") is not None and event.get("position_after") is not None
+            and float(event.get("price", 0) or 0) > 0 and float(event.get("quantity", 0) or 0) > 0
+        )
+        return str(event.get("status", "")).upper() == "FILLED" and not event.get("decision_only") and (event_type in {"eta", "webhook"} or recording_client_fill)
+    receipt_events = {}
+    for frame_row in journal.iter_frames():
+        source_input_hashes.add(frame_row["input_hash"])
+        observation = frame_row["payload"].get(symbol, {}).get("observation", {})
+        if observation.get("source_sha256"):
+            source_hashes.add(observation["source_sha256"])
+        receipt = frame_row.get("receipt") or {}
+        for event_index, source_event in enumerate(receipt.get("events", [])):
+            if not _is_accounting_fill(source_event):
+                continue
+            match_fields = ("type", "status", "position_key", "action", "side", "quantity", "price", "timestamp")
+            match_key = json.dumps({key: source_event.get(key) for key in match_fields}, sort_keys=True, separators=(",", ":"), allow_nan=False, default=str)
+            receipt_events.setdefault(match_key, []).append({
+                "source_frame_sequence": frame_row["sequence"], "source_frame_input_hash": frame_row["input_hash"],
+                "source_event_index": event_index, "source_event": source_event,
+                "source_event_sha256": hashlib.sha256(json.dumps(source_event, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest(),
+            })
+    accounting_trades = []
+    for trade in trades:
+        event_type = str(trade.get("type", "")).lower()
+        if not _is_accounting_fill(trade):
+            continue
+        match_fields = ("type", "status", "position_key", "action", "side", "quantity", "price", "timestamp")
+        match_key = json.dumps({key: trade.get(key) for key in match_fields}, sort_keys=True, separators=(",", ":"), allow_nan=False, default=str)
+        source_reference = receipt_events.get(match_key, []).pop(0) if receipt_events.get(match_key) else None
+        if source_reference is None:
+            raise RuntimeError("accounting fill cannot be matched to an immutable journal receipt event")
+        gross = trade.get("pnl_dollars_gross")
+        net = trade.get("pnl_dollars")
+        accounting_trades.append({
+            **source_reference,
+            "event_type": event_type or "recording_client", "status": "FILLED", "timestamp": trade.get("timestamp"),
+            "position_key": trade.get("position_key"), "sym_side": trade.get("sym_side"),
+            "symbol": trade.get("symbol"), "action": trade.get("action"), "reason": trade.get("reason"),
+            "position_side": trade.get("position_side"), "side": trade.get("side"),
+            "price": trade.get("price"), "quantity": trade.get("quantity"),
+            "position_before": trade.get("position_before"), "position_after": trade.get("position_after"),
+            "gross_pnl_dollars": gross, "net_pnl_dollars": net,
+            "gross_pnl_pct": trade.get("pnl_pct_gross"), "net_pnl_pct": trade.get("pnl_pct"),
+            "round_trip_cost_pct_simulated": trade.get("round_trip_cost_pct"),
+            "fees_dollars_simulated": float(gross) - float(net) if gross is not None and net is not None else None,
+            "commission_dollars_open_simulated": trade.get("commission_dollars_open"),
+            "commission_dollars_close_simulated": trade.get("commission_dollars_close"),
+            "pnl_currency": "USD_SIMULATED",
+        })
+    accounting = {
+        "schema_version": 1, "run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"],
+        "scenario_id": manifest["scenario_id"], "sym_side": symside,
+        "settings_sha256": settings_hash, "code_sha256": code_hash,
+        "plan_code_hash": manifest["plan_code_hash"],
+        "source_sha256s": sorted(source_hashes), "source_input_sha256s": sorted(source_input_hashes),
+        "event_source": "backtest_v12_engine real manager execution fills (FILLED eta/webhook only)",
+        "cost_model": "engine_simulated_round_trip_cost", "costs_are_exchange_actual": False,
+        "trades": accounting_trades,
+    }
+    accounting_path = root / "accounting.json"
+    accounting_body = json.dumps(accounting, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
+    if accounting_path.exists():
+        if accounting_path.read_text(encoding="utf-8") != accounting_body:
+            raise RuntimeError("immutable accounting sidecar differs from existing run")
+    else:
+        with accounting_path.open("x", encoding="utf-8") as accounting_file:
+            accounting_file.write(accounting_body)
+            accounting_file.flush()
+            os.fsync(accounting_file.fileno())
+    accounting_sha256 = hashlib.sha256(accounting_body.encode("utf-8")).hexdigest()
     receipts = journal._db.execute("SELECT COUNT(*),SUM(receipt_hash IS NOT NULL) FROM frames").fetchone()
     if int(receipts[0]) != int(receipts[1] or 0):
         raise RuntimeError("engine returned without committing every source-frame receipt")
@@ -625,11 +722,16 @@ try:
         "store_row_existed": bool(precedence_state.get("store_row_existed")),
         "source_time_semantics": "native source timeframe timestamp; closed-bar status unverified",
         "trades": trades, "receipt_db": str(root / "receipts.sqlite3"),
+        "accounting_file": accounting_path.name, "accounting_sha256": accounting_sha256,
         "promotion_eligible": False,
     }
     _atomic_json(root / "result.json", result)
-    result_manifest.update(status=result["status"], finished=True, ended_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"), frame_count=result["frame_count"], committed_receipts=result["committed_receipts"])
+    result_manifest.update(status=result["status"], finished=True, ended_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"), frame_count=result["frame_count"], committed_receipts=result["committed_receipts"], accounting_file=accounting_path.name, accounting_sha256=accounting_sha256)
     _atomic_json(result_manifest_path, result_manifest)
+except BaseException as exc:
+    import traceback
+    _atomic_json(root / "child_error.json", {"error_type": type(exc).__name__, "error": str(exc), "traceback": traceback.format_exc()})
+    raise
 finally:
     journal.close()
     engine._run_one_restore_overrides(override_snapshot, mode)
@@ -641,6 +743,54 @@ def _digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
 
 
+def validate_runtime_root(runtime_root):
+    runtime_root = Path(runtime_root).resolve(strict=True)
+    manifest_path = runtime_root / "runtime_manifest.json"
+    if not manifest_path.is_file() or manifest_path.is_symlink():
+        raise ValueError("engine_root must be an immutable content-addressed paper runtime")
+    manifest = _read_json(manifest_path, 16 * 1024 * 1024)
+    if manifest.get("runtime_sha256") != runtime_root.name:
+        raise ValueError("runtime directory name does not match runtime manifest hash")
+    rows = manifest.get("files")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("runtime manifest has no source file records")
+    declared_map = manifest.get("file_sha256")
+    if declared_map != {row.get("path"): row.get("sha256") for row in rows}:
+        raise ValueError("runtime file_sha256 map disagrees with file records")
+    digest = hashlib.sha256()
+    seen = set()
+    for row in rows:
+        relative = Path(str(row.get("path", "")))
+        if relative.is_absolute() or ".." in relative.parts or not row.get("sha256"):
+            raise ValueError("runtime manifest contains an invalid relative path")
+        name = relative.as_posix()
+        if name in seen:
+            raise ValueError("runtime manifest contains duplicate paths")
+        seen.add(name)
+        path = runtime_root / relative
+        if path.is_symlink() or not path.is_file() or path.stat().st_mode & 0o222:
+            raise ValueError(f"runtime file is missing, linked, or writable: {name}")
+        file_digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        if file_digest != row["sha256"] or path.stat().st_size != int(row.get("bytes", -1)):
+            raise ValueError(f"runtime file hash or size mismatch: {name}")
+        for parent in path.parents:
+            if parent == runtime_root.parent:
+                break
+            if parent.stat().st_mode & 0o222:
+                raise ValueError(f"runtime directory is writable: {parent.relative_to(runtime_root)}")
+        digest.update(name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(bytes.fromhex(file_digest))
+    if digest.hexdigest() != manifest["runtime_sha256"]:
+        raise ValueError("runtime source manifest does not match content-addressed hash")
+    if runtime_root.stat().st_mode & 0o222:
+        raise ValueError("runtime root is writable")
+    engine_path = runtime_root / manifest.get("engine_path", "backtest_v12_engine.py")
+    if hashlib.sha256(engine_path.read_bytes()).hexdigest() != manifest.get("engine_sha256"):
+        raise ValueError("runtime engine hash does not match manifest")
+    return manifest
+
+
 def _read_json(path, limit=MAX_INPUT_BYTES):
     path = Path(path)
     if path.stat().st_size > limit:
@@ -649,6 +799,11 @@ def _read_json(path, limit=MAX_INPUT_BYTES):
     if len(raw) > limit:
         raise ValueError(f"input exceeds {limit} bytes: {path}")
     return json.loads(raw, parse_constant=lambda value: (_ for _ in ()).throw(ValueError(f"invalid JSON constant {value}")))
+
+
+def _feed_path(path):
+    path = Path(path).expanduser()
+    return path.parent.resolve() / path.name
 
 
 def main(argv=None):
@@ -710,8 +865,15 @@ def main(argv=None):
     if not engine_root_value.is_absolute():
         engine_root_value = args.manifest.resolve().parent / engine_root_value
     engine_root = engine_root_value.resolve()
-    if engine_root.is_symlink() or not engine_root.is_relative_to(workspace_root) or not (engine_root / "backtest_v12_engine.py").is_file():
-        parser.error("engine_root must be a real workspace directory containing backtest_v12_engine.py")
+    diagnostic_workspace_engine = engine_root == ROOT.resolve() and manifest.get("context", {}).get("evidence_label") == "DIAGNOSTIC_REPLAY" and manifest.get("context", {}).get("performance_claim") is False
+    try:
+        runtime_manifest = validate_runtime_root(engine_root)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        if not diagnostic_workspace_engine:
+            parser.error(f"engine_root must be an immutable verified paper runtime: {exc}")
+        runtime_manifest = None
+    if engine_root.is_symlink() or not (engine_root / "backtest_v12_engine.py").is_file():
+        parser.error("engine_root must contain backtest_v12_engine.py")
     full_settings = _read_json(full_settings_path)
     candidate = _read_json(candidate_path)
     if not isinstance(full_settings, dict) or not full_settings or not isinstance(candidate, dict):
@@ -721,7 +883,7 @@ def main(argv=None):
     registered = manifest.get("registered_candidate_overrides")
     if isinstance(registered, dict) and registered != candidate:
         parser.error("candidate override file differs from registered scenario overrides")
-    timeframe = str(manifest.get("frame_timeframe", "1m" if args.venue == "crypto" else "5m"))
+    timeframe = str(manifest.get("frame_timeframe", "1m"))
     required_tfs = manifest.get("required_timeframes", [timeframe])
     if timeframe not in TIMEFRAME_SECONDS or not isinstance(required_tfs, list) or not required_tfs or any(tf not in TIMEFRAME_SECONDS for tf in required_tfs):
         parser.error("manifest has invalid frame_timeframe/required_timeframes")
@@ -750,6 +912,7 @@ def main(argv=None):
     manifest["frame_timeframe"] = timeframe
     manifest["required_timeframes"] = required_tfs
     manifest["max_frames"] = max_frames
+    manifest["experiment_window"] = experiment_window
     manifest["paper_mask_release"] = manifest.get("paper_mask_release", [])
     if not isinstance(manifest["paper_mask_release"], list) or any(not isinstance(key, str) for key in manifest["paper_mask_release"]):
         parser.error("paper_mask_release must be a list of candidate key names")
@@ -773,12 +936,14 @@ def main(argv=None):
         **manifest,
         "sym_side": args.sym_side,
         "venue": args.venue,
-        "snapshot": str(Path(snapshot).resolve()) if snapshot and str(snapshot) != "." else "",
-        "receipt": str(Path(receipt).resolve()) if receipt and str(receipt) != "." else "",
+        "snapshot": str(_feed_path(snapshot)) if snapshot and str(snapshot) != "." else "",
+        "receipt": str(_feed_path(receipt)) if receipt and str(receipt) != "." else "",
         "source_journal": str(source_journal_path) if source_journal_path else "",
         "full_settings": str(Path(full_settings_path).resolve()),
         "candidate_overrides": str(Path(candidate_path).resolve()),
         "engine_root": str(engine_root),
+        "engine_runtime_sha256": runtime_manifest.get("runtime_sha256") if runtime_manifest else None,
+        "diagnostic_workspace_engine": diagnostic_workspace_engine,
         "frame_timeframe": timeframe,
         "required_timeframes": required_tfs,
         "poll_seconds": poll_seconds,
@@ -791,7 +956,7 @@ def main(argv=None):
     if not spec_path.exists():
         with spec_path.open("x", encoding="utf-8") as handle:
             handle.write(spec_bytes)
-    request = {"manifest": spec, "sym_side": args.sym_side, "symbol": symbol, "side": side, "mode": "crypto" if args.venue == "crypto" else "tradier", "full_settings": full_settings, "candidate_overrides": candidate, "engine_root": str(engine_root), "repo_root": str(workspace_root), "snapshot": str(Path(snapshot).resolve()) if snapshot and str(snapshot) != "." else "", "receipt": str(Path(receipt).resolve()) if receipt and str(receipt) != "." else "", "source_journal": str(source_journal_path) if source_journal_path else "", "poll_seconds": poll_seconds, "max_age_seconds": max_age_seconds, "account": args.account or manifest.get("account", "ang" if args.venue == "crypto" else "trb"), "capital": args.capital}
+    request = {"manifest": spec, "sym_side": args.sym_side, "symbol": symbol, "side": side, "mode": "crypto" if args.venue == "crypto" else "tradier", "full_settings": full_settings, "candidate_overrides": candidate, "engine_root": str(engine_root), "engine_runtime_sha256": runtime_manifest.get("runtime_sha256") if runtime_manifest else None, "diagnostic_workspace_engine": diagnostic_workspace_engine, "worker_code_root": str(ROOT.resolve()), "repo_root": str(workspace_root), "snapshot": str(_feed_path(snapshot)) if snapshot and str(snapshot) != "." else "", "receipt": str(_feed_path(receipt)) if receipt and str(receipt) != "." else "", "source_journal": str(source_journal_path) if source_journal_path else "", "poll_seconds": poll_seconds, "max_age_seconds": max_age_seconds, "account": args.account or manifest.get("account", "ang" if args.venue == "crypto" else "trb"), "capital": args.capital}
     request_path = run_dir / "request.json"
     request_bytes = json.dumps(request, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
     if request_path.exists() and request_path.read_text(encoding="utf-8") != request_bytes:
@@ -802,7 +967,7 @@ def main(argv=None):
     env = {key: value for key, value in os.environ.items() if not key.startswith(("V8_", "V12_", "PAPER_"))}
     env["V12_REAL_EXECUTE"] = "1"
     env["V8_RESEARCH_ALLOW_SIDE_KEYS"] = args.sym_side
-    env.update({"PYTHONHASHSEED": "0", "V8_HASHSEED_LOCKED": "1", "PYTHONDONTWRITEBYTECODE": "1", "V12_BASE_PATH": str(run_dir), "BASE_PATH": str(run_dir), "EZ_LOG_DIR": str(run_dir), "TRADIER_API_LOG_DIR": str(run_dir), "TMPDIR": str(run_dir), "PAPER_FORWARD_ISOLATED": "1", "V8_FORCE_REAL": "1", "V12_LIVE_ONLY_PRODUCERS": "1", "V8_RATE_GUARD_DISABLED": "1", "V8_MAX_WALL_SECS": "0", "V8_ISOLATE_SIDE": side, "V8_LADDER_ONLY_SIDE": side, "V8_SWEEP_MODE": "1", "V12_PARITY_REPORT_EVERY": "1000000", "FORWARD_AUTO_PROMOTE": "0", "PER_SYM_STORE_SQLITE_DISABLED": "0", "V12_RUN_ONE_SET_PRECEDENCE": "1"})
+    env.update({"PYTHONHASHSEED": "0", "V8_HASHSEED_LOCKED": "1", "PYTHONDONTWRITEBYTECODE": "1", "PYTHONPATH": str(ROOT.resolve()) + os.pathsep + os.environ.get("PYTHONPATH", ""), "V12_BASE_PATH": str(run_dir), "BASE_PATH": str(run_dir), "EZ_LOG_DIR": str(run_dir), "TRADIER_API_LOG_DIR": str(run_dir), "TMPDIR": str(run_dir), "PAPER_FORWARD_ISOLATED": "1", "V8_FORCE_REAL": "1", "V12_LIVE_ONLY_PRODUCERS": "1", "V8_RATE_GUARD_DISABLED": "1", "V8_MAX_WALL_SECS": "0", "V8_ISOLATE_SIDE": side, "V8_LADDER_ONLY_SIDE": side, "V8_SWEEP_MODE": "1", "V12_PARITY_REPORT_EVERY": "1000000", "FORWARD_AUTO_PROMOTE": "0", "PER_SYM_STORE_SQLITE_DISABLED": "0", "V12_RUN_ONE_SET_PRECEDENCE": "1"})
     with (run_dir / "worker.stdout.log").open("ab") as stdout_handle, (run_dir / "worker.stderr.log").open("ab") as stderr_handle:
         process = subprocess.Popen([sys.executable, "-c", CHILD, str(run_dir)], cwd=workspace_root, env=env, stdout=stdout_handle, stderr=stderr_handle, close_fds=True)
         try:

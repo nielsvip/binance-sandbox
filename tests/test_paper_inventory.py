@@ -41,6 +41,21 @@ def test_ingest_plan_repeat_is_stable_and_nonbool_stays_pending(tmp_path):
     db.close()
 
 
+def test_ingest_plan_honors_authoritative_nonbool_values(tmp_path):
+    db = ScenarioDB(tmp_path / "inventory.sqlite")
+    plan = plan_fixture()
+    number = next(row for row in plan["catalog"]["scenarios"] if row["scenario_id"] == "number")
+    number.update({"candidate_values": [2.5, 5], "candidate_value_types": ["float", "int"], "candidate_source": "TEMPLATE_FINAL_NORM", "candidate_source_xlsx_sha256": "d" * 64})
+    ingest_plan(db, plan)
+    runs = db.query("SELECT r.status,s.parameters_json FROM runs r JOIN scenarios s ON s.scenario_id=r.scenario_id")
+    number_rows = [row for row in runs if json.loads(row["parameters_json"])["catalog"]["scenario_id"] == "number"]
+    assert len(number_rows) == 2
+    assert {json.loads(row["parameters_json"])["overrides"]["NUMBER_SWITCH"] for row in number_rows} == {2.5, 5}
+    assert all(row["status"] == "PENDING_VALIDATED_EXECUTION" for row in number_rows)
+    assert all(json.loads(row["parameters_json"])["candidate_resolution"]["source_xlsx_sha256"] == "d" * 64 for row in number_rows)
+    db.close()
+
+
 def test_variants_keep_off_on_values_and_parent_history(tmp_path):
     db = ScenarioDB(tmp_path / "inventory.sqlite")
     ingest_plan(db, plan_fixture())

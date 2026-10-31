@@ -9,6 +9,7 @@ from pathlib import Path
 import re
 import sqlite3
 import time
+import os
 
 from tools import v15_nextgen_baseline_guard as guard
 
@@ -70,7 +71,7 @@ def catalog(template_sources, output):
     return dict(schema='every_row_every_filter_catalog/1',sources=template_sources,counts=counts,catalog=dict(path=str(output),sha256=sha(output)),yellow_restriction=False,unwired_or_grey_exclusion=False,promotion_min_distinct_proven_results=101,all_cells_measured=False)
 
 
-def iter_cells(catalog_path):
+def iter_cells(catalog_path,wanted_category=None):
     if str(catalog_path).endswith('.gz'):
         with gzip.open(catalog_path,'rt') as stream:
             for line in stream:
@@ -78,6 +79,8 @@ def iter_cells(catalog_path):
         return
     document=json.loads(Path(catalog_path).read_text())
     for category,part in document['categories'].items():
+        if wanted_category is not None and category!=wanted_category:
+            continue
         for row in part['rows']:
             for header,columns in sorted(part['headers'].items()):
                 field,option=header.split('=',1)
@@ -90,6 +93,10 @@ def work(cell):
     from tools import switch_types
     from tools.v15_nextgen_pilot_consumer import evaluate_fork_worker
     started=time.monotonic()
+    engine_started=False
+    stop=os.environ.get('V15_COVERAGE_STOP_FILE')
+    if (stop and Path(stop).exists()) or (CONTEXT.get('stop_deadline_monotonic') and time.monotonic()>=CONTEXT['stop_deadline_monotonic']):
+        return dict(cell=cell,status='deferred_budget_boundary_not_executed',proven_actual_result=False,engine_execution_attempted=False,promotion_allowed=False)
     result=dict(cell=cell,status='not_applied',promotion_allowed=False,phase_status='diagnostic_accepted_baseline_KG_incomplete_no_publication')
     try:
         if cell['cand'] is None:
@@ -118,6 +125,7 @@ def work(cell):
         result['sym_side_cell_key']=guard.fingerprint(logical)
         result['logical_cell_id']=result['sym_side_cell_key']
         result['trial_id']=guard.fingerprint(dict(logical_cell_id=result['logical_cell_id'],npz_sha256=CONTEXT['npz_sha256'],input_cutoff_sha256=CONTEXT['input_cutoff_sha256'],window=CONTEXT['window'],accepted_chain_sha256=guard.fingerprint(SETTINGS)))
+        engine_started=True
         measured=evaluate_fork_worker(copy.deepcopy(PREPARED),settings,CONTEXT['window_days'],CAPTURE)
         proof_source=CAPTURE['last_proof_source']
         if proof_source['encoding']=='cas-v1':
@@ -140,16 +148,21 @@ def work(cell):
             result['status']='invalid_or_failed_execution_not_zero'
         else:
             result['proven_actual_result']=True
+            result['ledger_change']=proof['execution_ledger_sha256']!=CONTEXT['baseline_ledger_sha256']
+            result['status']='measured_ledger_changed' if result['ledger_change'] else 'measured_no_ledger_change'
             result['eligible_for_promotion']=False
     except BaseException as error:
-        result.update(reason=str(error),proven_actual_result=False)
+        result.update(reason=str(error),proven_actual_result=False,status='failed_execution' if engine_started else 'not_applied')
+    result['engine_execution_attempted']=engine_started
     result['wall_seconds']=time.monotonic()-started
     return result
 
 
-def run(prepared,settings,config,pilot,context,capture,catalog_path,output,workers,limit=0,shard=(0,1),maximum_seconds=0):
+def run(prepared,settings,config,pilot,context,capture,catalog_path,output,workers,limit=0,shard=(0,1),maximum_seconds=0,start_index=0):
     global PREPARED,SETTINGS,CONFIG,PILOT,CONTEXT,CAPTURE
-    PREPARED,SETTINGS,CONFIG,PILOT,CONTEXT,CAPTURE=prepared,settings,config,pilot,context,capture
+    PREPARED,SETTINGS,CONFIG,PILOT,CONTEXT,CAPTURE=prepared,settings,config,pilot,dict(context),capture
+    if maximum_seconds:
+        CONTEXT['stop_deadline_monotonic']=time.monotonic()+maximum_seconds
     output=Path(output)
     output.mkdir(parents=True,exist_ok=False)
     ledger=sqlite3.connect(output/'coverage.sqlite')
@@ -161,7 +174,13 @@ def run(prepared,settings,config,pilot,context,capture,catalog_path,output,worke
     tasks_staged=0
     def tasks():
         index=0
-        for cell in iter_cells(catalog_path):
+        for ordinal,cell in enumerate(iter_cells(catalog_path,context['cat_side'])):
+            stop=os.environ.get('V15_COVERAGE_STOP_FILE')
+            if (stop and Path(stop).exists()) or (maximum_seconds and time.monotonic()-started>=maximum_seconds):
+                break
+            if ordinal<start_index:
+                continue
+            cell['catalog_ordinal']=ordinal
             if cell['cat_side']!=context['cat_side']:
                 continue
             if int(cell['catalog_cell_id'][:16],16)%shard[1]!=shard[0]:
@@ -172,7 +191,10 @@ def run(prepared,settings,config,pilot,context,capture,catalog_path,output,worke
             yield cell
     with multiprocessing.get_context('fork').Pool(workers) as pool, (output/'cell_attempts.jsonl').open('x') as sink:
         for result in pool.imap_unordered(work,tasks(),chunksize=1):
-            counts['attempted_cells']+=1
+            counts['accounted_cell_records']+=1
+            counts['attempted_cells']+=int(result['status']!='deferred_budget_boundary_not_executed')
+            counts['actual_engine_execution_attempts']+=int(result.get('engine_execution_attempted',False))
+            counts['last_catalog_ordinal']=max(counts['last_catalog_ordinal'],result['cell']['catalog_ordinal'])
             counts[result['status']]+=1
             if result.get('proven_actual_result'):
                 cursor=ledger.execute('INSERT OR IGNORE INTO results VALUES(?,?,?,?,?)',(result['trial_id'],result['logical_cell_id'],result['status'],result['actual_proof']['path'],json.dumps(result,separators=(',',':'))))
@@ -183,8 +205,5 @@ def run(prepared,settings,config,pilot,context,capture,catalog_path,output,worke
             ledger.commit()
             receipt=dict(schema='fullcell_actual_coverage_progress/1',observed_at=datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),counts=dict(counts),source_context=context,catalog_sha256=catalog_digest,workers=workers,partial=True,promotion_threshold=101,promotion_enabled=False,scope='breadth-first single frozen context; repeated same trial never increases evidence; failed/skipped/not-applied never zero')
             (output/'progress.json').write_text(json.dumps(receipt,indent=2))
-            if maximum_seconds and time.monotonic()-started>=maximum_seconds:
-                pool.terminate()
-                break
     ledger.close()
     return receipt

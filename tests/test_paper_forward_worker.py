@@ -171,12 +171,13 @@ def test_source_journal_experiment_window_selects_bounds_and_completes(tmp_path,
     session = ContinuousJournalForwardSession(
         journal, {}, lambda *_: None, code_path=tmp_path / "engine.py", mode="crypto",
         snapshot_path=tmp_path / "unused.json", receipt_path=tmp_path / "unused.receipt.json",
-        source_journal_path=source_path, experiment_window={"window_id": "fixed", "source_timeframe": "1m", "start_source_ts": now - 120, "end_source_ts": now - 60},
+        source_journal_path=source_path, experiment_window={"window_id": "fixed", "source_timeframe": "1m", "start_source_ts": now - 180, "end_source_ts": now - 60},
         symbol="BTCUSDT", expected_host="s1", frame_timeframe="1m", required_timeframes=["1m"],
         poll_seconds=0.5, max_age_seconds=180, run_root=output,
     )
     first, reason = session._read_source_journal_frame()
     assert reason is None and first["source_sequence"] == 1
+    assert session.coverage_gaps[0]["missing_seconds"] == 60
     session._source_cursor = first["source_sequence"]
     second, reason = session._read_source_journal_frame()
     assert reason is None and second["source_sequence"] == 2

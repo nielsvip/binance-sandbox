@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import sqlite3
 import time
 from datetime import datetime, timedelta, timezone
@@ -104,6 +105,51 @@ def _store_pair_metadata(db: ScenarioDB, manifest: Mapping[str, Any], settings_h
         source_ts TEXT NOT NULL, input_hash TEXT NOT NULL,
         PRIMARY KEY(run_id,sequence)
     )""")
+    db.connection.execute("""CREATE TABLE IF NOT EXISTS paper_forward_accounting_fills (
+        run_id TEXT NOT NULL REFERENCES runs(run_id), source_frame_sequence INTEGER NOT NULL,
+        source_event_index INTEGER NOT NULL, source_event_sha256 TEXT NOT NULL,
+        position_key TEXT NOT NULL, action TEXT NOT NULL, side TEXT, quantity REAL NOT NULL, price REAL NOT NULL,
+        gross_pnl_dollars REAL, modeled_net_pnl_dollars REAL, modeled_cost_dollars REAL,
+        gross_pnl_pct REAL, modeled_net_pnl_pct REAL, modeled_round_trip_cost_pct REAL,
+        cost_model TEXT NOT NULL, pnl_currency TEXT NOT NULL, source_event_json TEXT NOT NULL,
+        accounting_sha256 TEXT NOT NULL,
+        PRIMARY KEY(run_id,source_frame_sequence,source_event_index)
+    )""")
+    db.connection.execute("""CREATE VIEW IF NOT EXISTS paper_paired_simulated_cost_readiness AS
+        SELECT p.*, ma.code_snapshot_sha256 AS code_snapshot_sha256_a,
+               mb.code_snapshot_sha256 AS code_snapshot_sha256_b,
+               CASE WHEN p.identical_inputs_ready=1 AND p.shared_context_matches=1 AND p.candidate_config_differs=1 AND ((ma.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(mb.candidate_overrides_json))=1) OR (mb.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(ma.candidate_overrides_json))=1))
+                         AND p.status_a='COMPLETED' AND p.status_b='COMPLETED'
+                         AND ma.code_snapshot_sha256=mb.code_snapshot_sha256 THEN 1 ELSE 0 END AS paired_simulated_cost_ready,
+               (SELECT COUNT(*) FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a) AS accounting_fills_a,
+               (SELECT COUNT(*) FROM paper_forward_accounting_fills fb WHERE fb.run_id=p.run_b) AS accounting_fills_b,
+               (SELECT COUNT(*) FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a AND fa.modeled_net_pnl_dollars IS NOT NULL AND fa.modeled_cost_dollars IS NOT NULL) AS known_modeled_close_costs_a,
+               (SELECT COUNT(*) FROM paper_forward_accounting_fills fb WHERE fb.run_id=p.run_b AND fb.modeled_net_pnl_dollars IS NOT NULL AND fb.modeled_cost_dollars IS NOT NULL) AS known_modeled_close_costs_b,
+               CASE WHEN p.identical_inputs_ready=1 AND p.shared_context_matches=1 AND p.candidate_config_differs=1 AND ((ma.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(mb.candidate_overrides_json))=1) OR (mb.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(ma.candidate_overrides_json))=1))
+                         AND p.status_a='COMPLETED' AND p.status_b='COMPLETED'
+                         AND ma.code_snapshot_sha256=mb.code_snapshot_sha256
+                         AND EXISTS (SELECT 1 FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a AND fa.modeled_net_pnl_dollars IS NOT NULL)
+                         AND EXISTS (SELECT 1 FROM paper_forward_accounting_fills fb WHERE fb.run_id=p.run_b AND fb.modeled_net_pnl_dollars IS NOT NULL)
+                         AND NOT EXISTS (SELECT 1 FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a AND (fa.action IN ('CLOSE','FULL_CLOSE','QUICK_CLOSE','REDUCE','PROFIT_TAKE','HEDGE_CLOSE') OR (fa.action='SELL' AND fa.side='LONG') OR (fa.action='BUY' AND fa.side='SHORT')) AND (fa.gross_pnl_dollars IS NULL OR fa.modeled_net_pnl_dollars IS NULL OR fa.modeled_cost_dollars IS NULL))
+                         AND NOT EXISTS (SELECT 1 FROM paper_forward_accounting_fills fb WHERE fb.run_id=p.run_b AND (fb.action IN ('CLOSE','FULL_CLOSE','QUICK_CLOSE','REDUCE','PROFIT_TAKE','HEDGE_CLOSE') OR (fb.action='SELL' AND fb.side='LONG') OR (fb.action='BUY' AND fb.side='SHORT')) AND (fb.gross_pnl_dollars IS NULL OR fb.modeled_net_pnl_dollars IS NULL OR fb.modeled_cost_dollars IS NULL))
+                    THEN 1 ELSE 0 END AS diagnostic_simulated_cost_ready,
+               (SELECT SUM(fa.modeled_net_pnl_dollars) FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a) AS diagnostic_simulated_net_pnl_dollars_a,
+               (SELECT SUM(fb.modeled_net_pnl_dollars) FROM paper_forward_accounting_fills fb WHERE fb.run_id=p.run_b) AS diagnostic_simulated_net_pnl_dollars_b,
+               CASE WHEN p.identical_inputs_ready=1 AND p.shared_context_matches=1 AND p.candidate_config_differs=1 AND ((ma.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(mb.candidate_overrides_json))=1) OR (mb.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(ma.candidate_overrides_json))=1))
+                         AND p.status_a='COMPLETED' AND p.status_b='COMPLETED'
+                         AND ma.code_snapshot_sha256=mb.code_snapshot_sha256
+                         AND EXISTS (SELECT 1 FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a AND fa.modeled_net_pnl_dollars IS NOT NULL)
+                         AND EXISTS (SELECT 1 FROM paper_forward_accounting_fills fb WHERE fb.run_id=p.run_b AND fb.modeled_net_pnl_dollars IS NOT NULL)
+                         AND NOT EXISTS (SELECT 1 FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a AND (fa.action IN ('CLOSE','FULL_CLOSE','QUICK_CLOSE','REDUCE','PROFIT_TAKE','HEDGE_CLOSE') OR (fa.action='SELL' AND fa.side='LONG') OR (fa.action='BUY' AND fa.side='SHORT')) AND (fa.gross_pnl_dollars IS NULL OR fa.modeled_net_pnl_dollars IS NULL OR fa.modeled_cost_dollars IS NULL))
+                         AND NOT EXISTS (SELECT 1 FROM paper_forward_accounting_fills fb WHERE fb.run_id=p.run_b AND (fb.action IN ('CLOSE','FULL_CLOSE','QUICK_CLOSE','REDUCE','PROFIT_TAKE','HEDGE_CLOSE') OR (fb.action='SELL' AND fb.side='LONG') OR (fb.action='BUY' AND fb.side='SHORT')) AND (fb.gross_pnl_dollars IS NULL OR fb.modeled_net_pnl_dollars IS NULL OR fb.modeled_cost_dollars IS NULL))
+                    THEN (SELECT SUM(fb.modeled_net_pnl_dollars) FROM paper_forward_accounting_fills fb WHERE fb.run_id=p.run_b)
+                       - (SELECT SUM(fa.modeled_net_pnl_dollars) FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a)
+                    ELSE NULL END AS diagnostic_simulated_net_pnl_dollars_delta,
+               'diagnostic_simulated_cost' AS outcome_label
+        FROM paper_paired_readiness p
+        JOIN paper_forward_run_metadata ma ON ma.run_id=p.run_a
+        JOIN paper_forward_run_metadata mb ON mb.run_id=p.run_b;
+    """)
     db.connection.execute("""CREATE VIEW IF NOT EXISTS paper_paired_readiness AS
         SELECT a.run_id AS run_a,b.run_id AS run_b,a.sym_side,
                ma.epoch_id,ma.parent_settings_sha256 AS parent_settings_hash,
@@ -275,6 +321,124 @@ def _lifecycle(db: ScenarioDB, run_id: str, receipts: list[dict]) -> int:
     return count
 
 
+def _same_number(left: Any, right: Any) -> bool:
+    try:
+        a, b = float(left), float(right)
+        return abs(a - b) <= max(1e-12, abs(a) * 1e-12, abs(b) * 1e-12)
+    except (TypeError, ValueError):
+        return False
+
+
+def _positive_number(value: Any) -> bool:
+    try:
+        number = float(value)
+        return math.isfinite(number) and number > 0
+    except (TypeError, ValueError):
+        return False
+
+
+def _ingest_accounting(db: ScenarioDB, manifest: Mapping[str, Any], run_dir: str | Path | None, receipts: list[dict]) -> int:
+    relative_name = manifest.get("accounting_file")
+    expected_hash = manifest.get("accounting_sha256")
+    if not relative_name and not expected_hash:
+        return 0
+    if not relative_name or not expected_hash or run_dir is None:
+        raise ValueError("accounting artifact requires accounting_file, accounting_sha256, and run_dir")
+    relative = Path(str(relative_name))
+    if relative.is_absolute() or ".." in relative.parts:
+        raise ValueError("accounting_file must be a safe relative path")
+    path = Path(run_dir) / relative
+    raw = path.read_bytes()
+    actual_hash = hashlib.sha256(raw).hexdigest()
+    if actual_hash != expected_hash:
+        raise ValueError("accounting artifact hash does not match manifest")
+    artifact = json.loads(raw)
+    identity_fields = ("run_id", "epoch_id", "scenario_id", "sym_side", "settings_sha256", "code_sha256")
+    for key in identity_fields:
+        if str(artifact.get(key, "")) != str(manifest.get(key, "")):
+            raise ValueError(f"accounting {key} does not match manifest")
+    if artifact.get("schema_version") != 1 or artifact.get("cost_model") != "engine_simulated_round_trip_cost" or artifact.get("costs_are_exchange_actual") is not False:
+        raise ValueError("accounting artifact must identify the engine simulated-cost model")
+    if not isinstance(artifact.get("trades"), list):
+        raise ValueError("accounting trades must be a list")
+    source_frames = {row["sequence"]: row for row in receipts}
+    declared_inputs = sorted({row["input_hash"] for row in receipts})
+    if sorted(artifact.get("source_input_sha256s", [])) != declared_inputs:
+        raise ValueError("accounting source input hashes do not match journal receipts")
+    eligible = {}
+    for row in receipts:
+        for index, event in enumerate(row["receipt"]["events"]):
+            if not isinstance(event, Mapping) or str(event.get("status", "")).upper() != "FILLED" or event.get("decision_only") is True:
+                continue
+            event_type = str(event.get("type", "")).lower()
+            recording_client_fill = isinstance(event.get("params"), Mapping) and bool(event.get("position_key")) and event.get("position_before") is not None and event.get("position_after") is not None and _positive_number(event.get("price")) and _positive_number(event.get("quantity"))
+            if event_type in {"eta", "webhook"} or recording_client_fill:
+                eligible[(row["sequence"], index)] = (row, event)
+    seen = set()
+    imported = 0
+    for item in artifact["trades"]:
+        if not isinstance(item, Mapping):
+            raise ValueError("accounting trade entry must be an object")
+        try:
+            reference = (int(item["source_frame_sequence"]), int(item["source_event_index"]))
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ValueError("accounting trade lacks source event coordinates") from exc
+        if reference in seen or reference not in eligible:
+            raise ValueError("accounting trade has duplicate or unknown source event coordinates")
+        seen.add(reference)
+        frame, event = eligible[reference]
+        if item.get("source_frame_input_hash") != frame["input_hash"]:
+            raise ValueError("accounting source frame input hash mismatch")
+        source_event = item.get("source_event")
+        if not isinstance(source_event, Mapping) or _canonical(source_event) != _canonical(event):
+            raise ValueError("accounting source event differs from immutable receipt event")
+        source_hash = hashlib.sha256(_canonical(event).encode()).hexdigest()
+        if item.get("source_event_sha256") != source_hash:
+            raise ValueError("accounting source event hash mismatch")
+        for field, aliases in (("price", ("price",)), ("quantity", ("quantity", "executed_qty"))):
+            source_value = next((event[name] for name in aliases if name in event), None)
+            if source_value is None or not _same_number(item.get(field), source_value):
+                raise ValueError(f"accounting {field} differs from source execution event")
+        for field in ("action", "position_key", "symbol", "position_side", "side"):
+            if event.get(field) is not None and str(item.get(field, "")) != str(event[field]):
+                raise ValueError(f"accounting {field} differs from source execution event")
+        event_ts = next((event.get(name) for name in ("timestamp", "ts", "executed_at") if event.get(name) is not None), None)
+        accounted_ts = item.get("timestamp")
+        if event_ts is not None:
+            if str(accounted_ts) != str(event_ts):
+                raise ValueError("accounting timestamp differs from source execution event")
+        elif not (_same_number(accounted_ts, frame["ts"]) or str(accounted_ts) == _utc(frame["ts"])):
+            raise ValueError("accounting timestamp differs from source receipt frame")
+        gross = item.get("gross_pnl_dollars")
+        net = item.get("net_pnl_dollars")
+        cost = item.get("fees_dollars_simulated")
+        if gross is not None and net is not None:
+            if cost is None or not _same_number(float(gross) - float(net), cost):
+                raise ValueError("accounting modeled cost does not equal gross minus net pnl")
+        elif cost is not None:
+            raise ValueError("accounting cost is present without gross and net pnl")
+        if gross is not None and not _same_number(gross, gross) or net is not None and not _same_number(net, net):
+            raise ValueError("accounting pnl values must be finite numbers")
+        cursor = db.connection.execute("""INSERT OR IGNORE INTO paper_forward_accounting_fills
+            (run_id,source_frame_sequence,source_event_index,source_event_sha256,position_key,action,side,quantity,price,
+             gross_pnl_dollars,modeled_net_pnl_dollars,modeled_cost_dollars,gross_pnl_pct,modeled_net_pnl_pct,
+             modeled_round_trip_cost_pct,cost_model,pnl_currency,source_event_json,accounting_sha256)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (manifest["run_id"], reference[0], reference[1], source_hash, str(item.get("position_key") or ""), str(item.get("action") or "").upper(),
+             item.get("position_side") or item.get("side"), float(item["quantity"]), float(item["price"]),
+             gross, net, cost, item.get("gross_pnl_pct"), item.get("net_pnl_pct"), item.get("round_trip_cost_pct_simulated"),
+             artifact["cost_model"], str(item.get("pnl_currency") or "USD_SIMULATED"), _canonical(event), actual_hash))
+        if cursor.rowcount:
+            imported += 1
+        existing = db.connection.execute("SELECT source_event_sha256,gross_pnl_dollars,modeled_net_pnl_dollars,modeled_cost_dollars,accounting_sha256 FROM paper_forward_accounting_fills WHERE run_id=? AND source_frame_sequence=? AND source_event_index=?", (manifest["run_id"], reference[0], reference[1])).fetchone()
+        expected = (source_hash, gross, net, cost, actual_hash)
+        if existing is None or tuple(existing) != expected:
+            raise ValueError("immutable accounting fill conflict")
+    if seen != set(eligible):
+        raise ValueError("accounting artifact omits one or more FILLED eta/webhook receipt events")
+    return imported
+
+
 def ingest(db: ScenarioDB, journal_path: str | Path, manifest: Mapping[str, Any], run_dir: str | Path | None = None) -> dict:
     identity, receipts = _journal(journal_path)
     terminal_status = str(manifest.get("status", "COMPLETED" if manifest.get("finished") is True else "RUNNING")).upper()
@@ -284,7 +448,7 @@ def ingest(db: ScenarioDB, journal_path: str | Path, manifest: Mapping[str, Any]
         if not receipts:
             if is_terminal and terminal_status != "FAILED":
                 raise ValueError("finished worker manifest has no committed receipts")
-            return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": 0, "execution_events": 0, "decision_rows": 0, "completed_lifecycles": 0, "status": "WAITING_FOR_RECEIPTS", "evidence_kind": "independent_forward"}
+            return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": 0, "execution_events": 0, "decision_rows": 0, "completed_lifecycles": 0, "accounting_fills": 0, "status": "WAITING_FOR_RECEIPTS", "evidence_kind": "independent_forward"}
         if terminal_status in {"COMPLETED", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT"} and _journal_frame_count(journal_path) != len(receipts):
             raise ValueError("finished worker manifest has incomplete frame receipts")
         sink = PaperSQLSink(db, str(manifest["run_id"]))
@@ -311,7 +475,8 @@ def ingest(db: ScenarioDB, journal_path: str | Path, manifest: Mapping[str, Any]
             completion_time = _terminal_recorded_at(manifest, receipts[-1])
             db.add_run_status(event_id=status_id, run_id=manifest["run_id"], recorded_at=completion_time, status=terminal_status,
                               detail={"epoch_id": manifest["epoch_id"], "receipts": len(receipts), "source_end": _utc(receipts[-1]["ts"]), "reason": manifest.get("reason")})
-    return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": len(receipts), "execution_events": raw_events, "decision_rows": decision_rows, "completed_lifecycles": completed, "status": terminal_status if is_terminal else "RUNNING", "evidence_kind": "independent_forward"}
+        accounting_fills = _ingest_accounting(db, manifest, run_dir, receipts)
+    return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": len(receipts), "execution_events": raw_events, "decision_rows": decision_rows, "completed_lifecycles": completed, "accounting_fills": accounting_fills, "status": terminal_status if is_terminal else "RUNNING", "evidence_kind": "independent_forward"}
 
 
 def _journal_frame_count(path: str | Path) -> int:

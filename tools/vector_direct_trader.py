@@ -226,6 +226,8 @@ SEVENDAY_BOOK = {"fin": "men", "trc": "trb"}
 # parent): data/forward_state_fin7d, built from per_sym_store_7d.db. trc already runs as its own process with
 # --state-dir forward_state_7d, so it needs no entry.
 SEVENDAY_STATE_DIRS = {"fin": "forward_state_fin7d"}
+# every 7D comparison arm: always planned AFTER the 30D accounts, and its failures are contained to itself
+SEVENDAY_ARMS = frozenset(a for a in SEVENDAY_ONLY_ACCOUNTS if a != "*") | frozenset(SEVENDAY_STATE_DIRS)
 MAC_POSITIONS = os.environ.get("VD_MAC_POSITIONS", "1") == "1"
 MAC_POSITIONS_MAX_AGE_S = float(os.environ.get("VD_MAC_POSITIONS_MAX_AGE_S", "900"))
 # Every held position must carry a resting protective stop. Audited per account at most this often (0 = off).
@@ -1917,106 +1919,123 @@ class Trader:
         consumed = self.__dict__.setdefault("consumed", {})
         consumed_dirty = False
         acct_notional = {a: sum((self.__dict__.get("held_notional") or {}).get(a, {}).values()) for a in active}
-        for acct in sorted(active, key=lambda a: -acct_notional.get(a, 0.0)) if (market_ok and lease_held) else []:
-            acct_sides = set(keys.get(acct, ())) | set(self.held.get(acct, ()))
-            acct_changed = any(ss in changed for ss in acct_sides)
-            if not acct_changed and now - self.last_plan.get(acct, 0) < REPLAN_S:
-                continue
-            self.last_plan[acct] = now
+        ordered = sorted(active, key=lambda a: -acct_notional.get(a, 0.0)) if (market_ok and lease_held) else []
+        # USER 2026-10-31 "7D is just a comparison experiment make sure it can never put in danger any of the existing
+        # 30D trading". fin shares this process with men. Every 30D account is planned and sent BEFORE any 7D arm, and a
+        # 7D arm's failure is contained to that arm: it can never abort the pass, so the 30D accounts' orders, the
+        # consumed file (tools/s1_bar_guarantee.py reads it as the "executed" stage — a missing one gets sides declared
+        # untradeable and CLOSED) and the status file are always written. A 30D account's exception propagates exactly
+        # as before: production behaviour is unchanged.
+        ordered = [a for a in ordered if a not in SEVENDAY_ARMS] + [a for a in ordered if a in SEVENDAY_ARMS]
+        for acct in ordered:
             try:
-                pos = self.positions(acct)
-            except RestBlocked as exc:
-                log(f"{acct}: {exc}")
-                continue
-            except Exception as exc:
-                log(f"{acct}: broker positions FAILED {str(exc)[:160]}")
-                continue
-            self.with_held_states(states, pos)
-            self.audit_protection(acct, pos)
-            if self.venue == "crypto":
-                halted.update(rolling_deterioration_halts(self.root, self.state_dir, states, bar, alert=self.alert))
-            # A 7D arm plans from its OWN 7D states, never its control's 30D ones (USER 2026-10-31 "any crypto sym_side
-            # that has not had an update for >20hrs has to get updated and traded on 7D fin account"). Without this,
-            # clearing fin's 7D gate would only have made fin trade men's 30D settings on men's symbols — a duplicate
-            # of men, not a comparison. The 30D deterioration latch compares against 30D published gains, so it is a
-            # 30D-arm concept and does not apply to a 7D arm, whose own guarantee is its <30 h freshness.
-            acct_states, acct_halted = states, halted
-            seven_dir = SEVENDAY_STATE_DIRS.get(acct) if self.venue == "crypto" else None
-            if seven_dir:
-                seven_path = self.state_dir.parent / seven_dir
-                acct_states = self.load_states(set(keys.get(acct, ())) | set(self.held.get(acct, ())), seven_path)
-                self.with_held_states(acct_states, pos, seven_path)
-                acct_halted = {}
-            self._remember_held_anchors(acct, pos, acct_states)
-            t_obs, prev = self.obs.get(acct, (0, {}))
-            prev_qty = prev if t_obs and bar - BAR_S <= t_obs < bar + BAR_S else {}
-            orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), acct_states, pos, bar, self.done, allowed, prev_qty, wt15=self.wt15, noinfo_age=self.noinfo_age,
-                                         untradeable=untradeable, untradeable_close=untradeable_close, halted=acct_halted)
-            planned_at = time.time()
-            plan_refs = {}
-            for o in orders:
-                if o.get("reason") == "UNTRADEABLE_NO_VERDICT":
-                    log(f"CRITICAL UNTRADEABLE CLOSE {acct} {o['ss']} qty={o['qty']} — {o['why']}")
-                    self.alert("UNTRADEABLE_CLOSE", account=acct, sym_side=o["ss"], qty=o["qty"], why=o["why"], severity="CRITICAL")
-            # Record an immutable decision whenever state, admission, gate context, broker holdings, or the plan changes.
-            for ss in set(keys.get(acct, ())) | set(pos):
-                st = acct_states.get(ss) or {}   # the state this account was ACTUALLY planned against (7D for fin)
-                state_ref = persist_decision_state(self.out, st)
-                held = float((pos.get(ss) or {}).get("qty") or 0.0)
-                side_orders = [order_intent(o) for o in orders if o["ss"] == ss]
-                side_notes = [n for side, n in notes if side == ss]
-                admission = bool(allowed(acct, ss)) if ss in keys.get(acct, ()) and st.get("open") and not held else None
-                control = {"venue": self.venue, "bar": bar, "state_sha256": state_ref["state_sha256"], "state_sig": [st.get("npz_tail"), st.get("ts")],
-                           "keys_member": ss in keys.get(acct, ()), "allowed": admission, "held": held, "halt": acct_halted.get(ss),
-                           "untradeable": untradeable.get(ss), "orders": side_orders, "notes": side_notes}
-                plan_doc = {"schema": "vector-direct-plan-decision-v1", "acct": acct, "ss": ss, "bar": bar,
-                            "state_provenance": state_ref, "control": control, "orders": side_orders}
-                plan_ref = persist_plan_decision(self.out, plan_doc)
-                plan_refs[ss] = plan_ref
-                sig = [st.get("npz_tail"), st.get("ts"), (untradeable.get(ss) or {}).get("bar"), plan_ref["plan_decision_id"]]
-                row = consumed.setdefault(ss, {}).get(acct)
-                if not row or row.get("sig") != sig or not row.get("decision_provenance"):
-                    consumed[ss][acct] = {"sig": sig, "npz_tail": st.get("npz_tail"), "ok": bool(st.get("ok")), "at": planned_at,
-                                          "orders": [o["act"] for o in orders if o["ss"] == ss], "keys": [o["key"] for o in orders if o["ss"] == ss],
-                                          "held": held, "allowed": admission, "notes": side_notes, "untradeable_bar": (untradeable.get(ss) or {}).get("bar"),
-                                          "control": control, **plan_ref}
-                    try:
-                        consumed[ss][acct]["decision_provenance"] = state_ref
-                        consumed[ss][acct]["account_execution_context"] = self.capture_account_position(acct, ss, pos.get(ss) or {"qty": 0.0}, consumed[ss][acct]["decision_provenance"], bar)
-                        self._ledger({"event": "DECISION", "acct": acct, "ss": ss, "bar": bar, **consumed[ss][acct]})
-                    except OSError as exc:
-                        self.alert("DECISION_PROVENANCE_WRITE_FAILED", account=acct, sym_side=ss, error=str(exc), severity="CRITICAL")
-                    consumed_dirty = True
-            for order in orders:
-                order["bar"] = bar
-                order["plan_decision"] = plan_refs.get(order["ss"])
-            self.obs[acct] = (now, {ss: p["qty"] for ss, p in pos.items()})
-            for ss, n in notes:
-                if n != "HOLD_NO_FRESH_STATE":
-                    k = f"{acct}|{ss}|{bar}|NOTE|{n[:24]}"
-                    if k not in self.done:
-                        self.done.add(k)
-                        self._ledger({"event": "NOTE", "acct": acct, "ss": ss, "note": n, "key": k, "final": True})
-            # biggest open position first, then the rest of the tradeable keys
-            orders.sort(key=lambda o: (0 if (pos.get(o["ss"]) or {}).get("qty") else 1, -float((pos.get(o["ss"]) or {}).get("qty") or 0) * float((pos.get(o["ss"]) or {}).get("price") or 0) or -float((pos.get(o["ss"]) or {}).get("cost") or 0), o["ss"]))
-            if self.venue == "stocks" and acct in REBAL_ACCOUNTS:
-                orders_ok, rebal_win, forced = self.rebal_phase()
-                if rebal_win and orders_ok:
-                    dropped = [o["ss"] for o in orders if o["act"] in ("OPEN", "AUGMENT")]
-                    orders = [o for o in orders if o["act"] not in ("OPEN", "AUGMENT")] + self.rebalance(acct, pos, bar, forced)
-                    if dropped:
-                        log(f"{acct} REBAL WINDOW: entries held back {dropped}")
-            if self.venue == "stocks" and not self.a.dry_run and not killed:
+                acct_sides = set(keys.get(acct, ())) | set(self.held.get(acct, ()))
+                acct_changed = any(ss in changed for ss in acct_sides)
+                if not acct_changed and now - self.last_plan.get(acct, 0) < REPLAN_S:
+                    continue
+                self.last_plan[acct] = now
                 try:
-                    desired = {o["ss"] for o in orders if o["act"] in ("OPEN", "AUGMENT") and not self._entry_banned(acct)}
-                    for ss, order_id, result in self.broker.cancel_stale_protected(acct, desired):
-                        self._ledger({"event": "ORDER", "acct": acct, "ss": ss, "act": "CANCEL_PENDING_ENTRY", "status": "PROTECTED_OTO_CANCELLED", "order_id": order_id, "resp": result, "final": True})
-                        log(f"PROTECTED_OTO_CANCELLED {acct} {ss} id={order_id}: no longer planned")
+                    pos = self.positions(acct)
+                except RestBlocked as exc:
+                    log(f"{acct}: {exc}")
+                    continue
                 except Exception as exc:
-                    self.alert("PROTECTED_OTO_CANCEL_FAILED", account=acct, error=str(exc)[:200], severity="CRITICAL")
-                    log(f"PROTECTED_OTO_CANCEL_FAILED {acct}: {exc}")
-            self.capture_order_states(orders, acct_states, acct)
-            orders_n += self.send_orders(acct, orders, pos, killed)
+                    log(f"{acct}: broker positions FAILED {str(exc)[:160]}")
+                    continue
+                self.with_held_states(states, pos)
+                self.audit_protection(acct, pos)
+                if self.venue == "crypto":
+                    halted.update(rolling_deterioration_halts(self.root, self.state_dir, states, bar, alert=self.alert))
+                # A 7D arm plans from its OWN 7D states, never its control's 30D ones (USER 2026-10-31 "any crypto sym_side
+                # that has not had an update for >20hrs has to get updated and traded on 7D fin account"). Without this,
+                # clearing fin's 7D gate would only have made fin trade men's 30D settings on men's symbols — a duplicate
+                # of men, not a comparison. The 30D deterioration latch compares against 30D published gains, so it is a
+                # 30D-arm concept and does not apply to a 7D arm, whose own guarantee is its <30 h freshness.
+                acct_states, acct_halted = states, halted
+                seven_dir = SEVENDAY_STATE_DIRS.get(acct) if self.venue == "crypto" else None
+                if seven_dir:
+                    seven_path = self.state_dir.parent / seven_dir
+                    acct_states = self.load_states(set(keys.get(acct, ())) | set(self.held.get(acct, ())), seven_path)
+                    self.with_held_states(acct_states, pos, seven_path)
+                    acct_halted = {}
+                self._remember_held_anchors(acct, pos, acct_states)
+                t_obs, prev = self.obs.get(acct, (0, {}))
+                prev_qty = prev if t_obs and bar - BAR_S <= t_obs < bar + BAR_S else {}
+                orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), acct_states, pos, bar, self.done, allowed, prev_qty, wt15=self.wt15, noinfo_age=self.noinfo_age,
+                                             untradeable=untradeable, untradeable_close=untradeable_close, halted=acct_halted)
+                planned_at = time.time()
+                plan_refs = {}
+                for o in orders:
+                    if o.get("reason") == "UNTRADEABLE_NO_VERDICT":
+                        log(f"CRITICAL UNTRADEABLE CLOSE {acct} {o['ss']} qty={o['qty']} — {o['why']}")
+                        self.alert("UNTRADEABLE_CLOSE", account=acct, sym_side=o["ss"], qty=o["qty"], why=o["why"], severity="CRITICAL")
+                # Record an immutable decision whenever state, admission, gate context, broker holdings, or the plan changes.
+                for ss in set(keys.get(acct, ())) | set(pos):
+                    st = acct_states.get(ss) or {}   # the state this account was ACTUALLY planned against (7D for fin)
+                    state_ref = persist_decision_state(self.out, st)
+                    held = float((pos.get(ss) or {}).get("qty") or 0.0)
+                    side_orders = [order_intent(o) for o in orders if o["ss"] == ss]
+                    side_notes = [n for side, n in notes if side == ss]
+                    admission = bool(allowed(acct, ss)) if ss in keys.get(acct, ()) and st.get("open") and not held else None
+                    control = {"venue": self.venue, "bar": bar, "state_sha256": state_ref["state_sha256"], "state_sig": [st.get("npz_tail"), st.get("ts")],
+                               "keys_member": ss in keys.get(acct, ()), "allowed": admission, "held": held, "halt": acct_halted.get(ss),
+                               "untradeable": untradeable.get(ss), "orders": side_orders, "notes": side_notes}
+                    plan_doc = {"schema": "vector-direct-plan-decision-v1", "acct": acct, "ss": ss, "bar": bar,
+                                "state_provenance": state_ref, "control": control, "orders": side_orders}
+                    plan_ref = persist_plan_decision(self.out, plan_doc)
+                    plan_refs[ss] = plan_ref
+                    sig = [st.get("npz_tail"), st.get("ts"), (untradeable.get(ss) or {}).get("bar"), plan_ref["plan_decision_id"]]
+                    row = consumed.setdefault(ss, {}).get(acct)
+                    if not row or row.get("sig") != sig or not row.get("decision_provenance"):
+                        consumed[ss][acct] = {"sig": sig, "npz_tail": st.get("npz_tail"), "ok": bool(st.get("ok")), "at": planned_at,
+                                              "orders": [o["act"] for o in orders if o["ss"] == ss], "keys": [o["key"] for o in orders if o["ss"] == ss],
+                                              "held": held, "allowed": admission, "notes": side_notes, "untradeable_bar": (untradeable.get(ss) or {}).get("bar"),
+                                              "control": control, **plan_ref}
+                        try:
+                            consumed[ss][acct]["decision_provenance"] = state_ref
+                            consumed[ss][acct]["account_execution_context"] = self.capture_account_position(acct, ss, pos.get(ss) or {"qty": 0.0}, consumed[ss][acct]["decision_provenance"], bar)
+                            self._ledger({"event": "DECISION", "acct": acct, "ss": ss, "bar": bar, **consumed[ss][acct]})
+                        except OSError as exc:
+                            self.alert("DECISION_PROVENANCE_WRITE_FAILED", account=acct, sym_side=ss, error=str(exc), severity="CRITICAL")
+                        consumed_dirty = True
+                for order in orders:
+                    order["bar"] = bar
+                    order["plan_decision"] = plan_refs.get(order["ss"])
+                self.obs[acct] = (now, {ss: p["qty"] for ss, p in pos.items()})
+                for ss, n in notes:
+                    if n != "HOLD_NO_FRESH_STATE":
+                        k = f"{acct}|{ss}|{bar}|NOTE|{n[:24]}"
+                        if k not in self.done:
+                            self.done.add(k)
+                            self._ledger({"event": "NOTE", "acct": acct, "ss": ss, "note": n, "key": k, "final": True})
+                # biggest open position first, then the rest of the tradeable keys
+                orders.sort(key=lambda o: (0 if (pos.get(o["ss"]) or {}).get("qty") else 1, -float((pos.get(o["ss"]) or {}).get("qty") or 0) * float((pos.get(o["ss"]) or {}).get("price") or 0) or -float((pos.get(o["ss"]) or {}).get("cost") or 0), o["ss"]))
+                if self.venue == "stocks" and acct in REBAL_ACCOUNTS:
+                    orders_ok, rebal_win, forced = self.rebal_phase()
+                    if rebal_win and orders_ok:
+                        dropped = [o["ss"] for o in orders if o["act"] in ("OPEN", "AUGMENT")]
+                        orders = [o for o in orders if o["act"] not in ("OPEN", "AUGMENT")] + self.rebalance(acct, pos, bar, forced)
+                        if dropped:
+                            log(f"{acct} REBAL WINDOW: entries held back {dropped}")
+                if self.venue == "stocks" and not self.a.dry_run and not killed:
+                    try:
+                        desired = {o["ss"] for o in orders if o["act"] in ("OPEN", "AUGMENT") and not self._entry_banned(acct)}
+                        for ss, order_id, result in self.broker.cancel_stale_protected(acct, desired):
+                            self._ledger({"event": "ORDER", "acct": acct, "ss": ss, "act": "CANCEL_PENDING_ENTRY", "status": "PROTECTED_OTO_CANCELLED", "order_id": order_id, "resp": result, "final": True})
+                            log(f"PROTECTED_OTO_CANCELLED {acct} {ss} id={order_id}: no longer planned")
+                    except Exception as exc:
+                        self.alert("PROTECTED_OTO_CANCEL_FAILED", account=acct, error=str(exc)[:200], severity="CRITICAL")
+                        log(f"PROTECTED_OTO_CANCEL_FAILED {acct}: {exc}")
+                self.capture_order_states(orders, acct_states, acct)
+                orders_n += self.send_orders(acct, orders, pos, killed)
+            except Exception as exc:
+                if acct not in SEVENDAY_ARMS:
+                    raise
+                log(f"CRITICAL 7D arm {acct} failed this pass and was skipped — 30D accounts unaffected: {type(exc).__name__}: {str(exc)[:200]}")
+                try:
+                    self.alert("SEVENDAY_ARM_CONTAINED", account=acct, error=f"{type(exc).__name__}: {str(exc)[:200]}", severity="CRITICAL")
+                except Exception:
+                    pass
         if consumed_dirty:
             try:
                 atomic_write_json(self.out / f"consumed_{self.venue}.json", {"epoch": time.time(), "pid": os.getpid(), "sides": consumed})

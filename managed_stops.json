@@ -1,9 +1,72 @@
 {
-  "inf:HYPEUSDT_LONG": {
-    "orderId": "2000001557385029",
-    "stopPrice": 88.644,
-    "entry_sig": "2026-10-30 23:26:13.972000+00:00",
-    "symbol": "HYPEUSDT",
+  "ang:KAVAUSDT_LONG": {
+    "orderId": "4000002013240892",
+    "stopPrice": 0.06879,
+    "entry_sig": "2026-10-30 23:25:26.978000+00:00",
+    "symbol": "KAVAUSDT",
     "side": "LONG"
+  },
+  "ang:ZROUSDT_LONG": {
+    "orderId": "4000002013249512",
+    "stopPrice": 1.6441,
+    "entry_sig": "2026-10-30 23:30:40.355000+00:00",
+    "symbol": "ZROUSDT",
+    "side": "LONG"
+  },
+  "ang:XMRUSDT_LONG": {
+    "orderId": "4000002013241551",
+    "stopPrice": 586.12,
+    "entry_sig": "2026-10-30 23:25:42.531000+00:00",
+    "symbol": "XMRUSDT",
+    "side": "LONG"
+  },
+  "ang:1INCHUSDT_SHORT": {
+    "orderId": "4000002013453759",
+    "stopPrice": 0.08121,
+    "entry_sig": "2026-10-31 01:15:24.994000+00:00",
+    "symbol": "1INCHUSDT",
+    "side": "SHORT"
+  },
+  "ang:NOTUSDT_SHORT": {
+    "orderId": "4000002013582278",
+    "stopPrice": 0.0003743,
+    "entry_sig": "2026-10-31 02:15:43.997000+00:00",
+    "symbol": "NOTUSDT",
+    "side": "SHORT"
+  },
+  "ang:1000BONKUSDC_SHORT": {
+    "orderId": "4000002013615901",
+    "stopPrice": 0.003055,
+    "entry_sig": "2026-10-31 02:30:39.399771+00:00",
+    "symbol": "1000BONKUSDC",
+    "side": "SHORT"
+  },
+  "ang:GRAMUSDT_SHORT": {
+    "orderId": "4000002013776289",
+    "stopPrice": 1.201,
+    "entry_sig": "2026-10-31 03:45:38.741593+00:00",
+    "symbol": "GRAMUSDT",
+    "side": "SHORT"
+  },
+  "ang:ACTUSDT_SHORT": {
+    "orderId": "4000002013816786",
+    "stopPrice": 0.008509,
+    "entry_sig": "2026-10-31 04:04:02.504555+00:00",
+    "symbol": "ACTUSDT",
+    "side": "SHORT"
+  },
+  "ang:SKYUSDT_SHORT": {
+    "orderId": "4000002013876593",
+    "stopPrice": 0.06786,
+    "entry_sig": "2026-10-31 04:30:47.256000+00:00",
+    "symbol": "SKYUSDT",
+    "side": "SHORT"
+  },
+  "ang:WIFUSDC_SHORT": {
+    "orderId": "4000002013453521",
+    "stopPrice": 0.1803,
+    "entry_sig": "2026-10-31 01:15:15.220000+00:00",
+    "symbol": "WIFUSDC",
+    "side": "SHORT"
   }
 }
