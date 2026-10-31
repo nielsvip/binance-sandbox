@@ -8,6 +8,7 @@ import re
 import sqlite3
 
 from tools import v18_experience as experience
+from tools import v15_v18_planner as planner
 
 
 class LoadedNativeComponents(dict):
@@ -99,7 +100,7 @@ def verify_quartet(components, x, y):
 
 
 def postbaseline_queue(proofs, accepted_baseline, eligible, limit):
-    baseline_sha = experience.Canon(accepted_baseline).set_id
+    baseline_sha = planner.set_sha256(accepted_baseline)
     queued, diagnostics = [], []
     for proof in proofs:
         if proof.get('status') != 'verified_measurement':
@@ -127,5 +128,5 @@ def postbaseline_queue(proofs, accepted_baseline, eligible, limit):
             diagnostics.append({'reason': 'outside_actual_current_domain', 'proof_sha256': proof['proof_sha256']})
             continue
         configs = [dict(accepted_baseline), dict(accepted_baseline, **{x['field']: x['value']}), dict(accepted_baseline, **{y['field']: y['value']}), dict(accepted_baseline, **{x['field']: x['value'], y['field']: y['value']})]
-        queued.append({'kind': proof['kind'], 'source_proof_sha256': proof['proof_sha256'], 'baseline_sha256': baseline_sha, 'phase': 'postbaseline_only', 'measurements_required': [{'component': name, 'config': config, 'config_sha256': experience.Canon(config).set_id} for name, config in zip(('B', 'X', 'Y', 'Z'), configs)], 'current_interaction_verified': False})
+        queued.append({'kind': proof['kind'], 'source_proof_sha256': proof['proof_sha256'], 'baseline_sha256': baseline_sha, 'set_hash_algorithm': 'tools.v15_v18_planner.set_sha256', 'phase': 'postbaseline_only', 'measurements_required': [{'component': name, 'config': config, 'config_sha256': planner.set_sha256(config)} for name, config in zip(('B', 'X', 'Y', 'Z'), configs)], 'current_interaction_verified': False})
     return {'schema': 'interaction_experiment_queue/1', 'queue': queued[:max(0, limit)], 'deferred_budget': len(queued[max(0, limit):]), 'diagnostics': diagnostics, 'runtime_hooked': False, 'baseline_modified': False}

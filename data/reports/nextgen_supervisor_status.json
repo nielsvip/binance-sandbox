@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-31T00:20:36.684874+00:00",
+  "recorded_at": "2026-10-31T00:48:08.667521+00:00",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -377,6 +377,44 @@
       "reason": "pre-import resource floor: MemAvailable4908.7MiB below7000MiB",
       "receipt_root": "/home/niels/v15_bench/reviews/prior_oracle_20261031T000747Z",
       "followup": "prepare alternate host; no workload killed or floor lowered"
+    },
+    "first_successful_baseline_oracle": {
+      "host": "s2",
+      "sym_side": "1INCHUSDT_SHORT",
+      "evaluated_at_utc": "2026-10-31T00:44:32.570680Z",
+      "receipt": "data/reports/nextgen_pinned_baseline_review_20261030/s2_oracle_attempt03/previous_baseline_oracle.json",
+      "receipt_sha256": "0a822a68a84275b6b1c71c7e38c005c55c0e65a25b3d70c026450f296bb8591a",
+      "root_verified": "3758-field effective configuration fingerprint and execution-ledger artifact SHA match receipt",
+      "window_context": {
+        "days": 7.0,
+        "confirm_days": 7.0,
+        "cut": 1792184400.0,
+        "confirm_end": 1792789200.0,
+        "on": true,
+        "installed": true
+      },
+      "scope": "previous baseline only; not candidate parity, gain, throughput, or promotion evidence",
+      "attempt03_exit_code": 0
+    },
+    "s5_resource_reservation": {
+      "scope": "new board launches only; existing boards continue",
+      "expires_at_utc": "2026-10-31T00:50:16.645687Z",
+      "central_host": "s1",
+      "central_file": "/home/niels/binance-sandbox/data/fleet_hold_hosts.json",
+      "local_file": "s5:/tmp/v15_stock_canary_hold",
+      "nonce": "s5nn20261031_0035z",
+      "automatic_cleanup": "owned nonce and inode only; corpus agent verifies expiry",
+      "training_started": "not yet verified"
+    },
+    "runtime_connection_bridge": {
+      "state": "review-only; no runtime hookup",
+      "types": [
+        "SWITCH_FILTER",
+        "FILTER_FILTER",
+        "SWITCH_SWITCH"
+      ],
+      "proof_requirement": "exact four native component records, canonical full configs, matching engine/NPZ/window context, preserved source hashes; current execution requires fresh measurements",
+      "real_corpus_verified_edge_count": "not yet measured"
     }
   }
 }

@@ -40,7 +40,7 @@ ROUTES = {
     "crypto": [("s1-int", "binance"), ("s1-pub", "binance"), ("s1", "binance"), ("niels@10.0.0.3", "binance")],
     "stocks": [("s5", "binance"), ("s5", "trc7d_root"), ("niels@10.0.0.5", "binance"), ("niels@10.0.0.5", "trc7d_root")],
 }
-SSH = ["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=2", "-o", "ServerAliveInterval=2", "-o", "ServerAliveCountMax=2", "-o", "StrictHostKeyChecking=accept-new"]
+SSH = ["ssh", "-o", "ControlMaster=auto", "-o", "ControlPath=/tmp/binance-positions-%C", "-o", "ControlPersist=60", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "ServerAliveInterval=2", "-o", "ServerAliveCountMax=2", "-o", "StrictHostKeyChecking=accept-new"]
 LAST_ROUTE = {}
 REPORT_LOCK = threading.Lock()
 LIFECYCLE = ("entry_price", "opened_at", "entry_time", "max_gain", "gain", "prev_gain", "last_signal", "was_reduced",

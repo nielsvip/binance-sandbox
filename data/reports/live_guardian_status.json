@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T00:44:27Z",
+ "ts": "2026-10-31T00:49:36Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -43,8 +43,8 @@
    }
   },
   "men": {
-   "fills_6h": 35,
-   "open_positions": 6,
+   "fills_6h": 38,
+   "open_positions": 8,
    "unrealised_usd": 0.34,
    "pos_mismatch": 0,
    "vec_parity": {
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 62,
-   "open_positions": 18,
-   "unrealised_usd": 1.11,
+   "fills_6h": 70,
+   "open_positions": 16,
+   "unrealised_usd": 1.68,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -75,9 +75,9 @@
    }
   },
   "inf": {
-   "fills_6h": 7,
-   "open_positions": 2,
-   "unrealised_usd": 0.11,
+   "fills_6h": 8,
+   "open_positions": 3,
+   "unrealised_usd": 0.15,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 26,
+   "fills_6h": 28,
    "open_positions": 9,
-   "unrealised_usd": 0.52,
+   "unrealised_usd": 0.6,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,64 +127,93 @@
     "71258"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 14.0
   },
   "men": {
    "pids": [
     "59391"
    ],
    "starts_30m": 1,
-   "log_age_s": 29.0
+   "log_age_s": 15.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 19.0
+   "log_age_s": 22.0
   },
   "inf": {
    "pids": [
     "46565"
    ],
    "starts_30m": 1,
-   "log_age_s": 300.0
+   "log_age_s": 227.0
   },
   "flz": {
    "pids": [
     "70377"
    ],
    "starts_30m": 1,
-   "log_age_s": 796.0
+   "log_age_s": 1106.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 20559.0
+   "log_age_s": 20869.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 21974.0
+   "log_age_s": 22283.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T00:44:28Z",
+   "ts": "2026-10-31T00:49:36Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "fin:IMXUSDT_SHORT",
+   "evidence": "31 00:44:31 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:IMXUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $6 on bounce (prior max 110.0000)"
+  },
+  {
+   "ts": "2026-10-31T00:49:36Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "fin:PENDLEUSDT_LONG",
+   "evidence": "31 00:44:33 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:PENDLEUSDT_LONG: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $90 on bounce (prior max 0.0000)"
+  },
+  {
+   "ts": "2026-10-31T00:49:36Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "fin:JUPUSDT_LONG",
+   "evidence": "31 00:46:04 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:JUPUSDT_LONG: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $13 on bounce (prior max 0.0000)"
+  },
+  {
+   "ts": "2026-10-31T00:49:36Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "fin:IMXUSDT_SHORT",
+   "evidence": "31 00:46:23 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:IMXUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $6 on bounce (prior max 110.0000)"
+  },
+  {
+   "ts": "2026-10-31T00:49:38Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 300s"
+   "evidence": "ez_manage_inf.log not written for 227s"
   },
   {
-   "ts": "2026-10-31T00:44:28Z",
+   "ts": "2026-10-31T00:49:38Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 796s"
+   "evidence": "ez_manage_flz.log not written for 1106s"
   }
  ],
  "alert_counts": {
+  "CAP_BYPASS": 4,
   "STALE_LOG": 2
  },
  "active_interventions": {
@@ -238,5 +267,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.27
+ "sweep_s": 2.26
 }
