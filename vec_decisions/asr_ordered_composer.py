@@ -418,6 +418,9 @@ def evaluate_asr_entry_candidate_array(npz,n,is_long,cfg,prefix_context,late_cau
         available = np.broadcast_to(np.asarray(late_causal_state["delta_tracker_available"], dtype=bool), (n,))
         if np.any(available) and not np.all(available):
             raise ValueError("delta_tracker_available must be stable for this symbol replay")
+        post_late_state = dict(post_late_state or {})
+        post_late_state.setdefault("current_price", late_causal_state["current_price"])
+        post_late_state["delta_tracker_available"] = available
         if np.all(available):
             replay = late_causal_state.get("delta_tracker_replay")
             if not isinstance(replay, Mapping):
@@ -434,17 +437,14 @@ def evaluate_asr_entry_candidate_array(npz,n,is_long,cfg,prefix_context,late_cau
                 timestamps=replay["timestamps"], is_long=is_long,
                 position_states=replay["position_states"],
                 warmup_mask=replay.get("warmup_mask"),
+                external_context=replay.get("external_context"),
             )
-            post_late_state = dict(post_late_state or {})
-            post_late_state["delta_tracker_available"] = available
             post_late_state["delta_signal_present"] = tracker_output["delta_signal_present"]
             post_late_state["delta_entry_ok"] = tracker_output["delta_entry_ok"]
             post_late_state["delta_active_tfs"] = tracker_output["delta_active_tfs"]
             post_late_state["delta_tracker_state_scope"] = tracker_output["state_scope"]
             post_late_state["delta_tracker_missing_inputs"] = tracker_output["missing_read_keys"]
-        elif post_late_state is not None:
-            post_late_state = dict(post_late_state)
-            post_late_state["delta_tracker_available"] = available
+        else:
             post_late_state["delta_signal_present"] = np.zeros(n, dtype=bool)
     lifecycle_state = late_causal_state.get("lifecycle_state")
     kwargs = {}

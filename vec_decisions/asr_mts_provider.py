@@ -70,8 +70,11 @@ def analyze_mts_state_array(npz, *, cfg, is_long, n=None, external_context=None)
     context = external_context or {}
     if not isinstance(context, Mapping):
         raise TypeError("external_context must be a mapping")
+    missing_inputs = set()
     def get(key, default, dtype=float):
         source = context if key.startswith("0dc_") and key in context else selected
+        if key not in source:
+            missing_inputs.add(key)
         return _array(source, key, n, default, dtype=dtype)
 
     tot_b = np.zeros(n, dtype=float)
@@ -255,4 +258,5 @@ def analyze_mts_state_array(npz, *, cfg, is_long, n=None, external_context=None)
             "convergence_tfs": conv_names, "btb_multiplier": btb,
             "price_through_extreme": through, "dc_htf_pos": htf_pos,
             "dc_ltf_pos": ltf_pos, "dc_moment": moment, "dc_expansion": expansion,
-            "tf_breakdown": breakdown}
+            "tf_breakdown": breakdown, "missing_inputs": tuple(sorted(missing_inputs)),
+            "external_context_supplied": bool(context)}

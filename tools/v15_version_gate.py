@@ -299,10 +299,50 @@ def validate_model_training_windows(spec, reference_root, candidate_root, snapsh
     return actual
 
 
-def validate_model_authority_eligibility(spec, candidate_root, snapshot_pin):
+def validate_model_authority_eligibility(spec, candidate_root, snapshot_pin, reference_root=None):
     if not spec.get("promotion_eligible"):
         return False
-    raise ValueError("model promotion remains ineligible: no supported validator verifies 101 qualifying unique raw results per cell; a declaration or hashed count receipt is insufficient")
+    # The user's 101-result rule governs authoritative CELL decisions, not S2 promotion of learned sampling models.
+    # No raw per-cell proof validator exists here: static authority changes remain refused, including hashed counts.
+    if reference_root is None:
+        raise ValueError("learned-only model promotion requires the pinned reference model root")
+    reference_root, candidate_root = Path(reference_root), Path(candidate_root)
+    brain_fields = {"_meta", "prequential_mb", "heads", "buckets", "ema", "cs", "regime", "pair", "sym", "coverage", "exits", "prequential", "forward_eval", "nodes"}
+    brain_meta = {"at", "bind", "cat_side", "counters", "cs_cols", "first_ts", "floor_per_1000", "gain_eligibility_policy", "gain_target", "heads_mb", "heads_trained", "last_ts", "m_shrink", "nf", "p_ref", "pair_cols", "pos_floor_pp", "regime_cols", "schema", "source_noop_gain", "sym_cols", "trimmed"}
+    linknet_fields = {"meta", "template_untried", "template_untried_by_chain", "rows_untried", "pair_with_context", "needs_row", "fixed_stop_family"}
+    linknet_meta = {"beyond_template_enumerated", "beyond_template_refused_by_switch_types", "built_at", "cat_side", "contexts", "corpus_last_ts", "distinct_live_chains", "diversity_cap_per_row", "label", "live_chains", "model_trained_at", "n_predictions_scored", "needs_row_source", "pair_with_context_file", "platt", "production_is_context_free", "production_scorer", "schema", "scores_npz", "secondary_p_v2ctx", "secs_cells", "secs_grid", "template_cells", "template_cells_n_lt_3", "template_cells_never_measured", "template_cells_self_pair_excluded", "unknown_context_features_at_scoring", "unknown_feature_hits_at_scoring"}
+    def checked_diff(reference, candidate, allowed, label):
+        if not isinstance(reference, dict) or not isinstance(candidate, dict):
+            raise ValueError(f"unclassified model structure: {label}")
+        changed = {key for key in set(reference) | set(candidate) if key not in reference or key not in candidate or reference[key] != candidate[key]}
+        unknown = changed - allowed
+        if unknown:
+            raise ValueError(f"static authority or unclassified model field changed: {label} {sorted(unknown)}; authoritative cell changes require 101 qualifying unique raw results per cell, not a hashed count receipt")
+    for name in sorted(MODEL_ARTIFACT_NAMES):
+        relative = Path("data/brain" if name.startswith("v18_brain_") else "data/learn") / name
+        before, after = reference_root / relative, candidate_root / relative
+        if name.startswith(("needed_filters_", "switch_profile_", "positives_all_", "binding_map_", "must_pos_")):
+            if sha256(before) != sha256(after):
+                raise ValueError(f"static authority artifact changed: {name}; authoritative cell changes require 101 qualifying unique raw results per cell, not a hashed count receipt")
+            continue
+        reference, candidate = json.loads(before.read_bytes()), json.loads(after.read_bytes())
+        if name.startswith("digest_"):
+            checked_diff(reference, candidate, {"proposals", "scorer"}, name)
+        elif name.startswith("v18_brain_"):
+            checked_diff(reference, candidate, brain_fields, name)
+            old_meta, new_meta = reference.get("_meta") or {}, candidate.get("_meta") or {}
+            checked_diff(old_meta, new_meta, brain_meta, name + "._meta")
+            for key in ("floor_per_1000", "p_ref", "m_shrink", "nf", "schema", "cat_side", "cs_cols", "pair_cols", "regime_cols", "sym_cols"):
+                if old_meta.get(key) != new_meta.get(key):
+                    raise ValueError(f"learned-only model changes must preserve runtime policy/schema: {name} {key}")
+            if (new_meta.get("source_noop_gain") or {}).get("current_engine_cell_authority"):
+                raise ValueError("historical source learning cannot declare current-engine cell authority without 101 qualifying unique raw results per cell")
+        else:
+            checked_diff(reference, candidate, linknet_fields, name)
+            checked_diff(reference.get("meta") or {}, candidate.get("meta") or {}, linknet_meta, name + ".meta")
+            if (reference.get("meta") or {}).get("cat_side") != (candidate.get("meta") or {}).get("cat_side"):
+                raise ValueError(f"learned LinkNet category changed: {name}")
+    return True
 
 
 def model_runtime_pin(runtime_spec):
@@ -423,7 +463,7 @@ def model_comparison_spec_pin(path, reference_root, candidate_root, reference_pi
         if reference_pin.get("artifact_sha256", {}).get(f"data/brain/{name}" if name.startswith("v18_brain_") else f"data/learn/{name}") != record["sha256"]:
             raise ValueError(f"reference model bundle is not byte-identical to current champion resolver output: {name}")
     training_windows = validate_model_training_windows(spec, reference_root, candidate_root, snapshot_pin)
-    authority_eligibility_verified = validate_model_authority_eligibility(spec, candidate_root, snapshot_pin)
+    model_promotion_eligible = validate_model_authority_eligibility(spec, candidate_root, snapshot_pin, reference_root)
     base_flags = dict(base_flags or {})
     cli_flags = cli_flags or {}
     reference_flags = model_arm_flags(spec, "reference", base_flags, {})
@@ -437,9 +477,24 @@ def model_comparison_spec_pin(path, reference_root, candidate_root, reference_pi
     for key, value in base_flags.items():
         if key not in reference_flags or str(reference_flags[key]) != str(value):
             raise ValueError(f"reference runtime flags omit or alter actual champion setting {key}")
+    if model_promotion_eligible:
+        learned_activation = {"V18_LINKNET_FIRST": "1", "V18_LINKNET_BUNDLE_REQUIRED": "1"}
+        model_defaults = {"V18_FLOOR_PER_1000": ("floor_per_1000", None, 5.0), "V18_BRAIN_PREF_R": ("p_ref", "R", 0.001), "V18_BRAIN_PREF_F": ("p_ref", "F", 0.002)}
+        for key in set(reference_flags) | set(candidate_flags):
+            if str(reference_flags.get(key)) != str(candidate_flags.get(key)) and learned_activation.get(key) != str(candidate_flags.get(key)):
+                if key in model_defaults:
+                    field, member, fallback = model_defaults[key]
+                    equivalent = True
+                    for category in MODEL_CATEGORIES:
+                        metadata = json.loads((Path(reference_root) / f"data/brain/v18_brain_{category}.json").read_bytes()).get("_meta") or {}
+                        default = (metadata.get(field) or {}).get(member, fallback) if member else metadata.get(field, fallback)
+                        equivalent = equivalent and float(reference_flags.get(key, default)) == float(candidate_flags.get(key, default))
+                    if equivalent:
+                        continue
+                raise ValueError(f"learned-only model promotion must preserve sampling policy runtime flags: {key}")
     if not reference_flags or not candidate_flags:
         raise ValueError("comparison spec must pin reference and candidate runtime flags")
-    return {"comparison_id": spec.get("comparison_id"), "path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "runtime": runtime_pin, "training_market_max_by_category": training_windows, "promotion_eligible": authority_eligibility_verified, "authority_eligibility": spec.get("authority_eligibility"), "base_flags": base_flags, "reference_flags": reference_flags, "candidate_flags": candidate_flags}
+    return {"comparison_id": spec.get("comparison_id"), "path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "runtime": runtime_pin, "training_market_max_by_category": training_windows, "promotion_eligible": model_promotion_eligible, "promotion_scope": "learned_only_unchanged_static_authority" if model_promotion_eligible else "research_only", "authority_eligibility": spec.get("authority_eligibility"), "base_flags": base_flags, "reference_flags": reference_flags, "candidate_flags": candidate_flags}
 
 
 def stage_model_bundle(source, destination):
@@ -966,7 +1021,7 @@ def apply_model_overlay_acceptance(cd, meta, decision):
     whole_board_wall = {}
     promotion_eligible = bool(((overlay.get("comparison_spec") or {}).get("promotion_eligible")))
     if not promotion_eligible:
-        reasons.append("model promotion eligibility is not proven by the pinned comparison spec")
+        reasons.append("pinned model comparison spec is explicitly non-promotable")
     expected_candidate_files = {MODEL_BUNDLE_PATH} | set((overlay.get("candidate") or {}).get("artifact_sha256", {}))
     if set(meta.get("files") or {}) != expected_candidate_files:
         reasons.append("candidate submission is not an exact model-only 33-file overlay")

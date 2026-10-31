@@ -247,3 +247,87 @@ def test_stdev_reject_stock_switch_changes_simulate_one_ledger():
     assert len(fires) == 1
     assert fires[0]["bar_exit"] == fire_bar
     assert fires[0]["reason"] == "STDEV_REJECT_EXIT_D_pctb=0.600_g=3.00%"
+
+
+def test_stdev_bb_rz_exit_reaches_simulate_one_ledger_only_while_scorer_holds():
+    npz = _base_npz()
+    fire_bar = 201
+    npz["bb_pct_b_D"] = np.full(len(npz["close"]), 0.8)
+    npz["bb_pct_b_D_prev"] = np.full(len(npz["close"]), 0.8)
+    npz["bb_pct_b_D"][fire_bar] = 0.9
+    npz["bb_pct_b_D_prev"][fire_bar] = 1.1
+    npz["close"][fire_bar] = 104.0
+    if "close_15m" in npz:
+        npz["close_15m"][fire_bar] = 104.0
+    npz["wt_velocity_1h"] = np.zeros(len(npz["close"]))
+    npz["wt_velocity_1h"][fire_bar] = -1.0
+    npz["age_5m"] = np.zeros(len(npz["close"]))
+
+    off_cfg = _cfg()
+    off_cfg.STDEV_BB_RZ_EXIT_ENABLED = False
+    off_cfg.STOCKS_WTDC_SCORER_EXIT_ENABLED = True
+    off_cfg.WT_DC_EXIT_ENABLED = True
+    off = V.simulate_one(npz, "SYNTH", True, off_cfg, force_initial_seed=True)
+    assert _reason_events(off, "STDEV_BB_RZ_EXIT") == []
+
+    on_cfg = _cfg()
+    on_cfg.STDEV_BB_RZ_EXIT_ENABLED = True
+    on_cfg.STDEV_BB_RZ_EXIT_TF = "D"
+    on_cfg.STOCKS_WTDC_SCORER_EXIT_ENABLED = True
+    on_cfg.WT_DC_EXIT_ENABLED = True
+    on_cfg.WT_DC_EXIT_THRESHOLD = 30.0
+    on = V.simulate_one(npz, "SYNTH", True, on_cfg, force_initial_seed=True)
+    fires = _reason_events(on, "STDEV_BB_RZ_EXIT")
+    assert len(fires) == 1
+    assert fires[0]["bar_exit"] == fire_bar
+    assert fires[0]["reason"] == "STDEV_BB_RZ_EXIT_D_pctb=0.900_g=4.00%"
+
+    scorer_exit_cfg = _cfg()
+    scorer_exit_cfg.STDEV_BB_RZ_EXIT_ENABLED = True
+    scorer_exit_cfg.STDEV_BB_RZ_EXIT_TF = "D"
+    scorer_exit_cfg.STOCKS_WTDC_SCORER_EXIT_ENABLED = True
+    scorer_exit_cfg.WT_DC_EXIT_ENABLED = True
+    scorer_exit_cfg.WT_DC_EXIT_THRESHOLD = -1.0
+    scorer_exit = V.simulate_one(
+        npz, "SYNTH", True, scorer_exit_cfg, force_initial_seed=True
+    )
+    assert _reason_events(scorer_exit, "STDEV_BB_RZ_EXIT") == []
+
+
+def test_stdev_bb_rz_exit_obeys_native_scorer_hold_stale_and_cash_gates():
+    npz = _base_npz()
+    fire_bar = 201
+    npz["bb_pct_b_D"] = np.full(len(npz["close"]), 0.8)
+    npz["bb_pct_b_D_prev"] = np.full(len(npz["close"]), 0.8)
+    npz["bb_pct_b_D"][fire_bar] = 0.9
+    npz["bb_pct_b_D_prev"][fire_bar] = 1.1
+    npz["close"][fire_bar] = 104.0
+    if "close_15m" in npz:
+        npz["close_15m"][fire_bar] = 104.0
+    npz["wt_velocity_1h"] = np.zeros(len(npz["close"]))
+    npz["wt_velocity_1h"][fire_bar] = -1.0
+    npz["age_5m"] = np.zeros(len(npz["close"]))
+    cfg = _cfg()
+    cfg.STDEV_BB_RZ_EXIT_ENABLED = True
+    cfg.STDEV_BB_RZ_EXIT_TF = "D"
+    cfg.STOCKS_WTDC_SCORER_EXIT_ENABLED = True
+    cfg.WT_DC_EXIT_ENABLED = True
+    cfg.WT_DC_EXIT_THRESHOLD = 30.0
+
+    score_exit = V.simulate_one(npz, "SYNTH", True, cfg, force_initial_seed=True)
+    assert _reason_events(score_exit, "STDEV_BB_RZ_EXIT")
+
+    stale = {key: value.copy() if isinstance(value, np.ndarray) else value for key, value in npz.items()}
+    stale["age_5m"][fire_bar] = 601.0
+    stale_result = V.simulate_one(stale, "SYNTH", True, cfg, force_initial_seed=True)
+    assert _reason_events(stale_result, "STDEV_BB_RZ_EXIT") == []
+
+    cash = _cfg()
+    cash.STDEV_BB_RZ_EXIT_ENABLED = True
+    cash.STDEV_BB_RZ_EXIT_TF = "D"
+    cash.STOCKS_WTDC_SCORER_EXIT_ENABLED = True
+    cash.WT_DC_EXIT_ENABLED = True
+    cash.WT_DC_EXIT_THRESHOLD = 30.0
+    cash.SIM_ACCOUNT = "tra"
+    cash_result = V.simulate_one(npz, "SYNTH", True, cash, force_initial_seed=True)
+    assert _reason_events(cash_result, "STDEV_BB_RZ_EXIT") == []

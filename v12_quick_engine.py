@@ -19067,6 +19067,35 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             except Exception:
                 _wsx_score = None
 
+    _stdev_bbrz_mask = None
+    _stdev_bbrz_now = None
+    _stdev_bbrz_tf = ""
+    _stdev_bbrz_age = None
+    if is_tradier and bool(getattr(cfg, "STDEV_BB_RZ_EXIT_ENABLED", False)):
+        try:
+            _stdev_bbrz_tf = str(getattr(cfg, "STDEV_BB_RZ_EXIT_TF", "D"))
+            _stdev_bbrz_now = _safe(npz, f"bb_pct_b_{_stdev_bbrz_tf}", n, 0.5)
+            _stdev_bbrz_prev_key = f"bb_pct_b_{_stdev_bbrz_tf}_prev"
+            _stdev_bbrz_prev = (
+                _safe(npz, _stdev_bbrz_prev_key, n, 0.5)
+                if _stdev_bbrz_prev_key in npz
+                else _stdev_bbrz_now.copy()
+            )
+            # Native float(value or fallback) maps a real zero to the fallback.
+            _stdev_bbrz_now = np.where(_stdev_bbrz_now == 0.0, 0.5, _stdev_bbrz_now)
+            _stdev_bbrz_prev = np.where(
+                _stdev_bbrz_prev == 0.0, _stdev_bbrz_now, _stdev_bbrz_prev
+            )
+            _stdev_bbrz_vel = _safe(npz, "wt_velocity_1h", n, 0.0)
+            _stdev_bbrz_mask = vec_decisions.check_exit_candidates_stocks__stdev_bb_rz_exit.check_stdev_bb_rz_exit_vec(
+                cfg, _stdev_bbrz_now, _stdev_bbrz_prev, _stdev_bbrz_vel, is_long
+            )
+            _stdev_bbrz_age = _safe(npz, "age_5m", n, 0.0)
+        except Exception:
+            _stdev_bbrz_mask = None
+            _stdev_bbrz_now = None
+            _stdev_bbrz_age = None
+
     if not is_tradier and bool(getattr(cfg, "HTF_TREND_VETO_ON_REDUCE_ENABLED", False)):
         try:
             import vec_decisions.stocks_live_session_gates as _slsg_crypto_htfv
@@ -23651,6 +23680,30 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                     _qta_eb_block is not None and bool(_qta_eb_block[i])
                                 ):
                                     closed, reason = True, _wsx_reason
+            except Exception:
+                pass
+        if not closed and pos is not None and _stdev_bbrz_mask is not None and _wsx_score is not None:
+            try:
+                _stdev_bbrz_acct = _cash_settle.sim_account(cfg)
+                _stdev_bbrz_stale_max = float(getattr(cfg, "WT_DC_EXIT_STALE_MAX_S", 600))
+                _stdev_bbrz_eligible = (
+                    i < len(_stdev_bbrz_mask)
+                    and bool(_stdev_bbrz_mask[i])
+                    and i < len(_wsx_score)
+                    and float(_wsx_score[i]) < _wsx_thr
+                    and i < len(_stdev_bbrz_age)
+                    and float(_stdev_bbrz_age[i]) <= _stdev_bbrz_stale_max
+                    and not (_stdev_bbrz_acct == "tra" and held_bars * bmin < 5760.0)
+                )
+                _stdev_bbrz_reason = (
+                    f"STDEV_BB_RZ_EXIT_{_stdev_bbrz_tf}_pctb={float(_stdev_bbrz_now[i]):.3f}_g={live_pnl_pct:.2f}%"
+                )
+                if _stdev_bbrz_eligible and not _htfv_block(i, _stdev_bbrz_reason) and not (
+                    _qta_eb_block is not None and bool(_qta_eb_block[i])
+                ):
+                    # Native evaluates this before the other scorer-hold exits and
+                    # returns directly; its own no-loss/confirmation gates do not apply.
+                    closed, reason = True, _stdev_bbrz_reason
             except Exception:
                 pass
         if not closed and pos is not None and _k5m_bounce_on:

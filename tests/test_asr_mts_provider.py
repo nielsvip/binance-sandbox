@@ -69,6 +69,7 @@ def test_mts_ltf_off_hydrates_missing_micro_columns_from_15m():
     cfg = {"USE_1M_3M_SIGNALS_ENABLED": False, "TF_SCALP": "3m"}
     raw["k_15m"] = np.arange(len(raw["timestamps"]), dtype=np.float32) % 100
     result = analyze_mts_state_array(raw, cfg=cfg, is_long=True)
+    assert "0dc_htf_pos" in result["missing_inputs"]
     assert np.array_equal(result["tf_breakdown"]["3m"]["k"], raw["k_15m"])
     assert np.array_equal(result["tf_breakdown"]["1m"]["k"], raw["k_15m"])
 

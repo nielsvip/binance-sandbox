@@ -26,13 +26,13 @@ def write_bundle(root, bundle_id, trained_at=TRAINED_AT):
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
         if name.startswith("v18_brain_"):
-            value = {"_meta": {"last_ts": trained_at, "at": trained_at}}
+            value = {"_meta": {"last_ts": trained_at, "at": trained_at, "floor_per_1000": 5.0, "p_ref": {"R": 0.001, "F": 0.002}}, "heads": {"F0": [-3.0 if bundle_id == "candidate" else -4.0]}}
         elif name.startswith("digest_"):
             value = {"meta": {"era_cut": trained_at}}
         elif name.startswith("linknet_proposals_"):
             value = {"meta": {"corpus_last_ts": trained_at}}
         else:
-            value = {"payload": bundle_id + ":" + name}
+            value = {"payload": "retained:" + name}
         path.write_text(json.dumps(value))
         expected[name] = gate.sha256(path)
     manifest = root / gate.MODEL_BUNDLE_PATH
@@ -142,7 +142,7 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "comparison runtime file fails its declared SHA256"):
                     gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, BASE_FLAGS)
 
-    def test_promotion_boolean_without_101_proof_receipt_is_rejected(self):
+    def test_learned_only_model_promotion_does_not_require_cell_authority_receipt(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)
             reference, candidate = base / "reference", base / "candidate"
@@ -158,8 +158,16 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
             gate_champ = base / "gate/champion"
             gate_champ.mkdir(parents=True)
             shutil.copyfile(champion_meta, gate_champ / "meta.json")
-            with patch.object(gate, "CHAMP", gate_champ), self.assertRaisesRegex(ValueError, "101 qualifying unique raw results per cell"):
-                gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, BASE_FLAGS)
+            with patch.object(gate, "CHAMP", gate_champ):
+                result = gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, BASE_FLAGS)
+                spec["candidate_runtime_flags"]["V18_FLOOR_PER_1000"] = "5"
+                spec_path.write_text(json.dumps(spec))
+                self.assertTrue(gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, BASE_FLAGS)["promotion_eligible"])
+                spec["candidate_runtime_flags"]["V18_FLOOR_PER_1000"] = "1"
+                spec_path.write_text(json.dumps(spec))
+                with self.assertRaisesRegex(ValueError, "preserve sampling policy runtime flags: V18_FLOOR_PER_1000"):
+                    gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, BASE_FLAGS)
+            self.assertTrue(result["promotion_eligible"])
 
     def test_hashed_self_reported_per_side_counts_do_not_prove_per_cell_authority(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -169,8 +177,50 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
             path = base / "counts.json"
             path.write_text(json.dumps(proof))
             spec = {"promotion_eligible": True, "authority_eligibility": {"path": str(path), "sha256": gate.sha256(path)}}
-            with self.assertRaisesRegex(ValueError, "hashed count receipt is insufficient"):
-                gate.validate_model_authority_eligibility(spec, base, snapshot)
+            reference, candidate = base / "reference", base / "candidate"
+            write_bundle(reference, "reference")
+            write_bundle(candidate, "candidate")
+            (candidate / "data/learn/digest_CRYPTO_LONG.json").write_text(json.dumps({"meta": {"era_cut": TRAINED_AT}, "winners": [{"cell": "unproven"}]}))
+            with self.assertRaisesRegex(ValueError, "hashed count receipt"):
+                gate.validate_model_authority_eligibility(spec, candidate, snapshot, reference)
+
+    def test_static_authority_and_unknown_field_changes_are_rejected(self):
+        cases = [("digest_CRYPTO_LONG.json", "winners"), ("digest_CRYPTO_LONG.json", "filter_veto"), ("digest_CRYPTO_LONG.json", "unclassified_future_policy"), ("v18_brain_CRYPTO_LONG.json", "unclassified_future_policy"), ("v18_brain_CRYPTO_LONG.json", "_meta.unclassified_future_policy"), ("linknet_proposals_CRYPTO_LONG.json", "unclassified_future_policy"), ("linknet_proposals_CRYPTO_LONG.json", "meta.unclassified_future_policy"), ("needed_filters_CRYPTO_LONG.json", "payload"), ("binding_map_CRYPTO_LONG.json", "payload"), ("must_pos_CRYPTO_LONG.json", "payload")]
+        for name, field in cases:
+            with self.subTest(name=name, field=field), tempfile.TemporaryDirectory() as temporary:
+                base = Path(temporary)
+                reference, candidate = base / "reference", base / "candidate"
+                write_bundle(reference, "reference")
+                write_bundle(candidate, "candidate")
+                subdir = "brain" if name.startswith("v18_brain_") else "learn"
+                path = candidate / "data" / subdir / name
+                value = json.loads(path.read_text())
+                if "." in field:
+                    parent, key = field.split(".")
+                    value[parent][key] = ["new authority"]
+                else:
+                    value[field] = ["new authority"]
+                path.write_text(json.dumps(value))
+                with self.assertRaisesRegex(ValueError, "static authority"):
+                    gate.validate_model_authority_eligibility({"promotion_eligible": True}, candidate, snapshot_fixture(), reference)
+
+    def test_learned_probabilities_and_proposals_allowed_with_sampling_floor_preserved(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            reference, candidate = base / "reference", base / "candidate"
+            write_bundle(reference, "reference")
+            write_bundle(candidate, "candidate")
+            path = candidate / "data/learn/digest_CRYPTO_LONG.json"
+            value = json.loads(path.read_text())
+            value["proposals"] = [{"switch": "NEW_SWITCH", "label": "PREDICTION", "p_pos_pred": 0.9}]
+            path.write_text(json.dumps(value))
+            self.assertTrue(gate.validate_model_authority_eligibility({"promotion_eligible": True}, candidate, snapshot_fixture(), reference))
+            path = candidate / "data/brain/v18_brain_CRYPTO_LONG.json"
+            value = json.loads(path.read_text())
+            value["_meta"]["floor_per_1000"] = 1.0
+            path.write_text(json.dumps(value))
+            with self.assertRaisesRegex(ValueError, "preserve runtime policy/schema.*floor_per_1000"):
+                gate.validate_model_authority_eligibility({"promotion_eligible": True}, candidate, snapshot_fixture(), reference)
 
     def test_fresh_model_training_cutoff_is_rejected_against_exact_holdout(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -187,7 +237,7 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
             with patch.object(gate, "CHAMP", gate_champ), self.assertRaisesRegex(ValueError, "training market cutoff overlaps exact OOS holdout"):
                 gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, BASE_FLAGS)
 
-    def _finalize_with_real_model_roots(self, candidate_oos, candidate_wall, initial_pass, promotion_eligible=False, corrupt_evidence=None):
+    def _finalize_with_real_model_roots(self, candidate_oos, candidate_wall, initial_pass, promotion_eligible=True, corrupt_evidence=None):
         snapshot = snapshot_fixture()
         sides = snapshot["sides"]
         snapshot["npz_sha256_by_symbol"] = {symbol: hashlib.sha256(symbol.encode()).hexdigest() for symbol in snapshot["npz_sha256_by_symbol"]}
@@ -300,15 +350,14 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
         self.assertFalse(meta["decision"]["PASS"])
         deploy.assert_not_called()
 
-    def test_numerical_thresholds_do_not_authorize_unproven_model_promotion(self):
+    def test_learned_only_model_can_pass_all_existing_comparison_checks(self):
         meta, deploy = self._finalize_with_real_model_roots(120.0, 80.0, True)
-        self.assertEqual(meta["state"], "FAIL")
-        self.assertFalse(meta["decision"]["PASS"])
+        self.assertTrue(meta["decision"]["PASS"])
         self.assertTrue(meta["decision"]["model_overlay_acceptance"]["quality_pass"])
         self.assertTrue(meta["decision"]["model_overlay_acceptance"]["speed_pass"])
         self.assertTrue(meta["decision"]["model_overlay_acceptance"]["training_windows_verified"])
         self.assertTrue(meta["decision"]["model_overlay_acceptance"]["run_root_model_hashes_verified"])
-        deploy.assert_not_called()
+        deploy.assert_called_once()
 
     def test_finalize_refuses_results_bound_to_other_code(self):
         meta, deploy = self._finalize_with_real_model_roots(120.0, 80.0, True, corrupt_evidence="gate_test_cand")
