@@ -1,0 +1,112 @@
+{
+  "audit_at_utc": "2026-10-31T01:47:54.811907+00:00",
+  "bytes_total": 20831584,
+  "destination_root": "/Volumes/WD25/binance_archive/gain_protection_evidence_20261031T0147Z",
+  "excluded_live_work": "A fills-fetch process remained active under data/reports/position_chain_20261031/all_crypto; that output was excluded and not copied.",
+  "file_count": 9,
+  "files": [
+    {
+      "bytes": 431,
+      "destination_match": true,
+      "path": "position_chain_20261031/inventory/manifest.json",
+      "sha256": "96e19a7753a1f24746319b43f0afa4251503ee3ff5633a491b140d0a5545fda0",
+      "source_mtime_utc": "2026-10-31T01:47:31.411664+00:00",
+      "source_stable_during_hash": true
+    },
+    {
+      "bytes": 11499960,
+      "destination_match": true,
+      "path": "position_chain_20261031/inventory/ang.json",
+      "sha256": "9a180cf888ffa033471ed34cd872d6ba8332625c48539b39df4d25ad3cddba63",
+      "source_mtime_utc": "2026-10-31T01:47:31.405219+00:00",
+      "source_stable_during_hash": true
+    },
+    {
+      "bytes": 737296,
+      "destination_match": true,
+      "path": "position_chain_20261031/fixed_stop_path_audit_ang.json",
+      "sha256": "cf73070739b3e054f4312f21d27bf56fb2ebc0ca874499bd91872c6176cca11e",
+      "source_mtime_utc": "2026-10-31T01:26:39.244204+00:00",
+      "source_stable_during_hash": true
+    },
+    {
+      "bytes": 1726591,
+      "destination_match": true,
+      "path": "gain_protection_variation_lab/ang_7d_s1_frozen_inputs.json",
+      "sha256": "bcb23bc75735e441dc3f0f3c353475b292a476ede2c9d0c5a003639bd63b7c79",
+      "source_mtime_utc": "2026-10-31T01:36:22.654040+00:00",
+      "source_stable_during_hash": true
+    },
+    {
+      "bytes": 3543,
+      "destination_match": true,
+      "path": "gain_protection_variation_lab/npz_expected_sha256.tsv",
+      "sha256": "df022dde0872ab291293f2c35eb2ebccb711c4833b642e0b0f3333005ebb1e20",
+      "source_mtime_utc": "2026-10-31T01:34:27.727713+00:00",
+      "source_stable_during_hash": true
+    },
+    {
+      "bytes": 3543,
+      "destination_match": true,
+      "path": "gain_protection_variation_lab/frozen_npz_7d_sha256.tsv",
+      "sha256": "8c95d2b6cbee7ced3c4d52d359ff1870584a09325eeac95c4be4a598d3a0c69d",
+      "source_mtime_utc": "2026-10-31T01:34:50.935986+00:00",
+      "source_stable_during_hash": true
+    },
+    {
+      "bytes": 6519,
+      "destination_match": true,
+      "path": "gain_protection_variation_lab/frozen_npz_sha256sum_s1.txt",
+      "sha256": "c503f80592f7cd6886a68734da6436614d6952c332ab03a704284b27b1d7b469",
+      "source_mtime_utc": "2026-10-31T01:34:39.353806+00:00",
+      "source_stable_during_hash": true
+    },
+    {
+      "bytes": 6519,
+      "destination_match": true,
+      "path": "gain_protection_variation_lab/ang_7d_s1_frozen_npz_sha256sum.txt",
+      "sha256": "c503f80592f7cd6886a68734da6436614d6952c332ab03a704284b27b1d7b469",
+      "source_mtime_utc": "2026-10-31T01:36:25.901083+00:00",
+      "source_stable_during_hash": true
+    },
+    {
+      "bytes": 6847182,
+      "destination_match": true,
+      "path": "ang_investigation_20261031/exchange_fills_orders.json",
+      "sha256": "e79b8485a7a192a866b83246902180eed2323b03c7e0b9c32198077bc4872b3c",
+      "source_mtime_utc": "2026-10-31T00:12:34.646565+00:00",
+      "source_stable_during_hash": true
+    }
+  ],
+  "original_timestamps": {
+    "gain_protection_frozen_inputs": {
+      "completed_at": "2026-10-31T01:36:00.921068+00:00",
+      "db_file_sha256": "1a3cc220bee79268f564f11d24cd244fdd950ab481f7d39697ec7bc87a698df0",
+      "filesystem_mtime_utc": "2026-10-31T01:36:22.654040+00:00",
+      "inventory_sha256": "007c6207bdf30c2ad7a3f75faaf9bd5aeb73a94a2ab38ac3044dff25b6306118",
+      "path": "data/reports/gain_protection_variation_lab/ang_7d_s1_frozen_inputs.json",
+      "started_at": "2026-10-31T01:34:58.993022+00:00",
+      "status": "COMPLETE"
+    },
+    "original_exchange_fills_orders": {
+      "filesystem_mtime_utc": "2026-10-31T00:12:34.646565+00:00",
+      "generated_ms": 1793404639560,
+      "matches_path_audit_cutoff_ms": true,
+      "path": "data/reports/ang_investigation_20261031/exchange_fills_orders.json"
+    },
+    "position_chain_path_audit": {
+      "audit_cutoff_ms": 1793404639560.0,
+      "filesystem_mtime_utc": "2026-10-31T01:26:39.244204+00:00",
+      "path": "data/reports/position_chain_20261031/fixed_stop_path_audit_ang.json"
+    },
+    "position_inventory": {
+      "manifest_path": "data/reports/position_chain_20261031/inventory/manifest.json",
+      "note": "No separate embedded computation timestamp recorded in manifest keys; original filesystem mtimes retained.",
+      "source_json_path": "data/reports/position_chain_20261031/inventory/ang.json"
+    }
+  },
+  "provenance_and_interpretation": "These artifacts preserve source observations and frozen inputs with their original timestamps. They retain known attribution gaps and are not evidence that any NN candidate was promoted or that a gain-protection hypothesis is validated.",
+  "purpose": "Preserve requested gain-protection observation and provenance artifacts; content remains observation with attribution gaps and is not NN promotion proof.",
+  "verification": "rsync --checksum selected allowlist; source files stable during pre/post hash window and every destination file byte-equal to current source SHA256; no source edits; no open handles under the selected inventory/variation/exchange directories at pre-copy check.",
+  "wd25_volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28"
+}

@@ -1,11 +1,11 @@
 {
- "epoch": 1793410753.687176,
- "written_at": "2026-10-31T01:39:13.687189Z",
+ "epoch": 1793411359.899203,
+ "written_at": "2026-10-31T01:49:19.899210Z",
  "venues": {
   "crypto": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_crypto.json",
-   "sha256": "7f0ec8031ad408e3029c1fc160c34c7fdf6475f68b0ee30c6852b53b73e70f79",
-   "held_total": 44,
+   "sha256": "67831eb4e77bcb582d25214b5610be6ddd87e92f77b4d8608518365bb69e7a50",
+   "held_total": 42,
    "sides": [
     "1000PEPEUSDC_LONG",
     "1INCHUSDT_SHORT",
@@ -15,7 +15,6 @@
     "AWEUSDT_LONG",
     "BANDUSDT_LONG",
     "BATUSDT_LONG",
-    "BEAMXUSDT_LONG",
     "BOMEUSDC_SHORT",
     "BTCDOMUSDT_LONG",
     "DASHUSDT_LONG",
@@ -23,16 +22,15 @@
     "EDUUSDT_LONG",
     "EDUUSDT_SHORT",
     "EIGENUSDT_SHORT",
-    "FLUXUSDT_LONG",
     "GRASSUSDT_LONG",
     "HYPEUSDT_LONG",
     "KAVAUSDT_LONG",
     "NEARUSDC_LONG",
-    "ONDOUSDT_LONG",
     "ONEUSDT_SHORT",
     "QNTUSDT_LONG",
     "RAYSOLUSDT_LONG",
     "RSRUSDT_SHORT",
+    "SKYUSDT_SHORT",
     "SNXUSDT_SHORT",
     "SOLUSDC_LONG",
     "WIFUSDC_SHORT",
@@ -49,81 +47,81 @@
      "acct": "ang",
      "side": "long",
      "records": 201,
-     "file_epoch": 1793410750.348,
-     "file_age_s": 3.3
+     "file_epoch": 1793411359.025,
+     "file_age_s": 1.5
     },
     {
      "acct": "ang",
      "side": "short",
      "records": 201,
-     "file_epoch": 1793410750.353,
-     "file_age_s": 3.4
+     "file_epoch": 1793411359.032,
+     "file_age_s": 1.5
     },
     {
      "acct": "inf",
      "side": "long",
      "records": 201,
-     "file_epoch": 1793410749.876,
-     "file_age_s": 3.9
+     "file_epoch": 1793411356.003,
+     "file_age_s": 4.5
     },
     {
      "acct": "inf",
      "side": "short",
      "records": 201,
-     "file_epoch": 1793410749.884,
-     "file_age_s": 3.9
+     "file_epoch": 1793411356.013,
+     "file_age_s": 4.5
     },
     {
      "acct": "flz",
      "side": "long",
      "records": 201,
-     "file_epoch": 1793410749.875,
-     "file_age_s": 3.9
+     "file_epoch": 1793411353.889,
+     "file_age_s": 6.6
     },
     {
      "acct": "flz",
      "side": "short",
      "records": 201,
-     "file_epoch": 1793410749.883,
-     "file_age_s": 3.9
+     "file_epoch": 1793411353.896,
+     "file_age_s": 6.6
     },
     {
      "acct": "men",
      "side": "long",
      "records": 201,
-     "file_epoch": 1793410747.117,
-     "file_age_s": 6.6
+     "file_epoch": 1793411357.22,
+     "file_age_s": 3.3
     },
     {
      "acct": "men",
      "side": "short",
      "records": 201,
-     "file_epoch": 1793410747.122,
-     "file_age_s": 6.6
+     "file_epoch": 1793411357.225,
+     "file_age_s": 3.3
     },
     {
      "acct": "fin",
      "side": "long",
      "records": 201,
-     "file_epoch": 1793410753.434,
-     "file_age_s": 0.3
+     "file_epoch": 1793411358.108,
+     "file_age_s": 2.5
     },
     {
      "acct": "fin",
      "side": "short",
      "records": 201,
-     "file_epoch": 1793410753.44,
-     "file_age_s": 0.3
+     "file_epoch": 1793411358.114,
+     "file_age_s": 2.5
     }
    ],
-   "snapshot_epoch": 1793410753.7571042,
+   "snapshot_epoch": 1793411360.5751271,
    "unreadable": [],
    "routes": [
     {
      "host": "s1-pub",
      "tree": "binance",
      "ok": true,
-     "sha256": "7f0ec8031ad408e3029c1fc160c34c7fdf6475f68b0ee30c6852b53b73e70f79",
+     "sha256": "67831eb4e77bcb582d25214b5610be6ddd87e92f77b4d8608518365bb69e7a50",
      "remote": "~/binance/data/vector_direct/mac_positions_crypto.json"
     }
    ],
@@ -131,11 +129,11 @@
     "binance"
    ],
    "ok": true,
-   "completed_epoch": 1793410756.01471
+   "completed_epoch": 1793411363.365042
   },
   "stocks": {
    "local": "/Users/niels/Documents/binance/data/vector_direct/mac_positions_stocks.json",
-   "sha256": "4805d2353c9aec0d11ffea2d27c1ccc723416ffc8dcae35de77b9484e4f853b1",
+   "sha256": "964d9c8facca9530612c35916aefe760e0924c7715d124010f206e789e0915b0",
    "held_total": 3,
    "sides": [
     "GILD_LONG",
@@ -148,59 +146,59 @@
      "side": "long",
      "records": 223,
      "file_epoch": 1793390432.302,
-     "file_age_s": 20318.9
+     "file_age_s": 20927.6
     },
     {
      "acct": "tra",
      "side": "short",
      "records": 223,
      "file_epoch": 1793390433.581,
-     "file_age_s": 20317.6
+     "file_age_s": 20926.3
     },
     {
      "acct": "trb",
      "side": "long",
      "records": 223,
-     "file_epoch": 1793410358.837,
-     "file_age_s": 392.4
+     "file_epoch": 1793410892.083,
+     "file_age_s": 467.8
     },
     {
      "acct": "trb",
      "side": "short",
      "records": 223,
-     "file_epoch": 1793410565.268,
-     "file_age_s": 186.0
+     "file_epoch": 1793410923.796,
+     "file_age_s": 436.1
     },
     {
      "acct": "trc",
      "side": "long",
      "records": 223,
      "file_epoch": 1793390454.655,
-     "file_age_s": 20296.6
+     "file_age_s": 20905.3
     },
     {
      "acct": "trc",
      "side": "short",
      "records": 223,
      "file_epoch": 1793390456.247,
-     "file_age_s": 20295.0
+     "file_age_s": 20903.7
     }
    ],
-   "snapshot_epoch": 1793410751.237909,
+   "snapshot_epoch": 1793411359.910624,
    "unreadable": [],
    "routes": [
     {
-     "host": "s5",
+     "host": "niels@10.0.0.5",
      "tree": "binance",
      "ok": true,
-     "sha256": "4805d2353c9aec0d11ffea2d27c1ccc723416ffc8dcae35de77b9484e4f853b1",
+     "sha256": "964d9c8facca9530612c35916aefe760e0924c7715d124010f206e789e0915b0",
      "remote": "~/binance/data/vector_direct/mac_positions_stocks.json"
     },
     {
-     "host": "s5",
+     "host": "niels@10.0.0.5",
      "tree": "trc7d_root",
      "ok": true,
-     "sha256": "4805d2353c9aec0d11ffea2d27c1ccc723416ffc8dcae35de77b9484e4f853b1",
+     "sha256": "964d9c8facca9530612c35916aefe760e0924c7715d124010f206e789e0915b0",
      "remote": "~/trc7d_root/data/vector_direct/mac_positions_stocks.json"
     }
    ],
@@ -209,7 +207,7 @@
     "trc7d_root"
    ],
    "ok": true,
-   "completed_epoch": 1793410754.9595578
+   "completed_epoch": 1793411364.0089018
   }
  }
 }

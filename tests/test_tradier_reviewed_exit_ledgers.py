@@ -221,10 +221,12 @@ def test_stdev_reject_stock_switch_changes_simulate_one_ledger():
     if "close_15m" in npz:
         npz["close_15m"][fire_bar] = 103.0
     npz["bb_pct_b_D"] = np.full(len(npz["close"]), 0.5)
-    npz["bb_pct_b_D_prev"] = np.full(len(npz["close"]), 0.5)
+    npz["timestamp_D"] = np.zeros(len(npz["close"]))
     npz["wt_velocity_1h"] = np.zeros(len(npz["close"]))
+    npz["bb_pct_b_D"][fire_bar - 1] = 0.9
     npz["bb_pct_b_D"][fire_bar] = 0.6
-    npz["bb_pct_b_D_prev"][fire_bar] = 0.9
+    npz["timestamp_D"][fire_bar - 1] = 1.0
+    npz["timestamp_D"][fire_bar] = 2.0
     npz["wt_velocity_1h"][fire_bar] = -1.0
     off = _run(npz, "STDEV_REJECT_EXIT_ENABLED", False)
     on = _run(npz, "STDEV_REJECT_EXIT_ENABLED", True)

@@ -1,0 +1,21 @@
+{
+  "schema": "profit_protection_replay_input_review/1",
+  "source": "data/reports/gain_protection_variation_lab/ang_7d_s1_frozen_inputs.json",
+  "source_sha256": "bcb23bc75735e441dc3f0f3c353475b292a476ede2c9d0c5a003639bd63b7c79",
+  "side_count": 50,
+  "counts": {
+    "candidate_evaluations": 141,
+    "invalid_or_baseline_invalid": 56,
+    "valid_candidate_evaluations": 85,
+    "fewer_losing_close_rows": 7
+  },
+  "scope": "Diagnostic source review, all available variants; losing realized rows not independent lifecycles or avoidable-loss labels",
+  "limitations": [
+    "7-day selected fixed-stop-heavy crypto sample, no stock/OOS/promotion proof",
+    "Three partial-profit-lock variants, not full protection/recovery search",
+    "No MFE/peak timestamp/native refusal labels in output",
+    "reentry_count is opens minus one, not causal recovery count",
+    "Declared trade_lifecycle_sha256 omits native row PNL due net_pnl_engine vs net_pnl_engine_quote_units key mismatch; full report SHA is used for integrity",
+    "Fee rates configured per side, not explicit maker/taker fill classes"
+  ]
+}

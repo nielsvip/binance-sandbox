@@ -38337,27 +38337,15 @@ class StockStrategy:
                     )
                     else i
                 )
-                if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith(
-                    "tradier-matrix-exec-c5"
-                ):
-                    from tradier_exit_indicator_contract_c5 import (
-                        completed_parent_value_pair as _c5_parent_pair,
-                    )
-
-                    _sre_pctb_now, _sre_pctb_prev = _c5_parent_pair(
-                        _stdev_ind,
-                        timeframe=_sre_tf,
-                        state=self.__dict__.setdefault("_c5_stdev_parent_state", {}),
-                        state_key=f"{symbol}:{'LONG' if is_long else 'SHORT'}:STDEV_REJECT:{_sre_tf}",
-                    )
-                else:
-                    _sre_pctb_now = float(
-                        _stdev_ind.get(f"bb_pct_b_{_sre_tf}", 0.5) or 0.5
-                    )
-                    _sre_pctb_prev = float(
-                        _stdev_ind.get(f"bb_pct_b_{_sre_tf}_prev", _sre_pctb_now)
-                        or _sre_pctb_now
-                    )
+                from tradier_exit_indicator_contract_c5 import (
+                    completed_parent_value_pair as _c5_parent_pair,
+                )
+                _sre_pctb_now, _sre_pctb_prev = _c5_parent_pair(
+                    _stdev_ind,
+                    timeframe=_sre_tf,
+                    state=self.__dict__.setdefault("_c5_stdev_parent_state", {}),
+                    state_key=f"{symbol}:{'LONG' if is_long else 'SHORT'}:STDEV_REJECT:{_sre_tf}",
+                )
                 _sre_vel = float(_stdev_ind.get("wt_velocity_1h", 0) or 0)
                 _sre_fire = (
                     is_long

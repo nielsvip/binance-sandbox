@@ -1,0 +1,41 @@
+{
+  "schema": "observed_fill_fee_classes/1",
+  "audit_at": "2026-10-31T01:42:15.927669+00:00",
+  "source": "data/reports/ang_investigation_20261031/exchange_fills_orders.json",
+  "source_sha256": "e79b8485a7a192a866b83246902180eed2323b03c7e0b9c32198077bc4872b3c",
+  "source_window_start_ms": 1792799899560,
+  "source_window_end_ms": 1793404639560,
+  "counts": [
+    {
+      "symbol_quote_group": "USDC",
+      "maker_flag": "False",
+      "commission_state": "nonzero",
+      "fills": 638
+    },
+    {
+      "symbol_quote_group": "USDC",
+      "maker_flag": "True",
+      "commission_state": "zero",
+      "fills": 205
+    },
+    {
+      "symbol_quote_group": "other",
+      "maker_flag": "False",
+      "commission_state": "nonzero",
+      "fills": 2693
+    },
+    {
+      "symbol_quote_group": "other",
+      "maker_flag": "False",
+      "commission_state": "zero",
+      "fills": 7
+    },
+    {
+      "symbol_quote_group": "other",
+      "maker_flag": "True",
+      "commission_state": "nonzero",
+      "fills": 797
+    }
+  ],
+  "scope": "Observed fills only; not future fee schedule or stock fee verification; asset-separated fees are not converted or used to restate engine profit."
+}

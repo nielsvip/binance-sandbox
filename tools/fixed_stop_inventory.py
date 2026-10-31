@@ -722,6 +722,76 @@ def build_inventory(document, source_path="<memory>", source_sha256=None, histor
     return result
 
 
+def build_prospective_capture_validation(history_root, decision_state_root, cutoff_by_account):
+    """Audit newer immutable provenance separately; never add these fills to the frozen inventory."""
+    from datetime import datetime, timezone
+
+    rows = []
+    cutoff_excluded = 0
+    verified = 0
+    rejected = 0
+    for path in sorted(Path(history_root).glob("*/*.jsonl")):
+        account_id = path.parent.name
+        cutoff = _num(cutoff_by_account.get(account_id))
+        if cutoff is None:
+            continue
+        try:
+            source_sha = sha256_file(path)
+            content = path.read_text(errors="replace").splitlines()
+        except OSError:
+            continue
+        for line in content:
+            try:
+                row = json.loads(line)
+            except ValueError:
+                continue
+            proof = row.get("decision_provenance") if isinstance(row, dict) else None
+            if not isinstance(proof, dict):
+                continue
+            stamp = row.get("ts") or row.get("timestamp")
+            try:
+                event_ms = datetime.fromisoformat(str(stamp).replace("Z", "+00:00")).timestamp() * 1000.0
+            except (TypeError, ValueError, OverflowError):
+                continue
+            if event_ms <= cutoff:
+                cutoff_excluded += 1
+                continue
+            digest = str(proof.get("state_sha256") or "").lower()
+            relative = str(proof.get("state_file") or "")
+            expected = f"decision_states/{digest[:2]}/{digest}.json"
+            state = None
+            body_verified = False
+            metadata_matches = False
+            state_path = Path(decision_state_root) / relative
+            try:
+                state = json.loads(state_path.read_text()) if relative == expected and re.fullmatch(r"[0-9a-f]{64}", digest) else None
+                body_verified = isinstance(state, dict) and hashlib.sha256(json.dumps(state, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest() == digest
+                metadata_matches = body_verified and all(proof.get(key) in (None, state.get(state_key)) for key, state_key in (
+                    ("settings_sha256", "settings_sha256"), ("engine_ast_sha256", "engine_ast_sha256"),
+                    ("npz_tail", "npz_tail"), ("state_ts", "ts"), ("settings_updated_at", "settings_updated_at")))
+            except (OSError, ValueError, TypeError):
+                pass
+            verified += bool(body_verified and metadata_matches)
+            rejected += not (body_verified and metadata_matches)
+            rows.append({"account_id": account_id, "sym_side": path.stem, "timestamp": stamp,
+                         "event_type": row.get("type"), "order_id": row.get("order_id"),
+                         "history_path": str(path), "history_file_sha256": source_sha,
+                         "decision_state_sha256": digest or None, "decision_state_file": relative or None,
+                         "decision_state_body_hash_verified": bool(body_verified),
+                         "decision_state_metadata_matches": bool(metadata_matches),
+                         "entry_attribution_applicable": str(row.get("type") or "").upper() in {"OPEN", "REENTRY"}})
+    rows.sort(key=lambda row: (row["timestamp"], row["account_id"], row["sym_side"]))
+    return {"scope": "prospective evidence only; records after the immutable broker-fill source cutoff are excluded from the inventory and all loss rankings",
+            "source_cutoff_ms_by_account": {str(key): value for key, value in sorted(cutoff_by_account.items()) if value is not None},
+            "history_rows_with_state_refs_after_cutoff": len(rows), "verified_state_body_and_metadata_count": verified,
+            "rejected_or_unavailable_state_count": rejected, "pre_cutoff_state_ref_rows_excluded": cutoff_excluded,
+            "examples": rows[:20],
+            "row_contract": {"history_source": "data/history/<account>/<SYM_SIDE>.jsonl exact broker-order-ID row",
+                             "state_reference": "decision_provenance.state_file + state_sha256; content address is SHA-256 of canonical compact sorted JSON",
+                             "required_metadata_link": ["settings_sha256", "engine_ast_sha256", "npz_tail", "state_ts", "settings_updated_at"],
+                             "entry_switch_proof": "Only OPEN/REENTRY may attribute; exact order ID must link to this verified consumed state and recorded reason must map through history_prov._resolve_spec."}}
+
+
 def build_neural_builder_handoff(inventories, source_path="<memory>"):
     per_account = {}
     cross_symbol = {}
@@ -814,9 +884,13 @@ def build_neural_builder_handoff(inventories, source_path="<memory>"):
     rejected_rows = [{"account_id": key[0], "sym_side": key[1], "reason": key[2], **counts}
                      for key, counts in rejected_evidence.items()]
     rejected_rows.sort(key=lambda item: (-item["completed_loss_lifecycle_count"], item["account_id"], item["sym_side"], item["reason"]))
+    cutoff_by_account = {str(account_id): (inventory.get("source") or {}).get("window_end_ms")
+                         for account_id, inventory in inventories.items()}
+    prospective = build_prospective_capture_validation(ROOT / "data" / "history", ROOT / "data" / "vector_direct", cutoff_by_account)
     return {
         "schema_version": 1, "artifact_type": "neural_builder_position_provenance_handoff",
         "source_path": str(source_path), "account_count": len(inventories),
+        "prospective_capture_validation": prospective,
         "entry_provenance_policy": {
             "proven_switch_attribution": "An exact order-ID-linked recorded VEC_EXACT OPEN/REENTRY event with a canonical switch, or an exact order-ID-linked history row whose decision_provenance state file verifies against its content address and whose consumed OPEN/REENTRY reason maps through the verified static switch registry.",
             "unverified_candidate": "Exact broker order_id history row -> exact ledger_key account/sym_side/bar -> exact bar-named intent and/or forward acts_bar_ts; the entry reason maps through history_prov._resolve_spec. Candidates remain unverified because the broker execution row has no matching execution-generation/settings hash.",

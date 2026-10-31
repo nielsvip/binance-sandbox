@@ -16568,33 +16568,15 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             exit_sig = exit_sig | _n2gx.gap_risk_exit_live_vec(npz, n, cfg, is_long)
     except Exception:
         pass
-    # STDEV_REJECT_EXIT uses the shared live/vector predicate for both venues.
-    cfg.STDEV_REJECT_EXIT_INFO = None
+    # STDEV_REJECT_EXIT vector call remains crypto-only; Tradier needs live's
+    # parent-token state and is evaluated per held position in simulate_one.
     try:
-        if bool(getattr(cfg, "STDEV_REJECT_EXIT_ENABLED", False)):
-            if getattr(cfg, "MODE", "crypto") == "tradier":
-                _sre_tf = str(getattr(cfg, "STDEV_REJECT_EXIT_TF", "D"))
-                _sre_now = np.asarray(_safe(npz, f"bb_pct_b_{_sre_tf}", n, 0.5), dtype=float)
-                _sre_prev_key = f"bb_pct_b_{_sre_tf}_prev"
-                _sre_prev = (
-                    np.asarray(_safe(npz, _sre_prev_key, n, 0.5), dtype=float)
-                    if _sre_prev_key in npz
-                    else _sre_now
-                )
-                _sre_vel = np.asarray(_safe(npz, "wt_velocity_1h", n, 0.0), dtype=float)
-                _sre_mask = vec_decisions.check_exit_candidates_stocks__stdev_reject_exit.check_stdev_reject_exit_vec(
-                    cfg, _sre_now, _sre_prev, _sre_vel, is_long
-                )
-                cfg.STDEV_REJECT_EXIT_INFO = {
-                    "mask": np.asarray(_sre_mask, dtype=bool),
-                    "pctb_now": _sre_now,
-                    "timeframe": _sre_tf,
-                }
-                exit_sig = exit_sig | np.asarray(_sre_mask, dtype=bool)
-            else:
-                import vec_decisions.stdev_reject_exit_live as _n2sr
+        if getattr(cfg, "MODE", "crypto") != "tradier" and bool(
+            getattr(cfg, "STDEV_REJECT_EXIT_ENABLED", False)
+        ):
+            import vec_decisions.stdev_reject_exit_live as _n2sr
 
-                exit_sig = exit_sig | _n2sr.stdev_reject_exit_mask(npz, n, cfg, is_long)
+            exit_sig = exit_sig | _n2sr.stdev_reject_exit_mask(npz, n, cfg, is_long)
     except Exception:
         pass
     # BOTTOM/TOP exit families (all EXIT_FAMS ORed; live twin exit_fire_live in process_position)
@@ -18204,6 +18186,21 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _k5m_dc_low15 = _previous_channel(npz, "dc_low_15m", n, _safe)
         _k5m_dc_high15 = _previous_channel(npz, "dc_high_15m", n, _safe)
         _k5m_k15 = np.asarray(_safe(npz, "stoch_k_15m", n, 50.0), dtype=float)
+    _sre_on = str(getattr(cfg, "MODE", "crypto")) == "tradier" and bool(
+        getattr(cfg, "STDEV_REJECT_EXIT_ENABLED", False)
+    )
+    _sre_tf = str(getattr(cfg, "STDEV_REJECT_EXIT_TF", "D"))
+    _sre_pctb_now = _sre_velocity = _sre_parent_ts = _sre_pctb_prev = None
+    _sre_parent_state = {}
+    if _sre_on:
+        _sre_pctb_now = np.asarray(_safe(npz, f"bb_pct_b_{_sre_tf}", n, 0.5), dtype=float)
+        _sre_velocity = np.asarray(_safe(npz, "wt_velocity_1h", n, 0.0), dtype=float)
+        _sre_parent_key = f"timestamp_{_sre_tf}"
+        if _sre_parent_key in npz:
+            _sre_parent_ts = np.asarray(_safe(npz, _sre_parent_key, n, 0.0), dtype=float)
+        _sre_prev_key = f"bb_pct_b_{_sre_tf}_prev"
+        if _sre_prev_key in npz:
+            _sre_pctb_prev = np.asarray(_safe(npz, _sre_prev_key, n, 0.5), dtype=float)
     _rule_b_exit_on = _tr_exit15 and bool(getattr(cfg, "RULE_B_5M_EXIT_ENABLED", False))
     if _rule_b_exit_on:
         _rule_b_low15 = np.asarray(_safe(npz, "low_15m", n, 0.0), dtype=float)
@@ -23756,21 +23753,35 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             and i < len(_wt_final_mask)
             and bool(_wt_final_mask[i])
         )
-        _stdev_reject_info = getattr(cfg, "STDEV_REJECT_EXIT_INFO", None)
-        _stdev_reject_mask = (
-            _stdev_reject_info.get("mask")
-            if isinstance(_stdev_reject_info, dict)
-            else None
-        )
-        _stdev_reject_fire = (
-            _stdev_reject_mask is not None
-            and i < len(_stdev_reject_mask)
-            and bool(_stdev_reject_mask[i])
-        )
+        _stdev_reject_fire = False
+        _stdev_reject_reason = ""
+        if _sre_on and pos is not None:
+            _sre_ind = {
+                f"bb_pct_b_{_sre_tf}": float(_sre_pctb_now[i]),
+                "wt_velocity_1h": float(_sre_velocity[i]),
+            }
+            if _sre_pctb_prev is not None:
+                _sre_ind[f"bb_pct_b_{_sre_tf}_prev"] = float(_sre_pctb_prev[i])
+            if _sre_parent_ts is not None:
+                _sre_ind[f"timestamp_{_sre_tf}"] = float(_sre_parent_ts[i])
+            from tradier_exit_indicator_contract_c5 import completed_parent_value_pair
+
+            _sre_now_bar, _sre_prev_bar = completed_parent_value_pair(
+                _sre_ind,
+                timeframe=_sre_tf,
+                state=_sre_parent_state,
+                state_key=f"{sym}:{'LONG' if is_long else 'SHORT'}:STDEV_REJECT:{_sre_tf}",
+            )
+            _sre_ind[f"bb_pct_b_{_sre_tf}_prev"] = float(_sre_prev_bar)
+            _stdev_reject_fire, _stdev_reject_reason = (
+                vec_decisions.check_exit_candidates_stocks__stdev_reject_exit.check_stdev_reject_exit(
+                    cfg, _sre_ind, live_pnl_pct, is_long
+                )
+            )
         _xc_ok = _xc_loss or _wt_final_fire or _stdev_reject_fire or (
             _gftf.get("exit_confirm") is None or bool(_gftf["exit_confirm"][i])
         )
-        if _hold_bars_fire or (exit_sig[i] and held_bars >= min_hold and _xc_ok):
+        if _hold_bars_fire or ((exit_sig[i] or _stdev_reject_fire) and held_bars >= min_hold and _xc_ok):
             if not _hold_bars_fire and 0 < satoshit_partial < 1.0 and not _sd_ok("REDUCE"):
                 # SCALE_DIRECTION: the SATOSHIT partial sells momentum STRENGTH (long: RSI>=55 + K>=60) —
                 # 2,482 measured reduces. Price rising in favour is augment territory: hold this bar, do not
@@ -24109,19 +24120,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             held_bars * bmin,
                         )
             if _tech_reason == "TECHNICAL_EXIT":
-                _stdev_reject_info = getattr(cfg, "STDEV_REJECT_EXIT_INFO", None)
-                if isinstance(_stdev_reject_info, dict):
-                    _stdev_reject_mask = _stdev_reject_info.get("mask")
-                    if (
-                        _stdev_reject_mask is not None
-                        and i < len(_stdev_reject_mask)
-                        and bool(_stdev_reject_mask[i])
-                    ):
-                        _stdev_pctb = float(_stdev_reject_info["pctb_now"][i])
-                        _tech_reason = (
-                            f"STDEV_REJECT_EXIT_{_stdev_reject_info['timeframe']}_"
-                            f"pctb={_stdev_pctb:.3f}_g={pnl_pct_preview:.2f}%"
-                        )
+                _tech_reason = _stdev_reject_reason or _tech_reason
             if not _hold_bars_fire and _tech_reason == "TECHNICAL_EXIT":
                 _bb_recovery_info = getattr(cfg, "BB_RECOVERY_EXIT_INFO", None)
                 _bb_recovery_mask = (

@@ -4708,7 +4708,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     for sym, store in stores.items():
         for t in store.timestamps:
             t_int = int(t)
-            if t_int >= start_ts_filter and (not end_ts_filter or t_int <= end_ts_filter):
+            if t_int >= max(start_ts_filter, float(getattr(store, "decision_start_ts", start_ts_filter))) and (not end_ts_filter or t_int <= end_ts_filter):
                 all_ts.add(t_int)
     sorted_ts = sorted(all_ts)
     if (
@@ -5415,7 +5415,9 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             if hasattr(data_manager, '_cold_data'):
                 data_manager._cold_data[sym] = indicators
             # PositionService.indicators_snapshot
-            if trade_manager.positions_service and hasattr(trade_manager.positions_service, 'indicators_snapshot'):
+            if trade_manager.positions_service:
+                if not isinstance(getattr(trade_manager.positions_service, 'indicators_snapshot', None), dict):
+                    trade_manager.positions_service.indicators_snapshot = {}
                 trade_manager.positions_service.indicators_snapshot[sym] = indicators
             # Price caches on trade_manager
             trade_manager.price_cache[sym] = {'price': p, 'ts': float(ts)}
@@ -7208,6 +7210,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                                 trade_manager.price_cache_2[_wick_sym] = _wick_px
                                 try:
                                     await ez_manage.process_position(account_key=account_key, position_key=pk, order_queue=order_queue, trade_manager=trade_manager, force=True)
+                                    await order_queue._orders.join()
+                                    await drain_pending_v8_tasks()
                                 finally:
                                     pos.mark_price = _wick_prev_mark
                                     pos.mark_price_last_updated = _wick_prev_mark_ts
@@ -7952,7 +7956,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         # non-deterministic ordering) with deterministic FIFO drain. See
         # _v8_det_create_task / drain_pending_v8_tasks() for design.
         await drain_pending_v8_tasks()
-        await asyncio.sleep(0)  # one extra tick for the OrderQueue.process_orders long-running task
+        await order_queue._orders.join()
+        await drain_pending_v8_tasks()
 
         # Progress — fires on EITHER step count OR wall-clock 60s elapsed (visibility for silent-death debug 2026-05-01).
         _wallclock_now = _real_time_module.time()
@@ -18496,6 +18501,11 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
     executed = []
     try:
         stores, resolution = load_stores(mode, symbols=[sym], start_date=start_date)
+        if is_crypto and int(offset_days) == 0 and stores and sym in stores:
+            from tools.opt import evaluate_v12 as _window_eval
+            _window_raw = _window_eval._store(sym, mode, "2000-01-01")
+            _window_npz, _window_policy = _window_eval._exact_30d_slice(_window_raw, True, window_days=window_days)
+            stores[sym].decision_start_ts = float(_window_npz["timestamps"][0])
         if not stores or sym not in stores:
             # no NPZ: invalid run, matches evaluate_v12 semantics
             return {"symside": symside, "valid": False, "invalid_reason": "no npz", "gain_per_mo": 0.0, "trades": 0, "gain_pct": 0.0, "pool_sharpe": 0.0, "max_dd_pct": 0.0, "tim_pct": 0.0, "score": float("-inf")}

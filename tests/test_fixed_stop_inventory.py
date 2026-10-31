@@ -4,7 +4,7 @@ import json
 import tempfile
 from pathlib import Path
 
-from tools.fixed_stop_inventory import build_neural_builder_handoff, reconstruct_account, _load_verified_decision_state_records, _verified_recorded_switch
+from tools.fixed_stop_inventory import build_neural_builder_handoff, build_prospective_capture_validation, reconstruct_account, _load_verified_decision_state_records, _verified_recorded_switch
 
 
 def fill(trade_id, order_id, side, qty, price, realized=0, commission=0, commission_asset="BNB", timestamp=1000):
@@ -171,6 +171,29 @@ class FixedStopInventoryTests(unittest.TestCase):
         reason_rows = handoff["losing_entry_switch_rankings"]["exact_anchor_entry_reasons_unverified"]
         self.assertEqual(reason_rows[0]["entry_reason_candidate"], "UNMAPPED_EXACT_BAR_REASON")
         self.assertEqual(reason_rows[0]["fixed_stop_closed_loss_lifecycle_count"], 1)
+
+    def test_prospective_capture_is_hash_verified_and_outside_frozen_cutoff(self):
+        state = {"settings_sha256": "s", "engine_ast_sha256": "e", "npz_tail": 3,
+                 "ts": "2026-10-31T01:00:00Z", "settings_updated_at": "2026-10-30T23:00:00Z"}
+        digest = hashlib.sha256(json.dumps(state, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+        relative = f"decision_states/{digest[:2]}/{digest}.json"
+        row = {"ts": "2026-10-31T01:45:00+00:00", "type": "OPEN", "order_id": "123",
+               "decision_provenance": {"state_sha256": digest, "state_file": relative, "settings_sha256": "s",
+                                        "engine_ast_sha256": "e", "npz_tail": 3, "state_ts": state["ts"],
+                                        "settings_updated_at": state["settings_updated_at"]}}
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            history = root / "history" / "acct" / "ABCUSDT_LONG.jsonl"
+            history.parent.mkdir(parents=True)
+            history.write_text(json.dumps(row) + "\n")
+            state_path = root / "vector_direct" / relative
+            state_path.parent.mkdir(parents=True)
+            state_path.write_text(json.dumps(state, indent=1))
+            report = build_prospective_capture_validation(root / "history", root / "vector_direct", {"acct": 1793404800000})
+            self.assertEqual(report["history_rows_with_state_refs_after_cutoff"], 1)
+            self.assertEqual(report["verified_state_body_and_metadata_count"], 1)
+            self.assertEqual(report["examples"][0]["entry_attribution_applicable"], True)
+            self.assertIn("excluded from the inventory", report["scope"])
 
     def test_content_addressed_order_decision_state_proves_recorded_switch(self):
         state = {"settings_sha256": "settings", "engine_ast_sha256": "engine", "npz_tail": 123,

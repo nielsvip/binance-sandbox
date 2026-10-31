@@ -69,10 +69,69 @@ class BBRecoveryReduceSizingTests(unittest.TestCase):
         self.assertAlmostEqual(pos_min_qty, 1.0)
         self.assertAlmostEqual(order_min_qty, 1.2)
 
-    def test_simulate_one_books_bb_recovery_as_partial_reduce_then_close(self):
+    def test_simulate_one_books_bb_recovery_as_partial_reduce_and_keeps_dust_open(self):
         n = 120
         close = np.full(n, 100.0)
-        close[1:] = 100.3
+        close[1:] = 103.0
+        bb_mask = np.zeros(n, dtype=bool)
+        bb_mask[1] = True
+        arrays = {
+            "timestamps": np.arange(n, dtype=np.int64) * 180,
+            "close_3m": close,
+            "bb_upper_1h": np.full(n, 104.0),
+            "bb_lower_1h": np.full(n, 99.0),
+            "stoch_k_1h": np.full(n, 80.0),
+        }
+
+        def entry_signals(_npz, _n, _is_long, _cfg):
+            return np.zeros(_n, dtype=bool)
+
+        def exit_signals(_npz, _n, _is_long, cfg, _entry_sig=None):
+            cfg.BB_RECOVERY_EXIT_INFO = {"mask": bb_mask.copy()}
+            return bb_mask.copy()
+
+        cfg = replace(
+            v12.QuickConfig(),
+            MODE="crypto",
+            BASE_TF="3m",
+            START_POSITION_SIZE=220.0,
+            MIN_POSITION_SIZE=1.0,
+            MIN_HOLD_BARS=0,
+            COOLDOWN_BARS=0,
+            BB_RECOVERY_EXIT_ENABLED_TRADIER=True,
+            COMMISSION_BUFFER_PCT=0.08,
+            VEC_EXIT_SIG_IS_TRIGGER=True,
+            CYCLE_TP_TIERED_ENABLED=False,
+        )
+        cfg.apply_cat_side_defaults("CRYPTO_LONG")
+        cfg.MIN_HOLD_BARS = 0
+        cfg.CYCLE_TP_TIERED_ENABLED = False
+        cfg.PARTIAL_PROFIT_LOCK_ENABLED = False
+        original_entry = v12.compute_entry_signals
+        original_exit = v12.compute_exit_signals
+        try:
+            v12.compute_entry_signals = entry_signals
+            v12.compute_exit_signals = exit_signals
+            result = v12.simulate_one(arrays, "1000PEPEUSDC", True, cfg, force_initial_seed=True)
+        finally:
+            v12.compute_entry_signals = original_entry
+            v12.compute_exit_signals = original_exit
+        ledger = result["ledger"]
+        reductions = [row for row in ledger if row.get("reason") == "BB_RECOVERY_EXIT_TRADIER_LONG"]
+        self.assertEqual(len(reductions), 1)
+        self.assertEqual(reductions[0]["type"], "REDUCE")
+        self.assertAlmostEqual(reductions[0]["qty"], 1.3, places=7)
+        self.assertLess(2.2 - reductions[0]["qty"], 1.0)
+        self.assertFalse(any(row.get("exit_reason") == "BB_RECOVERY_EXIT_TRADIER_LONG" for row in ledger))
+        final_marks = [row for row in ledger if row.get("reason") == "FINAL_MTM"]
+        self.assertEqual(len(final_marks), 1)
+        self.assertTrue(final_marks[0].get("unrealised"))
+        self.assertAlmostEqual(final_marks[0]["qty"], 0.9, places=7)
+
+    def test_simulate_one_honors_native_net_gain_veto_before_reduce(self):
+        n = 120
+        close = np.full(n, 100.0)
+        close[1:] = 100.05
         bb_mask = np.zeros(n, dtype=bool)
         bb_mask[1] = True
         arrays = {
@@ -101,8 +160,10 @@ class BBRecoveryReduceSizingTests(unittest.TestCase):
             BB_RECOVERY_EXIT_ENABLED_TRADIER=True,
             COMMISSION_BUFFER_PCT=0.08,
             VEC_EXIT_SIG_IS_TRIGGER=True,
-            CYCLE_TP_TIERED_ENABLED=False,
         )
+        cfg._template_layer = "CRYPTO_LONG"
+        cfg.CYCLE_TP_TIERED_ENABLED = False
+        cfg.PARTIAL_PROFIT_LOCK_ENABLED = False
         original_entry = v12.compute_entry_signals
         original_exit = v12.compute_exit_signals
         try:
@@ -113,15 +174,10 @@ class BBRecoveryReduceSizingTests(unittest.TestCase):
             v12.compute_entry_signals = original_entry
             v12.compute_exit_signals = original_exit
         ledger = result["ledger"]
-        reductions = [row for row in ledger if row.get("reason") == "BB_RECOVERY_EXIT_TRADIER_LONG"]
-        self.assertEqual(len(reductions), 1)
-        self.assertEqual(reductions[0]["type"], "REDUCE")
-        self.assertAlmostEqual(reductions[0]["qty"], 1.3, places=7)
-        self.assertLess(2.2 - reductions[0]["qty"], 1.0)
-        self.assertFalse(any(row.get("exit_reason") == "BB_RECOVERY_EXIT_TRADIER_LONG" for row in ledger))
-        closes = [row for row in ledger if row.get("type") == "CLOSE" and not row.get("unrealised")]
-        self.assertEqual(len(closes), 1)
-        self.assertAlmostEqual(closes[0]["qty"], 0.9, places=7)
+        self.assertFalse(any(row.get("reason") == "BB_RECOVERY_EXIT_TRADIER_LONG" for row in ledger))
+        final_marks = [row for row in ledger if row.get("reason") == "FINAL_MTM"]
+        self.assertEqual(len(final_marks), 1)
+        self.assertAlmostEqual(final_marks[0]["qty"], 2.2, places=7)
 
     def test_nonfinite_or_negative_position_fails_closed(self):
         got = bb_recovery_reduce_qty(

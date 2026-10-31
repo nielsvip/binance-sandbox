@@ -196,12 +196,18 @@ MIN_PASS_GAP_S = float(os.environ.get("VD_MIN_PASS_GAP_S", "2.0"))
 # SEVENDAY_MAX_AGE_S. Everything else is refused. This FAILS CLOSED: no readable 7D artifact means no entries at all,
 # which is today's state because the crypto 7D lane has no driver. EXITS are never gated — closing a position is an
 # absolute law of this system, and a gate that strands a live position is worse than the entry it was meant to stop.
-# USER 2026-10-31: "they can ONLY trade 7D results that are <24h old (older ones can be exited not entered)" — every
-# account on both venues now, not just fin. "*" means all accounts; a comma list narrows it.
-SEVENDAY_ONLY_ACCOUNTS = tuple(x.strip() for x in os.environ.get("VD_SEVENDAY_ONLY_ACCOUNTS", "*").split(",") if x.strip())
-# Accounts for which the 7D rule is UNCONDITIONAL: no fresh 7D set means no entry, full stop, even if the whole 7D lane
-# is down. fin exists only to trade 7D, so an empty lane must leave it flat rather than quietly trading 30D sets.
-SEVENDAY_STRICT_ACCOUNTS = tuple(x.strip() for x in os.environ.get("VD_SEVENDAY_STRICT_ACCOUNTS", "fin").split(",") if x.strip())
+# USER 2026-10-31 (correcting an earlier misreading of mine, verbatim): "this is ONLY for fin trading men sym_sides and
+# for trc trading trb sym_sides and gets calculated every day and ONLY applies to these 2 accounts NEVER ANYWHERE ELSE
+# but with the exact same sizing as the trb and men accounts - we ened to COMPARE wto see what is better if you start
+# trading 7D on all accounts the system is fucked".
+# fin and trc are the 7D ARMS of a two-arm comparison: fin vs men on men's book, trc vs trb on trb's book, same sizing,
+# the only difference being 7D versus 30D settings. Gating any other account would destroy the control arm and the
+# comparison with it. "*" is still accepted by the env for an operator override but is NEVER the default.
+SEVENDAY_ONLY_ACCOUNTS = tuple(x.strip() for x in os.environ.get("VD_SEVENDAY_ONLY_ACCOUNTS", "fin,trc").split(",") if x.strip())
+# Both 7D arms are UNCONDITIONAL: no fresh 7D set means no entry, full stop, even with the whole lane down. fin and trc
+# exist only to trade 7D, so an empty lane must leave them flat rather than quietly trading 30D sets — a 7D arm that
+# silently trades 30D settings is not a comparison, it is a duplicate of its control.
+SEVENDAY_STRICT_ACCOUNTS = tuple(x.strip() for x in os.environ.get("VD_SEVENDAY_STRICT_ACCOUNTS", "fin,trc").split(",") if x.strip())
 # LANE-DOWN BRAKE. "Only trade 7D results under 24 h old" and "guarantee trading 24/7" cannot both hold while the 7D
 # lane publishes NOTHING — and measured 2026-10-31 it publishes nothing on either venue: a board computes its
 # cumulative_overrides but exhausts the 90-min herd cap before live-verify, so `v15_preopen_7d_stage.validate_one`
@@ -210,7 +216,8 @@ SEVENDAY_STRICT_ACCOUNTS = tuple(x.strip() for x in os.environ.get("VD_SEVENDAY_
 # published 30D sets. The moment the lane publishes even one side the gate binds strictly, per side, everywhere.
 SEVENDAY_LANE_DOWN_BRAKE = os.environ.get("VD_SEVENDAY_LANE_DOWN_BRAKE", "1") == "1"
 SEVENDAY_MAX_AGE_S = float(os.environ.get("VD_SEVENDAY_MAX_AGE_S", str(24 * 3600)))
-SEVENDAY_BOOK = {"fin": "men"}
+# each 7D arm trades its CONTROL account's book and nothing else: fin -> men, trc -> trb (the same mapping universe() uses)
+SEVENDAY_BOOK = {"fin": "men", "trc": "trb"}
 MAC_POSITIONS = os.environ.get("VD_MAC_POSITIONS", "1") == "1"
 MAC_POSITIONS_MAX_AGE_S = float(os.environ.get("VD_MAC_POSITIONS_MAX_AGE_S", "900"))
 # Every held position must carry a resting protective stop. Audited per account at most this often (0 = off).

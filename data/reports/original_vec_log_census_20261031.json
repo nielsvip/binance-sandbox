@@ -348,8 +348,8 @@
         "ang_shadow_would_block": 46
       },
       "live_source": "ez_positions_quick.py:26487-26530.",
-      "vector_source": "v12_quick_engine.py:13522+ and :24088+; vec_decisions/twin_p0_crypto_a.py contains the associated entry-side twin.",
-      "current_gap": "Predicate exists at source level, but native emits partial REDUCE while v12 simulation appears to use a full-exit path. Nearby live logs record POSITIONS_ZERO_QTY_REFUSED for this reason. Treat as action/quantity execution parity concern, not a matcher-only issue; exact vector bar and quantity match are unproven."
+      "vector_source": "v12_quick_engine.py:13522+ computes the predicate; :24125-24264 now applies native fee-positive semantics and emits a partial REDUCE ledger event using the shared native/vector size helper vec_decisions/quick_missing_bb_recovery_sizing.py. tests/test_quick_missing_bb_recovery_sizing.py exercises actual simulate_one ledger accounting.",
+      "current_gap": "The native REDUCE versus former vector full-CLOSE mismatch has been implemented in the local v12 simulator; native ez_positions_quick.py and vector now call the shared BB_RECOVERY size function. Seven unit/simulator ledger tests pass. The historical Oct30 WOULD-BLOCK rows and qty=0 refusals remain evidence of old runtime behavior; they do not prove post-fix production parity or live order success."
     },
     {
       "family": "QUICK_DC4_HIGH/LOW_3M_GAIN_EROSION_STOP",

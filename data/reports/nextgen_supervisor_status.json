@@ -438,7 +438,7 @@
     "next_baseline_step": "Minimal accepted reader-input projection plus explicit neutral new keys, then assert full effective config/ledger/result against independent prior oracle; canonical local pilot still unchanged."
   },
   "latest_verified_progress": {
-    "updated_at": "2026-10-31T01:35:41.717039+00:00",
+    "updated_at": "2026-10-31T01:47:20.037432+00:00",
     "candidate_baseline": {
       "status": "ONE_SIDE_ACTUAL_BASELINE_PARITY_PASS_NO_OPTIMIZER",
       "sym_side": "1INCHUSDT_SHORT",
@@ -454,7 +454,13 @@
       "last_observed_supervisor_at": "2026-10-31T01:33:12.767770Z",
       "last_observed_output_bytes": 1060307328,
       "prior_run04": "preserved terminal disk-reserve stop",
-      "qualification": "No complete trained model yet"
+      "qualification": "No complete trained model yet",
+      "phases_observed": {
+        "features": "complete",
+        "graph": "complete",
+        "dataset": "complete",
+        "train2": "running"
+      }
     },
     "quartets": {
       "status": "PRECHECK_FAILED_RESOURCE_FLOOR_BEFORE_WORKER",
@@ -499,6 +505,17 @@
       "Use actual applicable fees/fill assumptions; no blanket fee override",
       "Candidate priorities and validation must reflect protection without hiding foregone gains or reentry losses"
     ],
-    "training_run05": "May finish as existing-objective research artifact, not sufficient to satisfy new priority"
+    "training_run05": "May finish as existing-objective research artifact, not sufficient to satisfy new priority",
+    "evidence_artifacts": [
+      "data/reports/nextgen_profit_protection_ledger_inventory_20261031.json",
+      "data/reports/nextgen_profit_protection_observed_fees_20261031.json",
+      "data/reports/nextgen_profit_protection_replay_review_20261031.json"
+    ],
+    "actual_engine_trace": {
+      "helper": "tools/v15_nextgen_protection_trace.py",
+      "status": "PREPARED_NOT_EXECUTED",
+      "root_unit_tests": "3 passed in 1.43s",
+      "runtime_change": "none; diagnostic observes actual frozen engine and requires baseline parity"
+    }
   }
 }

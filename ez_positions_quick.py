@@ -27698,14 +27698,22 @@ async def check_exit_candidates_for_account(
                         or "STOP" in hard_exit_reason
                         or "KILL" in hard_exit_reason
                     )
-                    reduce_q = (
-                        position.positionAmt
-                        if is_full_close
-                        else (position.positionAmt - (pos_min_qty * 0.9))
-                    )
-                    # BACKTEST_CHANGE_100: At small gains (0.3-1.0%), only reduce 30-50%, not dump to minimum.
-                    # One loss at -$5 wipes 10 wins at +$0.50. Keep most of position to let it run.
                     if (
+                        not is_full_close
+                        and "BB_RECOVERY_EXIT_TRADIER_" in str(hard_exit_reason)
+                    ):
+                        from vec_decisions.quick_missing_bb_recovery_sizing import bb_recovery_reduce_qty_scalar
+
+                        reduce_q = bb_recovery_reduce_qty_scalar(
+                            position.positionAmt,
+                            pos_min_qty,
+                            current_gain,
+                            _min_profit,
+                            getattr(config, "WT_REDUCE_FRAC_LOW", 0.15),
+                            getattr(config, "WT_REDUCE_FRAC_MED", 0.25),
+                            getattr(config, "WT_REDUCE_FRAC_HIGH", 0.50),
+                        )
+                    elif (
                         not is_full_close
                         and current_gain < 1.0
                         and current_gain >= _min_profit
@@ -27723,7 +27731,7 @@ async def check_exit_candidates_for_account(
                     ):
                         reduce_q = position.positionAmt * getattr(
                             config, "WT_REDUCE_FRAC_HIGH", 0.50
-                        )  # V4: 50% at 1-3% (was 70%)
+                        )  # V4: 50% at 1-3%, was 70%
                     else:
                         reduce_q = (
                             position.positionAmt
@@ -29116,6 +29124,7 @@ async def check_entry_candidates_for_account(
         score = 0
         rec = "WAIT"
         reason = "SCANNING"
+        _epq_b04_quantity = None
         try:
             async with sem:
                 now = time.time()
@@ -30234,6 +30243,13 @@ async def check_entry_candidates_for_account(
                     if _er_signal is not None:
                         should_trade = True
                         _dc_breakout_entry = True
+                        _er_reason = str(getattr(_er_signal, "reason", "") or "")
+                        if _er_reason.startswith("B04_DC_RETEST_"):
+                            _er_qty = safe_fetch_float(
+                                getattr(_er_signal, "quantity", 0.0), 0.0
+                            )
+                            if _er_qty > 0.0:
+                                _epq_b04_quantity = _er_qty
                         score = max(
                             score,
                             safe_fetch_float(
@@ -31203,6 +31219,14 @@ async def check_entry_candidates_for_account(
                         qty = pyramid_data["quantity"]
                         reason = pyramid_data["reason"]
                         rec = "PYRAMID_BOTA"
+                    elif _epq_b04_quantity is not None:
+                        qty = _epq_b04_quantity
+                        max_entry = (
+                            _q_sps_usd(_pq_sym, _pq_side, 45.0)
+                            * 12.0
+                            / current_price
+                        )
+                        qty = min(qty, max_entry)
                     else:
                         qty = calculate_dynamic_quantity(
                             symbol,

@@ -196,21 +196,6 @@ def test_a_side_outside_mens_book_is_refused_even_when_fresh(tmp_path):
     assert ok is False and "not in men's book" in why
 
 
-def test_other_accounts_pass_only_through_the_lane_down_brake(tmp_path):
-    """Superseded 2026-10-31: the 7D rule covers EVERY account. With nothing published they pass on the brake, loudly,
-    not because they are exempt."""
-    obj = seven(tmp_path)
-    obj.alert = lambda kind, **f: None
-    for acct in ("men", "ang", "flz", "inf"):
-        ok, why = obj.sevenday_ok(acct, "AAAUSDT_LONG", time.time())
-        assert ok is True and "lane down" in why
-    pub = tmp_path / "pub"
-    pub.mkdir()
-    obj2 = seven(pub, sides={"OTHERUSDT_LONG": time.time()}, keys=("AAAUSDT_LONG",))
-    obj2.alert = lambda kind, **f: None
-    assert obj2.sevenday_ok("men", "AAAUSDT_LONG", time.time())[0] is False
-
-
 def test_an_unparsable_artifact_refuses_rather_than_guesses(tmp_path):
     obj = seven(tmp_path)
     (tmp_path / "sevenday_crypto.json").write_text("{not json")
@@ -257,38 +242,35 @@ def test_an_ordinary_single_deterioration_still_latches(tmp_path):
     assert json.loads((tmp_path / "data" / "vector_direct" / "deteriorated_crypto.json").read_text()).keys() == out.keys()
 
 
-# ── the 7D rule now covers every account, with a lane-down brake (USER 2026-10-31) ──
+# ── the 7D rule is the TWO-ARM COMPARISON ONLY: fin vs men, trc vs trb (USER 2026-10-31) ──
 
-def test_every_account_is_gated_once_the_lane_publishes_anything(tmp_path):
+def test_only_fin_and_trc_are_ever_gated():
+    """USER: "ONLY ... these 2 accounts NEVER ANYWHERE ELSE ... if you start trading 7D on all accounts the system is
+    fucked". Gating a control account destroys the comparison it is the control for."""
+    assert set(module.SEVENDAY_ONLY_ACCOUNTS) == {"fin", "trc"}
+    assert set(module.SEVENDAY_STRICT_ACCOUNTS) == {"fin", "trc"}
+    assert module.SEVENDAY_BOOK == {"fin": "men", "trc": "trb"}
+
+
+def test_the_control_accounts_are_never_touched_by_the_gate(tmp_path):
     now = time.time()
-    obj = seven(tmp_path, sides={"AAAUSDT_LONG": now}, keys=("AAAUSDT_LONG", "BBBUSDT_LONG"))
-    assert obj.sevenday_ok("men", "AAAUSDT_LONG", now)[0] is True
-    ok, why = obj.sevenday_ok("men", "BBBUSDT_LONG", now)
-    assert ok is False and "no 7D result" in why, "a side without a fresh 7D set must not be entered"
+    obj = seven(tmp_path, sides={"AAAUSDT_LONG": now}, keys=("AAAUSDT_LONG",))
+    for control in ("men", "ang", "flz", "inf", "tra", "trb"):
+        assert obj.sevenday_ok(control, "ZZZUSDT_SHORT", now) == (True, ""), f"{control} must trade its own 30D settings"
 
 
-def test_a_dead_lane_rings_critical_but_does_not_stop_the_venue(tmp_path):
-    obj = seven(tmp_path)  # nothing published at all
-    alerts = []
-    obj.alert = lambda kind, **f: alerts.append((kind, f))
-    ok, why = obj.sevenday_ok("men", "AAAUSDT_LONG", time.time())
-    assert ok is True and "lane down" in why
-    assert [k for k, _ in alerts] == ["SEVENDAY_LANE_DOWN"]
-    assert alerts[0][1]["severity"] == "CRITICAL"
-    obj.sevenday_ok("ang", "AAAUSDT_LONG", time.time())
-    assert len(alerts) == 1, "one bell per episode"
+def test_each_arm_is_restricted_to_its_controls_book(tmp_path):
+    now = time.time()
+    obj = seven(tmp_path, sides={"AAAUSDT_LONG": now}, keys=("AAAUSDT_LONG",))
+    assert obj.sevenday_ok("fin", "AAAUSDT_LONG", now)[0] is True
+    ok, why = obj.sevenday_ok("fin", "NOTINBOOK_LONG", now)
+    assert ok is False and "not in men's book" in why
 
 
-def test_fin_is_never_exempted_by_the_lane_down_brake(tmp_path):
+def test_both_arms_stay_flat_when_the_lane_publishes_nothing(tmp_path):
+    """Strict: an arm that quietly traded 30D sets would be a duplicate of its control, not a comparison."""
     obj = seven(tmp_path)
     obj.alert = lambda kind, **f: None
-    ok, why = obj.sevenday_ok("fin", "AAAUSDT_LONG", time.time())
-    assert ok is False and "no 7D result" in why, "fin exists to trade 7D only"
-
-
-def test_the_brake_stops_applying_as_soon_as_one_side_is_published(tmp_path):
-    now = time.time()
-    obj = seven(tmp_path, sides={"OTHERUSDT_LONG": now}, keys=("AAAUSDT_LONG",))
-    obj.alert = lambda kind, **f: None
-    ok, why = obj.sevenday_ok("men", "AAAUSDT_LONG", now)
-    assert ok is False and "no 7D result" in why
+    for arm in ("fin", "trc"):
+        ok, why = obj.sevenday_ok(arm, "AAAUSDT_LONG", time.time())
+        assert ok is False, f"{arm} must stay flat with nothing published, got {why}"
