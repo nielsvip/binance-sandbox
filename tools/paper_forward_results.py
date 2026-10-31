@@ -115,17 +115,32 @@ def _store_pair_metadata(db: ScenarioDB, manifest: Mapping[str, Any], settings_h
         accounting_sha256 TEXT NOT NULL,
         PRIMARY KEY(run_id,source_frame_sequence,source_event_index)
     )""")
-    db.connection.execute("""CREATE VIEW IF NOT EXISTS paper_paired_simulated_cost_readiness AS
+    db.connection.execute("""CREATE TABLE IF NOT EXISTS paper_forward_run_provenance (
+        run_id TEXT PRIMARY KEY REFERENCES runs(run_id), evidence_label TEXT NOT NULL,
+        override_issues_json TEXT NOT NULL, source_time_semantics TEXT NOT NULL,
+        source_timeframe TEXT, source_time_alias_verified INTEGER NOT NULL,
+        closed_bar_status_verified INTEGER NOT NULL, coverage_gaps_json TEXT NOT NULL,
+        invalid_reasons_json TEXT NOT NULL, input_provenance_valid INTEGER NOT NULL,
+        performance_claim INTEGER NOT NULL
+    )""")
+    db.connection.execute("DROP VIEW IF EXISTS paper_paired_simulated_cost_readiness")
+    db.connection.execute("""CREATE VIEW paper_paired_simulated_cost_readiness AS
         SELECT p.*, ma.code_snapshot_sha256 AS code_snapshot_sha256_a,
                mb.code_snapshot_sha256 AS code_snapshot_sha256_b,
-               CASE WHEN p.identical_inputs_ready=1 AND p.shared_context_matches=1 AND p.candidate_config_differs=1 AND ((ma.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(mb.candidate_overrides_json))=1) OR (mb.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(ma.candidate_overrides_json))=1))
+               pa.evidence_label AS evidence_label_a,pb.evidence_label AS evidence_label_b,
+               pa.input_provenance_valid AS input_provenance_valid_a,pb.input_provenance_valid AS input_provenance_valid_b,
+               pa.invalid_reasons_json AS invalid_reasons_a,pb.invalid_reasons_json AS invalid_reasons_b,
+               pa.source_timeframe AS source_timeframe_a,pb.source_timeframe AS source_timeframe_b,
+               pa.source_time_alias_verified AS source_time_alias_verified_a,pb.source_time_alias_verified AS source_time_alias_verified_b,
+               pa.closed_bar_status_verified AS closed_bar_status_verified_a,pb.closed_bar_status_verified AS closed_bar_status_verified_b,
+               CASE WHEN p.identical_inputs_ready=1 AND p.shared_context_matches=1 AND p.candidate_config_differs=1 AND ((ma.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(mb.candidate_overrides_json))=1) OR (mb.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(ma.candidate_overrides_json))=1)) AND pa.input_provenance_valid=1 AND pb.input_provenance_valid=1
                          AND p.status_a='COMPLETED' AND p.status_b='COMPLETED'
                          AND ma.code_snapshot_sha256=mb.code_snapshot_sha256 THEN 1 ELSE 0 END AS paired_simulated_cost_ready,
                (SELECT COUNT(*) FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a) AS accounting_fills_a,
                (SELECT COUNT(*) FROM paper_forward_accounting_fills fb WHERE fb.run_id=p.run_b) AS accounting_fills_b,
                (SELECT COUNT(*) FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a AND fa.modeled_net_pnl_dollars IS NOT NULL AND fa.modeled_cost_dollars IS NOT NULL) AS known_modeled_close_costs_a,
                (SELECT COUNT(*) FROM paper_forward_accounting_fills fb WHERE fb.run_id=p.run_b AND fb.modeled_net_pnl_dollars IS NOT NULL AND fb.modeled_cost_dollars IS NOT NULL) AS known_modeled_close_costs_b,
-               CASE WHEN p.identical_inputs_ready=1 AND p.shared_context_matches=1 AND p.candidate_config_differs=1 AND ((ma.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(mb.candidate_overrides_json))=1) OR (mb.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(ma.candidate_overrides_json))=1))
+               CASE WHEN p.identical_inputs_ready=1 AND p.shared_context_matches=1 AND p.candidate_config_differs=1 AND ((ma.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(mb.candidate_overrides_json))=1) OR (mb.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(ma.candidate_overrides_json))=1)) AND pa.input_provenance_valid=1 AND pb.input_provenance_valid=1
                          AND p.status_a='COMPLETED' AND p.status_b='COMPLETED'
                          AND ma.code_snapshot_sha256=mb.code_snapshot_sha256
                          AND EXISTS (SELECT 1 FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a AND fa.modeled_net_pnl_dollars IS NOT NULL)
@@ -135,7 +150,7 @@ def _store_pair_metadata(db: ScenarioDB, manifest: Mapping[str, Any], settings_h
                     THEN 1 ELSE 0 END AS diagnostic_simulated_cost_ready,
                (SELECT SUM(fa.modeled_net_pnl_dollars) FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a) AS diagnostic_simulated_net_pnl_dollars_a,
                (SELECT SUM(fb.modeled_net_pnl_dollars) FROM paper_forward_accounting_fills fb WHERE fb.run_id=p.run_b) AS diagnostic_simulated_net_pnl_dollars_b,
-               CASE WHEN p.identical_inputs_ready=1 AND p.shared_context_matches=1 AND p.candidate_config_differs=1 AND ((ma.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(mb.candidate_overrides_json))=1) OR (mb.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(ma.candidate_overrides_json))=1))
+               CASE WHEN p.identical_inputs_ready=1 AND p.shared_context_matches=1 AND p.candidate_config_differs=1 AND ((ma.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(mb.candidate_overrides_json))=1) OR (mb.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(ma.candidate_overrides_json))=1)) AND pa.input_provenance_valid=1 AND pb.input_provenance_valid=1
                          AND p.status_a='COMPLETED' AND p.status_b='COMPLETED'
                          AND ma.code_snapshot_sha256=mb.code_snapshot_sha256
                          AND EXISTS (SELECT 1 FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a AND fa.modeled_net_pnl_dollars IS NOT NULL)
@@ -148,7 +163,9 @@ def _store_pair_metadata(db: ScenarioDB, manifest: Mapping[str, Any], settings_h
                'diagnostic_simulated_cost' AS outcome_label
         FROM paper_paired_readiness p
         JOIN paper_forward_run_metadata ma ON ma.run_id=p.run_a
-        JOIN paper_forward_run_metadata mb ON mb.run_id=p.run_b;
+        JOIN paper_forward_run_metadata mb ON mb.run_id=p.run_b
+        JOIN paper_forward_run_provenance pa ON pa.run_id=p.run_a
+        JOIN paper_forward_run_provenance pb ON pb.run_id=p.run_b;
     """)
     db.connection.execute("""CREATE VIEW IF NOT EXISTS paper_paired_readiness AS
         SELECT a.run_id AS run_a,b.run_id AS run_b,a.sym_side,
@@ -201,6 +218,58 @@ def _store_pair_metadata(db: ScenarioDB, manifest: Mapping[str, Any], settings_h
         raise ValueError("immutable paired-readiness run metadata conflict")
 
 
+def _store_run_provenance(db: ScenarioDB, manifest: Mapping[str, Any], run_dir: str | Path | None) -> None:
+    context = manifest.get("context") if isinstance(manifest.get("context"), Mapping) else {}
+    result = {}
+    if run_dir is not None and (Path(run_dir) / "result.json").is_file():
+        result = json.loads((Path(run_dir) / "result.json").read_text())
+        for key in ("run_id", "epoch_id", "scenario_id", "sym_side", "settings_sha256", "code_sha256"):
+            if result.get(key) is not None and str(result[key]) != str(manifest.get(key)):
+                raise ValueError(f"result.json {key} does not match worker manifest")
+    evidence_label = str(context.get("evidence_label") or manifest.get("evidence_label") or "UNVERIFIED")
+    issues = manifest.get("override_issues", result.get("override_issues", [])) or []
+    mismatch_keys = manifest.get("settings_mismatch_keys", result.get("settings_mismatch_keys", [])) or []
+    source_time_semantics = str(manifest.get("source_time_semantics") or result.get("source_time_semantics") or "UNVERIFIED")
+    window = manifest.get("experiment_window") if isinstance(manifest.get("experiment_window"), Mapping) else {}
+    source_timeframe = manifest.get("source_timeframe") or manifest.get("frame_timeframe") or window.get("source_timeframe") or context.get("source_timeframe")
+    alias_verified = manifest.get("source_time_alias_verified") is True or context.get("source_time_alias_verified") is True
+    closed_bar_verified = manifest.get("closed_bar_status_verified") is True or context.get("closed_bar_status_verified") is True
+    gaps = manifest.get("coverage_gaps") or result.get("coverage_gaps") or []
+    getter = manifest.get("candidate_getter_resolution") or {}
+    candidate = manifest.get("candidate_overrides") or {}
+    reasons = []
+    if evidence_label.upper() == "DIAGNOSTIC_REPLAY":
+        reasons.append("DIAGNOSTIC_REPLAY")
+    elif evidence_label == "UNVERIFIED":
+        reasons.append("EVIDENCE_LABEL_UNVERIFIED")
+    if issues:
+        reasons.append("OVERRIDE_ISSUES")
+    if mismatch_keys:
+        reasons.append("SETTINGS_MISMATCH")
+    if gaps:
+        reasons.append("COVERAGE_GAPS")
+    if not source_timeframe:
+        reasons.append("SOURCE_TIMEFRAME_UNVERIFIED")
+    if not alias_verified:
+        reasons.append("SOURCE_TIMEFRAME_ALIAS_UNVERIFIED")
+    if not closed_bar_verified or "unverified" in source_time_semantics.lower():
+        reasons.append("CLOSED_BAR_STATUS_UNVERIFIED")
+    if candidate and any(not isinstance(getter.get(key), Mapping) or getter[key].get("matches") is not True for key in candidate):
+        reasons.append("CANDIDATE_GETTER_UNVERIFIED")
+    values = (
+        manifest["run_id"], evidence_label, _canonical(issues), source_time_semantics,
+        str(source_timeframe) if source_timeframe else None, int(alias_verified), int(closed_bar_verified),
+        _canonical(gaps), _canonical(sorted(set(reasons))), int(not reasons), int(context.get("performance_claim") is True),
+    )
+    db.connection.execute("""INSERT INTO paper_forward_run_provenance VALUES(?,?,?,?,?,?,?,?,?,?,?)
+        ON CONFLICT(run_id) DO UPDATE SET evidence_label=excluded.evidence_label,
+        override_issues_json=excluded.override_issues_json,source_time_semantics=excluded.source_time_semantics,
+        source_timeframe=excluded.source_timeframe,source_time_alias_verified=excluded.source_time_alias_verified,
+        closed_bar_status_verified=excluded.closed_bar_status_verified,coverage_gaps_json=excluded.coverage_gaps_json,
+        invalid_reasons_json=excluded.invalid_reasons_json,input_provenance_valid=excluded.input_provenance_valid,
+        performance_claim=excluded.performance_claim""", values)
+
+
 def _ensure_run(db: ScenarioDB, manifest: Mapping[str, Any], identity: Mapping[str, Any], run_dir: str | Path | None = None) -> dict:
     required = ("run_id", "epoch_id", "scenario_id", "sym_side", "host", "settings_sha256", "parent_settings_sha256", "code_sha256", "code_file_hashes", "started_at", "candidate_overrides")
     if any(not str(manifest.get(key, "")).strip() for key in required):
@@ -221,6 +290,8 @@ def _ensure_run(db: ScenarioDB, manifest: Mapping[str, Any], identity: Mapping[s
     parameters = json.loads(scenario["parameters_json"])
     if parameters.get("overrides", {}) != manifest["candidate_overrides"]:
         raise ValueError("manifest candidate_overrides do not match registered scenario")
+    terminal_status = str(manifest.get("status", "")).upper()
+    settings_mismatch_status = terminal_status == "SETTINGS_MISMATCH"
     if hashlib.sha256(_canonical(base_settings).encode()).hexdigest() != manifest["parent_settings_sha256"]:
         raise ValueError("manifest parent_settings_sha256 does not match base_settings")
     declared = dict(base_settings)
@@ -237,10 +308,10 @@ def _ensure_run(db: ScenarioDB, manifest: Mapping[str, Any], identity: Mapping[s
                 raise ValueError(f"paper_mask_release key absent from base settings: {key}")
             declared[key] = base_settings[key]
     for key, value in manifest["candidate_overrides"].items():
-        if effective_settings.get(key) != value:
+        if effective_settings.get(key) != value and not settings_mismatch_status:
             raise ValueError(f"effective settings candidate mismatch for {key}")
     declared.update(manifest["candidate_overrides"])
-    if declared != effective_settings:
+    if declared != effective_settings and not settings_mismatch_status:
         raise ValueError("effective settings contain undeclared changes outside isolation_overrides, paper_mask_release, and candidate_overrides")
     effective_hash = hashlib.sha256(_canonical(effective_settings).encode()).hexdigest()
     if effective_hash != manifest["settings_sha256"]:
@@ -259,11 +330,13 @@ def _ensure_run(db: ScenarioDB, manifest: Mapping[str, Any], identity: Mapping[s
         if actual != expected:
             raise ValueError("immutable independent-forward run identity conflict")
         _store_pair_metadata(db, manifest, effective_hash, code_snapshot_hash)
+        _store_run_provenance(db, manifest, run_dir)
         return
     db.add_settings_snapshot(settings_hash=effective_hash, settings=effective_settings)
     db.add_source_code_snapshot(code_hash=code_snapshot_hash, file_hashes=code_file_hashes)
     db.add_run(run_id=manifest["run_id"], scenario_id=manifest["scenario_id"], sym_side=manifest["sym_side"], host=manifest["host"], settings_hash=manifest["settings_sha256"], code_hash=code_snapshot_hash, evidence_kind="independent_forward", status="RUNNING", started_at=manifest["started_at"], ended_at=None)
     _store_pair_metadata(db, manifest, effective_hash, code_snapshot_hash)
+    _store_run_provenance(db, manifest, run_dir)
     context_id = "paper-context-" + _digest([manifest["run_id"], manifest["epoch_id"], manifest["settings_sha256"]])
     db.add_run_status(event_id=context_id, run_id=manifest["run_id"], recorded_at=manifest["started_at"], status="RUNNING", detail={"epoch_id": manifest["epoch_id"], "parent_settings_sha256": manifest["parent_settings_sha256"], "settings_sha256": manifest["settings_sha256"], "candidate_overrides": manifest["candidate_overrides"], "isolation_overrides": isolation_overrides, "paper_mask_release": paper_mask_release, "context": manifest.get("context", {})})
     return {"base_settings": base_settings, "effective_settings": effective_settings}
@@ -442,14 +515,25 @@ def _ingest_accounting(db: ScenarioDB, manifest: Mapping[str, Any], run_dir: str
 def ingest(db: ScenarioDB, journal_path: str | Path, manifest: Mapping[str, Any], run_dir: str | Path | None = None) -> dict:
     identity, receipts = _journal(journal_path)
     terminal_status = str(manifest.get("status", "COMPLETED" if manifest.get("finished") is True else "RUNNING")).upper()
-    is_terminal = terminal_status in {"COMPLETED", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT", "FAILED"}
+    is_terminal = terminal_status in {"COMPLETED", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT", "FAILED", "DATA_GAP", "SETTINGS_MISMATCH"}
     with db.transaction():
         _ensure_run(db, manifest, identity, run_dir)
         if not receipts:
-            if is_terminal and terminal_status != "FAILED":
+            if is_terminal and terminal_status not in {"FAILED", "DATA_GAP", "SETTINGS_MISMATCH"}:
                 raise ValueError("finished worker manifest has no committed receipts")
+            if terminal_status in {"DATA_GAP", "SETTINGS_MISMATCH"}:
+                recorded_at = str(manifest.get("ended_at") or manifest.get("started_at") or "")
+                if not recorded_at:
+                    raise ValueError("empty terminal worker journal requires ended_at or started_at")
+                stamp = datetime.fromisoformat(recorded_at.replace("Z", "+00:00"))
+                if stamp.tzinfo is None:
+                    raise ValueError("terminal status timestamps must include timezone")
+                status_id = "paper-finished-" + _digest([manifest["run_id"], terminal_status, manifest.get("reason"), manifest.get("settings_mismatch_keys")])
+                db.add_run_status(event_id=status_id, run_id=manifest["run_id"], recorded_at=recorded_at, status=terminal_status,
+                                  detail={"epoch_id": manifest["epoch_id"], "receipts": 0, "reason": manifest.get("reason"), "settings_mismatch_keys": manifest.get("settings_mismatch_keys", [])})
+                return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": 0, "execution_events": 0, "decision_rows": 0, "completed_lifecycles": 0, "accounting_fills": 0, "status": terminal_status, "evidence_kind": "independent_forward", "result_valid": False}
             return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": 0, "execution_events": 0, "decision_rows": 0, "completed_lifecycles": 0, "accounting_fills": 0, "status": "WAITING_FOR_RECEIPTS", "evidence_kind": "independent_forward"}
-        if terminal_status in {"COMPLETED", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT"} and _journal_frame_count(journal_path) != len(receipts):
+        if terminal_status in {"COMPLETED", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT", "DATA_GAP", "SETTINGS_MISMATCH"} and _journal_frame_count(journal_path) != len(receipts):
             raise ValueError("finished worker manifest has incomplete frame receipts")
         sink = PaperSQLSink(db, str(manifest["run_id"]))
         decision_rows = 0
@@ -476,7 +560,7 @@ def ingest(db: ScenarioDB, journal_path: str | Path, manifest: Mapping[str, Any]
             db.add_run_status(event_id=status_id, run_id=manifest["run_id"], recorded_at=completion_time, status=terminal_status,
                               detail={"epoch_id": manifest["epoch_id"], "receipts": len(receipts), "source_end": _utc(receipts[-1]["ts"]), "reason": manifest.get("reason")})
         accounting_fills = _ingest_accounting(db, manifest, run_dir, receipts)
-    return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": len(receipts), "execution_events": raw_events, "decision_rows": decision_rows, "completed_lifecycles": completed, "accounting_fills": accounting_fills, "status": terminal_status if is_terminal else "RUNNING", "evidence_kind": "independent_forward"}
+    return {"run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"], "receipts": len(receipts), "execution_events": raw_events, "decision_rows": decision_rows, "completed_lifecycles": completed, "accounting_fills": accounting_fills, "status": terminal_status if is_terminal else "RUNNING", "evidence_kind": "independent_forward", "result_valid": bool(db.query("SELECT input_provenance_valid FROM paper_forward_run_provenance WHERE run_id=?", (manifest["run_id"],))[0][0])}
 
 
 def _journal_frame_count(path: str | Path) -> int:

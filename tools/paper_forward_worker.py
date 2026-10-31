@@ -516,13 +516,22 @@ except ValueError as exc:
 code_path = Path(engine.__file__).resolve()
 if not code_path.is_relative_to(engine_root):
     raise RuntimeError("imported engine did not come from private engine_root")
-code_hash = hashlib.sha256(code_path.read_bytes()).hexdigest()
+code_file_hashes = {}
+for module_name, module in (("backtest_v12_engine.py", engine), ("ez_manage.py", ez_manage), ("tradier_manage.py", tradier_manage), ("config.py", crypto_config), ("config_tradier.py", stock_config)):
+    module_path = Path(module.__file__).resolve()
+    if not module_path.is_relative_to(engine_root):
+        raise RuntimeError(f"imported code module {module_name} did not come from private engine_root: {module_path}")
+    code_file_hashes[module_path.relative_to(engine_root).as_posix()] = hashlib.sha256(module_path.read_bytes()).hexdigest()
+code_hash = code_file_hashes["backtest_v12_engine.py"]
+runtime_manifest_sha256 = hashlib.sha256((engine_root / "runtime_manifest.json").read_bytes()).hexdigest() if engine_runtime_manifest else None
 settings_hash = hashlib.sha256(json.dumps(effective, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
 symside = request["sym_side"]
 identity = {
     "run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"],
     "scenario_id": manifest["scenario_id"], "sym_side": symside,
     "settings_sha256": settings_hash, "code_sha256": code_hash,
+    "code_file_hashes": code_file_hashes, "engine_runtime_sha256": engine_runtime_manifest.get("runtime_sha256") if engine_runtime_manifest else None,
+    "runtime_manifest_sha256": runtime_manifest_sha256,
     "plan_code_hash": manifest["plan_code_hash"],
     "base_settings_sha256": hashlib.sha256(json.dumps(settings, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest(),
     "requested_merged_settings_sha256": hashlib.sha256(json.dumps(requested_effective, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest(),
@@ -544,17 +553,23 @@ result_manifest = {
     "scenario_id": manifest["scenario_id"], "sym_side": symside,
     "host": manifest["host"], "settings_sha256": settings_hash,
     "parent_settings_sha256": identity["base_settings_sha256"],
-    "code_sha256": code_hash, "code_file_hashes": {"backtest_v12_engine.py": code_hash},
+    "code_sha256": code_hash, "code_file_hashes": code_file_hashes,
     "plan_code_hash": manifest["plan_code_hash"], "started_at": started_at,
     "candidate_overrides": candidate, "isolation_overrides": isolation_overrides,
     "paper_mask_release": paper_mask_release, "context": {**manifest.get("context", {}), "experiment_context": manifest.get("experiment_context", {})},
     "candidate_getter_resolution": {}, "worker_isolation": require_installed(root),
     "engine_root": str(engine_root),
     "engine_runtime_sha256": engine_runtime_manifest.get("runtime_sha256") if engine_runtime_manifest else None,
+    "runtime_manifest_sha256": runtime_manifest_sha256,
     "engine_runtime_kind": "IMMUTABLE_BUNDLE" if engine_runtime_manifest else "WORKSPACE_DIAGNOSTIC",
     "promotion_eligible": False,
     "execution_mode": "V12_REAL_EXECUTE=1; real manager execute_now path with process-local broker/network I/O denial",
     "source_time_semantics": "native source timeframe timestamp; observed_at_utc is separate; closed-bar status unverified",
+    "source_timeframe": manifest.get("frame_timeframe", "1m" if mode == "crypto" else "5m"),
+    "source_timeframe_provenance": manifest.get("source_timeframe_provenance", "unverified_by_worker"),
+    "source_time_alias": manifest.get("source_time_alias", "unverified"),
+    "source_time_alias_verified": manifest.get("source_time_alias_verified", False),
+    "closed_bar_status_verified": manifest.get("closed_bar_status_verified", False),
     "experiment_window": manifest.get("experiment_window"),
     "experiment_window_resolution": manifest.get("experiment_window_resolution"),
     "source_journal": request.get("source_journal") or None,
@@ -579,6 +594,36 @@ else:
         spec_file.write(spec_body)
 
 override_snapshot = engine._run_one_apply_overrides(effective, mode)
+override_issues = list(engine._RUN_ONE_OVERRIDE_ISSUES)
+if override_issues:
+    mismatch_keys = sorted({str(issue.get("key", "UNKNOWN")) for issue in override_issues if isinstance(issue, dict)})
+    finished_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+    mismatch = {
+        "status": "SETTINGS_MISMATCH", "evidence_kind": "independent_forward",
+        "run_id": manifest["run_id"], "epoch_id": manifest["epoch_id"],
+        "scenario_id": manifest["scenario_id"], "sym_side": symside,
+        "settings_sha256": settings_hash, "code_sha256": code_hash,
+        "code_file_hashes": code_file_hashes, "engine_runtime_sha256": identity["engine_runtime_sha256"],
+        "runtime_manifest_sha256": runtime_manifest_sha256,
+        "override_issues": override_issues, "settings_mismatch_keys": mismatch_keys,
+        "reason": "engine rejected one or more requested effective settings",
+        "trades": [], "promotion_eligible": False,
+    }
+    _atomic_json(root / "result.json", mismatch)
+    result_manifest.update(
+        status="SETTINGS_MISMATCH", finished=True, ended_at=finished_at,
+        reason=mismatch["reason"], override_issues=override_issues,
+        settings_mismatch_keys=mismatch_keys, frame_count=0, committed_receipts=0,
+        result_file="result.json", result_sha256=hashlib.sha256((root / "result.json").read_bytes()).hexdigest(),
+    )
+    _atomic_json(result_manifest_path, result_manifest)
+    _atomic_json(root / "worker.status.json", {
+        "status": "SETTINGS_MISMATCH", "reason": mismatch["reason"],
+        "settings_mismatch_keys": mismatch_keys, "override_issues": override_issues,
+        "observed_at_utc": finished_at, **identity,
+    })
+    engine._run_one_restore_overrides(override_snapshot, mode)
+    raise SystemExit(0)
 precedence_state = engine._run_one_set_precedence_on(symside, effective, mode)
 if precedence_state.get("error"):
     raise RuntimeError("per-symbol settings precedence could not be installed: " + precedence_state["error"])
@@ -632,11 +677,17 @@ if not first_frame:
             "scenario_id": manifest["scenario_id"], "sym_side": symside,
             "mode": mode, "reason": session.wait_reason,
             "settings_sha256": settings_hash, "code_sha256": code_hash,
+            "override_issues": [], "settings_mismatch_keys": [],
             "source_time_semantics": "native source timeframe timestamp; closed-bar status unverified",
+            "source_timeframe": manifest.get("frame_timeframe", "1m" if mode == "crypto" else "5m"),
+            "source_timeframe_provenance": manifest.get("source_timeframe_provenance", "unverified_by_worker"),
+            "source_time_alias": manifest.get("source_time_alias", "unverified"),
+            "source_time_alias_verified": manifest.get("source_time_alias_verified", False),
+            "closed_bar_status_verified": manifest.get("closed_bar_status_verified", False),
             "promotion_eligible": False,
         }
         _atomic_json(root / "result.json", result)
-        result_manifest.update(status="DATA_GAP", finished=True, ended_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"), reason=session.wait_reason, frame_count=0, committed_receipts=0)
+        result_manifest.update(status="DATA_GAP", finished=True, ended_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"), reason=session.wait_reason, override_issues=[], settings_mismatch_keys=[], frame_count=0, committed_receipts=0, result_file="result.json", result_sha256=hashlib.sha256((root / "result.json").read_bytes()).hexdigest())
         _atomic_json(result_manifest_path, result_manifest)
         journal.close()
         engine._run_one_restore_overrides(override_snapshot, mode)
@@ -754,12 +805,17 @@ try:
         "candidate_overrides": candidate, "override_issues": list(engine._RUN_ONE_OVERRIDE_ISSUES),
         "store_row_existed": bool(precedence_state.get("store_row_existed")),
         "source_time_semantics": "native source timeframe timestamp; closed-bar status unverified",
+        "source_timeframe": manifest.get("frame_timeframe", "1m" if mode == "crypto" else "5m"),
+        "source_timeframe_provenance": manifest.get("source_timeframe_provenance", "unverified_by_worker"),
+        "source_time_alias": manifest.get("source_time_alias", "unverified"),
+        "source_time_alias_verified": manifest.get("source_time_alias_verified", False),
+        "closed_bar_status_verified": manifest.get("closed_bar_status_verified", False),
         "trades": trades, "receipt_db": str(root / "receipts.sqlite3"),
         "accounting_file": accounting_path.name, "accounting_sha256": accounting_sha256,
         "promotion_eligible": False,
     }
     _atomic_json(root / "result.json", result)
-    result_manifest.update(status=result["status"], finished=True, ended_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"), frame_count=result["frame_count"], committed_receipts=result["committed_receipts"], accounting_file=accounting_path.name, accounting_sha256=accounting_sha256)
+    result_manifest.update(status=result["status"], finished=True, ended_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"), frame_count=result["frame_count"], committed_receipts=result["committed_receipts"], override_issues=list(engine._RUN_ONE_OVERRIDE_ISSUES), settings_mismatch_keys=[], accounting_file=accounting_path.name, accounting_sha256=accounting_sha256, result_file="result.json", result_sha256=hashlib.sha256((root / "result.json").read_bytes()).hexdigest())
     _atomic_json(result_manifest_path, result_manifest)
 except BaseException as exc:
     import traceback
@@ -898,7 +954,7 @@ def main(argv=None):
     if not engine_root_value.is_absolute():
         engine_root_value = args.manifest.resolve().parent / engine_root_value
     engine_root = engine_root_value.resolve()
-    diagnostic_workspace_engine = engine_root == ROOT.resolve() and manifest.get("context", {}).get("evidence_label") == "DIAGNOSTIC_REPLAY" and manifest.get("context", {}).get("performance_claim") is False
+    diagnostic_workspace_engine = engine_root == workspace_root and manifest.get("context", {}).get("evidence_label") == "DIAGNOSTIC_REPLAY" and manifest.get("context", {}).get("performance_claim") is False
     try:
         runtime_manifest = validate_runtime_root(engine_root)
     except (OSError, ValueError, KeyError, TypeError) as exc:
@@ -990,7 +1046,7 @@ def main(argv=None):
     if not spec_path.exists():
         with spec_path.open("x", encoding="utf-8") as handle:
             handle.write(spec_bytes)
-    request = {"manifest": spec, "sym_side": args.sym_side, "symbol": symbol, "side": side, "mode": "crypto" if args.venue == "crypto" else "tradier", "full_settings": full_settings, "candidate_overrides": candidate, "engine_root": str(engine_root), "engine_runtime_sha256": runtime_manifest.get("runtime_sha256") if runtime_manifest else None, "diagnostic_workspace_engine": diagnostic_workspace_engine, "worker_code_root": str(ROOT.resolve()), "repo_root": str(workspace_root), "snapshot": str(_feed_path(snapshot)) if snapshot and str(snapshot) != "." else "", "receipt": str(_feed_path(receipt)) if receipt and str(receipt) != "." else "", "source_journal": str(source_journal_path) if source_journal_path else "", "poll_seconds": poll_seconds, "max_age_seconds": max_age_seconds, "account": args.account or manifest.get("account", "ang" if args.venue == "crypto" else "trb"), "capital": args.capital}
+    request = {"manifest": spec, "sym_side": args.sym_side, "symbol": symbol, "side": side, "mode": "crypto" if args.venue == "crypto" else "tradier", "full_settings": full_settings, "candidate_overrides": candidate, "engine_root": str(engine_root), "engine_runtime_sha256": runtime_manifest.get("runtime_sha256") if runtime_manifest else None, "diagnostic_workspace_engine": diagnostic_workspace_engine, "worker_code_root": str(workspace_root), "repo_root": str(workspace_root), "snapshot": str(_feed_path(snapshot)) if snapshot and str(snapshot) != "." else "", "receipt": str(_feed_path(receipt)) if receipt and str(receipt) != "." else "", "source_journal": str(source_journal_path) if source_journal_path else "", "poll_seconds": poll_seconds, "max_age_seconds": max_age_seconds, "account": args.account or manifest.get("account", "ang" if args.venue == "crypto" else "trb"), "capital": args.capital}
     request_path = run_dir / "request.json"
     request_bytes = json.dumps(request, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
     if request_path.exists() and request_path.read_text(encoding="utf-8") != request_bytes:
@@ -1018,7 +1074,7 @@ def main(argv=None):
         result = _read_json(result_path)
         result["run_dir"] = str(run_dir)
     print(json.dumps(result, sort_keys=True, allow_nan=False))
-    return 0 if result.get("status") in {"STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT", "COMPLETED", "DATA_GAP"} else 1
+    return 0 if result.get("status") in {"STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT", "COMPLETED", "DATA_GAP", "SETTINGS_MISMATCH"} else 1
 
 
 if __name__ == "__main__":

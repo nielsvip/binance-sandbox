@@ -27,6 +27,18 @@ SOURCE_BY_HOST = {
 }
 TIMEFRAMES = ("1m", "3m", "5m", "15m", "1h", "4h", "D", "W", "M")
 SYMBOL_KEY_RE = re.compile(r"^[A-Za-z0-9._-]{1,40}$")
+TIMEFRAME_PROVENANCE = {
+    "crypto": {
+        "1m": {"status": "KNOWN_ALIAS", "source_field": "timestamp_3m", "reason": "ez_indicators IndicatorCalculator assigns timestamp_1m from its 3m calculation"},
+        "3m": {"status": "NATIVE_SOURCE", "source_field": "timestamp_3m", "producer": "ez_indicators IndicatorCalculator"},
+        "5m": {"status": "UNSUPPORTED", "source_field": None, "reason": "ez_indicators TIMEFRAMES has no 5m calculation"},
+    },
+    "stocks": {
+        "1m": {"status": "WALLCLOCK_HEARTBEAT", "source_field": None, "reason": "tradier_indicators stamps timestamp_1m with utc_now"},
+        "3m": {"status": "NATIVE_SOURCE", "source_field": "timestamp_3m", "producer": "tradier_indicators IndicatorCalculator"},
+        "5m": {"status": "NATIVE_SOURCE", "source_field": "timestamp_5m", "producer": "tradier_indicators IndicatorCalculator"},
+    },
+}
 
 
 def _utc_iso(epoch):
@@ -188,6 +200,8 @@ def capture_once(host, base, runner=subprocess.run, clock=time.time):
             "source_bytes": len(raw),
             "symbol_count": sum(1 for key in snapshot if not key.startswith("_")),
             "timeframes": summarize_timestamps(snapshot, captured_epoch),
+            "verified_native_1m": False,
+            "timeframe_provenance": TIMEFRAME_PROVENANCE[venue],
         }
         snapshot_stage = stage / f"{venue}.json"
         shutil.copyfile(source_file, snapshot_stage)

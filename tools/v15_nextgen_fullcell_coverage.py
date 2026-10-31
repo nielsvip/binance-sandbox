@@ -185,8 +185,23 @@ def run(prepared,settings,config,pilot,context,capture,catalog_path,output,worke
         with Path(source['path']).open() as stream:
             for line in stream:
                 old=json.loads(line)
-                if old.get('proven_actual_result') and old.get('engine_proof',{}).get('input_cutoff_sha256')==context['input_cutoff_sha256']:
-                    skip_ids.add(old['cell']['catalog_cell_id'])
+                if not old.get('proven_actual_result') or old.get('cell',{}).get('cat_side')!=context['cat_side']:
+                    continue
+                expected_trial=guard.fingerprint(dict(logical_cell_id=old['logical_cell_id'],npz_sha256=context['npz_sha256'],input_cutoff_sha256=context['input_cutoff_sha256'],window=context['window'],accepted_chain_sha256=guard.fingerprint(settings)))
+                if old.get('trial_id')!=expected_trial:
+                    continue
+                reference=old['actual_proof']
+                if sha(reference['path'])!=reference['sha256']:
+                    raise ValueError('prior actual proof envelope changed')
+                if reference.get('encoding')=='cas-v1':
+                    from tools.v15_nextgen_proof_store import unpack
+                    raw=json.loads(unpack(reference['path'],reference['store_directory']))
+                else:
+                    raw=json.loads(Path(reference['path']).read_text())
+                result=guard.decoded(raw['result'])
+                if raw['npz_sha256']!=context['npz_sha256'] or raw['engine_sha256']!=context['engine_sha256'] or result.get('symside')!=context['sym_side'] or any(raw['actual_engine_proof'][key]!=value for key,value in old['engine_proof'].items()):
+                    raise ValueError('prior actual proof does not bind requested current trial')
+                skip_ids.add(old['cell']['catalog_cell_id'])
     def tasks():
         index=0
         for ordinal,cell in enumerate(iter_cells(catalog_path,context['cat_side'],ordering=ordering)):

@@ -45,8 +45,8 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 REQUIRED_SPEC_FIELDS = ("run_id", "epoch_id", "scenario_id", "sym_side", "venue", "host", "plan_code_hash", "engine_root")
-TERMINAL_STATES = {"COMPLETED", "FAILED", "INTERRUPTED", "INVALID_SPEC", "INVALID_EXPERIMENT_WINDOW", "UNMANIFESTED_SPEC", "MISSING_SPEC", "SPEC_CHANGED", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT"}
-WORKER_STATES = {"WAITING_FRESH_INPUT", "RUNNING", "RESOURCE_LIMIT_STOPPING", "FAILED", "COMPLETED", "COMPLETED_MULTI_FRAME_ENGINE_RUN", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT"}
+TERMINAL_STATES = {"COMPLETED", "FAILED", "INTERRUPTED", "INVALID_SPEC", "INVALID_EXPERIMENT_WINDOW", "UNMANIFESTED_SPEC", "MISSING_SPEC", "SPEC_CHANGED", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT", "DATA_GAP", "SETTINGS_MISMATCH"}
+WORKER_STATES = {"WAITING_FRESH_INPUT", "RUNNING", "RESOURCE_LIMIT_STOPPING", "FAILED", "COMPLETED", "COMPLETED_MULTI_FRAME_ENGINE_RUN", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT", "DATA_GAP", "SETTINGS_MISMATCH"}
 DEFAULT_WORKER_MEMORY_BYTES = 1024**3
 DEFAULT_WORKER_DISK_BYTES = 1024**3
 DEFAULT_WORKER_CPU_CORES = 0.25
@@ -269,7 +269,22 @@ def source_window_available(spec, specs_dir, root):
     database = raw_database.resolve()
     if not database.is_relative_to(Path(root).resolve()):
         return False, "SOURCE_JOURNAL_OUTSIDE_WORKSPACE"
+    poll_status_path = Path(f"{database}.status.json")
+    poll_status = None
+    try:
+        if poll_status_path.is_file() and poll_status_path.stat().st_size <= 64 * 1024:
+            poll_status = json.loads(poll_status_path.read_text(encoding="utf-8"))
+            if not isinstance(poll_status, dict) or poll_status.get("host") != spec["host"] or poll_status.get("venue") != spec["venue"].lower():
+                poll_status = None
+    except (OSError, ValueError, json.JSONDecodeError):
+        poll_status = None
+    if poll_status:
+        provenance_gaps = poll_status.get("provenance_gaps", [])
+        if window["source_timeframe"] in provenance_gaps:
+            return False, "UNVERIFIED_NATIVE_PROVENANCE"
     if not database.is_file():
+        if poll_status and poll_status.get("status") in {"UNVERIFIED_NATIVE_PROVENANCE", "NO_FRESH_FRAMES", "STALE_CAPTURE", "INPUT_ERROR", "DISK_RESERVE_BLOCKED", "ARCHIVE_FULL"}:
+            return False, poll_status["status"]
         return False, "WAITING_FOR_SOURCE_JOURNAL"
     symbol = spec["sym_side"].rsplit("_", 1)[0]
     venue = spec["venue"].lower()
@@ -469,8 +484,16 @@ def _worker_status(run_dir):
 
 
 def _map_worker_status(worker_status):
+    if isinstance(worker_status, dict):
+        worker_status = worker_status.get("status")
+    if isinstance(worker_status, str) and worker_status.startswith("DATA_GAP_"):
+        return "DATA_GAP"
+    if isinstance(worker_status, str) and worker_status.startswith("SETTINGS_MISMATCH_"):
+        return "SETTINGS_MISMATCH"
     if worker_status in {"COMPLETED", "COMPLETED_MULTI_FRAME_ENGINE_RUN"}:
         return "COMPLETED"
+    if worker_status in {"DATA_GAP", "SETTINGS_MISMATCH"}:
+        return worker_status
     if worker_status in {"STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT"}:
         return worker_status
     if worker_status == "FAILED":
@@ -494,11 +517,11 @@ def resource_worker_limit(observed, venue, host, max_workers=DEFAULT_MAX_WORKERS
     return max(0, min(int(max_workers), mem_slots, disk_slots, cpu_slots)), decision
 
 
-def _mark(connection, spec_id, status, now, detail=None, pid=None, exit_code=None, heartbeat=None, run_dir=None, command=None):
+def _mark(connection, spec_id, status, now, detail=None, pid=None, exit_code=None, heartbeat=None, run_dir=None, command=None, clear_pid=False):
     rendered_detail = json.dumps(detail or {}, sort_keys=True)
-    connection.execute("""UPDATE jobs SET status=?,detail=?,pid=COALESCE(?,pid),exit_code=COALESCE(?,exit_code),
+    connection.execute("""UPDATE jobs SET status=?,detail=?,pid=CASE WHEN ? THEN NULL ELSE COALESCE(?,pid) END,exit_code=COALESCE(?,exit_code),
         heartbeat_at=COALESCE(?,heartbeat_at),run_dir=COALESCE(?,run_dir),command_json=COALESCE(?,command_json),updated_at=? WHERE spec_id=?""",
-        (status, rendered_detail, pid, exit_code, heartbeat, str(run_dir) if run_dir else None,
+        (status, rendered_detail, int(clear_pid), pid, exit_code, heartbeat, str(run_dir) if run_dir else None,
          json.dumps(command) if command else None, now, spec_id))
     connection.execute("INSERT INTO events(spec_id,at_utc,status,detail,pid) VALUES(?,?,?,?,?)", (spec_id, now, status, rendered_detail, pid))
 
@@ -598,10 +621,10 @@ def reconcile(specs_dir, db_path, root=ROOT, host=None, once=True, dry_run=False
     for spec_id, pid, status, run_dir, spec_path in active:
         alive = _pid_alive(pid, spec_path)
         worker = _worker_status(run_dir) if run_dir else None
-        worker_mapped = _map_worker_status(worker["status"]) if worker else None
+        worker_mapped = _map_worker_status(worker) if worker else None
         if worker and (worker_mapped in TERMINAL_STATES):
             mapped = worker_mapped
-            _mark(connection, spec_id, mapped, utc_now(), worker, pid=pid, heartbeat=worker.get("heartbeat_at_utc") or worker.get("observed_at_utc") or utc_now())
+            _mark(connection, spec_id, mapped, utc_now(), worker, pid=pid, heartbeat=worker.get("heartbeat_at_utc") or worker.get("observed_at_utc") or utc_now(), clear_pid=True)
         elif not alive:
             _mark(connection, spec_id, "INTERRUPTED", utc_now(), {"reason": "worker_pid_not_alive; automatic restart disabled"}, exit_code=None)
         else:

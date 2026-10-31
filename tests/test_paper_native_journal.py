@@ -5,7 +5,7 @@ import sqlite3
 import zlib
 from pathlib import Path
 
-from tools.paper_native_journal import append_capture, journal_status
+from tools.paper_native_journal import append_capture, inspect_source, journal_status
 
 
 def _stamp(epoch):
@@ -19,7 +19,9 @@ def _publish(folder, host, observed, rows):
     raw = json.dumps(rows, sort_keys=True, separators=(",", ":")).encode()
     snapshot.write_bytes(raw)
     receipt.write_text(json.dumps({"captured_at_utc": _stamp(observed), "host": host, "venue": "crypto",
-                                   "source_sha256": hashlib.sha256(raw).hexdigest()}), encoding="utf-8")
+                                   "source_sha256": hashlib.sha256(raw).hexdigest(), "verified_native_1m": True,
+                                   "timeframe_provenance": {"1m": {"status": "VERIFIED_NATIVE", "source_field": "timestamp_1m"},
+                                                             "3m": {"status": "NATIVE_SOURCE", "source_field": "timestamp_3m"}}}), encoding="utf-8")
     return snapshot, receipt
 
 
@@ -79,3 +81,38 @@ def test_native_journal_rejects_stale_capture_without_synthesizing_time(tmp_path
     assert result["status"] == "STALE_CAPTURE"
     assert result["inserted"] == 0
     assert not Path(tmp_path / "native_journal_crypto.sqlite3").exists()
+
+
+def test_native_journal_rejects_fresh_known_aliased_1m_clock(tmp_path):
+    observed = 2_000_000_000
+    snapshot, receipt = _publish(tmp_path / "feed", "s1", observed, {"BTCUSDT": _row(observed - 10, 1)})
+    data = json.loads(receipt.read_text())
+    data["verified_native_1m"] = False
+    data["timeframe_provenance"]["1m"] = {"status": "KNOWN_ALIAS", "source_field": "timestamp_3m"}
+    receipt.write_text(json.dumps(data), encoding="utf-8")
+
+    result = append_capture(tmp_path / "native_journal_crypto.sqlite3", snapshot, receipt, "s1", min_free_bytes=0, now=observed)
+
+    assert result["status"] == "UNVERIFIED_NATIVE_PROVENANCE"
+    assert result["provenance_gaps"] == ["1m"]
+    assert result["inserted"] == 0
+    assert not Path(tmp_path / "native_journal_crypto.sqlite3").exists()
+    poll_status = json.loads(Path(f"{tmp_path / 'native_journal_crypto.sqlite3'}.status.json").read_text())
+    assert poll_status["status"] == "UNVERIFIED_NATIVE_PROVENANCE"
+    assert poll_status["provenance_gaps"] == ["1m"]
+
+
+def test_native_journal_preserves_valid_3m_when_1m_is_a_provenance_gap(tmp_path):
+    observed = 2_000_000_000
+    rows = {"BTCUSDT": _row(observed - 10, 1, observed - 10)}
+    snapshot, receipt = _publish(tmp_path / "feed", "s1", observed, rows)
+    data = json.loads(receipt.read_text())
+    data["verified_native_1m"] = False
+    data["timeframe_provenance"]["1m"] = {"status": "KNOWN_ALIAS", "source_field": "timestamp_3m"}
+    receipt.write_text(json.dumps(data), encoding="utf-8")
+
+    result = inspect_source(snapshot, receipt, "s1", timeframes=("1m", "3m"), now=observed)
+
+    assert result["status"] == "READY"
+    assert result["provenance_gaps"] == ["1m"]
+    assert [frame["timeframe"] for frame in result["candidates"]] == ["3m"]

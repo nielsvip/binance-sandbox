@@ -137,6 +137,10 @@ class Stops:
         src = dc15(self._npz_dir(), symbol)
         total = held_before + quantity
         existing = self._matching_stop(acct, symbol, side, level, total)
+        if existing is None and self.t.venue == "crypto":
+            previous = self._matching_stop(acct, symbol, side, 0.0 if side == "LONG" else float("inf"), total)
+            if previous is not None:
+                existing = self._replace_crypto_stop(acct, symbol, side, level, total, order, previous)
         if existing is None:
             placed = self.place(acct, symbol, side, level, total, order["key"])
             if not placed.get("id") or str(placed.get("status") or "").upper() not in PLACE_ACK_OK:
@@ -146,6 +150,38 @@ class Stops:
             self._withdraw(acct, symbol, side, order, f"STOP_NOT_RESTING {symbol}: level={level}")
         self._row(acct=acct, ss=order["ss"], act=order["act"], status="PREARM_VERIFIED", level=level, qty=total, dc=src, key=order["key"])
         return level
+
+    def _replace_crypto_stop(self, acct, symbol, side, level, quantity, order, previous):
+        previous_id = previous.get("algoId")
+        previous_level = float(previous.get("triggerPrice") or 0.0)
+        if not previous_id or previous_level <= 0:
+            raise RuntimeError(f"STOP_REPLACE_INVALID_PREVIOUS {symbol}: no verified stop identifier/level")
+        try:
+            self.t.broker._req("DELETE", "/fapi/v1/algoOrder", acct, {"symbol": symbol, "algoId": previous_id})
+            placed = self.place(acct, symbol, side, level, quantity, order["key"])
+            if not placed.get("id") or str(placed.get("status") or "").upper() not in PLACE_ACK_OK:
+                raise RuntimeError(f"STOP_PLACE_UNCONFIRMED {symbol}: {placed}")
+            existing = self._matching_stop(acct, symbol, side, level, quantity)
+            if existing is None:
+                raise RuntimeError(f"STOP_NOT_RESTING {symbol}: level={level}")
+            self._row(acct=acct, ss=order["ss"], act=order["act"], status="PREARM_REPLACED", previous_id=previous_id, previous_level=previous_level, level=level, key=order["key"])
+            return existing
+        except Exception as error:
+            try:
+                existing = self._matching_stop(acct, symbol, side, level, quantity)
+                if existing is not None:
+                    return existing
+                restored = self._matching_stop(acct, symbol, side, previous_level, quantity)
+                if restored is None:
+                    self.place(acct, symbol, side, previous_level, quantity, f"{order['key']}|RESTORE_STOP")
+                    restored = self._matching_stop(acct, symbol, side, previous_level, quantity)
+                if restored is None:
+                    raise RuntimeError("previous protective stop could not be verified")
+                self._row(acct=acct, ss=order["ss"], act=order["act"], status="PREARM_PREVIOUS_RESTORED", level=previous_level, detail=str(error)[:200], key=order["key"])
+            except Exception as restore_error:
+                self.t.alert("VD_STOP_RESTORE_FAILED", account=acct, sym_side=order["ss"], error=str(restore_error)[:200], severity="CRITICAL")
+                raise RuntimeError(f"STOP_REPLACE_FAILED {symbol}: {error}; restore failed: {restore_error}") from restore_error
+            raise RuntimeError(f"STOP_REPLACE_FAILED {symbol}: {error}; previous protection restored") from error
 
     def _withdraw(self, acct, symbol, side, order, reason):
         """Cancel the stop a refused entry just placed, then raise. Never swallows the original reason."""

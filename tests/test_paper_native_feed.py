@@ -79,6 +79,8 @@ class PaperNativeFeedTests(unittest.TestCase):
         self.assertEqual(seen["kwargs"]["timeout"], 20)
         self.assertEqual(hashlib.sha256(snapshot).hexdigest(), saved_receipt["source_sha256"])
         self.assertEqual(saved_receipt, receipt)
+        self.assertFalse(saved_receipt["verified_native_1m"])
+        self.assertEqual(saved_receipt["timeframe_provenance"]["1m"]["status"], "KNOWN_ALIAS")
 
 
 if __name__ == "__main__":

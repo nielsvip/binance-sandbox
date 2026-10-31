@@ -266,6 +266,115 @@ def live_entry_engine_passes_vec(
     return (final >= thr), final, reasons
 
 
+
+def compute_engine_score_arrays(npz, n: int, side: str, cfg, mode: str = "crypto"):
+    """Return exact per-engine fire and score arrays for the five live engines."""
+    import numpy as np
+    is_long = str(side or "").upper() == "LONG"
+    tradier = (mode or "").lower() in ("tradier", "stocks", "stock")
+    def arr(key, default=0.0, aliases=()):
+        source = key
+        if source not in npz and tradier:
+            source = next((name for name in aliases if name in npz), key)
+        if source not in npz:
+            return np.full(n, float(default), dtype=float)
+        raw = np.asarray(npz[source])
+        if raw.ndim != 1 or len(raw) < n:
+            raise ValueError(f"LIVE_ENTRY_ENGINE input {source} has invalid shape")
+        try:
+            return raw[:n].astype(float)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"LIVE_ENTRY_ENGINE input {source} is not numeric") from exc
+    def ha_arr(key, alias=None):
+        source = key if key in npz else alias if tradier and alias in npz else None
+        if source is None:
+            return np.full(n, "neutral", dtype=object)
+        raw = np.asarray(npz[source])
+        if raw.ndim != 1 or len(raw) < n:
+            raise ValueError(f"LIVE_ENTRY_ENGINE input {source} has invalid shape")
+        out = raw[:n].astype(object)
+        for j, value in enumerate(out):
+            if isinstance(value, (bytes, np.bytes_)):
+                out[j] = value.decode("utf-8", errors="ignore")
+            elif isinstance(value, (int, float, np.integer, np.floating)):
+                out[j] = "green" if value > 0 else "red" if value < 0 else "neutral"
+            else:
+                out[j] = str(value)
+        return np.char.lower(out.astype(str))
+    out = {}
+    enabled = bool(getattr(cfg, "LIVE_ENTRY_ENGINE_ENABLED", False))
+    minimum = float(getattr(cfg, "LIVE_ENTRY_ENGINE_MIN_SCORE", 0.5))
+    if not enabled:
+        return {name: (np.zeros(n, dtype=bool), np.zeros(n, dtype=float)) for name in ("wt", "stoch", "dc", "htf", "stdev_macro")}
+    if bool(getattr(cfg, "LIVE_ENTRY_ENGINE_WT_ENABLED", False)):
+        aligned = np.zeros(n, dtype=int)
+        for tf in ("3m", "15m", "1h", "4h", "D"):
+            aliases1 = ("wt1_5m",) if tf == "3m" else ()
+            aliases2 = ("wt2_5m",) if tf == "3m" else ()
+            w1, w2 = arr(f"wt1_{tf}", 0.0, aliases1), arr(f"wt2_{tf}", 0.0, aliases2)
+            aligned += ((w1 > w2) if is_long else (w1 < w2)).astype(int)
+        velocity = [arr(f"wt_velocity_{tf}") for tf in ("3m", "1h", "4h")]
+        vel_ok = np.logical_or.reduce([(v > 0) if is_long else (v < 0) for v in velocity])
+        score = np.where(aligned == 5, 1.0, np.where(aligned == 4, 0.8, np.where(aligned == 3, 0.6, aligned / 5.0)))
+        out["wt"] = ((aligned >= 4) | ((aligned == 3) & vel_ok), score)
+    else:
+        out["wt"] = (np.zeros(n, dtype=bool), np.zeros(n, dtype=float))
+    if bool(getattr(cfg, "LIVE_ENTRY_ENGINE_STOCH_ENABLED", False)):
+        k3, d3 = arr("stoch_k_3m", 50.0, ("stoch_k_5m",)), arr("stoch_d_3m", 50.0, ("stoch_d_5m",))
+        kp = arr("k_3m_prev") if "k_3m_prev" in npz else k3
+        dp = arr("d_3m_prev") if "d_3m_prev" in npz else d3
+        k15,d15=arr("stoch_k_15m",50),arr("stoch_d_15m",50); k1=arr("stoch_k_1h",50); k4=arr("stoch_k_4h",50)
+        if is_long:
+            cross=(k3>d3)&(kp<=dp); count=(k3>50).astype(int)+(k15>50)+(k1>50)+(k4>50); extreme=k3<20; kd3=k3>d3; kd15=k15>d15
+        else:
+            cross=(k3<d3)&(kp>=dp); count=(k3<50).astype(int)+(k15<50)+(k1<50)+(k4<50); extreme=k3>80; kd3=k3<d3; kd15=k15<d15
+        score=np.where((count==4)&cross&kd3&kd15,1.0,np.where((count>=3)&cross&kd3,0.7,np.where((count>=2)&extreme&kd3,0.5,0.0)))
+        out["stoch"]=(score>0,score)
+    else: out["stoch"]=(np.zeros(n,dtype=bool),np.zeros(n,dtype=float))
+    if bool(getattr(cfg,"LIVE_ENTRY_ENGINE_DC_ENABLED",False)):
+        price=arr("current_price",0.0)
+        for key in ("price","mark_price","close_5m","close_3m","close"):
+            price=np.where(price!=0,price,arr(key,0.0))
+        h3,h15,h1=arr("dc_high_3m"),arr("dc_high_15m"),arr("dc_high_1h"); l3,l15,l1=arr("dc_low_3m"),arr("dc_low_15m"),arr("dc_low_1h")
+        l4,h4,basis=arr("dc_low_4h"),arr("dc_high_4h"),arr("dc_basis_15m"); ha3=ha_arr("ha_3m","ha_5m"); w13,w23=arr("wt1_3m",0,("wt1_5m",)),arr("wt2_3m",0,("wt2_5m",))
+        if is_long:
+            scores=[np.where((h>0)&(price>h),sc,0.) for h,sc in ((h3,.6),(h15,.8),(h1,1.))]
+            dist=np.divide(abs(price-basis)*100,basis,out=np.full(n,np.inf),where=basis>0); scores += [np.where((basis>0)&(ha3=="green")&(price>=basis)&(dist<=.3),.7,0.)]
+            dist=np.divide(abs(price-l4)*100,l4,out=np.full(n,np.inf),where=l4>0); scores += [np.where((l4>0)&(w13>w23)&(dist<=.5),.6,0.)]
+        else:
+            scores=[np.where((l>0)&(price<l),sc,0.) for l,sc in ((l3,.6),(l15,.8),(l1,1.))]
+            dist=np.divide(abs(price-basis)*100,basis,out=np.full(n,np.inf),where=basis>0); scores += [np.where((basis>0)&(ha3=="red")&(price<=basis)&(dist<=.3),.7,0.)]
+            dist=np.divide(abs(price-h4)*100,h4,out=np.full(n,np.inf),where=h4>0); scores += [np.where((h4>0)&(w13<w23)&(dist<=.5),.6,0.)]
+        score=np.maximum.reduce(scores); out["dc"]=(score>=.6,score)
+    else: out["dc"]=(np.zeros(n,dtype=bool),np.zeros(n,dtype=float))
+    if bool(getattr(cfg,"LIVE_ENTRY_ENGINE_HTF_ENABLED",False)):
+        price=arr("price",0.)
+        for key in ("current_price","close"): price=np.where(price!=0,price,arr(key,0.))
+        sma,bd,bdp=arr("sma_200_D"),arr("dc_basis_D"),arr("dc_basis_D_ant"); ha4,had=ha_arr("ha_4h"),ha_arr("ha_D")
+        k4=np.where(arr("stoch_k_4h")!=0,arr("stoch_k_4h"),arr("k_4h")); score=np.zeros(n)
+        score+=np.where((sma>0)&(price>0)&((price>sma*1.01) if is_long else (price<sma*.99)),.3,0.)
+        score+=np.where((bd>0)&(bdp>0)&((bd>bdp) if is_long else (bd<bdp)),.2,0.)
+        side_ha="green" if is_long else "red"; score+=np.where(ha4==side_ha,.2,0.)+np.where(had==side_ha,.2,0.)
+        score+=np.where((k4>0)&((k4>50) if is_long else (k4<50)),.1,0.); score=np.round(score,4); out["htf"]=(score>=.5,score)
+    else: out["htf"]=(np.zeros(n,dtype=bool),np.zeros(n,dtype=float))
+    if bool(getattr(cfg,"LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED",False)):
+        bd,b4=arr("bb_pct_b_D",.5),arr("bb_pct_b_4h",.5); bd=np.where(np.isfinite(bd),bd,0.); b4=np.where(np.isfinite(b4),b4,0.); present=(bd!=.5)|(b4!=.5)
+        dt,db=bd>.90,bd<.10; ht,hb=b4>.90,b4<.10; conflict=(dt&hb)|(db&ht); strong_top=~conflict&(bd>.97)&ht; strong_bot=~conflict&(bd<.03)&hb; top=~conflict&(dt|ht); bot=~conflict&(db|hb)
+        w3a,w3b=arr("wt1_3m",0,("wt1_5m",)),arr("wt2_3m",0,("wt2_5m",)); wda,wdb=arr("wt1_D"),arr("wt2_D")
+        if is_long:
+            ltf,htf=w3a>w3b,wda>wdb; fire=present&(strong_bot|(bot&ltf)); score=np.where(strong_bot,np.where(ltf&htf,1.,np.where(ltf|htf,.8,.5)),np.where(bot,np.where(ltf,.5,.3),0.))
+        else:
+            ltf,htf=w3a<w3b,wda<wdb; fire=present&(strong_top|(top&ltf)); score=np.where(strong_top,np.where(ltf&htf,1.,np.where(ltf|htf,.8,.5)),np.where(top,np.where(ltf,.5,.3),0.))
+        out["stdev_macro"]=(fire,score)
+    else: out["stdev_macro"]=(np.zeros(n,dtype=bool),np.zeros(n,dtype=float))
+    return out
+
+def aggregate_entry_boost_array(engine_arrays, cfg, n: int):
+    import numpy as np
+    if not bool(getattr(cfg,"LIVE_ENTRY_ENGINE_ENABLED",False)): return np.zeros(n,dtype=float)
+    minimum=float(getattr(cfg,"LIVE_ENTRY_ENGINE_MIN_SCORE",.5))
+    return np.maximum.reduce([np.where(fire & (score>=minimum),score,0.) for fire,score in engine_arrays.values()])*float(getattr(cfg,"LIVE_ENTRY_ENGINE_BOOST_SCORE",8.))
+
 # ---------------------------------------------------------------------------
 # Self-test runnable via `python3 vec_paths/live_entry_engine.py`
 # ---------------------------------------------------------------------------

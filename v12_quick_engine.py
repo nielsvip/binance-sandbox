@@ -12646,14 +12646,20 @@ def compute_entry_signals(npz, n, is_long, cfg):
             # force-tightened DC target only when WT_DC was enabled (not live-faithful). The
             # entry mask is now exactly the real live multi-TF scorer threshold — parity proven
             # by test_wt_dc_entry_scorer_vec.py (scorer == live scalar wt_dc_entry_scorer).
-            blocks["B_WT_DC_LIVE"] = _scores_wtdc >= _thr_wtdc
+            _scores_wtdc_effective = _scores_wtdc
+            if str(getattr(cfg, "MODE", "crypto")) == "tradier" and bool(getattr(cfg, "LIVE_ENTRY_ENGINE_ENABLED", False)):
+                import vec_paths.live_entry_engine as _lee_vec
+                _lee_components = _lee_vec.compute_engine_score_arrays(npz, n, "LONG" if is_long else "SHORT", cfg, mode="tradier")
+                _lee_boost = _lee_vec.aggregate_entry_boost_array(_lee_components, cfg, n)
+                _scores_wtdc_effective = _scores_wtdc + _lee_boost
+            blocks["B_WT_DC_LIVE"] = _scores_wtdc_effective >= _thr_wtdc
             # [C2 q001] stocks live veto ENTRY_SCORE_THRESHOLD (tradier_manage.py:13223-13226): a fresh OPEN whose _entry_score < knob is vetoed AFTER the WT_DC
             # scorer fired (score >= WT_DC_ENTRY_THRESHOLD). Neutral at the template options 9..27 (< 45) and at the default 18; binds for options > threshold.
             if str(getattr(cfg, "MODE", "crypto")) == "tradier":
                 _es_min = float(getattr(cfg, "ENTRY_SCORE_THRESHOLD", 0) or 0)
                 if _es_min > 0:
                     blocks["B_WT_DC_LIVE"] = blocks["B_WT_DC_LIVE"] & (
-                        _scores_wtdc >= _es_min
+                        _scores_wtdc_effective >= _es_min
                     )
             # [C2 b7b] STOCKS live WT_DC entry final condition (tradier_manage.py:12825): score>=thr AND NOT (htf_block[WT_DC_HTF_GATE/MODE/TF_HTF*],
             # htf_align_block[HTF_ALIGN_REQUIRED_TRADIER], bb_pullback_block, wt_dc_pos_block[short], lt_block[short], side switch WT_DC_LONG/SHORT_ENABLED).

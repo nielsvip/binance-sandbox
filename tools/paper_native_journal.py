@@ -28,6 +28,7 @@ except ImportError:
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TIMEFRAMES = ("1m",)
+ALLOWED_JOURNAL_TIMEFRAMES = ("1m", "3m", "5m", "15m")
 DEFAULT_MAX_DB_BYTES = 1024**3
 DEFAULT_DISK_RESERVE_BYTES = 8 * 1024**3
 DEFAULT_MAX_CAPTURE_AGE_SECONDS = 180
@@ -140,7 +141,7 @@ def inspect_source(snapshot_path, receipt_path, host, timeframes=DEFAULT_TIMEFRA
         raise JournalError("host must be one of s1, s2, s5, s6")
     expected_venue = SOURCE_BY_HOST[host][0]
     timeframes = tuple(timeframes)
-    if not timeframes or any(timeframe not in DEFAULT_TIMEFRAMES for timeframe in timeframes):
+    if not timeframes or any(timeframe not in ALLOWED_JOURNAL_TIMEFRAMES for timeframe in timeframes):
         raise JournalError("timeframes must be selected from 1m, 3m, 5m, 15m")
     now = time.time() if now is None else float(now)
     raw = _read_stable_file(snapshot_path, MAX_BYTES)
@@ -160,14 +161,34 @@ def inspect_source(snapshot_path, receipt_path, host, timeframes=DEFAULT_TIMEFRA
     if now - observed_ts > max_capture_age_seconds:
         return {"status": "STALE_CAPTURE", "host": host, "venue": expected_venue, "observed_ts": observed_ts,
                 "source_sha256": _digest(raw), "candidates": [], "stale_count": 0, "invalid_count": 0}
+    provenance = receipt.get("timeframe_provenance")
+    verified_timeframes, provenance_gaps = [], []
+    for timeframe in timeframes:
+        entry = provenance.get(timeframe) if isinstance(provenance, dict) else None
+        if timeframe == "1m":
+            verified = (receipt.get("verified_native_1m") is True and isinstance(entry, dict)
+                        and entry.get("status") == "VERIFIED_NATIVE" and entry.get("source_field") == "timestamp_1m")
+        else:
+            verified = (isinstance(entry, dict) and entry.get("status") == "NATIVE_SOURCE"
+                        and entry.get("source_field") == f"timestamp_{timeframe}")
+        if verified:
+            verified_timeframes.append(timeframe)
+        else:
+            provenance_gaps.append(timeframe)
     candidates, stale_count, invalid_count = [], 0, 0
+    if provenance_gaps:
+        invalid_count += sum(1 for symbol in snapshot if not symbol.startswith("_")) * len(provenance_gaps)
+    if not verified_timeframes:
+        return {"status": "UNVERIFIED_NATIVE_PROVENANCE", "host": host, "venue": expected_venue,
+                "observed_ts": observed_ts, "source_sha256": _digest(raw), "candidates": [],
+                "stale_count": 0, "invalid_count": invalid_count, "provenance_gaps": provenance_gaps}
     for symbol, row in snapshot.items():
         if symbol.startswith("_") or not isinstance(row, dict):
             continue
         payload = _canonical(row)
         input_hash = _digest(payload)
         compressed = zlib.compress(payload, level=6)
-        for timeframe in timeframes:
+        for timeframe in verified_timeframes:
             try:
                 source_ts = _epoch(row.get(f"timestamp_{timeframe}"))
             except (ValueError, TypeError, OverflowError):
@@ -185,12 +206,12 @@ def inspect_source(snapshot_path, receipt_path, host, timeframes=DEFAULT_TIMEFRA
                                "payload_blob": compressed, "raw_bytes": len(payload)})
     return {"status": "READY" if candidates else "NO_FRESH_FRAMES", "host": host, "venue": expected_venue,
             "observed_ts": observed_ts, "source_sha256": _digest(raw), "candidates": candidates,
-            "stale_count": stale_count, "invalid_count": invalid_count}
+            "stale_count": stale_count, "invalid_count": invalid_count, "provenance_gaps": provenance_gaps}
 
 
-def append_capture(database, snapshot_path, receipt_path, host, timeframes=DEFAULT_TIMEFRAMES,
-                   max_database_bytes=DEFAULT_MAX_DB_BYTES, min_free_bytes=DEFAULT_DISK_RESERVE_BYTES,
-                   max_capture_age_seconds=DEFAULT_MAX_CAPTURE_AGE_SECONDS, now=None):
+def _append_capture(database, snapshot_path, receipt_path, host, timeframes=DEFAULT_TIMEFRAMES,
+                    max_database_bytes=DEFAULT_MAX_DB_BYTES, min_free_bytes=DEFAULT_DISK_RESERVE_BYTES,
+                    max_capture_age_seconds=DEFAULT_MAX_CAPTURE_AGE_SECONDS, now=None):
     database = Path(database).expanduser().resolve()
     if max_database_bytes <= META_RESERVE_BYTES or min_free_bytes < 0:
         raise ValueError("database cap or disk reserve is invalid")
@@ -287,6 +308,39 @@ def append_capture(database, snapshot_path, receipt_path, host, timeframes=DEFAU
         connection.close()
 
 
+def _write_poll_status(database, result, now=None):
+    database = Path(database)
+    status_path = Path(f"{database}.status.json")
+    if status_path.is_symlink():
+        raise JournalError("journal poll status path may not be a symlink")
+    status_path.parent.mkdir(parents=True, exist_ok=True)
+    observed = time.time() if now is None else float(now)
+    status = {key: value for key, value in result.items() if key != "candidates"}
+    status["poll_observed_at_utc"] = dt.datetime.fromtimestamp(observed, dt.timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    encoded = json.dumps(status, sort_keys=True, separators=(",", ":")) + "\n"
+    temporary = status_path.with_name(f".{status_path.name}.{os.getpid()}.tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        handle.write(encoded)
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(temporary, status_path)
+    return status
+
+
+def append_capture(database, snapshot_path, receipt_path, host, timeframes=DEFAULT_TIMEFRAMES,
+                   max_database_bytes=DEFAULT_MAX_DB_BYTES, min_free_bytes=DEFAULT_DISK_RESERVE_BYTES,
+                   max_capture_age_seconds=DEFAULT_MAX_CAPTURE_AGE_SECONDS, now=None):
+    database = Path(database).expanduser().resolve()
+    try:
+        result = _append_capture(database, snapshot_path, receipt_path, host, timeframes,
+                                 max_database_bytes, min_free_bytes, max_capture_age_seconds, now)
+    except Exception as exc:
+        _write_poll_status(database, {"status": "INPUT_ERROR", "host": host, "error": f"{type(exc).__name__}: {exc}"}, now)
+        raise
+    _write_poll_status(database, result, now)
+    return result
+
+
 def _meta_value(connection, key, default=None):
     row = connection.execute("SELECT value FROM journal_meta WHERE key=?", (key,)).fetchone()
     return row[0] if row else default
@@ -347,7 +401,7 @@ def main(argv=None):
     parser.add_argument("--min-free-bytes", type=int, default=DEFAULT_DISK_RESERVE_BYTES)
     parser.add_argument("--max-capture-age-seconds", type=float, default=DEFAULT_MAX_CAPTURE_AGE_SECONDS)
     parser.add_argument("--poll-seconds", type=float, default=60)
-    parser.add_argument("--timeframes", default=",".join(DEFAULT_TIMEFRAMES))
+    parser.add_argument("--timeframes", default=",".join(DEFAULT_TIMEFRAMES), help="native source clocks: 1m, 3m, 5m, 15m")
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--status", action="store_true")
     parser.add_argument("--prune-before-sequence", type=int)

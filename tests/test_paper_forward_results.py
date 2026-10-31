@@ -18,7 +18,7 @@ def _fixture(tmp_path):
     db.add_run(run_id="planned-" + _digest(["s", epoch]), scenario_id="s", sym_side="BTCUSDC_LONG", host="worker1", settings_hash=settings, code_hash=code, evidence_kind="catalog_only", status="PENDING_VALIDATED_EXECUTION", started_at="2026-01-01T00:00:00Z", ended_at=None)
     effective = {"BOOL_SWITCH": True, "START_POSITION_SIZE": 25}
     effective_hash = hashlib.sha256(json.dumps(effective, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
-    manifest = {"run_id": "actual-run-1", "epoch_id": epoch, "scenario_id": "s", "sym_side": "BTCUSDC_LONG", "host": "worker1", "settings_sha256": effective_hash, "parent_settings_sha256": settings, "code_sha256": code, "code_file_hashes": {"backtest_v12_engine.py": code}, "started_at": "1970-01-01T00:00:00Z", "base_settings": base, "effective_settings": effective, "candidate_overrides": candidate, "finished": True}
+    manifest = {"run_id": "actual-run-1", "epoch_id": epoch, "scenario_id": "s", "sym_side": "BTCUSDC_LONG", "host": "worker1", "settings_sha256": effective_hash, "parent_settings_sha256": settings, "code_sha256": code, "code_file_hashes": {"backtest_v12_engine.py": code}, "started_at": "1970-01-01T00:00:00Z", "base_settings": base, "effective_settings": effective, "candidate_overrides": candidate, "candidate_getter_resolution": {"BOOL_SWITCH": {"matches": True}}, "source_timeframe": "1m", "source_time_alias_verified": True, "closed_bar_status_verified": True, "source_time_semantics": "native 1m source timeframe; closed-bar status verified", "experiment_window": {"source_timeframe": "1m"}, "context": {"evidence_label": "INDEPENDENT_FORWARD", "source_timeframe": "1m", "source_time_alias_verified": True, "closed_bar_status_verified": True}, "finished": True}
     journal = FrameJournal(tmp_path / "worker.sqlite", {"scenario_id": "s", "run_id": manifest["run_id"], "epoch_id": epoch, "sym_side": "BTCUSDC_LONG", "settings_sha256": effective_hash, "code_sha256": code})
     journal.append_frame(100, {"close": 10})
     journal.record_receipt(100, {"events": [{"type": "eta", "action": "OPEN", "status": "FILLED", "position_key": "inf:BTCUSDC_LONG", "position_before": 0, "position_after": 2, "price": 10, "quantity": 2}], "positions": {"inf:BTCUSDC_LONG": {"quantity": 2}}})
@@ -183,6 +183,11 @@ def test_paired_readiness_reports_shared_inputs_without_claiming_outcomes(tmp_pa
     assert cost_pair["paired_simulated_cost_ready"] == 1
     assert cost_pair["diagnostic_simulated_cost_ready"] == 1
     assert cost_pair["diagnostic_simulated_net_pnl_dollars_delta"] == 0
+    db.connection.execute("UPDATE paper_forward_run_provenance SET evidence_label='DIAGNOSTIC_REPLAY',input_provenance_valid=0,invalid_reasons_json='[\"DIAGNOSTIC_REPLAY\"]' WHERE run_id='actual-baseline'")
+    invalid_pair = next(row for row in db.query("SELECT * FROM paper_paired_simulated_cost_readiness") if {row["run_a"], row["run_b"]} == {"actual-run-1", "actual-baseline"})
+    assert invalid_pair["paired_simulated_cost_ready"] == 0
+    assert invalid_pair["diagnostic_simulated_cost_ready"] == 0
+    assert invalid_pair["diagnostic_simulated_net_pnl_dollars_delta"] is None
     db.close()
 
 
@@ -298,4 +303,54 @@ def test_accounting_accepts_filled_recording_client_event_without_type(tmp_path)
     _write_accounting(journal.parent, manifest, artifact)
     result = ingest(db, journal, manifest, journal.parent)
     assert result["accounting_fills"] == 2
+    db.close()
+
+
+def test_terminal_data_gap_is_visible_without_fake_receipts_or_trades(tmp_path):
+    import sqlite3
+
+    db, journal, manifest = _fixture(tmp_path)
+    connection = sqlite3.connect(journal)
+    connection.execute("DELETE FROM frames")
+    connection.commit()
+    connection.close()
+    manifest.update(status="DATA_GAP", finished=True, ended_at="1970-01-01T00:05:00Z", reason="NO_INPUT_BEFORE_WINDOW_END")
+    result = ingest(db, journal, manifest)
+    assert result["status"] == "DATA_GAP"
+    assert result["result_valid"] is False
+    assert db.query("SELECT status FROM run_current_status WHERE run_id='actual-run-1'")[0][0] == "DATA_GAP"
+    assert db.query("SELECT COUNT(*) FROM forward_receipts WHERE run_id='actual-run-1'")[0][0] == 0
+    assert db.query("SELECT COUNT(*) FROM trades WHERE run_id='actual-run-1'")[0][0] == 0
+    db.close()
+
+
+def test_terminal_settings_mismatch_is_visible_without_processing_frames(tmp_path):
+    import sqlite3
+
+    db, journal, manifest = _fixture(tmp_path)
+    connection = sqlite3.connect(journal)
+    connection.execute("DELETE FROM frames")
+    connection.commit()
+    connection.close()
+    manifest.update(status="SETTINGS_MISMATCH", finished=True, ended_at="1970-01-01T00:05:00Z", settings_mismatch_keys=["X"])
+    result = ingest(db, journal, manifest)
+    assert result["status"] == "SETTINGS_MISMATCH"
+    assert result["result_valid"] is False
+    assert db.query("SELECT status FROM run_current_status WHERE run_id='actual-run-1'")[0][0] == "SETTINGS_MISMATCH"
+    assert db.query("SELECT COUNT(*) FROM forward_receipts WHERE run_id='actual-run-1'")[0][0] == 0
+    assert db.query("SELECT COUNT(*) FROM trades WHERE run_id='actual-run-1'")[0][0] == 0
+    db.close()
+
+
+def test_diagnostic_replay_and_override_issues_are_invalid_provenance(tmp_path):
+    db, journal, manifest = _fixture(tmp_path)
+    manifest["context"]["evidence_label"] = "DIAGNOSTIC_REPLAY"
+    manifest["override_issues"] = [{"action": "SKIPPED_CONTAINER_TYPE_MISMATCH", "key": "DELTA_TF_WEIGHTS"}]
+    result = ingest(db, journal, manifest)
+    provenance = db.query("SELECT input_provenance_valid,invalid_reasons_json FROM paper_forward_run_provenance WHERE run_id='actual-run-1'")[0]
+    assert result["receipts"] == 2
+    assert provenance["input_provenance_valid"] == 0
+    assert "DIAGNOSTIC_REPLAY" in provenance["invalid_reasons_json"]
+    assert "OVERRIDE_ISSUES" in provenance["invalid_reasons_json"]
+    assert db.query("SELECT COUNT(*) FROM forward_receipts WHERE run_id='actual-run-1'")[0][0] == 2
     db.close()

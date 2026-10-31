@@ -87,6 +87,32 @@ def test_worker_terminal_and_wait_states_are_mapped_explicitly():
     assert _map_worker_status("RESOURCE_LIMIT_STOPPING") == "RUNNING"
     assert _map_worker_status("STOPPED_RESOURCE_LIMIT") == "STOPPED_RESOURCE_LIMIT"
     assert _map_worker_status("COMPLETED") == "COMPLETED"
+    assert _map_worker_status("DATA_GAP_MISSING_TF_1m") == "DATA_GAP"
+    assert _map_worker_status("SETTINGS_MISMATCH_TEMPLATE_HASH") == "SETTINGS_MISMATCH"
+
+
+def test_worker_data_gap_is_terminal_and_releases_coordinator_pid(tmp_path, monkeypatch):
+    specs = tmp_path / "specs"
+    symbol = _symbol_for_host("s1")
+    job = _spec(tmp_path, f"{symbol}_LONG", "gap")
+    job["is_baseline"] = True
+    _write_specs(specs, {"job.json": job})
+    observed = {"mem_available_bytes": 16 * 1024**3, "disk_free_bytes": 16 * 1024**3, "load1": 1.0, "ncpu": 16, "cpu_psi_avg10": 0.0}
+
+    class Process:
+        pid = 123456
+
+    db = tmp_path / "fleet.sqlite3"
+    reconcile(specs, db, tmp_path, "s1", once=True, observed=observed, launcher=lambda *_args, **_kwargs: Process())
+    with sqlite3.connect(db) as connection:
+        run_dir = connection.execute("SELECT run_dir FROM jobs").fetchone()[0]
+    Path(run_dir, "worker.status.json").write_text(json.dumps({"status": "DATA_GAP", "reason": "DATA_GAP_MISSING_TF_1m"}), encoding="utf-8")
+    monkeypatch.setattr("tools.paper_forward_fleet._pid_alive", lambda *_args: True)
+
+    reconcile(specs, db, tmp_path, "s1", once=True, observed=observed, launcher=lambda *_args, **_kwargs: Process())
+
+    with sqlite3.connect(db) as connection:
+        assert connection.execute("SELECT status,pid FROM jobs").fetchone() == ("DATA_GAP", None)
 
 
 def test_spec_cache_avoids_unchanged_reads_and_invalidates_on_manifest_metadata(tmp_path, monkeypatch):
@@ -254,6 +280,20 @@ def test_source_window_waits_until_exact_start_and_end_are_archived(tmp_path):
     ready, reason = source_window_available(spec, tmp_path, tmp_path)
     assert ready
     assert reason == "SOURCE_WINDOW_READY"
+
+
+def test_source_window_surfaces_native_provenance_gap_without_database(tmp_path):
+    spec = _spec(tmp_path, "BTCUSDT_LONG", "provenance-gap")
+    spec["source_journal"] = "data/paper_forward_lab/native_journal_crypto.sqlite3"
+    spec["experiment_window"] = {"window_id": "epoch-1", "source_timeframe": "1m", "start_source_ts": 100.0, "end_source_ts": 160.0}
+    journal = tmp_path / spec["source_journal"]
+    journal.parent.mkdir(parents=True)
+    Path(f"{journal}.status.json").write_text(json.dumps({"host": spec["host"], "venue": "crypto", "status": "UNVERIFIED_NATIVE_PROVENANCE", "provenance_gaps": ["1m"]}), encoding="utf-8")
+
+    ready, reason = source_window_available(spec, tmp_path, tmp_path)
+
+    assert not ready
+    assert reason == "UNVERIFIED_NATIVE_PROVENANCE"
 
 
 def test_finite_window_pair_waits_for_archive_end_then_runs_baseline_before_candidate(tmp_path):

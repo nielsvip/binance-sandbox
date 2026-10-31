@@ -300,7 +300,7 @@ class PaperForwardCollector:
 
     @staticmethod
     def _immutable_identity(manifest: Mapping[str, Any]) -> tuple:
-        keys = ("run_id", "epoch_id", "scenario_id", "sym_side", "host", "started_at", "settings_sha256", "parent_settings_sha256", "base_settings_file", "effective_settings_file", "code_sha256", "code_file_hashes", "candidate_overrides", "isolation_overrides", "paper_mask_release", "context", "candidate_getter_resolution", "worker_isolation", "engine_root", "plan_code_hash", "accounting_file", "accounting_sha256")
+        keys = ("run_id", "epoch_id", "scenario_id", "sym_side", "host", "started_at", "settings_sha256", "parent_settings_sha256", "base_settings_file", "effective_settings_file", "code_sha256", "code_file_hashes", "candidate_overrides", "isolation_overrides", "paper_mask_release", "context", "candidate_getter_resolution", "worker_isolation", "engine_root", "plan_code_hash", "accounting_file", "accounting_sha256", "result_file", "result_sha256")
         return tuple(_canonical(manifest.get(key)) for key in keys)
 
     def _stage_bundle(self, host: str, remote_manifest_path: str | None = None, local_run_dir: Path | None = None) -> dict:
@@ -338,6 +338,17 @@ class PaperForwardCollector:
                     self._sync_file(host, source, destination)
                 if _sha256_file(destination) != manifest["accounting_sha256"]:
                     raise ValueError("staged accounting artifact hash does not match manifest")
+            result_relative = _safe_relative(manifest["result_file"]) if manifest.get("result_file") else None
+            result_name = str(result_relative) if result_relative else "result.json"
+            result_source = local_run_dir / result_name if local_run_dir is not None else (str(Path(remote_manifest_path).parent / result_relative) if result_relative else None)
+            if result_source is not None and (local_run_dir is not None and Path(result_source).is_file() or local_run_dir is None and result_relative):
+                result_target = stage / result_name
+                if local_run_dir is not None:
+                    self._copy_local_file(result_source, result_target)
+                else:
+                    self._sync_file(host, result_source, result_target)
+                if manifest.get("result_sha256") and _sha256_file(result_target) != manifest["result_sha256"]:
+                    raise ValueError("staged result.json hash does not match manifest")
             snapshot_source = local_run_dir / "receipts.snapshot.db" if local_run_dir is not None else str(Path(remote_manifest_path).parent / "receipts.snapshot.db")
             snapshot_target = stage / "receipts.snapshot.db"
             if local_run_dir is not None:
