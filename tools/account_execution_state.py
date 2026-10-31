@@ -269,10 +269,23 @@ def persist_snapshot(root, snapshot):
     base = Path(root) / "snapshots" / acct / ss
     rel = Path("snapshots") / acct / ss / f"{snapshot['snapshot_sha256']}.json"
     _write_immutable(Path(root) / rel, snapshot)
-    _atomic_json(
-        base / "latest.json",
-        {"snapshot_sha256": snapshot["snapshot_sha256"], "snapshot_path": str(rel)},
-    )
+    base.mkdir(parents=True, exist_ok=True)
+    with (base / "latest.lock").open("a+") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+        try:
+            try:
+                latest = load_latest_snapshot(root, acct, ss)
+            except FileNotFoundError:
+                latest = None
+            if latest is None or _epoch(snapshot.get("observed_at"), "observed_at") > _epoch(
+                latest.get("observed_at"), "latest observed_at"
+            ):
+                _atomic_json(
+                    base / "latest.json",
+                    {"snapshot_sha256": snapshot["snapshot_sha256"], "snapshot_path": str(rel)},
+                )
+        finally:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_UN)
     return {"snapshot_sha256": snapshot["snapshot_sha256"], "snapshot_path": str(rel)}
 
 

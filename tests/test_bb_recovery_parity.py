@@ -10,7 +10,7 @@ from vec_decisions.bb_recovery_exit import (
 from vec_decisions.twin_p0_crypto_a import vec_bb_recovery_exit
 
 
-def _simulate(is_long, target_price, enabled=True):
+def _simulate(is_long, target_price, enabled=True, k1m_enabled=False):
     import v12_quick_engine as vq
 
     n = 110
@@ -37,7 +37,12 @@ def _simulate(is_long, target_price, enabled=True):
         "bb_upper_1h": np.full(n, 110.0),
         "bb_lower_1h": np.full(n, 90.0),
         "stoch_k_1h": k,
+        "k_15m": np.full(n, 50.0),
+        "k_15m_prev": np.full(n, 50.0),
     }
+    if k1m_enabled:
+        npz["k_15m"][12] = 95.0 if is_long else 5.0
+        npz["k_15m_prev"][12] = 96.0 if is_long else 4.0
     for tf in ("15m", "1h", "4h", "D"):
         npz[f"wt1_{tf}"] = np.zeros(n)
         npz[f"wt2_{tf}"] = np.zeros(n)
@@ -55,6 +60,11 @@ def _simulate(is_long, target_price, enabled=True):
         ):
             setattr(cfg, key, False)
     cfg.BB_RECOVERY_EXIT_ENABLED_TRADIER = enabled
+    cfg.K1M_EXTREME_REVERSE_ENABLED = k1m_enabled
+    cfg.LIVE_5m_trading_ENABLED = False
+    cfg.PARABOLIC_EXIT_ENABLED = False
+    cfg.LIVE_EXIT_CHAIN_ENABLED = k1m_enabled
+    cfg.AUGMENTED_DC_BREAK_ENABLED = False
     cfg.VEC_EXIT_SIG_IS_TRIGGER = False
     cfg.ABLATION_DISABLE_REENTRY = True
     result = vq.simulate_one(npz, "BB_RECOVERY_TEST", is_long, cfg, force_initial_seed=True)
@@ -111,6 +121,20 @@ def test_bb_recovery_switch_off_and_below_fee_floor_do_not_book_close():
     ]
     assert not positive_after_estimated_fees(0.08, 0.08)
     assert positive_after_estimated_fees(0.09, 0.08)
+
+
+def test_k1m_exit_keeps_native_precedence_over_same_bar_bb_recovery():
+    result, cfg, _ = _simulate(True, 101.0, enabled=True, k1m_enabled=True)
+    rows = [item for item in result["ledger"] if item.get("bar") == 12]
+    assert any(
+        item.get("type") == "REDUCE"
+        and item.get("reason", "").startswith("K1M_EXTREME_REVERSE_LONG")
+        for item in rows
+    )
+    assert not any(
+        item.get("reason") == "BB_RECOVERY_EXIT_TRADIER_LONG" for item in rows
+    )
+    assert cfg.K1M_EXTREME_REVERSE_ENABLED is True
 
 
 def _simulate_tradier_bypass(enabled, target_price, is_long=True):

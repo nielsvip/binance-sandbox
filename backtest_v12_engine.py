@@ -18602,6 +18602,9 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
             import tradier_manage as _tm_mod  # noqa
         # live-path guard: fail loudly if live modules missing or vectorised engine present
         _assert_live_path(mode)
+        # Keep the full stock NPZ as warmup input; decision_start_ts makes the
+        # scored interval strictly (end - window_days, end].
+        _replay_start_date = "2000-01-01" if not is_crypto else start_date
         # run the real engine with sweep bypass to ensure symbol trades
         _prev_sweep = __import__("os").environ.get("V8_SWEEP_MODE")
         __import__("os").environ["V8_SWEEP_MODE"] = "1"
@@ -18619,7 +18622,7 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
                 # 2026-10-14 cash-settlement parity: the replay account = the board account (SIM_ACCOUNT override / V12_SIM_ACCOUNT;
                 # default trb). tra -> live entry ban (0 trades); a cash account -> live GFV rule on the sim clock.
                 _sim_acct = str(_run_one_sim_account or os.environ.get("V12_SIM_ACCOUNT") or "trb").lower()
-                executed = _asyncio.run(run_simulation_tradier(_sim_acct, start_date, 10000.0, stores, resolution))
+                executed = _asyncio.run(run_simulation_tradier(_sim_acct, _replay_start_date, 10000.0, stores, resolution))
         finally:
             if _prev_sweep is None:
                 __import__("os").environ.pop("V8_SWEEP_MODE", None)

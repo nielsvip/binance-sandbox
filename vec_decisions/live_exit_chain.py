@@ -9,11 +9,11 @@ Live semantics mirrored (precedence = code order; first hit wins):
 Post-chain: STALE_PRICE_ABORT (fresh price == bar price in the sim): a hit with gain < -0.01 is dropped unless the reason contains BREAKEVEN / DC_LOW4_3M /
 DC_HIGH4_3M / PEAK_GIVEBACK or (LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK) WT_CROSS_EXIT / STDEV_BREAKOUT / STRUCTURAL_RANGE_SHIFT / PARABOLIC_EXIT.
 CLOSE-vs-REDUCE: reason containing CLOSE|STOP|KILL = full close; else REDUCE of 15%/25% (0<=gain<1: <0.5 / >=0.5), 50% (1<=gain<3), else all-but-dust.
-Not modeled (documented, NOT fabricated): K1M_EXTREME_REVERSE (needs k_1m, no 1m array; default OFF), TREND_REVERSAL_EXIT (TREND_ACCOUNTS=[] in config),
+Not modeled (documented, NOT fabricated): TREND_REVERSAL_EXIT (TREND_ACCOUNTS=[] in config),
 STDEV_BREAKOUT_EXIT (default OFF), KEY_LEVEL severity-2 HEDGE, key-level monitor signal file, hedge states, delta_tracker bull_accel in PARABOLIC (assumed True).
 SWITCH_WIRING_GUIDE §4 sets 15m as the policy floor. STRUCTURAL_RANGE_SHIFT_EXIT pairs its former 3m WT confirm to the real 15m WT pair and shares that predicate with the native source; it is therefore active without invented 3m data.
 INERT in vec pending a separately paired implementation: PARABOLIC_EXIT (3m structure plus delta_tracker bull_accel), DC4/DC LOW|HIGH stop (BREAKEVEN_DC_LOW4_ENABLED),
-AUGMENTED_DC_BREAK_REDUCE_TO_MIN, DC_BASIS_3M_REDUCE, MOMENTUM_TP branches B/C/D/E/F/G, R1_DC_LOW4_3M_EMERGENCY (also forced OFF by the user), K1M_EXTREME_REVERSE.
+AUGMENTED_DC_BREAK_REDUCE_TO_MIN, DC_BASIS_3M_REDUCE, MOMENTUM_TP branches B/C/D/E/F/G, R1_DC_LOW4_3M_EMERGENCY (also forced OFF by the user).
 LIVE for 15m+: STRUCTURAL_RANGE_SHIFT_EXIT, WT_CROSS_EXIT (3m veto ignored = no suppression), KEY_LEVEL_CRASH, PEAK_GIVEBACK, HTF_EXIT_VETO, BREAKEVEN_GAIN_EROSION, STDEV_REJECT, R2, MOMENTUM_TP branch A.
 (historic b2c text below describes removed channel floors and is kept only as record)
 3m FLOORS (REMOVED in b2c2) (the NPZ has NO 3m/1m arrays and no 3m kline history older than ~3.4 days exists anywhere): every '3m' structure was mapped to the nearest 15m quantity:
@@ -48,13 +48,15 @@ def validate_supported_inputs(npz, n, cfg, is_long):
     """Raise on active LEC cases whose source predecessor/portfolio state is absent."""
     if str(getattr(cfg, "MODE", "crypto")) == "tradier":
         return
-    if (
-        _b(cfg, "K1M_EXTREME_REVERSE_ENABLED", False)
-        and _b(cfg, "BB_RECOVERY_EXIT_ENABLED_TRADIER", False)
-    ):
-        raise ValueError(
-            "K1M_EXTREME_REVERSE plus BB_RECOVERY precedence is unsupported: v12 has no native k_1m predecessor state"
-        )
+    if _b(cfg, "K1M_EXTREME_REVERSE_ENABLED", False):
+        if _b(cfg, "LIVE_5m_trading_ENABLED", False):
+            required = ("stoch_k_1m", "k_1m_prev")
+        else:
+            required = ("k_15m", "k_15m_prev")
+        for key in required:
+            value = npz.get(key)
+            if value is None or getattr(value, "__len__", None) is None or len(value) != n:
+                raise ValueError(f"K1M_EXTREME_REVERSE needs paired input {key} of length {n}")
     if not _b(cfg, "AUGMENTED_DC_BREAK_ENABLED", True):
         return
     if _b(cfg, "HEDGE_MODE", False):
@@ -105,6 +107,13 @@ def prepare(npz, n, is_long, cfg, close, safe, symbol=None):
 
     P["wt_cross_mask"] = check_wt_cross_exit_indicator_vec(cfg, *w["1h"], *w["15m"], is_long)
     P["k15"], P["k15p"] = safe(npz, "k_15m", n, 50.0), safe(npz, "k_15m_prev", n, 50.0)
+    if _b(cfg, "K1M_EXTREME_REVERSE_ENABLED", False):
+        if _b(cfg, "LIVE_5m_trading_ENABLED", False):
+            P["k1m"], P["k1mp"] = safe(npz, "stoch_k_1m", n, 50.0), safe(npz, "k_1m_prev", n, 50.0)
+        else:
+            P["k1m"], P["k1mp"] = P["k15"], P["k15p"]
+    else:
+        P["k1m"], P["k1mp"] = np.full(n, 50.0), np.full(n, 50.0)
     P["k1h"], P["k1hp"] = safe(npz, "k_1h", n, 50.0), safe(npz, "k_1h_prev", n, 50.0)
     # --- HTF veto (live 14520/14545): >= MIN_ALIGNED of {1h,4h,D} WT with the position and |gain| <= MAX_LOSS ---
     al = np.zeros(n, dtype=np.int8)
@@ -112,6 +121,7 @@ def prepare(npz, n, is_long, cfg, close, safe, symbol=None):
         a, b = w[tf]
         al = al + ((a > b) if is_long else (a < b)).astype(np.int8)
     P["htf_aligned"] = al
+    P["trend_veto"] = (al == 3) & _b(cfg, "TREND_REGIME_VETO_ENABLED", True)
     # --- parabolic ---
     P["para_lvl"] = np.zeros(n)
     # --- SRS band levels ---
@@ -134,15 +144,43 @@ def prepare(npz, n, is_long, cfg, close, safe, symbol=None):
     return P
 
 
+def k1m_exit_reason(P, cfg, i, st):
+    """Return the native K1M hard-exit reason using its paired input lane."""
+    if not _b(cfg, "K1M_EXTREME_REVERSE_ENABLED", False):
+        return None
+    gain = float(st.get("gain", 0.0))
+    if st.get("is_hedge", False) or not np.isfinite(gain) or gain < 0.0:
+        return None
+    age = float(st.get("age_min", 9999.0))
+    grace = _f(cfg, "REENTRY_GRACE_MINUTES", 30.0) if st.get("reentered") else 3.0
+    if age < grace and not st.get("was_augmented", False):
+        return None
+    if P.get("trend_veto", np.zeros(P["n"], dtype=bool))[i]:
+        return None
+    from vec_decisions.check_exit_candidates_crypto__k1m_extreme_reverse import (
+        _k1m_extreme_reverse_fires,
+    )
+
+    k_now = float(P["k1m"][i])
+    k_prev = float(P["k1mp"][i])
+    is_long = P["is_long"]
+    if not _k1m_extreme_reverse_fires(k_now, k_prev, is_long, 90.0, 10.0):
+        return None
+    side = "LONG" if is_long else "SHORT"
+    if is_long:
+        return f"K1M_EXTREME_REVERSE_{side}_k1m={k_now:.0f}<prev={k_prev:.0f}_gain{gain:.2f}%"
+    return f"K1M_EXTREME_REVERSE_{side}_k1m={k_now:.0f}>prev={k_prev:.0f}_gain{gain:.2f}%"
+
+
 def step(P, cfg, i, px, st):
     """st: gain(%), peak(%), age_min, entry_price, reentered(bool), was_augmented(bool). Returns None or (reason, is_full_close)."""
     is_long = P["is_long"]
     gain, peak, age = float(st["gain"]), float(st["peak"]), float(st["age_min"])
     grace_m = _f(cfg, "REENTRY_GRACE_MINUTES", 30.0) if st.get("reentered") else 3.0
     in_grace = (age < grace_m) and not st.get("was_augmented", False)
-    reason = None
+    reason = k1m_exit_reason(P, cfg, i, st)
     # 1. PARABOLIC_EXIT (no switch in live — always on)
-    if not in_grace and _b(cfg, "PARABOLIC_EXIT_ENABLED", True):
+    if reason is None and not in_grace and _b(cfg, "PARABOLIC_EXIT_ENABLED", True):
         k15, lvl = P["k15"][i], P["para_lvl"][i]
         if is_long and k15 > 90 and lvl > 0 and px > lvl and P["crack"][i]:
             reason = f"PARABOLIC_EXIT_LONG_k15={k15:.0f}"

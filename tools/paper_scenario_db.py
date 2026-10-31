@@ -53,6 +53,10 @@ class ScenarioDB:
             decision_id TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(run_id),
             source_ts TEXT NOT NULL, action TEXT NOT NULL, payload_json TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS forward_receipts (
+            receipt_id TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(run_id),
+            source_ts TEXT NOT NULL, payload_json TEXT NOT NULL, UNIQUE(run_id,source_ts)
+        );
         CREATE TABLE IF NOT EXISTS trades (
             trade_id TEXT PRIMARY KEY, run_id TEXT NOT NULL REFERENCES runs(run_id),
             opened_at TEXT NOT NULL, closed_at TEXT, net_return REAL, fees REAL, payload_json TEXT NOT NULL
@@ -66,6 +70,16 @@ class ScenarioDB:
             import_id TEXT PRIMARY KEY, source_path TEXT NOT NULL, source_hash TEXT NOT NULL,
             imported_at TEXT NOT NULL, source_computed_at TEXT
         );
+        CREATE TABLE IF NOT EXISTS inventory_gaps (
+            gap_id TEXT PRIMARY KEY, sym_side TEXT NOT NULL, reason TEXT NOT NULL,
+            observed_at TEXT NOT NULL, source_hash TEXT NOT NULL, payload_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS settings_snapshots (
+            settings_hash TEXT PRIMARY KEY, settings_json TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS source_code_snapshots (
+            code_hash TEXT PRIMARY KEY, file_hashes_json TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS tuning_notes (
             id INTEGER PRIMARY KEY, scenario_id TEXT NOT NULL REFERENCES scenarios(scenario_id),
             created_at TEXT NOT NULL, note TEXT NOT NULL
@@ -75,6 +89,7 @@ class ScenarioDB:
         CREATE INDEX IF NOT EXISTS idx_results_run_computed ON results(run_id,computed_at);
         CREATE INDEX IF NOT EXISTS idx_decisions_run_source_ts ON decisions(run_id,source_ts);
         CREATE INDEX IF NOT EXISTS idx_trades_run_closed ON trades(run_id,closed_at);
+        CREATE INDEX IF NOT EXISTS idx_inventory_gaps_sym_source ON inventory_gaps(sym_side,source_hash);
         CREATE VIEW IF NOT EXISTS inventory_coverage AS
             SELECT p.path_id,p.venue,p.path_name,p.switch_name,p.classification,
                    COUNT(DISTINCT s.scenario_id) AS scenario_count,
@@ -107,14 +122,18 @@ class ScenarioDB:
                 SELECT e2.event_id FROM run_status_events e2 WHERE e2.run_id=r.run_id
                 ORDER BY e2.recorded_at DESC,e2.event_id DESC LIMIT 1
             );
-        CREATE VIEW IF NOT EXISTS scenario_result_inventory AS
+        DROP VIEW IF EXISTS scenario_result_inventory;
+        CREATE VIEW scenario_result_inventory AS
             SELECT p.path_id,p.venue,p.path_name,p.switch_name,p.classification,
                    s.scenario_id,s.side,s.parameters_json,s.parameters_hash,s.parent_scenario_id,s.created_at AS scenario_created_at,
-                   r.run_id,r.sym_side,r.host,r.settings_hash,r.code_hash,r.evidence_kind,r.status AS initial_status,
+                   r.run_id,r.sym_side,r.host,r.settings_hash,ss.settings_json,r.code_hash,cs.file_hashes_json,
+                   r.evidence_kind,r.status AS initial_status,
                    r.started_at,r.ended_at,x.result_id,x.computed_at,x.source_start,x.source_end,
                    x.metric_name,x.metric_value,x.unit,x.verification,x.payload_json AS result_payload_json
             FROM paths p LEFT JOIN scenarios s ON s.path_id=p.path_id
             LEFT JOIN runs r ON r.scenario_id=s.scenario_id
+            LEFT JOIN settings_snapshots ss ON ss.settings_hash=r.settings_hash
+            LEFT JOIN source_code_snapshots cs ON cs.code_hash=r.code_hash
             LEFT JOIN results x ON x.run_id=r.run_id;
         """)
 
@@ -125,9 +144,13 @@ class ScenarioDB:
             "runs": {"run_id", "scenario_id", "sym_side", "host", "settings_hash", "code_hash", "evidence_kind", "status", "started_at", "ended_at"},
             "run_status_events": {"event_id", "run_id", "recorded_at", "status", "detail_json"},
             "decisions": {"decision_id", "run_id", "source_ts", "action", "payload_json"},
+            "forward_receipts": {"receipt_id", "run_id", "source_ts", "payload_json"},
             "trades": {"trade_id", "run_id", "opened_at", "closed_at", "net_return", "fees", "payload_json"},
             "results": {"result_id", "run_id", "computed_at", "source_start", "source_end", "metric_name", "metric_value", "unit", "verification", "payload_json"},
             "imports": {"import_id", "source_path", "source_hash", "imported_at", "source_computed_at"},
+            "inventory_gaps": {"gap_id", "sym_side", "reason", "observed_at", "source_hash", "payload_json"},
+            "settings_snapshots": {"settings_hash", "settings_json"},
+            "source_code_snapshots": {"code_hash", "file_hashes_json"},
             "tuning_notes": {"id", "scenario_id", "created_at", "note"},
         }
         if table not in allowed or not set(row).issubset(allowed[table]):
@@ -214,6 +237,11 @@ class ScenarioDB:
         row["payload_json"] = _json(payload)
         return self._insert_immutable("decisions", row, "decision_id")
 
+    def add_forward_receipt(self, **row: Any) -> str:
+        payload = row.pop("payload", row.get("payload_json", {}))
+        row["payload_json"] = _json(payload)
+        return self._insert_immutable("forward_receipts", row, "receipt_id")
+
     def add_trade(self, **row: Any) -> str:
         self._validate_finite(row, ("net_return", "fees"))
         payload = row.pop("payload", row.get("payload_json", {}))
@@ -222,6 +250,29 @@ class ScenarioDB:
 
     def record_import(self, **row: Any) -> str:
         return self._insert_immutable("imports", row, "import_id")
+
+    def add_inventory_gap(self, **row: Any) -> str:
+        payload = row.pop("payload", row.get("payload_json", {}))
+        row["payload_json"] = _json(payload)
+        return self._insert_immutable("inventory_gaps", row, "gap_id")
+
+    def add_settings_snapshot(self, **row: Any) -> str:
+        settings = row.pop("settings", row.get("settings_json", {}))
+        settings_json = _json(settings)
+        expected_hash = hashlib.sha256(settings_json.encode()).hexdigest()
+        if row.get("settings_hash") != expected_hash:
+            raise ValueError("settings_hash does not match canonical settings_json")
+        row["settings_json"] = settings_json
+        return self._insert_immutable("settings_snapshots", row, "settings_hash")
+
+    def add_source_code_snapshot(self, **row: Any) -> str:
+        file_hashes = row.pop("file_hashes", row.get("file_hashes_json", {}))
+        file_hashes_json = _json(file_hashes)
+        expected_hash = hashlib.sha256(file_hashes_json.encode()).hexdigest()
+        if row.get("code_hash") != expected_hash:
+            raise ValueError("code_hash does not match canonical file_hashes_json")
+        row["file_hashes_json"] = file_hashes_json
+        return self._insert_immutable("source_code_snapshots", row, "code_hash")
 
     def add_note(self, **row: Any) -> int:
         return int(self._insert_immutable("tuning_notes", row, "id"))

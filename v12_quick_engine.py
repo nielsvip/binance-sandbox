@@ -20995,6 +20995,21 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # EPQ evaluates BB_RECOVERY before PARABOLIC/SRS. Consume its positive,
         # switch-backed crypto event before the shared hard-exit chain so a same-bar
         # BB_RECOVERY+SRS collision keeps native precedence and cannot double-reduce.
+        _k1m_reason_early = None
+        if _lec_P is not None and not is_tradier and not _lec_quick_ablated:
+            _k1m_reason_early = _lec.k1m_exit_reason(
+                _lec_P,
+                cfg,
+                i,
+                {
+                    "gain": live_pnl_pct,
+                    "age_min": held_bars * bmin,
+                    "reentered": "REENTRY"
+                    in str(pos.get("entry_reason", "")).upper(),
+                    "was_augmented": int(pos.get("n_augments", 0)) > 0,
+                    "is_hedge": bool(pos.get("is_hedge", False)),
+                },
+            )
         _bbr_info_early = getattr(cfg, "BB_RECOVERY_EXIT_INFO", None)
         _bbr_mask_early = (
             _bbr_info_early.get("mask") if isinstance(_bbr_info_early, dict) else None
@@ -21002,6 +21017,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         if (
             not is_tradier
             and not _lec_quick_ablated
+            and _k1m_reason_early is None
             and _bbr_mask_early is not None
             and i < len(_bbr_mask_early)
             and bool(_bbr_mask_early[i])
@@ -21080,6 +21096,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "reentered": "REENTRY"
                         in str(pos.get("entry_reason", "")).upper(),
                         "was_augmented": int(pos.get("n_augments", 0)) > 0,
+                        "is_hedge": bool(pos.get("is_hedge", False)),
                     },
                 )
             )

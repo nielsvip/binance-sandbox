@@ -23,6 +23,11 @@ class PaperSQLSink:
         identity = json.dumps([run_id, source_ts, event_index], separators=(",", ":"))
         return "paper-step-" + hashlib.sha256(identity.encode("utf-8")).hexdigest()
 
+    @staticmethod
+    def _receipt_id(run_id: str, source_ts: str) -> str:
+        identity = json.dumps([run_id, source_ts], separators=(",", ":"))
+        return "paper-receipt-" + hashlib.sha256(identity.encode("utf-8")).hexdigest()
+
     def record_step(self, ts: Any, receipt: Mapping[str, Any]) -> list[str]:
         """Store receipt events without inferring trades, fills, or returns."""
         source_ts = str(ts)
@@ -33,6 +38,12 @@ class PaperSQLSink:
         rows = events if events else [None]
         identifiers = []
         with self.db.transaction():
+            self.db.add_forward_receipt(
+                receipt_id=self._receipt_id(self.run_id, source_ts),
+                run_id=self.run_id,
+                source_ts=source_ts,
+                payload=receipt,
+            )
             for index, event in enumerate(rows):
                 action = "NO_ACTION" if event is None else (
                     event.get("action", event.get("event_type", event.get("type", "RAW_EVENT")))

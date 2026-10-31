@@ -40,7 +40,7 @@ def test_ingest_is_idempotent_and_keeps_source_times_and_evidence_types(tmp_path
     assert db.query("SELECT COUNT(*) n FROM trades")[0]["n"] == 0
     result = db.query("SELECT computed_at,metric_name,metric_value,unit,payload_json FROM results ORDER BY metric_name")[0]
     assert result["computed_at"] == "2026-10-31T02:46:53Z"
-    assert (result["metric_name"], result["metric_value"], result["unit"]) == ("mean_delta", 0.125, "fraction")
+    assert (result["metric_name"], result["metric_value"], result["unit"]) == ("observational_mean_delta", 0.125, "fraction")
     assert json.loads(result["payload_json"])["settings"] == "UNRECORDED"
     decision = db.query("SELECT source_ts,payload_json FROM decisions")[0]
     assert decision["source_ts"] == "1700000000.0"
@@ -51,6 +51,20 @@ def test_ingest_is_idempotent_and_keeps_source_times_and_evidence_types(tmp_path
     again = ingest_evidence(db, root)
     assert again == {"inventory_paths": 0, "per_sym_results": 0,
                      "path_summary_results": 0, "shadow_decisions": 0, "skipped_sources": 3}
+    source = sqlite3.connect(shadow_path)
+    source.execute("INSERT INTO decisions VALUES(1700000010,'shadow_entry','shadow_5m','ETHUSDT_SHORT','crypto','OPEN','REASON_B','ref',1,2,3,4,0,16,14)")
+    source.commit()
+    source.close()
+    revised = ingest_evidence(db, root)
+    assert revised == {"inventory_paths": 0, "per_sym_results": 0,
+                       "path_summary_results": 0, "shadow_decisions": 1, "skipped_sources": 2}
     assert db.query("SELECT COUNT(*) n FROM results")[0]["n"] == 2
-    assert db.query("SELECT COUNT(*) n FROM decisions")[0]["n"] == 1
+    assert db.query("SELECT COUNT(*) n FROM decisions")[0]["n"] == 2
+    assert db.query("SELECT started_at FROM runs WHERE evidence_kind='timing_shadow'")[0][0] == "2023-11-14T22:13:20+00:00"
+    assert db.query("SELECT COUNT(*) n FROM paths")[0]["n"] == 2
+    shadow_path = db.query("SELECT path_name,switch_name FROM paths WHERE classification='observational_candidate' AND path_name LIKE 'TIMING_SHADOW:%'")[0]
+    assert shadow_path["path_name"] == "TIMING_SHADOW:shadow_entry:shadow_5m:OPEN"
+    assert shadow_path["switch_name"] == "UNRECORDED"
+    reasons = [json.loads(row[0])["raw_record"]["reason"] for row in db.query("SELECT payload_json FROM decisions ORDER BY source_ts")]
+    assert reasons == ["REASON_A", "REASON_B"]
     db.close()

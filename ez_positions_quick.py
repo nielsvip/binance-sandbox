@@ -26462,16 +26462,27 @@ async def check_exit_candidates_for_account(
                     )
                     and not _trend_veto_active
                 ):
-                    _k1m_now = safe_fetch_float(indicators.get("k_1m", 50), 50)
-                    _k1m_prev_v = safe_fetch_float(
-                        indicators.get("k_1m_prev", _k1m_now), _k1m_now
+                    _k1m_ltf_enabled = bool(
+                        _sw_get(
+                            symbol,
+                            position_side,
+                            "LIVE_5m_trading_ENABLED",
+                            getattr(config, "LIVE_5m_trading_ENABLED", False),
+                        )
                     )
-                    if is_long and _k1m_now > 90 and _k1m_now < _k1m_prev_v:
+                    from vec_decisions.check_exit_candidates_crypto__k1m_extreme_reverse import (
+                        _k1m_extreme_reverse_fires,
+                        k1m_exit_indicators,
+                    )
+                    _k1m_inputs = k1m_exit_indicators(indicators, _k1m_ltf_enabled)
+                    _k1m_now = safe_fetch_float(_k1m_inputs["stoch_k_1m"], 50)
+                    _k1m_prev_v = safe_fetch_float(_k1m_inputs["k_1m_prev"], _k1m_now)
+                    if _k1m_extreme_reverse_fires(_k1m_now, _k1m_prev_v, is_long, 90.0, 10.0) and is_long:
                         hard_exit_reason = f"K1M_EXTREME_REVERSE_LONG_k1m={_k1m_now:.0f}<prev={_k1m_prev_v:.0f}_gain{current_gain:.2f}%"
                         logger.critical(
                             f"🔥 [K1M_EXTREME_REVERSE_LONG] {position_key}: k_1m={_k1m_now:.0f}>90 turning down — locking profit at {current_gain:.2f}%"
                         )
-                    elif (not is_long) and _k1m_now < 10 and _k1m_now > _k1m_prev_v:
+                    elif _k1m_extreme_reverse_fires(_k1m_now, _k1m_prev_v, is_long, 90.0, 10.0):
                         hard_exit_reason = f"K1M_EXTREME_REVERSE_SHORT_k1m={_k1m_now:.0f}>prev={_k1m_prev_v:.0f}_gain{current_gain:.2f}%"
                         logger.critical(
                             f"🔥 [K1M_EXTREME_REVERSE_SHORT] {position_key}: k_1m={_k1m_now:.0f}<10 turning up — locking profit at {current_gain:.2f}%"

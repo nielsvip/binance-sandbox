@@ -53,6 +53,20 @@ def _k1m_extreme_reverse_thresholds(config):
             float(getattr(config, "K1M_EXTREME_LOW", 10.0)))
 
 
+def k1m_exit_indicators(indicators, ltf_enabled):
+    """Map live K1M fields to the policy-paired 15m fields when LTF is off."""
+    indicators = indicators or {}
+    if ltf_enabled:
+        now = indicators.get("k_1m", 50)
+        prev = indicators.get("k_1m_prev", now)
+    else:
+        now = indicators.get("k_15m", indicators.get("stoch_k_15m", 50))
+        prev = indicators.get(
+            "k_15m_prev", indicators.get("stoch_k_15m_prev", now)
+        )
+    return {"stoch_k_1m": now, "k_1m_prev": prev}
+
+
 def check_k1m_extreme_reverse(config, indicators: dict, is_long: bool,
                               current_gain: float = None) -> Tuple[bool, str]:
     """LIVE/scalar path. Returns (fires, reason). Fire decision from the shared core.

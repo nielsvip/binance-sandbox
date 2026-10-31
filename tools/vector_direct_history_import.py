@@ -31,6 +31,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 import time
 import hashlib
 from pathlib import Path
@@ -195,6 +196,75 @@ def sync_decision_state_snapshots(recs: list[dict], decision_state_root: Path, s
                 tmp.write_bytes(_canonical_state_bytes(state))
                 os.replace(tmp, path)
                 counts["verified"] += 1
+    return counts
+
+
+def sync_account_execution_snapshots(recs: list[dict], snapshot_root: Path) -> dict:
+    """Cache each verified embedded account snapshot, independent of fill-import dedupe."""
+    root = Path(snapshot_root)
+    root.mkdir(parents=True, exist_ok=True)
+    counts = {"requested": 0, "verified": 0, "already": 0, "rejected": 0, "invalid_references": 0}
+    seen = set()
+    for rec in recs:
+        context = rec.get("account_execution_context")
+        if not isinstance(context, dict):
+            continue
+        digest = str(context.get("snapshot_sha256") or "").lower()
+        relative = str(context.get("snapshot_path") or "")
+        account = str(rec.get("acct") or "").lower()
+        symbol_side = str(rec.get("ss") or "")
+        expected = f"snapshots/{account}/{symbol_side}/{digest}.json"
+        if (
+            not ACCT_RE.fullmatch(account)
+            or not SS_RE.fullmatch(symbol_side)
+            or not re.fullmatch(r"[0-9a-f]{64}", digest)
+            or relative != expected
+            or context.get("snapshot_verification") != "VERIFIED"
+        ):
+            counts["invalid_references"] += 1
+            continue
+        key = (account, symbol_side, digest)
+        if key in seen:
+            continue
+        seen.add(key)
+        counts["requested"] += 1
+        snapshot = context.get("snapshot")
+        if not isinstance(snapshot, dict):
+            counts["rejected"] += 1
+            continue
+        if (
+            snapshot.get("account") != account
+            or snapshot.get("sym_side") != symbol_side
+            or snapshot.get("snapshot_sha256") != digest
+            or hashlib.sha256(_canonical_state_bytes({k: v for k, v in snapshot.items() if k != "snapshot_sha256"})).hexdigest() != digest
+        ):
+            counts["rejected"] += 1
+            continue
+        path = root / relative
+        payload = _canonical_state_bytes(snapshot)
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fd, temp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+            try:
+                with os.fdopen(fd, "wb") as stream:
+                    stream.write(payload)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                try:
+                    os.link(temp_name, path)
+                    counts["verified"] += 1
+                except FileExistsError:
+                    if path.read_bytes() == payload:
+                        counts["already"] += 1
+                    else:
+                        counts["rejected"] += 1
+            finally:
+                try:
+                    os.unlink(temp_name)
+                except FileNotFoundError:
+                    pass
+        except OSError:
+            counts["rejected"] += 1
     return counts
 
 
@@ -369,8 +439,9 @@ def run_once(venues, max_resolve: int, now=None, fetcher=fetch, hist=None, state
         try:
             recs, stats = fetcher(venue, now - SINCE_S, max_resolve)
             state_sync = sync_decision_state_snapshots(recs, ROOT / "data" / "vector_direct", state_fetcher)
+            snapshot_sync = sync_account_execution_snapshots(recs, ROOT / "data" / "vector_direct" / "account_execution")
             res = ingest(venue, recs, vs, hist, now, audit_log)
-            st.update(ok=True, remote=stats.get("_stats"), decision_states=state_sync, **res)
+            st.update(ok=True, remote=stats.get("_stats"), decision_states=state_sync, account_execution_snapshots=snapshot_sync, **res)
             vs["last_ok"] = now
         except Exception as exc:
             st.update(ok=False, error=f"{type(exc).__name__}: {str(exc)[:300]}")

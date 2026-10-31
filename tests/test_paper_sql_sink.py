@@ -43,6 +43,22 @@ def test_sink_requires_independent_forward_run(tmp_path):
     db.close()
 
 
+def test_shorter_retry_conflicts_with_full_receipt_without_partial_writes(tmp_path):
+    db = make_db(tmp_path / "db.sqlite")
+    sink = PaperSQLSink(db, "r")
+    full = {"events": [{"action": "OPEN"}, {"action": "REDUCE"}], "positions": {"BTC": {"quantity": 1}}}
+    sink.record_step("123", full)
+    before_decisions = [tuple(row) for row in db.query("SELECT decision_id,source_ts,action,payload_json FROM decisions ORDER BY decision_id")]
+    before_receipts = [tuple(row) for row in db.query("SELECT receipt_id,run_id,source_ts,payload_json FROM forward_receipts")]
+    with pytest.raises(ValueError, match="conflict"):
+        sink.record_step("123", {"events": [{"action": "OPEN"}], "positions": full["positions"]})
+    after_decisions = [tuple(row) for row in db.query("SELECT decision_id,source_ts,action,payload_json FROM decisions ORDER BY decision_id")]
+    after_receipts = [tuple(row) for row in db.query("SELECT receipt_id,run_id,source_ts,payload_json FROM forward_receipts")]
+    assert after_decisions == before_decisions
+    assert after_receipts == before_receipts
+    db.close()
+
+
 def test_journal_session_calls_sql_sink_after_receipt(tmp_path):
     async def run():
         db = make_db(tmp_path / "db.sqlite")

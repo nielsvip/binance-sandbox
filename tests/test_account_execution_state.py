@@ -124,6 +124,21 @@ def test_snapshot_requires_fresh_confirmed_broker_position_and_hashes():
         )
 
 
+def test_latest_snapshot_pointer_never_moves_back_to_an_older_observation(tmp_path):
+    snapshots = [
+        _snapshot(
+            observed_at=1800000000 + offset,
+            bar_ts=1799999100 + offset,
+            now=1800000001 + offset,
+        )
+        for offset in range(5)
+    ]
+    for snap in reversed(snapshots):
+        state.persist_snapshot(tmp_path, snap)
+    latest = state.load_latest_snapshot(tmp_path, "ang", "ABCUSDT_LONG")
+    assert latest["observed_at"] == snapshots[-1]["observed_at"]
+
+
 def test_partial_confirmed_fills_advance_tier_only_at_full_qty_and_are_idempotent(
     tmp_path,
 ):

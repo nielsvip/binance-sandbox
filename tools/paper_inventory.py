@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -26,6 +27,7 @@ def ingest_plan(db, plan):
     code_hash = digest(plan["catalog"]["file_sha256"])
     by_catalog = {}
     with db.transaction():
+        db.add_source_code_snapshot(code_hash=code_hash, file_hashes=plan["catalog"]["file_sha256"])
         for item in plan["catalog"]["scenarios"]:
             path_id = "catalog-path-" + digest([item["venue"], item["switch"], item["coverage_kind"], item["provenance"]])
             db.add_path(path_id=path_id, venue=item["venue"], path_name=item["switch"] or "BASELINE", switch_name=item["switch"] or "", classification=item["coverage_kind"], provenance=item["provenance"])
@@ -37,15 +39,19 @@ def ingest_plan(db, plan):
                 ensure_scenario(db, scenario_id, path_id, item["side"], parameters)
                 by_catalog[item["scenario_id"]].append((scenario_id, parameters["parameter_status"]))
         for group in plan["groups"]:
+            if "effective_settings" in group:
+                db.add_settings_snapshot(settings_hash=group["settings_sha256"], settings=group["effective_settings"])
             for catalog_id in group["scenario_ids"]:
                 for scenario_id, parameter_status in by_catalog[catalog_id]:
                     run_id = "planned-" + digest([scenario_id, group["epoch_id"]])
                     if db.query("SELECT 1 FROM runs WHERE run_id=?", (run_id,)):
                         continue
                     db.add_run(run_id=run_id, scenario_id=scenario_id, sym_side=group["sym_side"], host=group["host"], settings_hash=group["settings_sha256"], code_hash=code_hash, evidence_kind="catalog_only", status="PENDING_VALIDATED_EXECUTION" if parameter_status == "RESOLVED" else "PENDING_PARAMETERS", started_at=plan["planned_at"], ended_at=None)
-        token = "plan-" + digest({"codes": code_hash, "groups": plan["groups"], "uncovered": plan["uncovered"]})
+        token = "plan-" + digest({"codes": code_hash, "groups": plan["groups"], "uncovered": plan["uncovered"], "universe_sha256": plan["universe_sha256"]})
         if not db.query("SELECT 1 FROM imports WHERE import_id=?", (token,)):
             db.record_import(import_id=token, source_path=plan["universe_source"], source_hash=plan["universe_sha256"], imported_at=now(), source_computed_at=None)
+            for gap in plan["uncovered"]:
+                db.add_inventory_gap(gap_id="gap-" + digest([token, gap]), sym_side=gap["sym_side"], reason=gap["reason"], observed_at=plan["planned_at"], source_hash=plan["universe_sha256"], payload=gap)
     return {"groups": len(plan["groups"]), "uncovered": plan["uncovered"]}
 
 def variant(db, parent, overrides, note):
@@ -65,7 +71,7 @@ def variant(db, parent, overrides, note):
     return {"scenario_id": scenario_id, "status": "DEFINED_NOT_RUNNING", "promotion_enabled": False}
 
 def summary(db):
-    counts = {table: db.query("SELECT COUNT(*) FROM " + table)[0][0] for table in ("paths", "scenarios", "runs", "decisions", "trades", "results", "imports", "tuning_notes")}
+    counts = {table: db.query("SELECT COUNT(*) FROM " + table)[0][0] for table in ("paths", "scenarios", "runs", "decisions", "trades", "results", "imports", "tuning_notes", "settings_snapshots", "source_code_snapshots", "forward_receipts", "inventory_gaps")}
     counts["runs_by_evidence"] = [dict(row) for row in db.query("SELECT evidence_kind,status,COUNT(*) AS count FROM runs GROUP BY evidence_kind,status")]
     counts["integrity"] = db.query("PRAGMA quick_check")[0][0]
     counts["promotion_enabled"] = False
@@ -79,6 +85,8 @@ def main():
     refresh = commands.add_parser("refresh")
     refresh.add_argument("--plan", type=Path, help="Frozen plan export; otherwise build from current local settings")
     commands.add_parser("status")
+    snapshot = commands.add_parser("snapshot")
+    snapshot.add_argument("--output", type=Path, required=True)
     tune = commands.add_parser("variant")
     tune.add_argument("--parent", required=True)
     tune.add_argument("--set", action="append", required=True)
@@ -104,6 +112,13 @@ def main():
                     parser.error("switch names must be identifiers")
                 overrides[key] = json.loads(value)
             result = variant(db, args.parent, overrides, args.note)
+        elif args.command == "snapshot":
+            if args.output.resolve() == database.resolve():
+                raise ValueError("snapshot output must differ from database")
+            args.output.parent.mkdir(parents=True, exist_ok=True)
+            with sqlite3.connect(args.output) as target:
+                db.connection.backup(target)
+            result = {"snapshot": str(args.output)}
         else:
             result = summary(db)
     print(json.dumps(result, indent=2, allow_nan=False))
