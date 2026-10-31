@@ -153,7 +153,7 @@ def augment_fire_from_state(config, pos, live_pnl_pct, is_long, indicators=None)
             return False, ""
         _hist = pos.get("_qos_gain_hist") or []
         _mom = None
-        _prior = _hist[:-1]  # sim appends the current bar before the gate runs; live decides on prior ticks only
+        _prior = _hist[:-1]  # Existing simulator history window; native minute cadence still requires replay alignment.
         if len(_prior) >= 3:
             _tail = _prior[-3:]
             _mom = float(sum(_tail) / len(_tail))

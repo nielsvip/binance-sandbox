@@ -292,8 +292,12 @@ def _vector_acts(ledger, last_index, tails):
         if qty <= 1e-12:
             qty, open_qty, open_px, open_bar = 0.0, 0.0, 0.0, None
         if bar == last_index:
-            acts.append({"type": typ, "qty": q, "price": px, "reason": str(row.get("reason") or row.get("exit_reason") or "")[:80],
-                         "qty_before": before, "qty_after": qty, "qty_frac": (1.0 if typ == "CLOSE" else round(min(1.0, q / before), 6) if typ == "REDUCE" and before > 0 else None)})
+            event = {"type": typ, "qty": q, "price": px, "reason": str(row.get("reason") or row.get("exit_reason") or "")[:80],
+                     "qty_before": before, "qty_after": qty, "qty_frac": (1.0 if typ == "CLOSE" else round(min(1.0, q / before), 6) if typ == "REDUCE" and before > 0 else None)}
+            for field in ("exit_reason", "entry_reason", "entry_price", "exit_price", "avg_price", "pnl_dollars", "pnl_pct", "fixed_stop_level", "mandatory_stop_kind"):
+                if row.get(field) is not None:
+                    event[field] = row[field]
+            acts.append(event)
     pos = {"engine_qty": qty, "engine_open_qty": open_qty, "engine_open_px": open_px,
            "engine_open_bar_ts": int(tails[open_bar]) if open_bar is not None and 0 <= open_bar < len(tails) else None}
     return pos, acts

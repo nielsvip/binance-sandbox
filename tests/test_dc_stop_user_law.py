@@ -166,6 +166,8 @@ def test_v12_loss_signal_holds_position_until_positive_net_or_mandatory_stop():
     cfg.PROFIT_TARGET_ENABLED = False
     cfg.STOP_LOSS_ENABLED = False
     cfg.CRYPTO_ROUND_TRIP_COMMISSION_PCT = 0.08
+    npz["dc_low4_15m"] = np.array([min(close[max(0, index - 3):index + 1]) for index in range(n)])
+    npz["dc_high4_15m"] = np.array([max(close[max(0, index - 3):index + 1]) for index in range(n)])
     result = vq.simulate_one(npz, "GATE_LONG", True, cfg, force_initial_seed=True)
     closes = [t for t in result["ledger"] if t.get("type") == "CLOSE" and not t.get("unrealised")]
     assert not closes

@@ -26,7 +26,7 @@ def test_actual_engine_rejects_red_mark_after_profitable_partial_close(monkeypat
     from tests.test_quick_srs_paired_15m import _cfg, _npz
     data = _npz()
     prices = np.full(len(data["timestamps"]), 101.)
-    prices[:3] = [100., 110., 99.]
+    prices[:3] = [100., 100.9, 99.9]
     for key in ("close", "close_15m", "open_15m", "high_15m", "low_15m"):
         data[key] = prices.copy()
     cfg = _cfg()

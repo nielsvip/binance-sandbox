@@ -231,6 +231,10 @@ def champion_resolved_model_inventory(root, env):
 def validate_model_training_windows(spec, reference_root, candidate_root, snapshot_pin):
     if int(spec.get("oos_holdout_days") or 0) != snapshot_pin.get("holdout_days"):
         raise ValueError("comparison spec holdout days differ from exact frozen snapshot holdout")
+    snapshot = spec.get("snapshot") or {}
+    for key in ("snapshot_id", "manifest_sha256", "npz_sha256_by_symbol", "oos_start_by_side"):
+        if snapshot.get(key) != snapshot_pin.get(key):
+            raise ValueError(f"comparison spec {key} differs from the exact frozen snapshot")
     declared = spec.get("training_market_max_by_category")
     if not isinstance(declared, dict):
         raise ValueError("comparison spec must pin both arms' training market cutoffs")
@@ -265,6 +269,7 @@ def model_runtime_pin(runtime_spec):
     if not code_root.is_dir():
         raise ValueError("comparison runtime code_root is missing")
     files = manifest["files"]
+    symlinks = manifest.get("symlinks") or {}
     for relative, expected in files.items():
         rel = Path(relative)
         if rel.is_absolute() or ".." in rel.parts or not isinstance(expected, str) or not re.fullmatch(r"[0-9a-f]{64}", expected):
@@ -272,7 +277,12 @@ def model_runtime_pin(runtime_spec):
         source = code_root / rel
         if source.is_symlink() or not source.is_file() or sha256(source) != expected:
             raise ValueError(f"comparison runtime file fails its declared SHA256: {relative}")
-    return {"manifest_path": str(manifest_path), "manifest_sha256": manifest_sha, "code_root": str(code_root), "files": files}
+    for relative, target in symlinks.items():
+        rel = Path(relative)
+        source = code_root / rel
+        if rel.is_absolute() or ".." in rel.parts or not isinstance(target, str) or not source.is_symlink() or os.readlink(source) != target:
+            raise ValueError(f"comparison runtime symlink differs from its pinned target: {relative}")
+    return {"manifest_path": str(manifest_path), "manifest_sha256": manifest_sha, "code_root": str(code_root), "files": files, "symlinks": symlinks}
 
 
 def verify_model_runtime_tree(runtime_pin, code_root):
@@ -281,6 +291,10 @@ def verify_model_runtime_tree(runtime_pin, code_root):
         target = root / relative
         if target.is_symlink() or not target.is_file() or sha256(target) != expected:
             raise ValueError(f"model comparison runtime differs from pinned champion tree: {relative}")
+    for relative, target in (runtime_pin or {}).get("symlinks", {}).items():
+        link = root / relative
+        if not link.is_symlink() or os.readlink(link) != target:
+            raise ValueError(f"model comparison runtime symlink differs from pinned champion tree: {relative}")
     return True
 
 
@@ -342,7 +356,7 @@ def model_comparison_spec_pin(path, reference_root, candidate_root, reference_pi
     candidate_flags = model_arm_flags(spec, "candidate", base_flags, cli_flags)
     if not reference_flags or not candidate_flags:
         raise ValueError("comparison spec must pin reference and candidate runtime flags")
-    return {"comparison_id": spec.get("comparison_id"), "path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "runtime": runtime_pin, "training_market_max_by_category": training_windows, "base_flags": base_flags, "reference_flags": reference_flags, "candidate_flags": candidate_flags}
+    return {"comparison_id": spec.get("comparison_id"), "path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "runtime": runtime_pin, "training_market_max_by_category": training_windows, "promotion_eligible": bool(spec.get("promotion_eligible")), "base_flags": base_flags, "reference_flags": reference_flags, "candidate_flags": candidate_flags}
 
 
 def stage_model_bundle(source, destination):
@@ -863,6 +877,9 @@ def apply_model_overlay_acceptance(cd, meta, decision):
     reasons = []
     expected_sides = set((overlay.get("snapshot") or {}).get("sides") or [])
     training_windows_verified = False
+    promotion_eligible = bool(((overlay.get("comparison_spec") or {}).get("promotion_eligible")))
+    if not promotion_eligible:
+        reasons.append("model promotion eligibility is not proven by the pinned comparison spec")
     try:
         current_snapshot = model_snapshot_pin()
         if current_snapshot != overlay.get("snapshot"):
@@ -889,9 +906,10 @@ def apply_model_overlay_acceptance(cd, meta, decision):
                 reasons.append(f"{arm} build_root receipt differs from the pinned bundle")
             verify_model_runtime_tree(overlay["comparison_spec"]["runtime"], run_dir / "root")
             training_actual = model_training_market_max_by_category(run_dir / "root")
-            training_expected = (overlay.get("comparison_spec") or {}).get("training_market_max_by_category", {}).get(arm)
+            training_key = "reference" if arm == "baseline" else "candidate"
+            training_expected = (overlay.get("comparison_spec") or {}).get("training_market_max_by_category", {}).get(training_key)
             if training_actual != training_expected:
-                reasons.append(f"{arm} run-root model training cutoffs differ from the pinned source artifacts")
+                reasons.append(f"{arm} run-root model training cutoffs differ from the pinned source artifacts: actual={training_actual} expected={training_expected}")
                 training_windows_verified = False
         except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
             reasons.append(f"{arm} actual run-root model/runtime verification failed: {exc}")

@@ -7490,52 +7490,23 @@ class AdvancedSignalRater:
             dc_low_1h_ant = safe_fetch_float(i.get("dc_low_1h_ant"), dc_low_1h)
             dc_high_15m_ant = safe_fetch_float(i.get("dc_high_15m_ant"), dc_high_15m)
             dc_low_15m_ant = safe_fetch_float(i.get("dc_low_15m_ant"), dc_low_15m)
+            from vec_decisions.asr_dc_structure_score import dc_structure_votes_scalar as _dc_structure_votes_scalar
+            _dc_values = {
+                "dc_low_3m": dc_low_3m, "dc_high_3m": dc_high_3m,
+                "dc_low_15m": dc_low_15m, "dc_high_15m": dc_high_15m,
+                "dc_low_1h": dc_low_1h, "dc_high_1h": dc_high_1h,
+                "dc_low_4h": dc_low_4h, "dc_high_4h": dc_high_4h,
+                "dc_low_3m_ant": dc_low_3m_ant, "dc_high_3m_ant": dc_high_3m_ant,
+                "dc_low_15m_ant": dc_low_15m_ant, "dc_high_15m_ant": dc_high_15m_ant,
+                "dc_low_1h_ant": dc_low_1h_ant, "dc_high_1h_ant": dc_high_1h_ant,
+                "dc_low_4h_ant": dc_low_4h_ant, "dc_high_4h_ant": dc_high_4h_ant,
+            }
+            _dc_vote_delta, _dc_vote_reasons, _dc_vote_valid = _dc_structure_votes_scalar(_dc_values, is_long)
+            score += _dc_vote_delta
+            reasons.extend(_dc_vote_reasons)
+            if _dc_vote_valid:
+                valid_setup = True
             if is_long:
-                if (
-                    (dc_low_3m > dc_low_3m_ant or dc_high_3m > dc_high_3m_ant)
-                    and (dc_low_15m > dc_low_15m_ant or dc_high_15m > dc_high_15m_ant)
-                    and (dc_low_1h > dc_low_1h_ant or dc_high_1h > dc_high_1h_ant)
-                    and (dc_low_4h > dc_low_4h_ant or dc_high_4h > dc_high_4h_ant)
-                ):
-                    valid_setup = True
-                    score += 4.0
-                    reasons.append("dc 3-15-1h-4h up")
-                if (
-                    (dc_low_3m > dc_low_3m_ant or dc_high_3m > dc_high_3m_ant)
-                    and (dc_low_15m > dc_low_15m_ant or dc_high_15m > dc_high_15m_ant)
-                    and (
-                        (dc_low_1h > dc_low_1h_ant or dc_high_1h > dc_high_1h_ant)
-                        or (dc_low_4h > dc_low_4h_ant or dc_high_4h > dc_high_4h_ant)
-                    )
-                ):
-                    valid_setup = True
-                    score += 3.0
-                    reasons.append("dc 3-15-1h or 4h up")
-                if (dc_low_3m > dc_low_3m_ant or dc_high_3m > dc_high_3m_ant) or (
-                    (dc_low_15m > dc_low_15m_ant or dc_high_15m > dc_high_15m_ant)
-                    or (
-                        (dc_low_1h > dc_low_1h_ant or dc_high_1h > dc_high_1h_ant)
-                        or (dc_low_4h > dc_low_4h_ant or dc_high_4h > dc_high_4h_ant)
-                    )
-                ):
-                    valid_setup = True
-                    score += 1.0
-                    reasons.append("dc 3-15 or 1h or 4h up")
-                if (dc_low_3m < dc_low_3m_ant and dc_high_3m < dc_high_3m_ant) or (
-                    dc_low_15m < dc_low_15m_ant and dc_high_15m < dc_high_15m_ant
-                ):
-                    score -= 4.0
-                    reasons.append("dc 3 and 15 down")
-                if (dc_low_3m < dc_low_3m_ant or dc_high_3m < dc_high_3m_ant) and (
-                    dc_low_15m < dc_low_15m_ant or dc_high_15m < dc_high_15m_ant
-                ):
-                    score -= 3.0
-                    reasons.append("dc 3 or 15 down")
-                if (dc_low_1h < dc_low_1h_ant and dc_high_1h < dc_high_1h_ant) or (
-                    dc_low_4h < dc_low_4h_ant and dc_high_4h < dc_high_4h_ant
-                ):
-                    score -= 2.0
-                    reasons.append("dc 1h or 4h down")
                 if (
                     current_price >= dc_high_4h
                     and (k_1m > d_1m and true_lag < 10.0)
@@ -7574,51 +7545,6 @@ class AdvancedSignalRater:
                     reasons.append(">dc3mhigh")
                 logger.info(f" in rate1 {position_key} {score} {k_str}")
             elif not is_long:
-                if (
-                    (dc_low_3m < dc_low_3m_ant or dc_high_3m < dc_high_3m_ant)
-                    and (dc_low_15m < dc_low_15m_ant or dc_high_15m < dc_high_15m_ant)
-                    and (dc_low_1h < dc_low_1h_ant or dc_high_1h < dc_high_1h_ant)
-                    and (dc_low_4h < dc_low_4h_ant or dc_high_4h < dc_high_4h_ant)
-                ):
-                    valid_setup = True
-                    score += 4.0
-                    reasons.append("dc 3-15-1h-4h down")
-                if (
-                    (dc_low_3m < dc_low_3m_ant or dc_high_3m < dc_high_3m_ant)
-                    and (dc_low_15m < dc_low_15m_ant or dc_high_15m < dc_high_15m_ant)
-                    and (
-                        (dc_low_1h < dc_low_1h_ant or dc_high_1h < dc_high_1h_ant)
-                        or (dc_low_4h < dc_low_4h_ant or dc_high_4h < dc_high_4h_ant)
-                    )
-                ):
-                    valid_setup = True
-                    score += 3.0
-                    reasons.append("dc 3-15-1h or 4h down")
-                if (dc_low_3m < dc_low_3m_ant or dc_high_3m < dc_high_3m_ant) or (
-                    (dc_low_15m < dc_low_15m_ant or dc_high_15m < dc_high_15m_ant)
-                    or (
-                        (dc_low_1h < dc_low_1h_ant or dc_high_1h < dc_high_1h_ant)
-                        or (dc_low_4h < dc_low_4h_ant or dc_high_4h < dc_high_4h_ant)
-                    )
-                ):
-                    valid_setup = True
-                    score += 1.0
-                    reasons.append("dc 3-15 or 1h or 4h down")
-                if (dc_low_3m > dc_low_3m_ant and dc_high_3m > dc_high_3m_ant) or (
-                    dc_low_15m > dc_low_15m_ant and dc_high_15m > dc_high_15m_ant
-                ):
-                    score -= 4.0
-                    reasons.append("dc 3 and 15 up")
-                if (dc_low_3m > dc_low_3m_ant or dc_high_3m > dc_high_3m_ant) and (
-                    dc_low_15m > dc_low_15m_ant or dc_high_15m > dc_high_15m_ant
-                ):
-                    score -= 3.0
-                    reasons.append("dc 3 or 15 up")
-                if (dc_low_1h > dc_low_1h_ant and dc_high_1h > dc_high_1h_ant) or (
-                    dc_low_4h > dc_low_4h_ant and dc_high_4h > dc_high_4h_ant
-                ):
-                    score -= 2.0
-                    reasons.append("dc 1h or 4h up")
                 if (
                     current_price <= dc_low_4h
                     and (k_1m < d_1m and true_lag < 10.0)
@@ -7678,118 +7604,14 @@ class AdvancedSignalRater:
             logger.info(
                 f" in rate2 {position_key} {score} {k_str} tts1:{true_lag} ts3:{timestamp_str}"
             )
-            if is_long and k_1h > d_1h:
-                score += 1.0
-            if not is_long and k_1h < d_1h:
-                score += 1.0
-            if (
-                is_long
-                and current_price > dc_basis_15m
-                or not is_long
-                and current_price < dc_basis_15m
-            ):
-                score += 1.0
-            if (
-                is_long
-                and current_price < dc_basis_15m
-                or not is_long
-                and current_price > dc_basis_15m
-            ):
-                score -= 2.0
-            if (
-                is_long
-                and current_price > dc_basis_1h
-                or not is_long
-                and current_price < dc_basis_1h
-            ):
-                score += 1.0
-            if (
-                is_long
-                and current_price < dc_basis_1h
-                or not is_long
-                and current_price > dc_basis_1h
-            ):
-                score -= 2.0
-            if (
-                is_long
-                and current_price > dc_basis_4h
-                or not is_long
-                and current_price < dc_basis_4h
-            ):
-                score += 1.0
-            if (
-                is_long
-                and current_price < dc_basis_4h
-                or not is_long
-                and current_price > dc_basis_4h
-            ):
-                score -= 2.0
-            if (
-                is_long
-                and current_price > sma_200_1m
-                or not is_long
-                and current_price < sma_200_1m
-            ):
-                score += 1.0
-            if (
-                is_long
-                and current_price < sma_200_1m
-                or not is_long
-                and current_price > sma_200_1m
-            ):
-                score -= 2.0
-            if (
-                is_long
-                and current_price > sma_200_15m
-                or not is_long
-                and current_price < sma_200_15m
-            ):
-                score += 1.0
-            if (
-                is_long
-                and current_price < sma_200_15m
-                or not is_long
-                and current_price > sma_200_15m
-            ):
-                score -= 2.0
-            if (
-                is_long
-                and current_price > sma_200_1h
-                or not is_long
-                and current_price < sma_200_1h
-            ):
-                score += 1.0
-            if (
-                is_long
-                and current_price < sma_200_1h
-                or not is_long
-                and current_price > sma_200_1h
-            ):
-                score -= 2.0
-            if is_long:
-                if ha_15m == "green":
-                    score += 1.5
-                if ha_1h == "green":
-                    score += 1.5
-                if ha_15m == "red":
-                    score -= 2.0
-            else:
-                if ha_15m == "red":
-                    score += 1.5
-                if ha_1h == "red":
-                    score += 1.5
-                if ha_15m == "green":
-                    score -= 2.0
-            if is_long:
-                if wt_score_15m > 0 and wt_score_1h > -20:
-                    score += 1.0
-                if wt_score_15m < -50:
-                    score += 1.5
-            else:
-                if wt_score_15m < 0 and wt_score_1h < 20:
-                    score += 1.0
-                if wt_score_15m > 50:
-                    score += 1.5
+            from vec_decisions.asr_directional_score import directional_score_scalar as _asr_directional_score_scalar
+            _asr_directional_values = {
+                "current_price": current_price, "k_1h": k_1h, "d_1h": d_1h,
+                "dc_basis_15m": dc_basis_15m, "dc_basis_1h": dc_basis_1h, "dc_basis_4h": dc_basis_4h,
+                "sma_200_1m": sma_200_1m, "sma_200_15m": sma_200_15m, "sma_200_1h": sma_200_1h,
+                "ha_15m": ha_15m, "ha_1h": ha_1h, "wt_score_15m": wt_score_15m, "wt_score_1h": wt_score_1h,
+            }
+            score += _asr_directional_score_scalar(_asr_directional_values, is_long)
             # === WAVETREND INTELLIGENCE SCORING ===
             # WT Divergence — strongest signal (bullish div at oversold = high conviction entry)
             if _wt_div_1h == "BULL" and is_long:

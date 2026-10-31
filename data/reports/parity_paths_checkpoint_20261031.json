@@ -347,7 +347,7 @@
       "status": "Disclosed by agent; no retroactive backup claimed"
     }
   ],
-  "checkpoint_updated_at": "2026-10-31T06:13:37.920192+00:00",
+  "checkpoint_updated_at": "2026-10-31T06:26:39.650886+00:00",
   "replay_clock": {
     "signal_clock": "NPZ bar-open timestamp",
     "decision_clock": "bar-open +900seconds when V12_COMPLETED_BAR_SECONDS=900",
@@ -529,7 +529,7 @@
     "status": "LOCAL_PREDICATE_TESTED_FULL_REPLAY_PENDING",
     "cause": "Vector blanket lowADX veto omitted native k_focus extreme exception; secondary hardgate used baseTF rather than configured TF_FOCUS",
     "fix": "Both vector consumers use configured ADX_TF and TF_FOCUS with strict native thresholds; no native diagnostic change",
-    "tests": "9 passed against AST-extracted actual AdvancedSignalRater branch including long/short/boundary/NaN/missing/disabled cases"
+    "tests": "17passed after sharedmicroinputpolicy integration, includescontradictory3m/15m OFF/ON"
   },
   "stock_input_repair": {
     "invalid_input_sha256": "1fa37c8abcb6d72c93ff19bebf6024a8ed402e117fd4b5111fb9d9d45bb37ad9",
@@ -584,7 +584,8 @@
     },
     "preserved": "172 genuine ANG Oct2 return rows and first31 stale closes; original bytes archived; diagnostic logs not edited",
     "unresolved": "qty_streak previous authentic state unavailable; never guessed/reset; authentic history reconstruction pending",
-    "prevention": "Explicit BASE_PATH and V12_BASE_PATH, derived output path checks, exact frozen active DB row, frozen board, scoped native ownership flags; 10 focused tests pass"
+    "prevention": "Explicit BASE_PATH and V12_BASE_PATH, derived output path checks, exact frozen active DB row, frozen board, scoped native ownership flags; 10 focused tests pass",
+    "diagnostic_readback": "All21archiveddiagnosticfile byteprefixes remain identical afterrepair"
   },
   "vector_consumer_diagnostic": {
     "reported_by": "ez_paths",
@@ -614,5 +615,25 @@
       "snapshot predates current fixes"
     ],
     "first_exit_refusal_signal_bar": 1790848800
+  },
+  "quick_composite_input_fix": {
+    "status": "LOCAL_TESTED_NOT_IN_0619_SOURCE_FREEZE",
+    "cause": [
+      "vector accepted fewer than3gain observations",
+      "vector hardcoded volatilitywarningFalse"
+    ],
+    "fix": "Require native minimum3; consume exact volatility fields/fallbacks supplied byNPZ",
+    "tests": "52passed including actualnativecalculate_trading_signals AST",
+    "limitations": [
+      "native minute sampling vs vector15m history",
+      "historical crosssymbol0sentiment_strength absent fromsingleNPZ"
+    ]
+  },
+  "exit_current_mark_gate_review": {
+    "status": "LOCAL_ENGINE_TESTED_NOT_IN_0619_SOURCE_FREEZE",
+    "stock_correction": "Earlier Tradier return bypassed newmarkgate; removed with cryptoMIN_HOLD scopepreserved",
+    "crypto_correction": "Ordinaryexits compare currentweightedmarkgain toCOMMISSION_BUFFER_PCT instead lifecyclepnl includingpriorrealizedprofits",
+    "tests": "29passed across actualenginepartial/close/restore, stockweightedbasis, mandatorylossstops and helperboundaries",
+    "first_consumer_refusal": "Differentcause: rawFIXED_STOP loststopmetadata inforwardstate/planner; agentpreservingmetadata and implementingmockstoplifecyclewithoutgatebypass"
   }
 }

@@ -129,6 +129,103 @@ def _iso(timestamp):
     return datetime.fromtimestamp(int(timestamp), timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+class _NativeMacLifecycle:
+    def __init__(self, account, state_root, output_dir, trader, clock, dc_low, dc_high, time_to_index):
+        import ez_manage
+        from tools import mac_positions_push_executors
+        self.account = account
+        self.state_root = Path(state_root)
+        self.output_dir = Path(output_dir)
+        self.trader = trader
+        self.clock = clock
+        self.dc_low = dc_low
+        self.dc_high = dc_high
+        self.time_to_index = time_to_index
+        self.ez = ez_manage
+        self.publisher = mac_positions_push_executors
+        self.publisher.ROOT = self.state_root
+        self.publisher.time = _ReplayTime(clock, time)
+        self.positions = {}
+        for side in ("long", "short"):
+            book = self.state_root / account / f"{side}_positions.json"
+            book.parent.mkdir(parents=True, exist_ok=True)
+            if not book.exists():
+                book.write_text("{}")
+        self.path = self.output_dir / "mac_positions_crypto.json"
+
+    def _position(self, sym_side, broker_row, opened_at, prior, action, fill_qty, fill_price, bar_ts):
+        symbol, side = sym_side.rsplit("_", 1)
+        is_long = side == "LONG"
+        qty = float(broker_row["qty"])
+        entry = float(broker_row["entry"])
+        mark = float(broker_row["price"])
+        index = self.time_to_index[int(bar_ts)]
+        ind = {"dc_low_15m": float(self.dc_low[index]), "dc_high_15m": float(self.dc_high[index])}
+        re_freeze = prior is None or action in ("OPEN", "AUGMENT")
+        if re_freeze:
+            stop, _source = self.ez._fixed_stop_freeze_level_spec(symbol, side, is_long, ind, entry)
+            if stop <= 0:
+                raise RuntimeError(f"native fixed stop could not be frozen for {sym_side} at {bar_ts}")
+            anchor = float(opened_at.timestamp())
+            armed = self.ez._fixed_stop_core.armed_at_freeze(is_long, mark, stop)
+        else:
+            stop = float(prior["fixed_stop_price"])
+            anchor = float(prior["fixed_stop_anchor"])
+            armed = bool(prior["fixed_stop_armed"])
+        now = self.ez.datetime.fromtimestamp(float(self.clock[0]), self.ez.timezone.utc)
+        opened = opened_at
+        position_data = {
+            "symbol": symbol, "position_side": side, "entry_price": entry, "mark_price": mark,
+            "positionAmt": qty, "initial_quantity": float(prior.get("initial_quantity", fill_qty) if prior else fill_qty),
+            "gain": ((mark / entry - 1.0) * 100.0 if is_long else (entry / mark - 1.0) * 100.0) if entry > 0 and mark > 0 else 0.0,
+            "max_gain": max(float(prior.get("max_gain", 0.0) if prior else 0.0), ((mark / entry - 1.0) * 100.0 if is_long else (entry / mark - 1.0) * 100.0) if entry > 0 and mark > 0 else 0.0),
+            "prev_gain": float(prior.get("gain", 0.0) if prior else 0.0), "max_quantity": max(qty, float(prior.get("max_quantity", 0.0) if prior else 0.0)),
+            "last_augmentation_amount": float(fill_qty if action == "AUGMENT" else prior.get("last_augmentation_amount", 0.0) if prior else 0.0),
+            "last_augmentation_price": float(fill_price if action == "AUGMENT" else prior.get("last_augmentation_price", 0.0) if prior else 0.0),
+            "last_augmentation_time": now if action == "AUGMENT" else prior.get("last_augmentation_time") if prior else None,
+            "last_reduction_amount": float(fill_qty if action == "REDUCE" else prior.get("last_reduction_amount", 0.0) if prior else 0.0),
+            "last_reduction_price": float(fill_price if action == "REDUCE" else prior.get("last_reduction_price", 0.0) if prior else 0.0),
+            "last_reduction_time": now if action == "REDUCE" else prior.get("last_reduction_time") if prior else None,
+            "max_positionSize": float(prior.get("max_positionSize", 0.0) if prior else 0.0), "opened_at": opened,
+            "last_updated": now, "last_signal": action or "OPEN", "fixed_stop_price": float(stop),
+            "fixed_stop_anchor": anchor, "fixed_stop_armed": bool(armed),
+        }
+        position = self.ez.Position.from_dict(position_data)
+        return position.to_dict()
+
+    def update(self, sym_side, broker_row, bar_ts, action=None, fill_qty=0.0, fill_price=0.0):
+        symbol, side = sym_side.rsplit("_", 1)
+        account_books = self.positions.setdefault(sym_side, None)
+        prior = account_books
+        if broker_row is None or float(broker_row.get("qty") or 0.0) <= 0.0:
+            self.positions[sym_side] = None
+        else:
+            if prior is None:
+                from datetime import datetime, timezone
+                opened_at = datetime.fromtimestamp(float(self.clock[0]), timezone.utc)
+            else:
+                opened_at = prior["opened_at"]
+                if isinstance(opened_at, str):
+                    from datetime import datetime
+                    opened_at = datetime.fromisoformat(opened_at.replace("Z", "+00:00"))
+            self.positions[sym_side] = self._position(sym_side, broker_row, opened_at, prior, action, fill_qty, fill_price, bar_ts)
+        side_path = self.state_root / self.account / ("long_positions.json" if side == "LONG" else "short_positions.json")
+        other_path = self.state_root / self.account / ("short_positions.json" if side == "LONG" else "long_positions.json")
+        rows = {key: value for key, value in self.positions.items() if key.endswith("_" + side) and value is not None}
+        rows = {key: {"symbol": key.rsplit("_", 1)[0], "position_side": side, **value} for key, value in rows.items()}
+        side_path.write_text(json.dumps(rows, sort_keys=True, default=str))
+        if not other_path.exists():
+            other_path.write_text("{}")
+        os.utime(side_path, (float(self.clock[0]), float(self.clock[0])))
+        document = self.publisher.document("crypto", [self.account])
+        self.path.write_text(json.dumps(document, sort_keys=True, default=str))
+        self.trader.mac_positions_cache = None
+        return document
+
+    def merge(self, broker_positions):
+        return self.trader.annotate_with_mac(self.account, broker_positions)
+
+
 class _MockBroker:
     def __init__(self, trader, exchange, ticks, fills):
         self.trader = trader
@@ -183,11 +280,53 @@ class _MockBroker:
             self.position[ss] = {"qty": after, "price": self.price_now, "entry": entry, "break_even": entry, "cost": after * entry}
         else:
             self.position.pop(ss, None)
+        if getattr(self, "lifecycle", None) is not None:
+            self.lifecycle.update(ss, self.position.get(ss), self.bar_ts, action=action, fill_qty=qty, fill_price=self.price_now)
         self.fills.append({"record": "mock_fill", "acct": account, "sym_side": ss, "action": action,
                            "bar_ts": self.bar_ts, "qty": qty, "position_before": before,
                            "position_after": after, "price": self.price_now, "key": order.get("key")})
         return {"status": "FILLED", "executedQty": qty, "avgPrice": self.price_now,
                 "mock_broker": True}
+
+    def process_standing_stops(self, *, open_price, high, low, engine_stop_events=()):
+        fills = []
+        for algo_id, algo in list(self.algos.items()):
+            ss = f"{str(algo.get('symbol') or '').upper()}_{str(algo.get('positionSide') or '').upper()}"
+            position = self.position.get(ss)
+            if not position or str(algo.get("closePosition") or "").lower() != "true":
+                continue
+            if str(algo.get("orderType") or algo.get("type") or "").upper() != "STOP_MARKET":
+                continue
+            if str(algo.get("workingType") or "").upper() != "MARK_PRICE":
+                continue
+            if str(algo.get("algoStatus") or algo.get("status") or "NEW").upper() not in ("NEW", "OPEN"):
+                continue
+            if algo.get("account") not in (None, self.trader.accounts[0] if self.trader and self.trader.accounts else None):
+                continue
+            side = ss.rsplit("_", 1)[1]
+            level = float(algo.get("triggerPrice") or 0.0)
+            crossed = level > 0 and (float(low) <= level if side == "LONG" else float(high) >= level)
+            if not crossed:
+                continue
+            before = float(position.get("qty") or 0.0)
+            fill_price = min(float(open_price), level) if side == "LONG" else max(float(open_price), level)
+            self.position.pop(ss, None)
+            if getattr(self, "lifecycle", None) is not None:
+                self.lifecycle.update(ss, None, self.bar_ts)
+            self.algos.pop(algo_id, None)
+            for stale_id, stale in list(self.algos.items()):
+                if str(stale.get("symbol") or "").upper() == ss.rsplit("_", 1)[0] and str(stale.get("positionSide") or "").upper() == side:
+                    self.algos.pop(stale_id, None)
+            row = {"record": "mock_stop_fill", "acct": algo.get("account"), "sym_side": ss, "action": "CLOSE",
+                   "bar_ts": self.bar_ts, "qty": before, "position_before": before, "position_after": 0.0,
+                   "status": "FILLED", "final": True,
+                   "stop_level": level, "price": fill_price, "open": float(open_price), "high": float(high),
+                   "low": float(low), "algo_id": algo_id, "algo_status": algo.get("algoStatus"),
+                   "fill_model": "contract_ohlc_trigger_at_stop_or_gap_open",
+                   "vector_engine_stop_events": [copy.deepcopy(event) for event in engine_stop_events]}
+            self.fills.append(row)
+            fills.append(row)
+        return fills
 
     def _req(self, method, path, acct=None, params=None, **_kwargs):
         params = dict(params or {})
@@ -305,6 +444,11 @@ def replay(args):
         raise ValueError("NPZ lacks causal dc_low_15m/dc_high_15m stop inputs")
     dc_low = np.asarray(arrays["dc_low_15m"], dtype=float)
     dc_high = np.asarray(arrays["dc_high_15m"], dtype=float)
+    bar_open = np.asarray(arrays.get("open", arrays.get("open_15m")), dtype=float)
+    bar_high = np.asarray(arrays.get("high", arrays.get("high_15m")), dtype=float)
+    bar_low = np.asarray(arrays.get("low", arrays.get("low_15m")), dtype=float)
+    if not (len(bar_open) == len(bar_high) == len(bar_low) == len(timestamps)):
+        raise ValueError("NPZ lacks aligned open/high/low arrays for standing-stop replay")
     time_to_index = {int(ts): index for index, ts in enumerate(timestamps)}
     def causal_dc15(npz_dir, symbol):
         index = time_to_index.get(broker.bar_ts)
@@ -313,6 +457,9 @@ def replay(args):
         return {"bar_ts": broker.bar_ts, "dc_low_15m": float(dc_low[index]),
                 "dc_high_15m": float(dc_high[index]), "src": "frozen_npz_bar"}
     stops_module.dc15 = causal_dc15
+    lifecycle = _NativeMacLifecycle(args.account, root / "native_position_books", out_dir, trader, decision_clock,
+                                    dc_low, dc_high, time_to_index)
+    broker.lifecycle = lifecycle
 
     manifest = {"record": "vector_consumer_manifest", "schema_version": 1, "account": args.account,
                 "sym_side": sym_side, "active_set_sha256": _sha(args.active_set), "npz_sha256": _sha(args.npz),
@@ -336,9 +483,11 @@ def replay(args):
                            "market_mode_file": str(config.MARKET_MODE_FILE),
                            "market_mode_file_exists": Path(config.MARKET_MODE_FILE).exists()},
                 "protection": "actual vector_direct_stops.Stops; causal NPZ DC15 values; in-memory algo endpoint",
+                "native_lifecycle": "ez_manage.Position.from_dict/to_dict + native fixed-stop freeze/arming + mac_positions_push_executors.document + Trader.annotate_with_mac; simulated source books are run-owned",
+                "standing_stop_fill_assumption": "a contract-candle high/low crossing triggers the persisted in-memory MARK_PRICE algo; fill uses stop level or gap open; this is not mark-price execution proof",
                 "fee_funding_model": args.fee_funding_model,
                 "standing_stop_fill_model": args.standing_stop_fill_model,
-                "acceptance_status": "diagnostic_only_incomplete_fee_funding_and_ohlc_stop_fill",
+                "acceptance_status": "diagnostic_only_contract_ohlc_stop_proxy_and_incomplete_fee_funding",
                 "broker_transport": "exact _MockBroker.send and _MockBroker._req methods; unsupported requests raise",
                 "mock_broker_transport_verified": type(broker) is _MockBroker and broker.send.__func__ is _MockBroker.send and broker._req.__func__ is _MockBroker._req,
                 "isolation_root": str(isolation_root), "run_root": str(root), "source_root": str(code_root),
@@ -362,11 +511,29 @@ def replay(args):
             broker.bar_ts = bar
             decision_clock[0] = bar + 900
             broker.price_now = float(record["market_price"])
+            npz_index = time_to_index[bar]
             state = dict(record.get("planner_state") or {})
+            engine_stop_events = [event for event in state.get("acts_last_bar") or []
+                                  if event.get("type") == "CLOSE" and event.get("mandatory_stop_kind") == "DC15_FROZEN_DEFAULT"]
+            pre_stop_positions = broker.positions(args.account)
+            lifecycle.merge(pre_stop_positions)
+            if pre_stop_positions.get(sym_side) and (pre_stop_positions[sym_side].get("position_source") != "mac_snapshot_broker_verified"
+                    or not pre_stop_positions[sym_side].get("mac", {}).get("fixed_stop_armed")
+                    or float(pre_stop_positions[sym_side].get("mac", {}).get("fixed_stop_price") or 0.0) <= 0.0):
+                raise RuntimeError(f"native simulated lifecycle did not verify standing stop before bar {bar}")
+            if args.standing_stop_fill_model == "contract_ohlc_trigger_at_stop_or_gap_open":
+                broker.process_standing_stops(open_price=bar_open[npz_index], high=bar_high[npz_index], low=bar_low[npz_index],
+                                               engine_stop_events=engine_stop_events)
+            lifecycle.update(sym_side, broker.position.get(sym_side), bar, action=None)
             if not state.get("ok"):
                 reason = str(state.get("reason") or "unspecified")
                 invalid[reason] = invalid.get(reason, 0) + 1
             positions = broker.positions(args.account)
+            lifecycle.merge(positions)
+            if positions.get(sym_side) and (positions[sym_side].get("position_source") != "mac_snapshot_broker_verified"
+                    or not positions[sym_side].get("mac", {}).get("fixed_stop_armed")
+                    or float(positions[sym_side].get("mac", {}).get("fixed_stop_price") or 0.0) <= 0.0):
+                raise RuntimeError(f"native simulated lifecycle did not merge/verify stop for {sym_side} at {bar}")
             prev_qty = previous_observed if previous_observed_at and bar - trader_module.BAR_S <= previous_observed_at < bar + trader_module.BAR_S else {}
             orders, notes = trader_module.plan_account(
                 args.account, "crypto", [sym_side], {sym_side: state}, positions, bar,
@@ -380,6 +547,11 @@ def replay(args):
             for order in orders:
                 order["bar"] = bar
                 order["decision_provenance"] = state_ref
+                if order.get("act") == "CLOSE":
+                    close_events = [event for event in state.get("acts_last_bar") or []
+                                    if event.get("type") == "CLOSE" and int(event.get("bar_ts") or event.get("ts") or bar) == bar]
+                    if close_events:
+                        order["engine_exit_event"] = copy.deepcopy(close_events[-1])
                 side_orders = [trader_module.order_intent(order)]
                 plan_doc = {"schema": "vector-direct-plan-decision-v1", "acct": args.account,
                             "ss": sym_side, "bar": bar, "state_provenance": state_ref,
@@ -387,6 +559,7 @@ def replay(args):
                                         "state_sha256": state_ref["state_sha256"],
                                         "keys_member": True, "allowed": True,
                                         "held": float((positions.get(sym_side) or {}).get("qty") or 0.0),
+                                        "engine_exit_event": order.get("engine_exit_event"),
                                         "orders": side_orders, "notes": []},
                             "orders": side_orders}
                 order["plan_decision"] = trader_module.persist_plan_decision(out_dir, plan_doc)
@@ -439,7 +612,7 @@ def main():
     parser.add_argument("--code-manifest", required=True)
     parser.add_argument("--code-manifest-sha", required=True)
     parser.add_argument("--fee-funding-model", choices=("ignored_flat_basis",), required=True)
-    parser.add_argument("--standing-stop-fill-model", choices=("orders_persist_no_ohlc_trigger",), required=True)
+    parser.add_argument("--standing-stop-fill-model", choices=("orders_persist_no_ohlc_trigger", "contract_ohlc_trigger_at_stop_or_gap_open"), required=True)
     args = parser.parse_args()
     result = replay(args)
     print(json.dumps(result, sort_keys=True, default=str))
