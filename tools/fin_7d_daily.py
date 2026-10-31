@@ -66,6 +66,22 @@ FULL_PASS_MIN = int(os.environ.get("FIN7D_FULL_PASS_MIN", "10"))
 FULL_PASS_DEADLINE_S = int(os.environ.get("FIN7D_FULL_PASS_DEADLINE_S", str(70 * 60)))
 FULL_PASS_REDO_ATTEMPTS = int(os.environ.get("FIN7D_FULL_PASS_REDO_ATTEMPTS", "1"))
 PREEMPT_HOSTS = ("s2", "s5", "s6")
+# USER 2026-10-31 "7D is just a comparison experiment make sure it can never put in danger any of the existing 30D
+# trading". S5 is the LIVE stock host (tra/trb primary + the 30D stock state chain). No fin 7D board is launched there,
+# and no 30D board there is preempted, from 08:00 to 16:30 New York time on weekdays: the stock chain plans from 08:45 ET,
+# and a board takes up to ~26 min, so anything launched before 08:00 has finished first. S1 never hosts a 7D board.
+LIVE_HOST_SESSIONS = {"s5": ("stocks", (8, 0), (16, 30))}
+
+
+def host_in_live_session(host, now=None):
+    """True while `host` is running a live 30D session the experiment must stay away from."""
+    spec = LIVE_HOST_SESSIONS.get(host)
+    if not spec:
+        return False
+    from zoneinfo import ZoneInfo
+    et = dt.datetime.fromtimestamp(now if now is not None else time.time(), dt.timezone.utc).astimezone(ZoneInfo("America/New_York"))
+    _venue, start, end = spec
+    return et.weekday() < 5 and start <= (et.hour, et.minute) < end
 LEADERS = ("s1-pub", "s2")
 FIN_HOLD_WHY = "FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)"
 FIN_PAUSE_SCRIPT = r"""
@@ -116,7 +132,12 @@ def stamp(epoch=None):
 
 
 def log(msg):
-    print(f"[{stamp()}] {msg}", flush=True)
+    # 2026-10-31 04:5xZ: the Mac disk filled and a log line raised OSError ENOSPC, killing the whole pass mid-run. A
+    # failed log write must never take the orchestrator down; the boards, staging and publication carry on.
+    try:
+        print(f"[{stamp()}] {msg}", flush=True)
+    except OSError:
+        pass
 
 
 def sh(host, command, timeout=40):
@@ -248,6 +269,9 @@ def preempt():
     hold(True)
     sides = []
     for host in PREEMPT_HOSTS:
+        if host_in_live_session(host):
+            log(f"preempt {host}: SKIPPED — live 30D session on this host; the experiment never touches it")
+            continue
         rc, out, err = _py(host, FIN_PAUSE_SCRIPT, 60)
         try:
             got = json.loads(out.strip().splitlines()[-1]) if out.strip() else []
@@ -447,6 +471,8 @@ def _run_boards(run_id, day, started, sides, hosts, deadline_s, redo_attempts, p
     meta = {"run_id": run_id, "started_utc": stamp(started), "boards": len(sides), "preempted_30d": preempted}
     while (pending or inflight) and time.time() - started < deadline_s:
         for host in hosts:
+            if host_in_live_session(host):
+                continue   # live 30D session on this host: no new 7D board, whatever its free slots say
             free = WORKERS[host] - sum(1 for h in inflight.values() if h == host)
             while free > 0 and pending:
                 ss = pending.pop(0)
@@ -489,7 +515,11 @@ def _run_boards(run_id, day, started, sides, hosts, deadline_s, redo_attempts, p
             row.update(staged=ok, stage_why=stage_why)
             done[ss] = row
             log(f"FINISHED {ss} on {host}: {tier} — {why} | {'STAGED' if ok else 'NOT STAGED'}: {stage_why}")
-            publish(done, day, meta)
+            try:
+                publish(done, day, meta)
+            except OSError as exc:
+                # the local copy could not be written (disk full); the next finished board publishes everything again
+                log(f"publish deferred ({exc}); {ss} stays staged on S1 and is published with the next board")
         if pending or inflight:
             time.sleep(POLL_S)
     doc, _ = publish(done, day, {**meta, "finished_utc": stamp(), "unfinished": sorted(pending + list(inflight))})

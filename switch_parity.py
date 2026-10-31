@@ -612,6 +612,23 @@ def register_workbook_result(
     }
     full = dict(snap)
     full.update(coerced)
+    if n_prom < 1:
+        _accepted = None
+        try:
+            import per_sym_store as _accepted_pss
+            from tools.v15_accepted_provenance import protect_accepted_set as _protect_accepted_set
+            _accepted_map = _accepted_pss.kv_get("catside_verified") or {}
+            _accepted = _accepted_map.get(sym_side) if isinstance(_accepted_map, dict) else None
+            _current_full = _accepted_pss.get_full_config(sym_side) or {}
+            _accepted_refusal = _protect_accepted_set(_accepted, _current_full, full, n_prom)
+            if _accepted_refusal:
+                rep["reason"] = _accepted_refusal
+                rep["preserved_accepted_set_sha256"] = _accepted.get("accepted_set_sha256")
+                return rep
+        except Exception as _accepted_error:
+            if isinstance(_accepted, dict) and _accepted.get("accepted_set_sha256"):
+                rep["reason"] = f"accepted-set provenance guard failed closed: {type(_accepted_error).__name__}: {str(_accepted_error)[:100]}"
+                return rep
     rep["n_keys"] = len(coerced)
     rep["n_snapshot"] = len(snap)
     rep["n_full"] = len(full)

@@ -2,7 +2,7 @@ import hashlib
 import json
 
 from tools.paper_frame_stream import FrameJournal
-from tools.paper_forward_results import _digest, ingest, ingest_directory, ingest_terminal_without_journal
+from tools.paper_forward_results import _digest, _utc, ingest, ingest_directory, ingest_terminal_without_journal
 from tools.paper_scenario_db import ScenarioDB
 
 
@@ -20,9 +20,10 @@ def _fixture(tmp_path):
     effective_hash = hashlib.sha256(json.dumps(effective, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
     manifest = {"run_id": "actual-run-1", "epoch_id": epoch, "scenario_id": "s", "sym_side": "BTCUSDC_LONG", "host": "worker1", "settings_sha256": effective_hash, "parent_settings_sha256": settings, "code_sha256": code, "code_file_hashes": {"backtest_v12_engine.py": code}, "started_at": "1970-01-01T00:00:00Z", "base_settings": base, "effective_settings": effective, "candidate_overrides": candidate, "candidate_getter_resolution": {"BOOL_SWITCH": {"matches": True}}, "source_timeframe": "1m", "source_time_alias_verified": True, "closed_bar_status_verified": True, "source_time_semantics": "native 1m source timeframe; closed-bar status verified", "experiment_window": {"source_timeframe": "1m"}, "context": {"evidence_label": "INDEPENDENT_FORWARD", "source_timeframe": "1m", "source_time_alias_verified": True, "closed_bar_status_verified": True}, "finished": True}
     journal = FrameJournal(tmp_path / "worker.sqlite", {"scenario_id": "s", "run_id": manifest["run_id"], "epoch_id": epoch, "sym_side": "BTCUSDC_LONG", "settings_sha256": effective_hash, "code_sha256": code})
-    journal.append_frame(100, {"close": 10})
+    source_provenance = {"schema_version": 1, "timeframe": "1m", "source_field": "timestamp_1m", "producer_source_sha256": "f" * 64, "status": "VERIFIED_NATIVE", "receipt_verified_native_1m": True}
+    journal.append_frame(100, {"BTCUSDC": {"indicators": {"timestamp_1m": _utc(100)}, "observation": {"observed_at_utc": _utc(100), "source_timestamp": _utc(100), "source_timestamp_epoch_s": 100, "frame_timeframe": "1m", "source_timeframe_provenance": source_provenance}}})
     journal.record_receipt(100, {"events": [{"type": "eta", "action": "OPEN", "status": "FILLED", "position_key": "inf:BTCUSDC_LONG", "position_before": 0, "position_after": 2, "price": 10, "quantity": 2}], "positions": {"inf:BTCUSDC_LONG": {"quantity": 2}}})
-    journal.append_frame(200, {"close": 12})
+    journal.append_frame(200, {"BTCUSDC": {"indicators": {"timestamp_1m": _utc(200)}, "observation": {"observed_at_utc": _utc(200), "source_timestamp": _utc(200), "source_timestamp_epoch_s": 200, "frame_timeframe": "1m", "source_timeframe_provenance": source_provenance}}})
     journal.record_receipt(200, {"events": [{"type": "webhook", "params": {"type": "MARKET", "side": "SELL"}, "action": "CLOSE", "status": "FILLED", "position_key": "inf:BTCUSDC_LONG", "position_before": 2, "position_after": 0, "price": 12, "quantity": 2}], "positions": {"inf:BTCUSDC_LONG": {"quantity": 0}}})
     journal.close()
     return db, tmp_path / "worker.sqlite", manifest
@@ -183,6 +184,9 @@ def test_paired_readiness_reports_shared_inputs_without_claiming_outcomes(tmp_pa
     assert cost_pair["paired_simulated_cost_ready"] == 1
     assert cost_pair["diagnostic_simulated_cost_ready"] == 1
     assert cost_pair["diagnostic_simulated_net_pnl_dollars_delta"] == 0
+    assert cost_pair["time_policy_a"] == cost_pair["time_policy_b"] == "OBSERVED_AT_UTC"
+    assert cost_pair["observation_clock_verified_a"] == cost_pair["observation_clock_verified_b"] == 1
+    assert cost_pair["closed_bar_status_verified_a"] == cost_pair["closed_bar_status_verified_b"] == 0
     db.connection.execute("UPDATE paper_forward_run_provenance SET evidence_label='DIAGNOSTIC_REPLAY',input_provenance_valid=0,invalid_reasons_json='[\"DIAGNOSTIC_REPLAY\"]' WHERE run_id='actual-baseline'")
     invalid_pair = next(row for row in db.query("SELECT * FROM paper_paired_simulated_cost_readiness") if {row["run_a"], row["run_b"]} == {"actual-run-1", "actual-baseline"})
     assert invalid_pair["paired_simulated_cost_ready"] == 0
@@ -364,4 +368,48 @@ def test_diagnostic_replay_and_override_issues_are_invalid_provenance(tmp_path):
     assert "DIAGNOSTIC_REPLAY" in provenance["invalid_reasons_json"]
     assert "OVERRIDE_ISSUES" in provenance["invalid_reasons_json"]
     assert db.query("SELECT COUNT(*) FROM forward_receipts WHERE run_id='actual-run-1'")[0][0] == 2
+    db.close()
+
+
+def test_observed_clock_must_match_each_journal_frame_timestamp(tmp_path):
+    import sqlite3
+
+    db, journal, manifest = _fixture(tmp_path)
+    connection = sqlite3.connect(journal)
+    payload = json.loads(connection.execute("SELECT payload FROM frames WHERE sequence=1").fetchone()[0])
+    payload["BTCUSDC"]["observation"]["observed_at_utc"] = _utc(101)
+    body = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    connection.execute("UPDATE frames SET payload=?,input_hash=? WHERE sequence=1", (body, hashlib.sha256(body.encode()).hexdigest()))
+    connection.commit()
+    connection.close()
+    result = ingest(db, journal, manifest)
+    provenance = db.query("SELECT observation_clock_verified,time_policy,input_provenance_valid,invalid_reasons_json FROM paper_forward_run_provenance WHERE run_id='actual-run-1'")[0]
+    assert result["receipts"] == 2
+    assert provenance["observation_clock_verified"] == 0
+    assert provenance["time_policy"] == "UNVERIFIED"
+    assert provenance["input_provenance_valid"] == 0
+    assert "OBSERVATION_CLOCK_TIMESTAMP_MISMATCH" in provenance["invalid_reasons_json"]
+    db.close()
+
+
+def test_native_time_alias_verification_comes_from_each_frame_payload(tmp_path):
+    import sqlite3
+
+    db, journal, manifest = _fixture(tmp_path)
+    connection = sqlite3.connect(journal)
+    payload = json.loads(connection.execute("SELECT payload FROM frames WHERE sequence=2").fetchone()[0])
+    payload["BTCUSDC"]["observation"]["source_timeframe_provenance"]["status"] = "NATIVE_SOURCE"
+    body = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    connection.execute("UPDATE frames SET payload=?,input_hash=? WHERE sequence=2", (body, hashlib.sha256(body.encode()).hexdigest()))
+    connection.commit()
+    connection.close()
+    manifest["source_time_alias_verified"] = True
+    result = ingest(db, journal, manifest)
+    provenance = db.query("SELECT source_time_alias_verified,observation_clock_verified,time_policy,input_provenance_valid,invalid_reasons_json FROM paper_forward_run_provenance WHERE run_id='actual-run-1'")[0]
+    assert result["receipts"] == 2
+    assert provenance["source_time_alias_verified"] == 0
+    assert provenance["observation_clock_verified"] == 1
+    assert provenance["time_policy"] == "OBSERVED_AT_UTC"
+    assert provenance["input_provenance_valid"] == 0
+    assert "SOURCE_TIMEFRAME_ALIAS_UNVERIFIED" in provenance["invalid_reasons_json"]
     db.close()

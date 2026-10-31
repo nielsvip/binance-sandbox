@@ -347,7 +347,7 @@
       "status": "Disclosed by agent; no retroactive backup claimed"
     }
   ],
-  "checkpoint_updated_at": "2026-10-31T04:55:16.261598+00:00",
+  "checkpoint_updated_at": "2026-10-31T05:09:15.869220+00:00",
   "replay_clock": {
     "signal_clock": "NPZ bar-open timestamp",
     "decision_clock": "bar-open +900seconds when V12_COMPLETED_BAR_SECONDS=900",
@@ -447,11 +447,37 @@
     "last_bar_utc": "2026-10-31T02:45:00Z",
     "scored_bars": 1344,
     "timestamp_correction": "Earlier 02:30 tail description was wrong; hash is unchanged",
-    "settings_scope": "retrospective frozen current settings, not historical as-traded"
+    "settings_scope": "retrospective frozen current settings, not historical as-traded",
+    "source_content_manifest_sha256": "d5ccc041612b8e29812f66aac105b2e1f9d89386e9ab00cfce24cc7e2acd903c",
+    "source_manifest_entries": 3634,
+    "source_verification": "ez_paths reports all original non-bytecode file hashes match; full-tree pyc/runtime outputs differ and are excluded explicitly"
   },
   "disk_recovery": {
     "manifest": "backups/parity_backup_offload_manifest.jsonl",
     "method": "four inactive DB snapshots copied to WD25, source and destination SHA256 verified, original paths preserved as symlinks",
     "bytes_archived": 6200942592
+  },
+  "stop_replacement_repair": {
+    "cause": "265 repeated ANG TIAUSDC_LONG augment attempts rejected by Binance -4130; old stop .4438, requested .4553; prearm tried duplicate closePosition stop instead of replacement",
+    "tests": "21 focused stop tests passed; 8 real send-stage quantity/account-profit-gate tests passed",
+    "source_sha256": "d406ab5c7c72825aab30d3fdbc5eb9b997189d3f916cefe3f338a5ec739d66a2",
+    "deployed_files": [
+      "S1 ~/binance/tools/vector_direct_stops.py",
+      "S5 ~/binance/tools/vector_direct_stops.py"
+    ],
+    "backups": [
+      "S1 ~/backups/before_verified_stop_replacement_20261031T050602Z.py",
+      "S5 ~/backups/before_verified_stop_replacement_20261031T050610Z.py"
+    ],
+    "activation": "No restarts; already-running imported modules are not proven to use new source",
+    "review": "tradier_paths independently reviewed; lost cancel acknowledgment recovery corrected and tested"
+  },
+  "current_common_account_observation": {
+    "report": "data/reports/parity_live_account_audit_20261031T050458Z.json",
+    "paired_decision_bars": 45,
+    "different_settings_hashes": 0,
+    "different_vector_state_hashes": 0,
+    "different_held_quantities": 28,
+    "verdict": "NOT_TRADE_PARITY_PROOF; no matched current-common-key fills in sampled journal; historical admission coverage unavailable"
   }
 }

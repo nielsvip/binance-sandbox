@@ -111,7 +111,7 @@ def build_effective_settings(settings, candidate, nonvec_keys, sub15m_blocked, e
 class ContinuousJournalForwardSession(JournalForwardSession):
     """Replay the durable journal, then append distinct fresh source frames."""
 
-    def __init__(self, *args, snapshot_path, receipt_path, symbol, expected_host, frame_timeframe, required_timeframes, poll_seconds, max_age_seconds, run_root, source_journal_path=None, experiment_window=None, max_frames=MAX_FRAMES, **kwargs):
+    def __init__(self, *args, snapshot_path, receipt_path, symbol, expected_host, frame_timeframe, required_timeframes, poll_seconds, max_age_seconds, run_root, source_journal_path=None, experiment_window=None, decision_clock="native_source", max_frames=MAX_FRAMES, **kwargs):
         super().__init__(*args, **kwargs)
         self.snapshot_path = Path(snapshot_path)
         self.receipt_path = Path(receipt_path)
@@ -126,8 +126,15 @@ class ContinuousJournalForwardSession(JournalForwardSession):
         self._source_db = None
         self._source_cursor = 0
         self.experiment_window = dict(experiment_window) if experiment_window else None
+        if decision_clock not in {"native_source", "observed_at_utc"}:
+            raise ValueError("decision_clock must be native_source or observed_at_utc")
+        self.decision_clock = decision_clock
         self._window_complete = False
         self.coverage_gaps = []
+        self.source_alias_verified = None
+        self.observation_clock_verified = None
+        self.source_timeframe_provenance = []
+        self.source_revision_count = 0
         self.max_frames = int(max_frames)
         self.stop_requested = False
         self.wait_reason = "STARTING"
@@ -155,7 +162,10 @@ class ContinuousJournalForwardSession(JournalForwardSession):
             "observed_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             "source_observed_at_utc": self.observed_at_utc,
             "last_source_timestamp_epoch_s": self.last_source_ts,
-            "source_time_semantics": "native timeframe source timestamp; observed_at_utc is a separate local observation clock; no closed-bar claim",
+            "decision_clock": self.decision_clock,
+            "source_time_semantics": "observed_at_utc decision clock; native source timestamp retained separately" if self.decision_clock == "observed_at_utc" else "native timeframe source timestamp; observed_at_utc is a separate local observation clock; no closed-bar claim",
+            "observation_clock_verified": self.observation_clock_verified is True,
+            "source_time_alias_verified": self.source_alias_verified is True,
             "journal_frames": self.journal._db.execute("SELECT COUNT(*) FROM frames").fetchone()[0],
             "source_journal_cursor": self._source_cursor,
         }
@@ -291,42 +301,109 @@ class ContinuousJournalForwardSession(JournalForwardSession):
         source_ts = float(source_ts)
         if source_ts > observed_ts + 5 or time.time() < observed_ts - 5:
             raise RuntimeError("SOURCE_JOURNAL_TIMESTAMP_INVALID")
-        conflicts = database.execute("SELECT reason FROM source_conflicts WHERE host=? AND venue=? AND symbol=? AND timeframe=? AND source_ts=? LIMIT 1",
-            (self.expected_host, "crypto" if self.mode == "crypto" else "stocks", self.symbol, self.frame_timeframe, source_ts)).fetchone()
-        if conflicts:
+        conflict_rows = database.execute("SELECT reason,observed_ts FROM source_conflicts WHERE host=? AND venue=? AND symbol=? AND timeframe=? AND source_ts=?",
+            (self.expected_host, "crypto" if self.mode == "crypto" else "stocks", self.symbol, self.frame_timeframe, source_ts)).fetchall()
+        invalid_conflicts = []
+        for reason, revision_observed_ts in conflict_rows:
+            if self.decision_clock == "observed_at_utc" and reason == "SAME_SOURCE_TIMESTAMP_CHANGED_PAYLOAD" and float(revision_observed_ts) > observed_ts:
+                self.source_revision_count += 1
+            else:
+                invalid_conflicts.append(reason)
+        if invalid_conflicts:
             self._window_complete = bool(self.experiment_window)
-            return None, "DATA_GAP_SOURCE_CONFLICT:" + str(conflicts[0])
+            return None, "DATA_GAP_SOURCE_CONFLICT:" + str(invalid_conflicts[0])
         try:
             indicator_source_ts = _utc_epoch(indicators.get(f"timestamp_{self.frame_timeframe}"))
         except (TypeError, ValueError, OverflowError) as exc:
             raise RuntimeError("SOURCE_JOURNAL_FRAME_TIMESTAMP_MISSING") from exc
         if abs(indicator_source_ts - source_ts) > 0.001:
             raise RuntimeError("SOURCE_JOURNAL_FRAME_TIMESTAMP_MISMATCH")
+        for timeframe in ("1m", "3m", "5m", "15m", "1h", "4h", "D", "W", "M"):
+            field = f"timestamp_{timeframe}"
+            if indicators.get(field) is None:
+                continue
+            try:
+                native_ts = _utc_epoch(indicators[field])
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise RuntimeError(f"SOURCE_JOURNAL_NATIVE_TIMESTAMP_INVALID:{timeframe}") from exc
+            if native_ts > observed_ts + 0.000001:
+                raise RuntimeError(f"SOURCE_JOURNAL_NATIVE_TIMESTAMP_AFTER_DECISION_CLOCK:{timeframe}")
         for timeframe in self.required_timeframes:
             try:
                 timeframe_ts = _utc_epoch(indicators.get(f"timestamp_{timeframe}"))
             except (TypeError, ValueError, OverflowError):
-                return None, f"DATA_GAP_MISSING_TF_{timeframe}" if self.experiment_window else (None, f"WAITING_MISSING_TF_{timeframe}")
+                status = f"DATA_GAP_MISSING_TF_{timeframe}" if self.experiment_window else f"WAITING_MISSING_TF_{timeframe}"
+                return None, status
             if timeframe_ts > observed_ts + 5 or observed_ts - timeframe_ts > max(self.max_age_seconds, 2 * TIMEFRAME_SECONDS[timeframe]):
-                return None, f"DATA_GAP_STALE_OR_FUTURE_TF_{timeframe}" if self.experiment_window else (None, f"WAITING_STALE_TF_{timeframe}")
+                status = f"DATA_GAP_STALE_OR_FUTURE_TF_{timeframe}" if self.experiment_window else f"WAITING_STALE_TF_{timeframe}"
+                return None, status
+        provenance_row = database.execute("SELECT provenance_json FROM frames WHERE sequence=?", (sequence,)).fetchone() if "provenance_json" in {row[1] for row in database.execute("PRAGMA table_info(frames)")} else None
+        provenance = json.loads(provenance_row[0]) if provenance_row and provenance_row[0] else {}
+        provenance_valid = self._provenance_is_verified(provenance, self.frame_timeframe)
+        observation_stamp = datetime.fromtimestamp(observed_ts, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         frame = {
-            "ts": source_ts,
+            "ts": observed_ts if self.decision_clock == "observed_at_utc" else source_ts,
             "indicators": indicators,
             "source_sequence": int(sequence),
             "observation": {
-                "observed_at_utc": datetime.fromtimestamp(observed_ts, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+                "observed_at_utc": observation_stamp,
                 "source_sha256": source_hash,
                 "input_hash": input_hash,
                 "source_sequence": int(sequence),
                 "frame_timeframe": self.frame_timeframe,
                 "source_timestamp": indicators.get(f"timestamp_{self.frame_timeframe}"),
-                "source_time_semantics": "native source timestamp; closed-bar status unverified",
+                "source_timestamp_epoch_s": source_ts,
+                "decision_clock": self.decision_clock,
+                "source_time_alias_verified": bool(provenance_valid),
+                "source_timeframe_provenance": provenance,
+                "source_revision_count": self.source_revision_count,
+                "source_time_semantics": "observed_at_utc decision clock; native source time retained separately" if self.decision_clock == "observed_at_utc" else "native source timestamp; closed-bar status unverified",
             },
         }
         if self.experiment_window and self._source_cursor == 0 and float(source_ts) > float(self.experiment_window["start_source_ts"]):
             frame["observation"]["window_start_coverage_gap"] = gap
             self.coverage_gaps.append(gap)
         return frame, None
+
+    @staticmethod
+    def _provenance_is_verified(provenance, timeframe):
+        return (
+            isinstance(provenance, dict) and provenance.get("schema_version") == 1
+            and provenance.get("timeframe") == timeframe
+            and provenance.get("source_field") == f"timestamp_{timeframe}"
+            and isinstance(provenance.get("producer_source_sha256"), str)
+            and len(provenance["producer_source_sha256"]) == 64
+            and provenance.get("status") in ({"VERIFIED_NATIVE"} if timeframe == "1m" else {"NATIVE_SOURCE", "VERIFIED_NATIVE"})
+            and (timeframe != "1m" or provenance.get("receipt_verified_native_1m") is True)
+        )
+
+    def _accumulate_frame_provenance(self, frame):
+        payload = frame.get("payload", {})
+        packed = payload.get(self.symbol, {}) if isinstance(payload, dict) else {}
+        observation = packed.get("observation", {}) if isinstance(packed, dict) else {}
+        indicators = packed.get("indicators", {}) if isinstance(packed, dict) else {}
+        self.source_revision_count = max(self.source_revision_count, int(observation.get("source_revision_count", 0) or 0))
+        provenance = observation.get("source_timeframe_provenance", {})
+        timeframe = observation.get("frame_timeframe", self.frame_timeframe)
+        provenance_valid = self._provenance_is_verified(provenance, timeframe)
+        alias_ok = observation.get("source_time_alias_verified") is True and provenance_valid
+        self.source_alias_verified = alias_ok if self.source_alias_verified is None else self.source_alias_verified and alias_ok
+        self.source_timeframe_provenance.append(provenance)
+        observed_text = observation.get("observed_at_utc")
+        try:
+            observed_ts = _utc_epoch(observed_text)
+            decision_ts = float(frame["ts"])
+            source_ts = _utc_epoch(indicators.get(f"timestamp_{timeframe}"))
+            expected_decision_ts = observed_ts if self.decision_clock == "observed_at_utc" else source_ts
+            clock_ok = abs(decision_ts - expected_decision_ts) <= 0.000001
+            for tf in ("1m", "3m", "5m", "15m", "1h", "4h", "D", "W", "M"):
+                raw = indicators.get(f"timestamp_{tf}")
+                if raw is not None and _utc_epoch(raw) > observed_ts + 0.000001:
+                    clock_ok = False
+                    break
+        except (KeyError, TypeError, ValueError, OverflowError):
+            clock_ok = False
+        self.observation_clock_verified = clock_ok if self.observation_clock_verified is None else self.observation_clock_verified and clock_ok
     async def prime_first_frame(self):
         """Wait for one fresh input before engine initialization/assert_ready."""
         while True:
@@ -336,7 +413,7 @@ class ContinuousJournalForwardSession(JournalForwardSession):
             if frame is not None:
                 self.journal.append_frame(frame["ts"], {self.symbol: {"indicators": frame["indicators"], "observation": frame["observation"]}})
                 self._source_cursor = int(frame.get("source_sequence", 0))
-                self.last_source_ts = frame["ts"]
+                self.last_source_ts = frame["observation"].get("source_timestamp_epoch_s", frame["ts"])
                 self._source_frame_count += 1
                 self._status("RUNNING", "FIRST_FRESH_SOURCE_FRAME")
                 return frame
@@ -358,6 +435,7 @@ class ContinuousJournalForwardSession(JournalForwardSession):
             for frame in self._frames:
                 if self._last_ts is not None and frame["ts"] <= self._last_ts:
                     raise RuntimeError("journal replay timestamps are not strictly increasing")
+                self._accumulate_frame_provenance(frame)
                 self._current = frame
                 self._last_ts = frame["ts"]
                 yield frame
@@ -401,9 +479,10 @@ class ContinuousJournalForwardSession(JournalForwardSession):
             if frame.get("source_sequence") is not None:
                 self._source_cursor = int(frame["source_sequence"])
             row = {"sequence": self._source_frame_count + 1, "ts": source_ts, "payload": payload}
+            self._accumulate_frame_provenance(row)
             self._current = row
             self._last_ts = source_ts
-            self.last_source_ts = source_ts
+            self.last_source_ts = frame["observation"].get("source_timestamp_epoch_s", source_ts)
             self._source_frame_count += 1
             self._status("RUNNING", "NEW_SOURCE_FRAME")
             yield row
@@ -421,9 +500,10 @@ class ContinuousJournalForwardSession(JournalForwardSession):
         self._pending_ts = float(ts)
 
     async def after_step(self, ts):
+        observation = self._current["payload"][self.symbol]["observation"] if self._current else {}
         await super().after_step(ts)
         self._snapshot_sqlite()
-        self.last_source_ts = float(ts)
+        self.last_source_ts = float(observation.get("source_timestamp_epoch_s", ts))
         self._status("RUNNING", "RECEIPT_COMMITTED")
 
     def _snapshot_sqlite(self):
@@ -446,7 +526,7 @@ class ContinuousJournalForwardSession(JournalForwardSession):
         self._status(status, self.wait_reason)
 
 CHILD = r'''
-import asyncio, hashlib, json, os, sys
+import asyncio, hashlib, json, os, sqlite3, sys
 import signal
 from datetime import datetime, timezone
 from pathlib import Path
@@ -454,6 +534,18 @@ from tools.paper_worker_isolation import install, require_installed
 from tools.paper_forward_worker import ContinuousJournalForwardSession, _atomic_json, build_effective_settings, validate_runtime_root
 from tools.paper_frame_stream import FrameJournal
 from tools.paper_snapshot_store import PaperSnapshotStore
+
+def _snapshot_journal(journal):
+    target = root / "receipts.snapshot.db"
+    pending = root / "receipts.snapshot.db.pending"
+    if pending.exists():
+        pending.unlink()
+    destination = sqlite3.connect(pending)
+    try:
+        journal._db.backup(destination)
+    finally:
+        destination.close()
+    os.replace(pending, target)
 
 root = Path(sys.argv[1]).resolve()
 request = json.loads((root / "request.json").read_text(encoding="utf-8"))
@@ -537,7 +629,9 @@ identity = {
     "requested_merged_settings_sha256": hashlib.sha256(json.dumps(requested_effective, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest(),
     "candidate_sha256": hashlib.sha256(json.dumps(candidate, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest(),
     "host": manifest["host"],
+    "decision_clock": manifest.get("decision_clock", "native_source"),
 }
+journal = FrameJournal(root / "receipts.sqlite3", identity)
 started_at = manifest.get("started_at") or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 base_settings_path = root / "base_settings.json"
 effective_settings_path = root / "effective_settings.json"
@@ -564,12 +658,14 @@ result_manifest = {
     "engine_runtime_kind": "IMMUTABLE_BUNDLE" if engine_runtime_manifest else "WORKSPACE_DIAGNOSTIC",
     "promotion_eligible": False,
     "execution_mode": "V12_REAL_EXECUTE=1; real manager execute_now path with process-local broker/network I/O denial",
-    "source_time_semantics": "native source timeframe timestamp; observed_at_utc is separate; closed-bar status unverified",
+    "decision_clock": manifest.get("decision_clock", "native_source"),
+    "observation_clock_verified": False,
+    "source_time_semantics": "observed_at_utc decision clock; native source timestamp retained separately" if manifest.get("decision_clock", "native_source") == "observed_at_utc" else "native source timeframe timestamp; observed_at_utc is separate; closed-bar status unverified",
     "source_timeframe": manifest.get("frame_timeframe", "1m" if mode == "crypto" else "5m"),
-    "source_timeframe_provenance": manifest.get("source_timeframe_provenance", "unverified_by_worker"),
-    "source_time_alias": manifest.get("source_time_alias", "unverified"),
-    "source_time_alias_verified": manifest.get("source_time_alias_verified", False),
-    "closed_bar_status_verified": manifest.get("closed_bar_status_verified", False),
+    "source_time_alias_verified": False,
+    "source_timeframe_provenance": [],
+    "source_time_alias": "unverified until source-journal rows are read",
+    "closed_bar_status_verified": False,
     "experiment_window": manifest.get("experiment_window"),
     "experiment_window_resolution": manifest.get("experiment_window_resolution"),
     "source_journal": request.get("source_journal") or None,
@@ -622,6 +718,8 @@ if override_issues:
         "settings_mismatch_keys": mismatch_keys, "override_issues": override_issues,
         "observed_at_utc": finished_at, **identity,
     })
+    _snapshot_journal(journal)
+    journal.close()
     engine._run_one_restore_overrides(override_snapshot, mode)
     raise SystemExit(0)
 precedence_state = engine._run_one_set_precedence_on(symside, effective, mode)
@@ -641,7 +739,6 @@ for key, requested_value in candidate.items():
     getter_receipts[key] = {"requested": requested_value, "resolved": resolved_value, "matches": True, "resolver": "ez_manage._psym_get" if mode == "crypto" else "tradier_manage._cfg"}
 result_manifest["candidate_getter_resolution"] = getter_receipts
 _atomic_json(result_manifest_path, result_manifest)
-journal = FrameJournal(root / "receipts.sqlite3", identity)
 first_row = journal._db.execute("SELECT closed_ts,payload FROM frames ORDER BY sequence LIMIT 1").fetchone()
 if first_row:
     first_ts = float(first_row[0])
@@ -662,6 +759,7 @@ session = ContinuousJournalForwardSession(
     snapshot_path=request["snapshot"], receipt_path=request["receipt"],
     source_journal_path=request.get("source_journal") or None,
     experiment_window=manifest.get("experiment_window"),
+    decision_clock=manifest.get("decision_clock", "native_source"),
     symbol=symbol, expected_host=manifest["host"], frame_timeframe=manifest.get("frame_timeframe", "1m" if mode == "crypto" else "5m"),
     required_timeframes=manifest.get("required_timeframes", [manifest.get("frame_timeframe", "1m" if mode == "crypto" else "5m")]),
     poll_seconds=request["poll_seconds"], max_age_seconds=request["max_age_seconds"],
@@ -678,16 +776,19 @@ if not first_frame:
             "mode": mode, "reason": session.wait_reason,
             "settings_sha256": settings_hash, "code_sha256": code_hash,
             "override_issues": [], "settings_mismatch_keys": [],
-            "source_time_semantics": "native source timeframe timestamp; closed-bar status unverified",
-            "source_timeframe": manifest.get("frame_timeframe", "1m" if mode == "crypto" else "5m"),
-            "source_timeframe_provenance": manifest.get("source_timeframe_provenance", "unverified_by_worker"),
-            "source_time_alias": manifest.get("source_time_alias", "unverified"),
-            "source_time_alias_verified": manifest.get("source_time_alias_verified", False),
-            "closed_bar_status_verified": manifest.get("closed_bar_status_verified", False),
+            "decision_clock": session.decision_clock,
+            "observation_clock_verified": session.observation_clock_verified is True,
+            "source_time_semantics": "observed_at_utc decision clock; native source timestamp retained separately" if session.decision_clock == "observed_at_utc" else "native source timeframe timestamp; closed-bar status unverified",
+            "source_timeframe": session.frame_timeframe,
+            "source_timeframe_provenance": session.source_timeframe_provenance,
+            "source_time_alias": "verified_native_by_receipt_provenance" if session.source_alias_verified is True else "unverified",
+            "source_time_alias_verified": session.source_alias_verified is True,
+            "closed_bar_status_verified": False,
+            "source_revision_count": session.source_revision_count,
             "promotion_eligible": False,
         }
         _atomic_json(root / "result.json", result)
-        result_manifest.update(status="DATA_GAP", finished=True, ended_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"), reason=session.wait_reason, override_issues=[], settings_mismatch_keys=[], frame_count=0, committed_receipts=0, result_file="result.json", result_sha256=hashlib.sha256((root / "result.json").read_bytes()).hexdigest())
+        result_manifest.update(status="DATA_GAP", finished=True, ended_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"), reason=session.wait_reason, observation_clock_verified=session.observation_clock_verified is True, source_time_alias_verified=session.source_alias_verified is True, source_timeframe_provenance=session.source_timeframe_provenance, source_time_alias="verified_native_by_receipt_provenance" if session.source_alias_verified is True else "unverified", source_revision_count=session.source_revision_count, override_issues=[], settings_mismatch_keys=[], frame_count=0, committed_receipts=0, result_file="result.json", result_sha256=hashlib.sha256((root / "result.json").read_bytes()).hexdigest())
         _atomic_json(result_manifest_path, result_manifest)
         journal.close()
         engine._run_one_restore_overrides(override_snapshot, mode)
@@ -698,7 +799,7 @@ if not first_frame:
 else:
     session._source_frame_count = journal._db.execute("SELECT COUNT(*) FROM frames").fetchone()[0]
     session.last_source_ts = float(journal._db.execute("SELECT closed_ts FROM frames ORDER BY sequence DESC LIMIT 1").fetchone()[0])
-result_manifest["coverage_gaps"] = session.coverage_gaps
+result_manifest.update(coverage_gaps=session.coverage_gaps, observation_clock_verified=session.observation_clock_verified is True, source_time_alias_verified=session.source_alias_verified is True, source_timeframe_provenance=session.source_timeframe_provenance, source_time_alias="verified_native_by_receipt_provenance" if session.source_alias_verified is True else "unverified", source_revision_count=session.source_revision_count)
 _atomic_json(result_manifest_path, result_manifest)
 session._snapshot_sqlite()
 result_manifest["status"] = "RUNNING"
@@ -804,18 +905,21 @@ try:
         "code_sha256": code_hash, "plan_code_hash": manifest["plan_code_hash"],
         "candidate_overrides": candidate, "override_issues": list(engine._RUN_ONE_OVERRIDE_ISSUES),
         "store_row_existed": bool(precedence_state.get("store_row_existed")),
-        "source_time_semantics": "native source timeframe timestamp; closed-bar status unverified",
-        "source_timeframe": manifest.get("frame_timeframe", "1m" if mode == "crypto" else "5m"),
-        "source_timeframe_provenance": manifest.get("source_timeframe_provenance", "unverified_by_worker"),
-        "source_time_alias": manifest.get("source_time_alias", "unverified"),
-        "source_time_alias_verified": manifest.get("source_time_alias_verified", False),
-        "closed_bar_status_verified": manifest.get("closed_bar_status_verified", False),
+        "decision_clock": session.decision_clock,
+        "observation_clock_verified": session.observation_clock_verified is True,
+        "source_time_semantics": "observed_at_utc decision clock; native source timestamp retained separately" if session.decision_clock == "observed_at_utc" else "native source timeframe timestamp; closed-bar status unverified",
+        "source_timeframe": session.frame_timeframe,
+        "source_timeframe_provenance": session.source_timeframe_provenance,
+        "source_time_alias": "verified_native_by_receipt_provenance" if session.source_alias_verified is True else "unverified",
+        "source_time_alias_verified": session.source_alias_verified is True,
+        "closed_bar_status_verified": False,
+        "source_revision_count": session.source_revision_count,
         "trades": trades, "receipt_db": str(root / "receipts.sqlite3"),
         "accounting_file": accounting_path.name, "accounting_sha256": accounting_sha256,
         "promotion_eligible": False,
     }
     _atomic_json(root / "result.json", result)
-    result_manifest.update(status=result["status"], finished=True, ended_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"), frame_count=result["frame_count"], committed_receipts=result["committed_receipts"], override_issues=list(engine._RUN_ONE_OVERRIDE_ISSUES), settings_mismatch_keys=[], accounting_file=accounting_path.name, accounting_sha256=accounting_sha256, result_file="result.json", result_sha256=hashlib.sha256((root / "result.json").read_bytes()).hexdigest())
+    result_manifest.update(status=result["status"], finished=True, ended_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"), frame_count=result["frame_count"], committed_receipts=result["committed_receipts"], override_issues=list(engine._RUN_ONE_OVERRIDE_ISSUES), settings_mismatch_keys=[], observation_clock_verified=session.observation_clock_verified is True, source_time_alias_verified=session.source_alias_verified is True, source_timeframe_provenance=session.source_timeframe_provenance, source_time_alias="verified_native_by_receipt_provenance" if session.source_alias_verified is True else "unverified", source_revision_count=session.source_revision_count, accounting_file=accounting_path.name, accounting_sha256=accounting_sha256, result_file="result.json", result_sha256=hashlib.sha256((root / "result.json").read_bytes()).hexdigest())
     _atomic_json(result_manifest_path, result_manifest)
 except BaseException as exc:
     import traceback
@@ -976,6 +1080,11 @@ def main(argv=None):
     required_tfs = manifest.get("required_timeframes", [timeframe])
     if timeframe not in TIMEFRAME_SECONDS or not isinstance(required_tfs, list) or not required_tfs or any(tf not in TIMEFRAME_SECONDS for tf in required_tfs):
         parser.error("manifest has invalid frame_timeframe/required_timeframes")
+    decision_clock = manifest.get("decision_clock", "native_source")
+    if decision_clock not in {"native_source", "observed_at_utc"}:
+        parser.error("decision_clock must be native_source or observed_at_utc")
+    if decision_clock == "observed_at_utc" and not source_journal_path:
+        parser.error("observed_at_utc decision clock requires an archived source journal")
     experiment_window = manifest.get("experiment_window")
     experiment_window_resolution = None
     if experiment_window is not None:
@@ -999,6 +1108,7 @@ def main(argv=None):
         parser.error(f"manifest max_frames must be between 2 and {MAX_FRAMES}")
     manifest = dict(manifest)
     manifest["frame_timeframe"] = timeframe
+    manifest["decision_clock"] = decision_clock
     manifest["required_timeframes"] = required_tfs
     manifest["max_frames"] = max_frames
     manifest["experiment_window"] = experiment_window

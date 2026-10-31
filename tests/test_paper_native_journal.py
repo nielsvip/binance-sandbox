@@ -6,7 +6,7 @@ import zlib
 from pathlib import Path
 
 from tools.paper_native_feed import TIMEFRAME_PROVENANCE
-from tools.paper_native_journal import append_capture, inspect_source, journal_status
+from tools.paper_native_journal import _connect, append_capture, inspect_source, journal_status
 
 
 def _stamp(epoch):
@@ -38,6 +38,13 @@ def test_native_journal_skips_aliased_1m_and_archives_eligible_3m_with_conflicts
     first = append_capture(db, snapshot, receipt, "s1", min_free_bytes=0, now=observed)
     assert first["inserted"] == 2
     assert first["blocked_timeframes"] == ["1m", "5m"]
+    with sqlite3.connect(db) as connection:
+        provenance = json.loads(connection.execute("SELECT provenance_json FROM frames WHERE symbol='BTCUSDT'").fetchone()[0])
+    assert provenance["timeframe"] == "3m"
+    assert provenance["status"] == "NATIVE_SOURCE"
+    assert provenance["source_field"] == "timestamp_3m"
+    assert provenance["producer_source_sha256"] == TIMEFRAME_PROVENANCE["crypto"]["3m"]["producer_source_sha256"]
+    assert provenance["receipt_verified_native_1m"] is False
 
     changed_same_clock = {"BTCUSDT": _row(observed - 10, 9, observed - 10), "ETHUSDT": _row(observed - 10, 3, observed + 50)}
     snapshot, receipt = _publish(feed, "s1", observed + 60, changed_same_clock)
@@ -154,3 +161,21 @@ def test_native_journal_treats_legacy_receipt_without_provenance_as_blocked(tmp_
 
     assert result["status"] == "UNVERIFIED_NATIVE_PROVENANCE"
     assert result["blocked_timeframes"] == ["1m", "3m", "5m"]
+
+
+def test_existing_journal_rows_migrate_to_unverified_provenance(tmp_path):
+    database = tmp_path / "native_journal_crypto.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.execute("CREATE TABLE payloads(input_hash TEXT PRIMARY KEY,payload_encoding TEXT,payload_blob BLOB,raw_bytes INTEGER,compressed_bytes INTEGER)")
+        connection.execute("CREATE TABLE frame_index(sequence INTEGER PRIMARY KEY,observed_ts REAL NOT NULL,source_ts REAL NOT NULL,symbol TEXT NOT NULL,venue TEXT NOT NULL,host TEXT NOT NULL,timeframe TEXT NOT NULL,source_sha256 TEXT NOT NULL,input_hash TEXT NOT NULL,UNIQUE(host,source_ts,symbol,timeframe))")
+        connection.execute("INSERT INTO payloads VALUES('h','zlib',X'00',1,1)")
+        connection.execute("INSERT INTO frame_index VALUES(1,100,90,'BTCUSDT','crypto','s1','1m','source','h')")
+        connection.execute("CREATE VIEW frames AS SELECT f.sequence,f.observed_ts,f.source_ts,f.symbol,f.venue,f.host,f.timeframe,f.source_sha256,f.input_hash,p.payload_encoding,p.payload_blob FROM frame_index f JOIN payloads p ON p.input_hash=f.input_hash")
+
+    connection = _connect(database)
+    try:
+        row = connection.execute("SELECT provenance_json FROM frames WHERE sequence=1").fetchone()
+    finally:
+        connection.close()
+
+    assert row == ("{}",)

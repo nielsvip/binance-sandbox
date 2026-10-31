@@ -268,3 +268,57 @@ def test_every_preempted_host_gets_a_dead_man_release(monkeypatch):
     F.preempt()
     deadman = {h for h, c in sent if "sleep 7200" in c and "v15_preopen_7d.pause" in c}
     assert deadman == set(F.PREEMPT_HOSTS)
+
+
+# ── the experiment stays off the live stock host during its session (USER 2026-10-31) ──
+
+def _et(y, mo, d, h, mi):
+    from zoneinfo import ZoneInfo
+    return dt.datetime(y, mo, d, h, mi, tzinfo=ZoneInfo("America/New_York")).timestamp()
+
+
+import datetime as dt  # noqa: E402
+
+
+def test_s5_is_off_limits_through_the_stock_session_on_weekdays():
+    mon = (2026, 11, 2)
+    for hh, mm in ((8, 0), (8, 45), (9, 30), (12, 0), (16, 0), (16, 29)):
+        assert F.host_in_live_session("s5", _et(*mon, hh, mm)) is True, (hh, mm)
+    for hh, mm in ((7, 59), (16, 30), (20, 0)):
+        assert F.host_in_live_session("s5", _et(*mon, hh, mm)) is False, (hh, mm)
+
+
+def test_s5_is_usable_at_the_weekend():
+    assert F.host_in_live_session("s5", _et(2026, 10, 31, 12, 0)) is False   # Saturday
+
+
+def test_hosts_without_a_live_session_are_always_usable():
+    for h in ("s2", "s6"):
+        assert F.host_in_live_session(h, _et(2026, 11, 2, 12, 0)) is False
+
+
+def test_s1_never_hosts_a_7d_board():
+    assert "s1" not in F.WORKERS and not any(h.startswith("s1") for h in F.WORKERS)
+
+
+def test_preemption_never_touches_a_host_in_its_live_session(monkeypatch):
+    sent = []
+    monkeypatch.setattr(F, "hold", lambda on: {})
+    monkeypatch.setattr(F, "_py", lambda h, c, timeout=60: sent.append(h) or (0, "[]", ""))
+    monkeypatch.setattr(F, "sh", lambda h, c, timeout=40: (0, "", ""))
+    monkeypatch.setattr(F, "host_in_live_session", lambda h, now=None: h == "s5")
+    F.preempt()
+    assert "s5" not in sent and {"s2", "s6"} <= set(sent)
+
+
+def test_a_full_disk_never_kills_the_pass(monkeypatch, capsys):
+    """2026-10-31: a log line raised ENOSPC and took the whole full pass down after one board."""
+    import builtins
+    real_print = builtins.print
+    def broken_print(*a, **k):
+        raise OSError(28, "No space left on device")
+    monkeypatch.setattr(builtins, "print", broken_print)
+    try:
+        F.log("this line cannot be written")   # must not raise
+    finally:
+        monkeypatch.setattr(builtins, "print", real_print)

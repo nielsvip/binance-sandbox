@@ -1,115 +1,32 @@
 {
- "generated_at": "2026-10-31 04:28 UTC",
- "total_capital_usd": 93.63,
+ "generated_at": "2026-10-31 05:12 UTC",
+ "total_capital_usd": 11.14,
  "tier_capital": {
   "A": 0.0,
-  "B": 64.05,
-  "C": 29.59
+  "B": 11.14,
+  "C": 0.0
  },
  "tier_count": {
   "A": 0,
-  "B": 6,
-  "C": 2
+  "B": 1,
+  "C": 0
  },
  "winners": [],
  "losers": [
-  "flz:XRPUSDC_LONG",
-  "flz:DASHUSDT_LONG",
-  "flz:GRAMUSDT_SHORT",
-  "flz:WLDUSDC_SHORT"
+  "fin:FLUXUSDT_LONG"
  ],
- "mediocre": [
-  "flz:BNBUSDC_SHORT",
-  "flz:XMRUSDT_LONG"
- ],
+ "mediocre": [],
  "positions": [
   {
-   "pk": "flz:GRAMUSDT_SHORT",
-   "symbol": "GRAMUSDT",
-   "account": "flz",
-   "value_usd": 14.9,
-   "gain_pct": 0.055,
-   "tier": "C",
-   "perf_mult": 0.58,
-   "amt": 12.6,
-   "mark": 1.18234767
-  },
-  {
-   "pk": "flz:WLDUSDC_SHORT",
-   "symbol": "WLDUSDC",
-   "account": "flz",
-   "value_usd": 14.69,
-   "gain_pct": 2.043,
-   "tier": "C",
-   "perf_mult": 0.48,
-   "amt": 36.9,
-   "mark": 0.398
-  },
-  {
-   "pk": "flz:BNBUSDC_SHORT",
-   "symbol": "BNBUSDC",
-   "account": "flz",
-   "value_usd": 14.05,
-   "gain_pct": 0.265,
+   "pk": "fin:FLUXUSDT_LONG",
+   "symbol": "FLUXUSDT",
+   "account": "fin",
+   "value_usd": 11.14,
+   "gain_pct": -0.565,
    "tier": "B",
-   "perf_mult": 0.76,
-   "amt": 0.02,
-   "mark": 702.53
-  },
-  {
-   "pk": "flz:XRPUSDC_LONG",
-   "symbol": "XRPUSDC",
-   "account": "flz",
-   "value_usd": 11.19,
-   "gain_pct": -0.916,
-   "tier": "B",
-   "perf_mult": 2.75,
-   "amt": 9.0,
-   "mark": 1.2436
-  },
-  {
-   "pk": "flz:BTCDOMUSDT_LONG",
-   "symbol": "BTCDOMUSDT",
-   "account": "flz",
-   "value_usd": 11.17,
-   "gain_pct": 0.161,
-   "tier": "B",
-   "perf_mult": 1.38,
-   "amt": 0.002,
-   "mark": 5584.97051114
-  },
-  {
-   "pk": "flz:BTCDOMUSDT_SHORT",
-   "symbol": "BTCDOMUSDT",
-   "account": "flz",
-   "value_usd": 11.17,
-   "gain_pct": -0.206,
-   "tier": "B",
-   "perf_mult": 1.38,
-   "amt": 0.002,
-   "mark": 5584.97051114
-  },
-  {
-   "pk": "flz:DASHUSDT_LONG",
-   "symbol": "DASHUSDT",
-   "account": "flz",
-   "value_usd": 11.15,
-   "gain_pct": -0.638,
-   "tier": "B",
-   "perf_mult": 0.54,
-   "amt": 0.231,
-   "mark": 48.26
-  },
-  {
-   "pk": "flz:XMRUSDT_LONG",
-   "symbol": "XMRUSDT",
-   "account": "flz",
-   "value_usd": 5.32,
-   "gain_pct": 0.254,
-   "tier": "B",
-   "perf_mult": 0.95,
-   "amt": 0.009,
-   "mark": 590.97
+   "perf_mult": 0.66,
+   "amt": 186.0,
+   "mark": 0.05988948
   }
  ]
 }

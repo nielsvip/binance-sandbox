@@ -74,11 +74,12 @@ _WT_FIELDS = (
     "wt1_3m", "wt2_3m", "wt1_15m", "wt2_15m",
     "wt1_1h", "wt2_1h", "wt1_4h", "wt2_4h",
     "wt1_D", "wt2_D",
-    "wt_velocity_3m", "wt_velocity_1h", "wt_velocity_4h",
+    "wt_velocity_3m", "wt_velocity_15m", "wt_velocity_1h", "wt_velocity_4h",
 )
 _STOCH_FIELDS = (
     "stoch_k_3m", "stoch_d_3m", "k_3m_prev", "d_3m_prev",
-    "stoch_k_15m", "stoch_d_15m",
+    "stoch_k_15m", "stoch_d_15m", "k_15m_prev", "d_15m_prev",
+    "stoch_k_15m_prev", "stoch_d_15m_prev",
     "stoch_k_1h", "stoch_d_1h",
     "stoch_k_4h", "stoch_d_4h",
     # tradier alt — 5m base TF (caller may map to _3m if needed)
@@ -89,7 +90,7 @@ _DC_FIELDS = (
     "dc_high_3m", "dc_high_15m", "dc_high_1h", "dc_high_4h",
     "dc_low_3m", "dc_low_15m", "dc_low_1h", "dc_low_4h",
     "dc_basis_15m",
-    "ha_3m",
+    "ha_3m", "ha_15m",
     "wt1_3m", "wt2_3m",
 )
 _HTF_FIELDS = (
@@ -167,6 +168,75 @@ def _slice_indicators(npz: Dict[str, np.ndarray], idx: int, mode: str = "crypto"
     return out
 
 
+def _frozen_15m_source(npz, candidates, n, default):
+    for key in candidates:
+        if key in npz:
+            raw = np.asarray(npz[key])
+            if raw.ndim != 1 or len(raw) < n:
+                raise ValueError(f"LIVE_ENTRY_ENGINE input {key} has invalid shape")
+            try:
+                return raw[:n].astype(float)
+            except (TypeError, ValueError) as exc:
+                raise ValueError(f"LIVE_ENTRY_ENGINE input {key} is not numeric") from exc
+    return np.full(n, default, dtype=float)
+
+
+def pair_15m_engine_arrays(npz, n):
+    """Return an NPZ view whose sub-15m engine fields use causal 15m pairs."""
+    out = dict(npz)
+    mappings = {
+        "wt1_3m": (("wt1_15m",), 0.0),
+        "wt2_3m": (("wt2_15m",), 0.0),
+        "wt_velocity_3m": (("wt_velocity_15m",), 0.0),
+        "stoch_k_3m": (("stoch_k_15m",), 50.0),
+        "stoch_d_3m": (("stoch_d_15m",), 50.0),
+        "k_3m_prev": (("k_15m_prev", "stoch_k_15m_prev", "stoch_k_15m"), 50.0),
+        "d_3m_prev": (("d_15m_prev", "stoch_d_15m_prev", "stoch_d_15m"), 50.0),
+        "dc_high_3m": (("dc_high_15m",), 0.0),
+        "dc_low_3m": (("dc_low_15m",), 0.0),
+        "ha_3m": (("ha_15m",), 0.0),
+        "close_3m": (("close_15m", "close"), 0.0),
+        "close_5m": (("close_15m", "close"), 0.0),
+    }
+    for target, (sources, default) in mappings.items():
+        if target == "ha_3m":
+            source = next((key for key in sources if key in npz), None)
+            if source is None:
+                out[target] = np.full(n, default, dtype=object)
+            else:
+                raw = np.asarray(npz[source])
+                if raw.ndim != 1 or len(raw) < n:
+                    raise ValueError(f"LIVE_ENTRY_ENGINE input {source} has invalid shape")
+                out[target] = raw[:n]
+        else:
+            out[target] = _frozen_15m_source(npz, sources, n, default)
+    return out
+
+
+def pair_15m_engine_indicators(indicators, use_ltf):
+    """Apply the shared live/vector 15m floor to LIVE_ENTRY_ENGINE inputs."""
+    if not isinstance(indicators, dict) or bool(use_ltf):
+        return indicators
+    out = dict(indicators)
+    mappings = {
+        "wt1_3m": (("wt1_15m",), 0.0),
+        "wt2_3m": (("wt2_15m",), 0.0),
+        "wt_velocity_3m": (("wt_velocity_15m",), 0.0),
+        "stoch_k_3m": (("stoch_k_15m",), 50.0),
+        "stoch_d_3m": (("stoch_d_15m",), 50.0),
+        "k_3m_prev": (("k_15m_prev", "stoch_k_15m_prev", "stoch_k_15m"), 50.0),
+        "d_3m_prev": (("d_15m_prev", "stoch_d_15m_prev", "stoch_d_15m"), 50.0),
+        "dc_high_3m": (("dc_high_15m",), 0.0),
+        "dc_low_3m": (("dc_low_15m",), 0.0),
+        "ha_3m": (("ha_15m",), "neutral"),
+        "close_3m": (("close_15m", "close"), 0.0),
+        "close_5m": (("close_15m", "close"), 0.0),
+    }
+    for target, (sources, default) in mappings.items():
+        out[target] = next((indicators[key] for key in sources if key in indicators and indicators[key] is not None), default)
+    return out
+
+
 def compute_engine_scores_vec(
     npz: Dict[str, np.ndarray],
     idx: int,
@@ -184,6 +254,8 @@ def compute_engine_scores_vec(
     invoked. Missing scalar imports are silently skipped (engine treated as OFF).
     """
     ind = _slice_indicators(npz, idx, mode=mode)
+    if not bool(getattr(cfg, "USE_1M_3M_SIGNALS_ENABLED", False)):
+        ind = pair_15m_engine_indicators(ind, False)
     results: Dict[str, Tuple[bool, str, float]] = {}
     pairs = (
         ("wt",          _scalar_wt,          "LIVE_ENTRY_ENGINE_WT_ENABLED"),
@@ -272,6 +344,8 @@ def compute_engine_score_arrays(npz, n: int, side: str, cfg, mode: str = "crypto
     import numpy as np
     is_long = str(side or "").upper() == "LONG"
     tradier = (mode or "").lower() in ("tradier", "stocks", "stock")
+    if not bool(getattr(cfg, "USE_1M_3M_SIGNALS_ENABLED", False)):
+        npz = pair_15m_engine_arrays(npz, n)
     def arr(key, default=0.0, aliases=()):
         source = key
         if source not in npz and tradier:
@@ -333,7 +407,7 @@ def compute_engine_score_arrays(npz, n: int, side: str, cfg, mode: str = "crypto
     else: out["stoch"]=(np.zeros(n,dtype=bool),np.zeros(n,dtype=float))
     if bool(getattr(cfg,"LIVE_ENTRY_ENGINE_DC_ENABLED",False)):
         price=arr("current_price",0.0)
-        for key in ("price","mark_price","close_5m","close_3m","close"):
+        for key in ("close","close_3m","close_5m","mark_price","price"):
             price=np.where(price!=0,price,arr(key,0.0))
         h3,h15,h1=arr("dc_high_3m"),arr("dc_high_15m"),arr("dc_high_1h"); l3,l15,l1=arr("dc_low_3m"),arr("dc_low_15m"),arr("dc_low_1h")
         l4,h4,basis=arr("dc_low_4h"),arr("dc_high_4h"),arr("dc_basis_15m"); ha3=ha_arr("ha_3m","ha_5m"); w13,w23=arr("wt1_3m",0,("wt1_5m",)),arr("wt2_3m",0,("wt2_5m",))

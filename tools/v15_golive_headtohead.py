@@ -32,6 +32,7 @@ A tie keeps the incumbent — churning live settings for noise is its own cost.
   mac:     python3 tools/v15_golive_headtohead.py apply --in /tmp/h2h.json [--apply]
 """
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -45,6 +46,11 @@ if str(ROOT) not in sys.path:
 TOL = float(os.environ.get("V15_H2H_TOL", "0.48"))  # BIBLE board nondeterminism; a smaller win is noise
 
 
+def _config_sha256(config):
+    from tools.v15_accepted_provenance import config_sha256
+    return config_sha256(config)
+
+
 def _gain_and_trades(sym_side, ov, window_days):
     """-> (gain_pct, trades, dd_pct, tim_pct, wr_pct, why). Realised closes only, current NPZ, no stale escape."""
     import metrics_guard as MG
@@ -53,17 +59,17 @@ def _gain_and_trades(sym_side, ov, window_days):
     try:
         r = evaluate_month(sym_side, dict(ov), include_ledger=True, window_days=int(window_days))
     except Exception as e:
-        return None, None, None, None, None, f"{type(e).__name__}: {str(e)[:90]}"
+        return None, None, None, None, None, f"{type(e).__name__}: {str(e)[:90]}", None
     if not r.get("valid"):
         return None, None, None, None, None, f"invalid: {str(r.get('invalid_reason'))[:80]}"
     led = r.get("execution_ledger") or []
     real = MG.realised_closes(led)
     if not real:
-        return None, None, None, None, None, f"no realised close ({len(led)} ledger rows)"
+        return None, None, None, None, None, f"no realised close ({len(led)} ledger rows)", r.get("npz_provenance")
     countable = {"ledger": [t for t in led if not MG.is_unrealised_mark(t)], "mean_deployed": r.get("mean_deployed")}
     wins = sum(1 for t in real if float(t.get("pnl_dollars") or 0.0) > 0)
     return (round(_g(countable), 4), len(real), round(_dd(countable), 4),
-            r.get("tim_pct"), round(100.0 * wins / len(real), 2), "")
+            r.get("tim_pct"), round(100.0 * wins / len(real), 2), "", r.get("npz_provenance"))
 
 
 def _candidate_set(sym_side):
@@ -74,7 +80,7 @@ def _candidate_set(sym_side):
         c = sqlite3.connect(f"file:{PS.DB_PATH}?mode=ro", uri=True)
         c.row_factory = sqlite3.Row
         rows = c.execute(
-            "select updated_at, winning_tag, gain_pct, overrides_json, meta_json from per_sym_history "
+            "select id, updated_at, winning_tag, gain_pct, overrides_json, meta_json from per_sym_history "
             "where sym_side = ? and json_extract(meta_json, '$.source') = 'fleet_orchestrator_publish' "
             "order by updated_at desc, id desc limit 1", (sym_side,)).fetchall()
         c.close()
@@ -89,7 +95,7 @@ def _candidate_set(sym_side):
         return None, "publish row overrides_json unparseable"
     if not isinstance(ov, dict) or len(ov) < 20:
         return None, f"publish row carries {len(ov) if isinstance(ov, dict) else 0} keys — nothing usable"
-    return ov, {"published_at": r["updated_at"], "winning_tag": r["winning_tag"], "claimed_gain": r["gain_pct"],
+    return ov, {"history_id": int(r["id"]), "published_at": r["updated_at"], "winning_tag": r["winning_tag"], "claimed_gain": r["gain_pct"],
                 "publish_row_keys": len(ov)}
 
 
@@ -186,9 +192,10 @@ def measure(a):
     if not sides and live_in:
         sides = sorted(live_in)
     sides = sorted(dict.fromkeys(sides))
+    source_sha256 = hashlib.sha256(Path(a.live_sets).read_bytes()).hexdigest() if a.live_sets else ""
     out = {"ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "host": os.uname().nodename,
            "window_days": a.window_days, "tol": TOL,
-           "incumbent_source": a.live_sets or f"local per_sym_store ({PS.DB_PATH})", "decisions": []}
+           "incumbent_source": a.live_sets or f"local per_sym_store ({PS.DB_PATH})", "incumbent_source_sha256": source_sha256, "decisions": []}
     for i, ss in enumerate(sides, 1):
         d = {"sym_side": ss}
         live = live_in.get(ss) if live_in else (PS.get_full_config(ss) or {})
@@ -204,13 +211,23 @@ def measure(a):
             continue
         cand_full = _candidate_full(live, cand)
         d["set_keys"] = {"live": len(live), "publish_row": len(cand), "candidate_complete": len(cand_full)}
+        d["live_set_sha256"] = _config_sha256(live)
+        d["candidate_set_sha256"] = _config_sha256(cand_full)
         if live and len(cand_full) < len(live):
             d["verdict"], d["why"] = "CANDIDATE_INCOMPLETE", f"merged candidate {len(cand_full)} keys < live {len(live)} — refusing to shrink a live set"
             out["decisions"].append(d)
             print(f"[{i}/{len(sides)}] {ss}: CANDIDATE_INCOMPLETE ({d['why']})", flush=True)
             continue
-        lg, lt, ldd, ltim, lwr, lwhy = _gain_and_trades(ss, live, a.window_days) if live else (None, None, None, None, None, "no live set")
-        cg, ct, cdd, ctim, cwr, cwhy = _gain_and_trades(ss, cand_full, a.window_days)
+        lg, lt, ldd, ltim, lwr, lwhy, lprov = _gain_and_trades(ss, live, a.window_days) if live else (None, None, None, None, None, "no live set", None)
+        cg, ct, cdd, ctim, cwr, cwhy, cprov = _gain_and_trades(ss, cand_full, a.window_days)
+        d["live_npz_provenance"] = lprov
+        d["candidate_npz_provenance"] = cprov
+        d["npz_window_sha256"] = (cprov or {}).get("win_slice_sha")
+        if lprov and cprov and lprov.get("win_slice_sha") != cprov.get("win_slice_sha"):
+            d["verdict"], d["why"] = "CANDIDATE_UNMEASURABLE", "incumbent and candidate used different NPZ window slices"
+            out["decisions"].append(d)
+            print(f"[{i}/{len(sides)}] {ss}: {d['verdict']} ({d['why']})", flush=True)
+            continue
         d["live"] = {"gain_pct": lg, "trades": lt, "max_dd_pct": ldd, "tim_pct": ltim, "wr_pct": lwr, "why": lwhy}
         d["candidate"] = {"gain_pct": cg, "trades": ct, "max_dd_pct": cdd, "tim_pct": ctim, "wr_pct": cwr, "why": cwhy}
         d["claimed_gain"] = (meta or {}).get("claimed_gain")

@@ -129,6 +129,51 @@ def test_source_journal_reader_verifies_zlib_payload_and_cursor(tmp_path, monkey
     journal.close()
 
 
+def test_observed_clock_uses_capture_time_and_preserves_native_source_time(tmp_path, monkeypatch):
+    now = 1_800_000_000.0
+    monkeypatch.setattr("tools.paper_forward_worker.time.time", lambda: now)
+    source_path = tmp_path / "native.sqlite3"
+    source = _connect(source_path)
+    observed_ts = now - 60
+    source_ts = observed_ts - 60
+    indicators = {
+        "timestamp_1m": datetime.fromtimestamp(source_ts, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        "timestamp_3m": datetime.fromtimestamp(source_ts, timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        "current_price": 100.0,
+    }
+    raw = json.dumps(indicators, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()
+    digest = hashlib.sha256(raw).hexdigest()
+    compressed = zlib.compress(raw)
+    provenance = json.dumps({"schema_version": 1, "timeframe": "1m", "status": "VERIFIED_NATIVE", "source_field": "timestamp_1m", "producer_source_sha256": "f" * 64, "receipt_verified_native_1m": True}, sort_keys=True, separators=(",", ":"))
+    source.execute("INSERT INTO payloads(input_hash,payload_encoding,payload_blob,raw_bytes,compressed_bytes) VALUES(?,?,?,?,?)", (digest, "zlib", compressed, len(raw), len(compressed)))
+    source.execute("INSERT INTO frame_index(sequence,observed_ts,source_ts,symbol,venue,host,timeframe,source_sha256,input_hash,provenance_json) VALUES(?,?,?,?,?,?,?,?,?,?)", (1, observed_ts, source_ts, "BTCUSDT", "crypto", "s1", "1m", "c" * 64, digest, provenance))
+    source.execute("INSERT INTO source_conflicts(observed_ts,source_ts,symbol,venue,host,timeframe,existing_input_hash,incoming_input_hash,reason) VALUES(?,?,?,?,?,?,?,?,?)", (observed_ts + 30, source_ts, "BTCUSDT", "crypto", "s1", "1m", digest, "d" * 64, "SAME_SOURCE_TIMESTAMP_CHANGED_PAYLOAD"))
+    source.execute("INSERT INTO journal_meta(key,value) VALUES('latest_sequence','1')")
+    source.commit()
+    source.close()
+    output = tmp_path / "run"
+    output.mkdir()
+    journal = FrameJournal(output / "receipts.sqlite3", {"scenario_id": "fixture", "settings_sha256": "a" * 64, "code_sha256": "b" * 64})
+    session = ContinuousJournalForwardSession(
+        journal, {}, lambda *_: None, code_path=tmp_path / "engine.py", mode="crypto",
+        snapshot_path=tmp_path / "unused.json", receipt_path=tmp_path / "unused.receipt.json",
+        source_journal_path=source_path, symbol="BTCUSDT", expected_host="s1",
+        frame_timeframe="1m", required_timeframes=["1m"], poll_seconds=0.5,
+        max_age_seconds=180, run_root=output, decision_clock="observed_at_utc",
+    )
+    frame, reason = session._read_source_journal_frame()
+    assert reason is None
+    assert frame["ts"] == observed_ts
+    assert frame["observation"]["source_timestamp_epoch_s"] == source_ts
+    assert session.source_revision_count == 1
+    payload = {"BTCUSDT": {"indicators": indicators, "observation": frame["observation"]}}
+    session._accumulate_frame_provenance({"ts": frame["ts"], "payload": payload})
+    assert session.observation_clock_verified is True
+    assert session.source_alias_verified is True
+    session._source_db.close()
+    journal.close()
+
+
 def test_source_journal_reader_fails_closed_after_retention_floor_advances(tmp_path):
     source_path = tmp_path / "native.sqlite3"
     source = _connect(source_path)

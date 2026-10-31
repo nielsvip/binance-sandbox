@@ -2960,7 +2960,7 @@ def _reentry_stdev_bounce_combined_scale(
         return 0.8, 0.8, 1.0
 
 
-def _ee_reentry_boost(symbol, indicators, is_long, cfg):
+def _ee_reentry_boost(symbol, indicators, is_long, cfg, use_ltf=None):
     """Pure-additive engine evaluator for REENTRY paths. Engines NEVER block reentries.
     Returns (size_mult, tag_str). size_mult==1.0 + empty tag = pass-through (default).
     With LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT=1.0 (default), size_mult is always 1.0 — pure observability.
@@ -2968,7 +2968,12 @@ def _ee_reentry_boost(symbol, indicators, is_long, cfg):
     try:
         if cfg is None or not getattr(cfg, "LIVE_ENTRY_ENGINE_ENABLED", False):
             return 1.0, ""
+        from vec_paths.live_entry_engine import pair_15m_engine_indicators
+
         _side = "LONG" if is_long else "SHORT"
+        if use_ltf is None:
+            use_ltf = bool(getattr(cfg, "USE_1M_3M_SIGNALS_ENABLED", False))
+        indicators = pair_15m_engine_indicators(indicators, use_ltf)
         _score_max = 0.0
         _reasons = []
         for _name, _fn, _flag in (
@@ -21427,6 +21432,18 @@ async def process_position(
                     # 2026-04-27 — additive entry-engine boost (default OFF; user controls activation).
                     # Engines NEVER block existing entries — only ADD score. Wrapped to never raise.
                     if _cfg_auto("LIVE_ENTRY_ENGINE_ENABLED", False):
+                        from vec_paths.live_entry_engine import pair_15m_engine_indicators
+
+                        _ee_ltf = bool(
+                            _cfg(
+                                "USE_1M_3M_SIGNALS_ENABLED",
+                                False,
+                                account_key,
+                                symbol,
+                                "LONG" if is_long else "SHORT",
+                            )
+                        )
+                        _ee_ind = pair_15m_engine_indicators(_entry_ind, _ee_ltf)
                         _ee_score_max = 0.0
                         _ee_reasons = []
                         _ee_side = "LONG" if is_long else "SHORT"
@@ -21462,7 +21479,7 @@ async def process_position(
                             if _ee_fn is None:
                                 continue
                             try:
-                                _fire, _why, _sc = _ee_fn(symbol, _entry_ind, _ee_side)
+                                _fire, _why, _sc = _ee_fn(symbol, _ee_ind, _ee_side)
                                 if _fire and _sc >= float(
                                     _cfg_auto("LIVE_ENTRY_ENGINE_MIN_SCORE", 0.6)
                                 ):
@@ -53949,7 +53966,11 @@ class TradierTradeManager:
                             order_side = "BUY" if side == "LONG" else "SELL"
                             # 2026-04-27 — engine boost (default mult=1.0 = no size change, just +ENGINES tag)
                             _ee_mult, _ee_tag = _ee_reentry_boost(
-                                symbol, i, side == "LONG", config
+                                symbol,
+                                i,
+                                side == "LONG",
+                                config,
+                                bool(_cfg("USE_1M_3M_SIGNALS_ENABLED", False, account_key, symbol, side)),
                             )
                             _ee_tag = (
                                 _ee_tag + f" weekly={_mon_weekly:.0f}x{_mon_scale:.2f}"

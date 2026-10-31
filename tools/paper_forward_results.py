@@ -35,6 +35,20 @@ def _utc(ts: float) -> str:
     return datetime.fromtimestamp(ts, timezone.utc).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
+def _clock_epoch(value: Any) -> float:
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError("clock timestamp must be finite")
+        return number
+    if not isinstance(value, str) or not value:
+        raise ValueError("clock timestamp is missing")
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        raise ValueError("clock timestamp must include timezone")
+    return parsed.astimezone(timezone.utc).timestamp()
+
+
 def _terminal_recorded_at(manifest: Mapping[str, Any], last_receipt: Mapping[str, Any]) -> str:
     candidates = [str(value) for value in (manifest.get("ended_at"), last_receipt.get("observed_at_utc"), _utc(last_receipt["ts"])) if value]
     parsed = []
@@ -46,7 +60,7 @@ def _terminal_recorded_at(manifest: Mapping[str, Any], last_receipt: Mapping[str
     return (max(parsed) + timedelta(microseconds=1)).isoformat(timespec="microseconds").replace("+00:00", "Z")
 
 
-def _journal(path: str | Path) -> tuple[dict, list[dict]]:
+def _journal(path: str | Path) -> tuple[dict, list[dict], dict]:
     uri = Path(path).resolve().as_uri() + "?mode=ro"
     with sqlite3.connect(uri, uri=True) as connection:
         connection.execute("BEGIN")
@@ -59,6 +73,12 @@ def _journal(path: str | Path) -> tuple[dict, list[dict]]:
         ).fetchall()
     receipts = []
     saw_incomplete = False
+    provenance_rows = []
+    observation_clock_verified = True
+    source_time_alias_verified = True
+    closed_bar_status_verified = True
+    source_timeframes = []
+    provenance_reasons = []
     for seq, ts, payload_json, input_hash, receipt_hash, receipt_json in rows:
         if hashlib.sha256(payload_json.encode()).hexdigest() != input_hash:
             raise ValueError(f"input hash mismatch at sequence {seq}")
@@ -73,9 +93,61 @@ def _journal(path: str | Path) -> tuple[dict, list[dict]]:
         if hashlib.sha256(_canonical(receipt).encode()).hexdigest() != receipt_hash:
             raise ValueError(f"receipt hash mismatch at sequence {seq}")
         payload = json.loads(payload_json)
-        observed_at = next((value.get("observation", {}).get("observed_at_utc") for value in payload.values() if isinstance(value, dict) and isinstance(value.get("observation"), dict) and value["observation"].get("observed_at_utc")), None) if isinstance(payload, dict) else None
+        observations = [value.get("observation") for value in payload.values() if isinstance(value, dict) and isinstance(value.get("observation"), dict)] if isinstance(payload, dict) else []
+        observation = observations[0] if observations else {}
+        observed_at = observation.get("observed_at_utc")
+        frame_timeframe = observation.get("frame_timeframe")
+        source_timeframes.append(str(frame_timeframe) if frame_timeframe else None)
+        try:
+            decision_ts = _clock_epoch(observed_at)
+            if abs(float(ts) - decision_ts) > 0.001:
+                observation_clock_verified = False
+                provenance_reasons.append("OBSERVATION_CLOCK_TIMESTAMP_MISMATCH")
+        except (TypeError, ValueError, OverflowError):
+            decision_ts = None
+            observation_clock_verified = False
+            provenance_reasons.append("OBSERVATION_CLOCK_TIMESTAMP_MISSING_OR_INVALID")
+        source_provenance = observation.get("source_timeframe_provenance") if isinstance(observation.get("source_timeframe_provenance"), Mapping) else {}
+        valid_statuses = {"VERIFIED_NATIVE"} if frame_timeframe == "1m" else {"NATIVE_SOURCE", "VERIFIED_NATIVE"}
+        alias_verified = (
+            source_provenance.get("schema_version") == 1
+            and source_provenance.get("timeframe") == frame_timeframe
+            and source_provenance.get("source_field") == f"timestamp_{frame_timeframe}"
+            and bool(source_provenance.get("producer_source_sha256"))
+            and source_provenance.get("status") in valid_statuses
+            and (frame_timeframe != "1m" or source_provenance.get("receipt_verified_native_1m") is True)
+        )
+        source_time_alias_verified = source_time_alias_verified and bool(alias_verified)
+        frame_closed_bar_verified = observation.get("closed_bar_status_verified") is True or source_provenance.get("closed_bar_status_verified") is True
+        closed_bar_status_verified = closed_bar_status_verified and bool(frame_closed_bar_verified)
+        provenance_rows.append({"sequence": int(seq), "frame_timeframe": frame_timeframe, "source_timeframe_provenance": source_provenance, "source_time_alias_verified": bool(alias_verified), "closed_bar_status_verified": bool(frame_closed_bar_verified), "observed_at_utc": observed_at})
+        if decision_ts is not None:
+            for event in receipt.get("events", []):
+                if not isinstance(event, Mapping):
+                    continue
+                event_ts = next((event.get(key) for key in ("timestamp", "ts", "executed_at") if event.get(key) is not None), None)
+                if event_ts is None:
+                    continue
+                try:
+                    if _clock_epoch(event_ts) > decision_ts + 0.001:
+                        observation_clock_verified = False
+                        provenance_reasons.append("RECEIPT_EVENT_AFTER_OBSERVATION_CLOCK")
+                except (TypeError, ValueError, OverflowError):
+                    observation_clock_verified = False
+                    provenance_reasons.append("RECEIPT_EVENT_TIMESTAMP_INVALID")
         receipts.append({"sequence": int(seq), "ts": float(ts), "input_hash": input_hash, "receipt_hash": receipt_hash, "observed_at_utc": observed_at, "receipt": receipt})
-    return identity, receipts
+    if saw_incomplete:
+        observation_clock_verified = False
+        provenance_reasons.append("INCOMPLETE_FRAME_RECEIPT_TAIL")
+        source_time_alias_verified = False
+        closed_bar_status_verified = False
+    unique_timeframes = sorted({value for value in source_timeframes if value})
+    if len(unique_timeframes) != 1:
+        source_time_alias_verified = False
+        provenance_reasons.append("SOURCE_TIMEFRAME_INCONSISTENT_OR_MISSING")
+    time_policy = "OBSERVED_AT_UTC" if observation_clock_verified and receipts else ("VERIFIED_CLOSED_BAR" if closed_bar_status_verified and receipts else "UNVERIFIED")
+    journal_provenance = {"observation_clock_verified": bool(observation_clock_verified and receipts), "source_time_alias_verified": bool(source_time_alias_verified and receipts), "closed_bar_status_verified": bool(closed_bar_status_verified and receipts), "source_timeframe": unique_timeframes[0] if len(unique_timeframes) == 1 else None, "time_policy": time_policy, "frames": provenance_rows, "invalid_reasons": sorted(set(provenance_reasons))}
+    return identity, receipts, journal_provenance
 
 
 def _settings_payload(manifest: Mapping[str, Any], key: str, run_dir: str | Path | None) -> dict:
@@ -120,8 +192,9 @@ def _store_pair_metadata(db: ScenarioDB, manifest: Mapping[str, Any], settings_h
         override_issues_json TEXT NOT NULL, source_time_semantics TEXT NOT NULL,
         source_timeframe TEXT, source_time_alias_verified INTEGER NOT NULL,
         closed_bar_status_verified INTEGER NOT NULL, coverage_gaps_json TEXT NOT NULL,
-        invalid_reasons_json TEXT NOT NULL, input_provenance_valid INTEGER NOT NULL,
-        performance_claim INTEGER NOT NULL
+        observation_clock_verified INTEGER NOT NULL, time_policy TEXT NOT NULL,
+        source_timeframe_provenance_json TEXT NOT NULL, invalid_reasons_json TEXT NOT NULL,
+        input_provenance_valid INTEGER NOT NULL, performance_claim INTEGER NOT NULL
     )""")
     db.connection.execute("DROP VIEW IF EXISTS paper_paired_simulated_cost_readiness")
     db.connection.execute("""CREATE VIEW paper_paired_simulated_cost_readiness AS
@@ -133,7 +206,12 @@ def _store_pair_metadata(db: ScenarioDB, manifest: Mapping[str, Any], settings_h
                pa.source_timeframe AS source_timeframe_a,pb.source_timeframe AS source_timeframe_b,
                pa.source_time_alias_verified AS source_time_alias_verified_a,pb.source_time_alias_verified AS source_time_alias_verified_b,
                pa.closed_bar_status_verified AS closed_bar_status_verified_a,pb.closed_bar_status_verified AS closed_bar_status_verified_b,
+               pa.observation_clock_verified AS observation_clock_verified_a,pb.observation_clock_verified AS observation_clock_verified_b,
+               pa.time_policy AS time_policy_a,pb.time_policy AS time_policy_b,
+               pa.source_timeframe_provenance_json AS source_timeframe_provenance_a,pb.source_timeframe_provenance_json AS source_timeframe_provenance_b,
                CASE WHEN p.identical_inputs_ready=1 AND p.shared_context_matches=1 AND p.candidate_config_differs=1 AND ((ma.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(mb.candidate_overrides_json))=1) OR (mb.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(ma.candidate_overrides_json))=1)) AND pa.input_provenance_valid=1 AND pb.input_provenance_valid=1
+                         AND pa.source_time_alias_verified=1 AND pb.source_time_alias_verified=1
+                         AND pa.time_policy=pb.time_policy AND pa.time_policy IN ('OBSERVED_AT_UTC','VERIFIED_CLOSED_BAR')
                          AND p.status_a='COMPLETED' AND p.status_b='COMPLETED'
                          AND ma.code_snapshot_sha256=mb.code_snapshot_sha256 THEN 1 ELSE 0 END AS paired_simulated_cost_ready,
                (SELECT COUNT(*) FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a) AS accounting_fills_a,
@@ -141,6 +219,7 @@ def _store_pair_metadata(db: ScenarioDB, manifest: Mapping[str, Any], settings_h
                (SELECT COUNT(*) FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a AND fa.modeled_net_pnl_dollars IS NOT NULL AND fa.modeled_cost_dollars IS NOT NULL) AS known_modeled_close_costs_a,
                (SELECT COUNT(*) FROM paper_forward_accounting_fills fb WHERE fb.run_id=p.run_b AND fb.modeled_net_pnl_dollars IS NOT NULL AND fb.modeled_cost_dollars IS NOT NULL) AS known_modeled_close_costs_b,
                CASE WHEN p.identical_inputs_ready=1 AND p.shared_context_matches=1 AND p.candidate_config_differs=1 AND ((ma.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(mb.candidate_overrides_json))=1) OR (mb.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(ma.candidate_overrides_json))=1)) AND pa.input_provenance_valid=1 AND pb.input_provenance_valid=1
+                         AND pa.source_time_alias_verified=1 AND pb.source_time_alias_verified=1 AND pa.time_policy=pb.time_policy AND pa.time_policy IN ('OBSERVED_AT_UTC','VERIFIED_CLOSED_BAR')
                          AND p.status_a='COMPLETED' AND p.status_b='COMPLETED'
                          AND ma.code_snapshot_sha256=mb.code_snapshot_sha256
                          AND EXISTS (SELECT 1 FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a AND fa.modeled_net_pnl_dollars IS NOT NULL)
@@ -151,6 +230,7 @@ def _store_pair_metadata(db: ScenarioDB, manifest: Mapping[str, Any], settings_h
                (SELECT SUM(fa.modeled_net_pnl_dollars) FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a) AS diagnostic_simulated_net_pnl_dollars_a,
                (SELECT SUM(fb.modeled_net_pnl_dollars) FROM paper_forward_accounting_fills fb WHERE fb.run_id=p.run_b) AS diagnostic_simulated_net_pnl_dollars_b,
                CASE WHEN p.identical_inputs_ready=1 AND p.shared_context_matches=1 AND p.candidate_config_differs=1 AND ((ma.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(mb.candidate_overrides_json))=1) OR (mb.candidate_overrides_json='{}' AND (SELECT COUNT(*) FROM json_each(ma.candidate_overrides_json))=1)) AND pa.input_provenance_valid=1 AND pb.input_provenance_valid=1
+                         AND pa.source_time_alias_verified=1 AND pb.source_time_alias_verified=1 AND pa.time_policy=pb.time_policy AND pa.time_policy IN ('OBSERVED_AT_UTC','VERIFIED_CLOSED_BAR')
                          AND p.status_a='COMPLETED' AND p.status_b='COMPLETED'
                          AND ma.code_snapshot_sha256=mb.code_snapshot_sha256
                          AND EXISTS (SELECT 1 FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a AND fa.modeled_net_pnl_dollars IS NOT NULL)
@@ -160,7 +240,8 @@ def _store_pair_metadata(db: ScenarioDB, manifest: Mapping[str, Any], settings_h
                     THEN (SELECT SUM(fb.modeled_net_pnl_dollars) FROM paper_forward_accounting_fills fb WHERE fb.run_id=p.run_b)
                        - (SELECT SUM(fa.modeled_net_pnl_dollars) FROM paper_forward_accounting_fills fa WHERE fa.run_id=p.run_a)
                     ELSE NULL END AS diagnostic_simulated_net_pnl_dollars_delta,
-               'diagnostic_simulated_cost' AS outcome_label
+               'diagnostic_simulated_cost' AS outcome_label,
+               CASE WHEN pa.time_policy=pb.time_policy THEN pa.time_policy ELSE 'TIME_POLICY_MISMATCH' END AS delta_time_policy
         FROM paper_paired_readiness p
         JOIN paper_forward_run_metadata ma ON ma.run_id=p.run_a
         JOIN paper_forward_run_metadata mb ON mb.run_id=p.run_b
@@ -218,8 +299,9 @@ def _store_pair_metadata(db: ScenarioDB, manifest: Mapping[str, Any], settings_h
         raise ValueError("immutable paired-readiness run metadata conflict")
 
 
-def _store_run_provenance(db: ScenarioDB, manifest: Mapping[str, Any], run_dir: str | Path | None) -> None:
+def _store_run_provenance(db: ScenarioDB, manifest: Mapping[str, Any], run_dir: str | Path | None, journal_provenance: Mapping[str, Any] | None = None) -> None:
     context = manifest.get("context") if isinstance(manifest.get("context"), Mapping) else {}
+    journal_provenance = journal_provenance if isinstance(journal_provenance, Mapping) else {}
     result = {}
     result_unpinned = False
     if run_dir is None and manifest.get("result_file"):
@@ -245,10 +327,11 @@ def _store_run_provenance(db: ScenarioDB, manifest: Mapping[str, Any], run_dir: 
     issues = manifest.get("override_issues", result.get("override_issues", [])) or []
     mismatch_keys = manifest.get("settings_mismatch_keys", result.get("settings_mismatch_keys", [])) or []
     source_time_semantics = str(manifest.get("source_time_semantics") or result.get("source_time_semantics") or "UNVERIFIED")
-    window = manifest.get("experiment_window") if isinstance(manifest.get("experiment_window"), Mapping) else {}
-    source_timeframe = manifest.get("source_timeframe") or manifest.get("frame_timeframe") or window.get("source_timeframe") or context.get("source_timeframe")
-    alias_verified = manifest.get("source_time_alias_verified") is True or context.get("source_time_alias_verified") is True
-    closed_bar_verified = manifest.get("closed_bar_status_verified") is True or context.get("closed_bar_status_verified") is True
+    source_timeframe = journal_provenance.get("source_timeframe")
+    alias_verified = journal_provenance.get("source_time_alias_verified") is True
+    observation_clock_verified = journal_provenance.get("observation_clock_verified") is True
+    closed_bar_verified = journal_provenance.get("closed_bar_status_verified") is True
+    time_policy = str(journal_provenance.get("time_policy") or "UNVERIFIED")
     gaps = manifest.get("coverage_gaps") or result.get("coverage_gaps") or []
     getter = manifest.get("candidate_getter_resolution") or {}
     candidate = manifest.get("candidate_overrides") or {}
@@ -265,29 +348,35 @@ def _store_run_provenance(db: ScenarioDB, manifest: Mapping[str, Any], run_dir: 
         reasons.append("COVERAGE_GAPS")
     if result_unpinned:
         reasons.append("RESULT_PROVENANCE_UNPINNED")
+    reasons.extend(journal_provenance.get("invalid_reasons", []))
     if not source_timeframe:
         reasons.append("SOURCE_TIMEFRAME_UNVERIFIED")
     if not alias_verified:
         reasons.append("SOURCE_TIMEFRAME_ALIAS_UNVERIFIED")
-    if not closed_bar_verified or "unverified" in source_time_semantics.lower():
+    if time_policy not in {"OBSERVED_AT_UTC", "VERIFIED_CLOSED_BAR"}:
+        reasons.append("TIME_POLICY_UNVERIFIED")
+    if not observation_clock_verified and (not closed_bar_verified or "unverified" in source_time_semantics.lower()):
         reasons.append("CLOSED_BAR_STATUS_UNVERIFIED")
     if candidate and any(not isinstance(getter.get(key), Mapping) or getter[key].get("matches") is not True for key in candidate):
         reasons.append("CANDIDATE_GETTER_UNVERIFIED")
     values = (
         manifest["run_id"], evidence_label, _canonical(issues), source_time_semantics,
         str(source_timeframe) if source_timeframe else None, int(alias_verified), int(closed_bar_verified),
-        _canonical(gaps), _canonical(sorted(set(reasons))), int(not reasons), int(context.get("performance_claim") is True),
+        _canonical(gaps), int(observation_clock_verified), time_policy,
+        _canonical(journal_provenance.get("frames", [])), _canonical(sorted(set(reasons))), int(not reasons), int(context.get("performance_claim") is True),
     )
-    db.connection.execute("""INSERT INTO paper_forward_run_provenance VALUES(?,?,?,?,?,?,?,?,?,?,?)
+    db.connection.execute("""INSERT INTO paper_forward_run_provenance VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(run_id) DO UPDATE SET evidence_label=excluded.evidence_label,
         override_issues_json=excluded.override_issues_json,source_time_semantics=excluded.source_time_semantics,
         source_timeframe=excluded.source_timeframe,source_time_alias_verified=excluded.source_time_alias_verified,
         closed_bar_status_verified=excluded.closed_bar_status_verified,coverage_gaps_json=excluded.coverage_gaps_json,
+        observation_clock_verified=excluded.observation_clock_verified,time_policy=excluded.time_policy,
+        source_timeframe_provenance_json=excluded.source_timeframe_provenance_json,
         invalid_reasons_json=excluded.invalid_reasons_json,input_provenance_valid=excluded.input_provenance_valid,
         performance_claim=excluded.performance_claim""", values)
 
 
-def _ensure_run(db: ScenarioDB, manifest: Mapping[str, Any], identity: Mapping[str, Any], run_dir: str | Path | None = None) -> dict:
+def _ensure_run(db: ScenarioDB, manifest: Mapping[str, Any], identity: Mapping[str, Any], run_dir: str | Path | None = None, journal_provenance: Mapping[str, Any] | None = None) -> dict:
     required = ("run_id", "epoch_id", "scenario_id", "sym_side", "host", "settings_sha256", "parent_settings_sha256", "code_sha256", "code_file_hashes", "started_at", "candidate_overrides")
     if any(not str(manifest.get(key, "")).strip() for key in required):
         raise ValueError("manifest missing required run epoch fields: " + ", ".join(key for key in required if not str(manifest.get(key, "")).strip()))
@@ -347,13 +436,13 @@ def _ensure_run(db: ScenarioDB, manifest: Mapping[str, Any], identity: Mapping[s
         if actual != expected:
             raise ValueError("immutable independent-forward run identity conflict")
         _store_pair_metadata(db, manifest, effective_hash, code_snapshot_hash)
-        _store_run_provenance(db, manifest, run_dir)
+        _store_run_provenance(db, manifest, run_dir, journal_provenance)
         return
     db.add_settings_snapshot(settings_hash=effective_hash, settings=effective_settings)
     db.add_source_code_snapshot(code_hash=code_snapshot_hash, file_hashes=code_file_hashes)
     db.add_run(run_id=manifest["run_id"], scenario_id=manifest["scenario_id"], sym_side=manifest["sym_side"], host=manifest["host"], settings_hash=manifest["settings_sha256"], code_hash=code_snapshot_hash, evidence_kind="independent_forward", status="RUNNING", started_at=manifest["started_at"], ended_at=None)
     _store_pair_metadata(db, manifest, effective_hash, code_snapshot_hash)
-    _store_run_provenance(db, manifest, run_dir)
+    _store_run_provenance(db, manifest, run_dir, journal_provenance)
     context_id = "paper-context-" + _digest([manifest["run_id"], manifest["epoch_id"], manifest["settings_sha256"]])
     db.add_run_status(event_id=context_id, run_id=manifest["run_id"], recorded_at=manifest["started_at"], status="RUNNING", detail={"epoch_id": manifest["epoch_id"], "parent_settings_sha256": manifest["parent_settings_sha256"], "settings_sha256": manifest["settings_sha256"], "candidate_overrides": manifest["candidate_overrides"], "isolation_overrides": isolation_overrides, "paper_mask_release": paper_mask_release, "context": manifest.get("context", {})})
     return {"base_settings": base_settings, "effective_settings": effective_settings}
@@ -530,11 +619,11 @@ def _ingest_accounting(db: ScenarioDB, manifest: Mapping[str, Any], run_dir: str
 
 
 def ingest(db: ScenarioDB, journal_path: str | Path, manifest: Mapping[str, Any], run_dir: str | Path | None = None) -> dict:
-    identity, receipts = _journal(journal_path)
+    identity, receipts, journal_provenance = _journal(journal_path)
     terminal_status = str(manifest.get("status", "COMPLETED" if manifest.get("finished") is True else "RUNNING")).upper()
     is_terminal = terminal_status in {"COMPLETED", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT", "FAILED", "DATA_GAP", "SETTINGS_MISMATCH"}
     with db.transaction():
-        _ensure_run(db, manifest, identity, run_dir)
+        _ensure_run(db, manifest, identity, run_dir, journal_provenance)
         if not receipts:
             if is_terminal and terminal_status not in {"FAILED", "DATA_GAP", "SETTINGS_MISMATCH"}:
                 raise ValueError("finished worker manifest has no committed receipts")

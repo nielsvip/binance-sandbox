@@ -7965,7 +7965,18 @@ def _ee_reentry_boost(symbol, indicators, is_long, cfg):
     try:
         if cfg is None or not getattr(cfg, "LIVE_ENTRY_ENGINE_ENABLED", False):
             return 1.0, ""
+        from vec_paths.live_entry_engine import pair_15m_engine_indicators
+
         _side = "LONG" if is_long else "SHORT"
+        _use_ltf = bool(
+            _psym_get(
+                symbol,
+                _side,
+                "USE_1M_3M_SIGNALS_ENABLED",
+                getattr(cfg, "USE_1M_3M_SIGNALS_ENABLED", False),
+            )
+        )
+        indicators = pair_15m_engine_indicators(indicators, _use_ltf)
         _score_max = 0.0
         _reasons = []
         for _name, _fn, _flag in (
@@ -47345,6 +47356,17 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
     # Engines NEVER block existing entries — only ADD score. Wrapped to never raise.
     _tm_cfg = getattr(trade_manager, "config", None)
     if _tm_cfg is not None and getattr(_tm_cfg, "LIVE_ENTRY_ENGINE_ENABLED", False):
+        from vec_paths.live_entry_engine import pair_15m_engine_indicators
+
+        _ee_use_ltf = bool(
+            _psym_get(
+                symbol,
+                "LONG" if is_long else "SHORT",
+                "USE_1M_3M_SIGNALS_ENABLED",
+                getattr(_tm_cfg, "USE_1M_3M_SIGNALS_ENABLED", False),
+            )
+        )
+        _ee_ind = pair_15m_engine_indicators(i, _ee_use_ltf)
         _ee_score_max = 0.0
         _ee_reasons = []
         _ee_side = "LONG" if is_long else "SHORT"
@@ -47360,7 +47382,7 @@ async def evaluate_technical_indicator_signals(ctx: dict) -> Optional[Signal]:
             if _ee_fn is None:
                 continue
             try:
-                _fire, _why, _sc = _ee_fn(symbol, i, _ee_side)
+                _fire, _why, _sc = _ee_fn(symbol, _ee_ind, _ee_side)
                 if _fire and _sc >= float(
                     getattr(_tm_cfg, "LIVE_ENTRY_ENGINE_MIN_SCORE", 0.6)
                 ):

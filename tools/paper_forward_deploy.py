@@ -2,6 +2,7 @@
 import argparse
 import hashlib
 import json
+import re
 import shlex
 import subprocess
 import tempfile
@@ -12,8 +13,8 @@ HOSTS = {"s1": "s1-int", "s2": "s2", "s5": "s5", "s6": "s6"}
 def run(arguments):
     return subprocess.run(arguments, check=True, text=True, capture_output=True).stdout
 
-def unit(command, description, memory="2G"):
-    return f"[Unit]\nDescription={description}\nAfter=network.target\n\n[Service]\nType=simple\nExecStart={command}\nWorkingDirectory=/home/niels/binance-sandbox\nEnvironment=OPENBLAS_NUM_THREADS=1\nEnvironment=OMP_NUM_THREADS=1\nEnvironment=PYTHONDONTWRITEBYTECODE=1\nNice=19\nCPUSchedulingPolicy=idle\nCPUWeight=1\nCPUQuota=25%\nIOWeight=1\nMemoryHigh=1G\nMemoryMax={memory}\nOOMScoreAdjust=500\nRestart=on-failure\nRestartSec=60\nTimeoutStopSec=45\n\n[Install]\nWantedBy=default.target\n"
+def unit(command, description, memory="6G", memory_high="4G", cpu_quota="200%"):
+    return f"[Unit]\nDescription={description}\nAfter=network.target\n\n[Service]\nType=simple\nExecStart={command}\nWorkingDirectory=/home/niels/binance-sandbox\nEnvironment=OPENBLAS_NUM_THREADS=1\nEnvironment=OMP_NUM_THREADS=1\nEnvironment=PYTHONDONTWRITEBYTECODE=1\nNice=19\nCPUSchedulingPolicy=idle\nCPUWeight=1\nCPUQuota={cpu_quota}\nIOWeight=1\nMemoryHigh={memory_high}\nMemoryMax={memory}\nOOMScoreAdjust=500\nRestart=on-failure\nRestartSec=60\nTimeoutStopSec=45\n\n[Install]\nWantedBy=default.target\n"
 
 def deploy(batch, runtime, remote_root, host, activate=False):
     batch, runtime, remote_root = Path(batch).resolve(), Path(runtime).resolve(), Path(remote_root)
@@ -33,20 +34,31 @@ def deploy(batch, runtime, remote_root, host, activate=False):
     interpreter = run(ssh + ["if test -x /home/niels/.conda/envs/binance_env_mac/bin/python; then echo /home/niels/.conda/envs/binance_env_mac/bin/python; elif test -x /home/niels/binance-sandbox/.venv/bin/python; then echo /home/niels/binance-sandbox/.venv/bin/python; else echo /usr/bin/python3; fi"]).strip()
     run(ssh + [shlex.quote(interpreter) + " -c " + shlex.quote("import numpy,pandas")])
     coordinator = remote_runtime / "tools/paper_forward_fleet.py"
-    command = f"{interpreter} {coordinator} --host {host} --root {remote_root} --specs-dir {remote_batch / host / 'specs'} --state-db {remote_root / 'data/paper_forward_lab' / ('fleet_' + host + '.sqlite3')} --max-workers 1 --poll-seconds 60"
-    archive_command = f"{interpreter} {remote_runtime / 'tools/paper_native_journal.py'} --host {host} --base {remote_root / 'data/paper_forward_lab'} --timeframes 1m --poll-seconds 60"
+    command = f"{interpreter} {coordinator} --host {host} --root {remote_root} --specs-dir {remote_batch / host / 'specs'} --state-db {remote_root / 'data/paper_forward_lab' / ('fleet_' + host + '.sqlite3')} --max-workers 4 --poll-seconds 60"
+    archive_command = f"{interpreter} {remote_runtime / 'tools/paper_native_journal.py'} --host {host} --base {remote_root / 'data/paper_forward_lab'} --timeframes 1m,3m,5m --poll-seconds 60"
     with tempfile.TemporaryDirectory(prefix="paper-unit-") as directory:
         path = Path(directory) / "paper-independent-forward.service"
         path.write_text(unit(command, "Independent paper scenarios; idle CPU and admission gated"))
         run(ssh + ["mkdir -p ~/.config/systemd/user; if test -f ~/.config/systemd/user/paper-independent-forward.service; then cp ~/.config/systemd/user/paper-independent-forward.service ~/.config/systemd/user/paper-independent-forward.service.before.$(date -u +%Y%m%d%H%M%S); fi"])
         run(["rsync", "-az", str(path), f"{alias}:.config/systemd/user/"])
         archive_path = Path(directory) / "paper-native-journal.service"
-        archive_path.write_text(unit(archive_command, "Bounded native observations for independent paper scenarios", "512M").replace("MemoryHigh=1G", "MemoryHigh=256M"))
+        archive_path.write_text(unit(archive_command, "Bounded native observations for independent paper scenarios", "512M", "256M", "25%"))
         run(ssh + ["if test -f ~/.config/systemd/user/paper-native-journal.service; then cp ~/.config/systemd/user/paper-native-journal.service ~/.config/systemd/user/paper-native-journal.service.before.$(date -u +%Y%m%d%H%M%S); fi"])
         run(["rsync", "-az", str(archive_path), f"{alias}:.config/systemd/user/"])
+        feed_path = Path(directory) / "paper-native-feed.service"
+        feed_existing = run(ssh + ["systemctl --user cat paper-native-feed.service"])
+        feed_command = f"ExecStart={interpreter} {remote_runtime / 'tools/paper_native_feed.py'} --host {host} --base {remote_root}"
+        feed_updated, changed = re.subn(r"^ExecStart=.*$", feed_command, feed_existing, flags=re.MULTILINE)
+        if changed != 1:
+            raise RuntimeError("native feed unit must have exactly one existing ExecStart")
+        feed_path.write_text(feed_updated)
+        run(ssh + ["cp ~/.config/systemd/user/paper-native-feed.service ~/.config/systemd/user/paper-native-feed.service.before.$(date -u +%Y%m%d%H%M%S)"])
+        run(["rsync", "-az", str(feed_path), f"{alias}:.config/systemd/user/"])
     run(ssh + ["systemctl --user daemon-reload"])
     if activate:
-        run(ssh + ["systemctl --user enable --now paper-native-journal.service paper-independent-forward.service"])
+        run(ssh + ["systemctl --user start paper-native-feed.service"])
+        run(ssh + ["systemctl --user enable paper-native-journal.service paper-independent-forward.service"])
+        run(ssh + ["systemctl --user restart paper-native-journal.service paper-independent-forward.service"])
     return {"host": host, "runtime": str(remote_runtime), "batch": str(remote_batch), "verified_files": verified, "verified_spec_files": verified_specs, "activated": activate}
 
 def main():

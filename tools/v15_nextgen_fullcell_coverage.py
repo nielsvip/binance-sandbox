@@ -202,6 +202,8 @@ def run(prepared,settings,config,pilot,context,capture,catalog_path,output,worke
                 if raw['npz_sha256']!=context['npz_sha256'] or raw['engine_sha256']!=context['engine_sha256'] or result.get('symside')!=context['sym_side'] or any(raw['actual_engine_proof'][key]!=value for key,value in old['engine_proof'].items()):
                     raise ValueError('prior actual proof does not bind requested current trial')
                 skip_ids.add(old['cell']['catalog_cell_id'])
+        if sha(source['path'])!=source['sha256']:
+            raise ValueError('prior attempt source changed while validating reuse')
     def tasks():
         index=0
         for ordinal,cell in enumerate(iter_cells(catalog_path,context['cat_side'],ordering=ordering)):

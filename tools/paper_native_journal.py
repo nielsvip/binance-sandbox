@@ -106,20 +106,28 @@ def _connect(database):
         sequence INTEGER PRIMARY KEY AUTOINCREMENT, observed_ts REAL NOT NULL, source_ts REAL NOT NULL,
         symbol TEXT NOT NULL, venue TEXT NOT NULL, host TEXT NOT NULL, timeframe TEXT NOT NULL,
         source_sha256 TEXT NOT NULL, input_hash TEXT NOT NULL REFERENCES payloads(input_hash),
+        provenance_json TEXT NOT NULL DEFAULT '{}',
         UNIQUE(host,source_ts,symbol,timeframe)
     )""")
+    frame_columns = {row[1] for row in connection.execute("PRAGMA table_info(frame_index)")}
+    if "provenance_json" not in frame_columns:
+        connection.execute("ALTER TABLE frame_index ADD COLUMN provenance_json TEXT NOT NULL DEFAULT '{}'")
     connection.execute("""CREATE TABLE IF NOT EXISTS source_conflicts (
         conflict_id INTEGER PRIMARY KEY AUTOINCREMENT, observed_ts REAL NOT NULL, source_ts REAL NOT NULL,
         symbol TEXT NOT NULL, venue TEXT NOT NULL, host TEXT NOT NULL, timeframe TEXT NOT NULL,
         existing_input_hash TEXT, incoming_input_hash TEXT NOT NULL, reason TEXT NOT NULL
     )""")
     connection.execute("CREATE INDEX IF NOT EXISTS frame_symbol_tf_seq ON frame_index(host,venue,symbol,timeframe,sequence)")
+    view_columns = {row[1] for row in connection.execute("PRAGMA table_info(frames)")}
+    if "provenance_json" not in view_columns:
+        connection.execute("DROP VIEW IF EXISTS frames")
     connection.execute("""CREATE VIEW IF NOT EXISTS frames AS
         SELECT f.sequence,f.observed_ts,f.source_ts,f.symbol,f.venue,f.host,f.timeframe,
-               f.source_sha256,f.input_hash,p.payload_encoding,p.payload_blob
+               f.source_sha256,f.input_hash,f.provenance_json,p.payload_encoding,p.payload_blob
         FROM frame_index AS f JOIN payloads AS p ON p.input_hash=f.input_hash""")
-    connection.execute("INSERT OR IGNORE INTO journal_meta(key,value) VALUES('schema_version','1')")
+    connection.execute("INSERT OR IGNORE INTO journal_meta(key,value) VALUES('schema_version','2')")
     connection.execute("INSERT OR IGNORE INTO journal_meta(key,value) VALUES('retention_floor_sequence','0')")
+    connection.execute("UPDATE journal_meta SET value='2' WHERE key='schema_version'")
     connection.commit()
     return connection
 
@@ -210,10 +218,18 @@ def inspect_source(snapshot_path, receipt_path, host, timeframes=DEFAULT_TIMEFRA
             if observed_ts - source_ts > 2 * _timeframe_seconds(timeframe):
                 stale_count += 1
                 continue
+            provenance_entry = provenance[timeframe]
+            archived_provenance = {"schema_version": 1, "timeframe": timeframe,
+                                   "status": provenance_entry["status"],
+                                   "source_field": provenance_entry["source_field"],
+                                   "producer_source_path": provenance_entry["producer_source_path"],
+                                   "producer_source_sha256": provenance_entry["producer_source_sha256"],
+                                   "receipt_verified_native_1m": receipt.get("verified_native_1m") is True}
             candidates.append({"observed_ts": observed_ts, "source_ts": source_ts, "symbol": symbol,
                                "venue": expected_venue, "host": host, "timeframe": timeframe,
                                "source_sha256": _digest(raw), "input_hash": input_hash,
-                               "payload_blob": compressed, "raw_bytes": len(payload)})
+                               "payload_blob": compressed, "raw_bytes": len(payload),
+                               "provenance_json": _canonical(archived_provenance).decode("utf-8")})
     return {"status": "READY" if candidates else "NO_FRESH_FRAMES", "host": host, "venue": expected_venue,
             "observed_ts": observed_ts, "source_sha256": _digest(raw), "candidates": candidates,
             "stale_count": stale_count, "invalid_count": invalid_count, "provenance_gaps": provenance_gaps,
@@ -288,8 +304,8 @@ def _append_capture(database, snapshot_path, receipt_path, host, timeframes=DEFA
             connection.execute("INSERT OR IGNORE INTO payloads(input_hash,payload_encoding,payload_blob,raw_bytes,compressed_bytes) VALUES(?,?,?,?,?)",
                                (input_hash, "zlib", sqlite3.Binary(blob), raw_bytes, len(blob)))
         for candidate in pending:
-            connection.execute("INSERT INTO frame_index(observed_ts,source_ts,symbol,venue,host,timeframe,source_sha256,input_hash) VALUES(?,?,?,?,?,?,?,?)",
-                               (candidate["observed_ts"], candidate["source_ts"], candidate["symbol"], candidate["venue"], candidate["host"], candidate["timeframe"], candidate["source_sha256"], candidate["input_hash"]))
+            connection.execute("INSERT INTO frame_index(observed_ts,source_ts,symbol,venue,host,timeframe,source_sha256,input_hash,provenance_json) VALUES(?,?,?,?,?,?,?,?,?)",
+                               (candidate["observed_ts"], candidate["source_ts"], candidate["symbol"], candidate["venue"], candidate["host"], candidate["timeframe"], candidate["source_sha256"], candidate["input_hash"], candidate["provenance_json"]))
             inserted += 1
         if _db_bytes(database) > max_database_bytes:
             connection.execute("ROLLBACK")
