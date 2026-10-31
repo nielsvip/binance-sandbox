@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T12:23:17Z",
+ "ts": "2026-10-31T12:28:27Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 31,
    "open_positions": 23,
-   "unrealised_usd": 0.19,
+   "unrealised_usd": 0.5,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 36,
    "open_positions": 5,
-   "unrealised_usd": -0.47,
+   "unrealised_usd": -0.42,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -80,12 +80,12 @@
    "unrealised_usd": 0.0,
    "pos_mismatch": 0,
    "vec_parity": {
-    "live_vec_decisions": 1,
+    "live_vec_decisions": 0,
     "state_divergent": 0,
     "filled": 0,
     "refused_non_safety": 0,
     "safety_refusals": 0,
-    "not_filled_no_log": 1,
+    "not_filled_no_log": 0,
     "vec_exact_fills_without_decision": 0,
     "matched_by_reason": 0
    }
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 9,
    "open_positions": 6,
-   "unrealised_usd": -0.58,
+   "unrealised_usd": -0.52,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,80 +127,73 @@
     "43587"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 4.0
   },
   "men": {
    "pids": [
     "11803"
    ],
    "starts_30m": 1,
-   "log_age_s": 66.0
+   "log_age_s": 41.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 43.0
+   "log_age_s": 27.0
   },
   "inf": {
    "pids": [
     "11994"
    ],
    "starts_30m": 1,
-   "log_age_s": 26.0
+   "log_age_s": 1.0
   },
   "flz": {
    "pids": [
     "82574"
    ],
    "starts_30m": 1,
-   "log_age_s": 994.0
+   "log_age_s": 1304.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 27659.0
+   "log_age_s": 27969.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 27975.0
+   "log_age_s": 28285.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T12:23:17Z",
+   "ts": "2026-10-31T12:28:27Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "fin:BIOUSDC_SHORT",
    "evidence": "31 12:17:48 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:BIOUSDC_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $67 on bounce (prior max 675.0000)"
   },
   {
-   "ts": "2026-10-31T12:23:17Z",
+   "ts": "2026-10-31T12:28:27Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:FLUXUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T11:14:33Z bar=2026-10-31T10:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T12:23:18Z",
-   "severity": "CRITICAL",
-   "kind": "VEC_DECISION_NOT_FILLED",
-   "key": "inf:HYPEUSDT_LONG",
-   "evidence": "CLOSE FIXED_STOP decided 2026-10-31T06:26:14Z bar=2026-10-31T04:30:00Z: no fill in 1800s and no refusal logged"
-  },
-  {
-   "ts": "2026-10-31T12:23:18Z",
+   "ts": "2026-10-31T12:28:28Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 994s"
+   "evidence": "ez_manage_flz.log not written for 1304s"
   }
  ],
  "alert_counts": {
   "CAP_BYPASS": 1,
-  "VEC_DECISION_NOT_FILLED": 2,
+  "VEC_DECISION_NOT_FILLED": 1,
   "STALE_LOG": 1
  },
  "active_interventions": {
@@ -254,5 +247,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.86
+ "sweep_s": 1.38
 }
