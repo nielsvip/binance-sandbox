@@ -1,0 +1,24 @@
+{
+ "window_from": "10-31 09:07",
+ "hours": 1.0,
+ "totals": {
+  "status_NO_BAR_STORE": 336,
+  "status_OK": 21,
+  "EXTRA": 1
+ },
+ "rows": [
+  {
+   "acct": "ang",
+   "sym_side": "RAYSOLUSDT_LONG",
+   "dictated_bar": "",
+   "dictated": "",
+   "dictated_reason": "",
+   "actual_at": "10-31 09:10",
+   "actual": "CLOSE",
+   "actual_reason": "board flat, broker holds 9.0",
+   "late_bars": null,
+   "verdict": "EXTRA",
+   "vec_tagged": false
+  }
+ ]
+}

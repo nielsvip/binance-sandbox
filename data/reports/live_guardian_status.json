@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T10:13:36Z",
+ "ts": "2026-10-31T10:18:46Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 47,
+   "fills_6h": 46,
    "open_positions": 28,
-   "unrealised_usd": -0.33,
+   "unrealised_usd": -0.46,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 63,
+   "fills_6h": 59,
    "open_positions": 14,
-   "unrealised_usd": 0.22,
+   "unrealised_usd": 0.21,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 14,
    "open_positions": 6,
-   "unrealised_usd": -0.13,
+   "unrealised_usd": -0.21,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,57 +127,57 @@
     "43587"
    ],
    "starts_30m": 1,
-   "log_age_s": 30.0
+   "log_age_s": 8.0
   },
   "men": {
    "pids": [
     "20386"
    ],
    "starts_30m": 1,
-   "log_age_s": 29.0
+   "log_age_s": 70.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 40.0
+   "log_age_s": 38.0
   },
   "inf": {
    "pids": [
     "34297"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 11.0
   },
   "flz": {
    "pids": [
     "78263"
    ],
-   "starts_30m": 0,
-   "log_age_s": 3.0
+   "starts_30m": 1,
+   "log_age_s": 21.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 19878.0
+   "log_age_s": 20188.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 20194.0
+   "log_age_s": 20504.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T10:13:36Z",
+   "ts": "2026-10-31T10:18:46Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
-   "key": "fin:FIDAUSDT_SHORT",
-   "evidence": "31 10:01:36 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:FIDAUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $38 on bounce (prior max 0.0000)"
+   "key": "men:FIDAUSDT_SHORT",
+   "evidence": "31 10:17:22 - WARNING - [men] [REENTRY_GRANDFATHERED] men:FIDAUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $11 on bounce (prior max 966.0000)"
   },
   {
-   "ts": "2026-10-31T10:13:37Z",
+   "ts": "2026-10-31T10:18:47Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:HYPEUSDT_LONG",
@@ -231,13 +231,6 @@
    "undo": "alert-only (never-halt policy 2026-10-10)",
    "dry_run": false
   },
-  "key:fin:RIFUSDT_SHORT": {
-   "ts": 1793434570.7319732,
-   "until": 1793441770.731976,
-   "why": "SIZE_ANOMALY order $2763.03 > 1.5x MAX_ORDER_VALUE",
-   "undo": "redis-cli -p 6379 DEL open_blocked:fin:RIFUSDT_SHORT",
-   "dry_run": false
-  },
   "key:ang:RSRUSDT_SHORT": {
    "ts": 1793436010.959946,
    "until": 1793443210.959949,
@@ -246,5 +239,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.67
+ "sweep_s": 1.92
 }
