@@ -43,6 +43,15 @@ def refresh(root, host):
                 raw = (root / "data/paper_forward_comprehensive" / name).read_bytes()
                 json.loads(raw)
                 (destination / name).write_bytes(raw)
+            action_scores = root / "data/paper_forward_comprehensive/counterfactual_action_scores.json"
+            if action_scores.exists():
+                raw = action_scores.read_bytes()
+                json.loads(raw)
+                (destination / action_scores.name).write_bytes(raw)
+            events_destination = stage / "data/paper_nonvec"
+            events_destination.mkdir(parents=True)
+            for event_file in sorted((root / "data/paper_nonvec").glob("events_*.jsonl")):
+                (events_destination / event_file.name).write_bytes(event_file.read_bytes())
             destination = stage / "data/paper_shadow"
             destination.mkdir(parents=True)
             with sqlite3.connect((root / "data/paper_shadow/shadow.db").resolve().as_uri() + "?mode=ro", uri=True) as source, sqlite3.connect(destination / "shadow.db") as target:

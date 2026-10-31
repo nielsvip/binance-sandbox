@@ -54,6 +54,7 @@ def test_replay_calls_state_for_on_strictly_causal_prefixes(tmp_path, monkeypatc
     from datetime import datetime, timezone
 
     import tools.v15_forward_state as forward_state
+    import tools.opt.v12_pilot as pilot_v12
     from tools.replay_forward_vector import replay
 
     ts = np.arange(900, 4500, 900, dtype=np.int64)
@@ -72,35 +73,34 @@ def test_replay_calls_state_for_on_strictly_causal_prefixes(tmp_path, monkeypatc
 
     def fake_state_for(symside, window_days):
         import tools.opt.evaluate_v12 as current_evaluate_v12
-        current_npz = current_evaluate_v12._store("XUSDC", "crypto", "")["timestamps"][-1]
+        import v12_quick_engine as current_engine
+
+        canonical = forward_state.ROOT / "backtest_v8" / "indicators" / "XUSDC.npz"
+        fresh, reason = pilot_v12.npz_freshness(symside)
+        assert fresh, reason
+        with np.load(canonical, allow_pickle=True) as current_npz:
+            prefix_ts = int(current_npz["timestamps"][-1])
+            prefix_close = current_npz["close"].copy()
         decision_ts = int(forward_state.time.time())
-        seen.append((symside, window_days, int(current_npz), decision_ts))
+        seen.append((symside, window_days, prefix_ts, decision_ts, len(prefix_close)))
         return {
             "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "npz_tail": int(current_npz),
+            "npz_tail": prefix_ts,
             "ok": True,
-            "ledger": [{"type": "OPEN", "ts": int(current_npz), "qty": 1.0}],
+            "ledger": [{"type": "OPEN", "ts": prefix_ts, "qty": 1.0}],
         }
 
     monkeypatch.setattr(forward_state, "state_for", fake_state_for)
-    original_npz = getattr(forward_state, "_replay_test_npz", None)
-    # State provider reads the same patched store used by state_for's prepare path.
-    import tools.opt.evaluate_v12 as evaluate_v12
-    old_store = evaluate_v12._store
-    evaluate_v12._store = lambda *_args: forward_state._replay_test_npz
-    try:
-        forward_state._replay_test_npz = {"timestamps": ts, "close": np.arange(len(ts), dtype=float) + 100.0}
-        result = replay(npz_path, active_path, "XUSDC_LONG", 900, 2700,
-                        output_path, code_root, limit=None)
-    finally:
-        evaluate_v12._store = old_store
-        if original_npz is None:
-            delattr(forward_state, "_replay_test_npz")
-        else:
-            forward_state._replay_test_npz = original_npz
+    result = replay(npz_path, active_path, "XUSDC_LONG", 900, 2700,
+                    output_path, code_root, limit=None)
 
     assert result["states_evaluated"] == 2
-    assert seen == [("XUSDC_LONG", 30, 1800, 2700), ("XUSDC_LONG", 30, 2700, 3600)]
+    assert seen == [
+        ("XUSDC_LONG", 30, 900, 1800, 1),
+        ("XUSDC_LONG", 30, 1800, 2700, 2),
+        ("XUSDC_LONG", 30, 2700, 3600, 3),
+    ]
     rows = [json.loads(line) for line in output_path.read_text().splitlines()]
+    assert next(row for row in rows if row["record"] == "initial_lifecycle")["cutoff_npz_open_ts"] == 900
     action_rows = [row for row in rows if row["record"] == "action"]
     assert [row["npz_open_ts"] for row in action_rows] == [1800, 2700]

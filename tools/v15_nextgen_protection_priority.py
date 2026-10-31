@@ -36,6 +36,52 @@ class SourceBoundMeasurement(FrozenRecord):
     pass
 
 
+class PredictionArtifact(FrozenRecord):
+    pass
+
+
+class RetainedPrediction(FrozenRecord):
+    pass
+
+
+def bind_prediction_artifact(source):
+    payload = Path(source['path']).read_bytes()
+    if hashlib.sha256(payload).hexdigest() != source['sha256']:
+        raise ValueError('NN prediction artifact content mismatch')
+    document = json.loads(payload)
+    if not str((document.get('meta') or {}).get('schema', '')).startswith('v18_linknet/'):
+        raise ValueError('supported retained NN proposal artifact required')
+    return PredictionArtifact(source=_freeze(source), document=_freeze(document))
+
+
+def retained_prediction(artifact, index, proposal, context, resolve_original):
+    if not isinstance(artifact, PredictionArtifact):
+        raise ValueError('source-bound NN artifact required')
+    original = artifact['document']['template_untried'][index]
+    resolved = resolve_original(original)
+    if resolved.get('eligible') is not True or evidence.pair_identity(resolved['x'], resolved['y']) != evidence.pair_identity(proposal['x'], proposal['y']):
+        raise ValueError('retained NN score does not bind the exact current eligible pair')
+    score = original.get('p_pos_pred')
+    if not isinstance(score, (int, float)) or isinstance(score, bool) or not math.isfinite(score) or not 0 <= score <= 1:
+        raise ValueError('finite retained NN probability required')
+    return RetainedPrediction(source=artifact['source'], index=index, pair_id=evidence.pair_identity(proposal['x'], proposal['y']), scientific_identity=_freeze(scientific_identity(context)), score=float(score), semantics='retained historical NN prediction used only as fair priority tie-break; not current measured benefit')
+
+
+def prediction_tiebreak(proposal, domain, scientific):
+    prediction = domain.get('retained_prediction')
+    if prediction is None:
+        return 0.0
+    if not isinstance(prediction, RetainedPrediction) or prediction['pair_id'] != evidence.pair_identity(proposal['x'], proposal['y']) or evidence.guard.fingerprint(prediction['scientific_identity']) != evidence.guard.fingerprint(scientific):
+        raise ValueError('retained NN tie-break has stale context or unrelated pair')
+    return float(prediction['score'])
+
+
+def validate_prediction_artifact(artifact):
+    if not isinstance(artifact, PredictionArtifact) or evidence.sha(Path(artifact['source']['path'])) != artifact['source']['sha256']:
+        raise ValueError('retained NN artifact changed during allocation batch')
+    return True
+
+
 def bind_measurement(source):
     payload = Path(source['path']).read_bytes()
     if hashlib.sha256(payload).hexdigest() != source['sha256']:
@@ -144,7 +190,7 @@ def allocate(experiments, state, context, evaluation_budget, current_domain, sel
         bands = {name for name in ('protection', 'recovery') if domain.get(name) is True}
         if unknown:
             bands.add('unknown')
-        eligible[identity] = {'id': proposal['id'], 'identity': identity, 'experiment': proposal, 'domain': domain, 'bands': sorted(bands), 'unknown': unknown, 'ranked_evidence': ranked, 'mirrored_source_ids': []}
+        eligible[identity] = {'id': proposal['id'], 'identity': identity, 'experiment': proposal, 'domain': domain, 'bands': sorted(bands), 'unknown': unknown, 'ranked_evidence': ranked, 'retained_nn_tiebreak': prediction_tiebreak(proposal, domain, scientific), 'mirrored_source_ids': []}
     active = {band for row in eligible.values() for band in row['bands']}
     for band in quotas:
         debts[band] = int(debts.get(band, 0)) + quotas[band] if band in active else 0
@@ -152,12 +198,12 @@ def allocate(experiments, state, context, evaluation_budget, current_domain, sel
     order = {'protection': 0, 'recovery': 1, 'unknown': 2}
     def score(row, band):
         if band == 'unknown':
-            return (int(last.get(row['identity'], 0)), row['identity'])
+            return (int(last.get(row['identity'], 0)), -row['retained_nn_tiebreak'], row['identity'])
         target = row['domain'].get(band + '_target')
         key = {'x_given_y': 'Z_minus_Y', 'y_given_x': 'Z_minus_X'}.get(target)
         effects = row['ranked_evidence']['measured_relationship_features']
         conditional = max((item['effects'][key] for item in effects), default=0.0) if key else 0.0
-        return (-int(row['domain'].get('structurally_masked_research_priority') is True), -conditional, int(last.get(row['identity'], 0)), row['identity'])
+        return (-int(row['domain'].get('structurally_masked_research_priority') is True), -conditional, int(last.get(row['identity'], 0)), -row['retained_nn_tiebreak'], row['identity'])
     while remaining and len(selected) < capacity:
         available_bands = {band for row in remaining.values() for band in row['bands'] if debts.get(band, 0) > 0}
         if available_bands:
@@ -166,7 +212,7 @@ def allocate(experiments, state, context, evaluation_budget, current_domain, sel
             reason = 'reserved_' + band + '_quota'
         else:
             band = None
-            row = min(remaining.values(), key=lambda row: (int(last.get(row['identity'], 0)), row['identity']))
+            row = min(remaining.values(), key=lambda row: (int(last.get(row['identity'], 0)), -row['retained_nn_tiebreak'], row['identity']))
             reason = 'remaining_existing_budget_fair_queue'
         remaining.pop(row['identity'])
         row['allocation_reason'] = reason

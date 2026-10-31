@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Read-only causal replay of v15_forward_state.state_for over frozen NPZ prefixes.
 
-Each observation replays the real configured 30-day vector state ending at a 15m
-NPZ bar-open timestamp. The observation is timestamped at the following bar close
-(t + 900s). Outputs are diagnostic artifacts only; active settings and source files
-are supplied as immutable snapshots and are never written by this driver.
+Each observation calls the real forward-state path and QuickConfig NPZ loader on
+an exact row-prefix view of the frozen NPZ. A bar-open timestamp t is evaluated
+with decision clock t+900s. Outputs are diagnostic artifacts only; settings and
+source files are immutable inputs and are never written by this driver.
 """
 from __future__ import annotations
 
@@ -12,13 +12,13 @@ import argparse
 import hashlib
 import json
 import os
+import shutil
 import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
-
 
 _ACTION_TYPES = {"OPEN", "AUGMENT", "REDUCE", "CLOSE"}
 
@@ -57,17 +57,77 @@ def _expected_closed_bar(decision_ts: int) -> int:
     return (int(decision_ts) // 900 - 1) * 900
 
 
-def _actions_at(ledger, bar_ts: int):
-    return [
-        event for event in (ledger or [])
-        if isinstance(event, dict)
+def _is_signal_event(event):
+    return (
+        isinstance(event, dict)
         and str(event.get("type", "")).upper() in _ACTION_TYPES
-        and int(float(event.get("ts") or -1)) == int(bar_ts)
         and not (
             str(event.get("type", "")).upper() == "CLOSE"
             and str(event.get("reason") or event.get("exit_reason") or "").upper() == "FINAL_MTM"
         )
+    )
+
+
+def _actions_at(ledger, bar_ts: int):
+    return [
+        event for event in (ledger or [])
+        if _is_signal_event(event) and int(float(event.get("ts") or -1)) == int(bar_ts)
     ]
+
+
+def _open_lifecycle_at(ledger, cutoff_ts: int):
+    rows = [
+        dict(event) for event in (ledger or [])
+        if _is_signal_event(event) and int(float(event.get("ts") or -1)) <= int(cutoff_ts)
+    ]
+    rows.sort(key=lambda event: (
+        float(event.get("ts") or 0.0),
+        0 if str(event.get("type", "")).upper() in ("OPEN", "AUGMENT", "REDUCE") else 1,
+    ))
+    active = []
+    qty = cost = peak_qty = peak_cost = 0.0
+    for event in rows:
+        kind = str(event.get("type", "")).upper()
+        try:
+            event_qty = abs(float(event.get("qty") or 0.0))
+            price = float(event.get("price") or 0.0)
+        except (TypeError, ValueError):
+            event_qty, price = 0.0, 0.0
+        if kind == "OPEN":
+            active = []
+            qty, cost = event_qty, event_qty * price
+        elif kind == "AUGMENT":
+            if not active:
+                continue
+            qty += event_qty
+            cost += event_qty * price
+        elif kind == "REDUCE":
+            if not active:
+                continue
+            reduced = min(event_qty, qty)
+            if qty > 0:
+                cost -= cost * reduced / qty
+            qty = max(0.0, qty - reduced)
+        elif kind == "CLOSE":
+            if not active:
+                continue
+            event["diagnostic_qty_before_close"] = qty
+            active.append(event)
+            active = []
+            qty = cost = 0.0
+            continue
+        event["diagnostic_qty_after"] = qty
+        event["diagnostic_cost_basis_after"] = cost
+        active.append(event)
+        peak_qty = max(peak_qty, qty)
+        peak_cost = max(peak_cost, cost)
+    return {
+        "events": active,
+        "last_open": next((event for event in reversed(active) if str(event.get("type", "")).upper() == "OPEN"), None),
+        "peak_qty": peak_qty,
+        "peak_cost_basis": peak_cost,
+        "qty_is_diagnostic_only": True,
+    }
 
 
 def _prefix_digest(prefix):
@@ -122,15 +182,61 @@ class _ReplayClock:
         return self._real.strftime(*args)
 
 
-def _install_state_context(forward_state, evaluate_v12, pilot_v12, frozen_npz,
+class _CausalNpzView:
+    """Read-only, NpzFile-compatible mapping over one causal NPZ row prefix."""
+
+    def __init__(self, arrays):
+        self._arrays = arrays
+        self.files = list(arrays)
+
+    def __getitem__(self, key):
+        return self._arrays[key]
+
+    def __contains__(self, key):
+        return key in self._arrays
+
+    def get(self, key, default=None):
+        return self._arrays.get(key, default)
+
+    def close(self):
+        return None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        self.close()
+        return False
+
+
+def _make_runtime(code_root: Path, npz_path: Path, symside: str, output_path: Path):
+    """Copy the immutable source bundle to scratch and link only the frozen NPZ."""
+    runtime_root = output_path.parent / (output_path.stem + "_runtime")
+    runtime_code = runtime_root / "code"
+    if runtime_root.exists():
+        raise FileExistsError(f"isolated runtime already exists: {runtime_root}")
+    shutil.copytree(code_root, runtime_code)
+    symbol = symside.rsplit("_", 1)[0]
+    canonical = runtime_code / "backtest_v8" / "indicators" / f"{symbol}.npz"
+    canonical.parent.mkdir(parents=True, exist_ok=True)
+    canonical.symlink_to(npz_path.resolve())
+    return runtime_root, runtime_code, canonical
+
+
+def _install_state_context(forward_state, evaluate_v12, pilot_v12, quick_engine,
+                           npz_cutoffs, canonical_npz_path, runtime_code,
                            active_set, provenance_root: Path):
-    """Patch only data providers around the actual state_for implementation."""
+    """Inject frozen settings and a causal NPZ reader around actual state_for/load_npz."""
     original = {
         "load_overrides": forward_state._load_overrides,
         "out": forward_state.OUT,
         "state_time": forward_state.time,
-        "store": evaluate_v12._store,
-        "freshness": pilot_v12.npz_freshness,
+        "forward_root": forward_state.ROOT,
+        "evaluate_root": evaluate_v12.ROOT,
+        "pilot_root": pilot_v12.ROOT,
+        "engine_base_path": quick_engine.BASE_PATH,
+        "np_load": np.load,
+        "last_closed_bar": npz_cutoffs.last_closed_bar,
     }
     overrides = dict(active_set["overrides"])
     meta = {
@@ -140,30 +246,48 @@ def _install_state_context(forward_state, evaluate_v12, pilot_v12, frozen_npz,
         "defaults_round": active_set.get("defaults_round"),
         "active_set_source": active_set.get("source"),
     }
-    holder = {"npz": frozen_npz}
+    holder = {"npz": None, "decision_ts": 0}
+    canonical_abs = os.path.abspath(os.fspath(canonical_npz_path))
+
+    def causal_load(file, *args, **kwargs):
+        try:
+            requested = os.path.abspath(os.fspath(file))
+        except TypeError:
+            requested = None
+        if requested == canonical_abs:
+            return _CausalNpzView(holder["npz"])
+        return original["np_load"](file, *args, **kwargs)
+
     forward_state._load_overrides = lambda _ss: (dict(overrides), "replay.frozen_active_set", dict(meta))
     forward_state.OUT = provenance_root
-    pilot_v12.npz_freshness = lambda _ss: (True, "frozen causal replay input")
-    evaluate_v12._store = lambda _sym, _mode, _start: holder["npz"]
+    forward_state.ROOT = runtime_code
+    evaluate_v12.ROOT = runtime_code
+    pilot_v12.ROOT = runtime_code
+    quick_engine.BASE_PATH = runtime_code
+    np.load = causal_load
+    npz_cutoffs.last_closed_bar = lambda now=None: original["last_closed_bar"](
+        holder["decision_ts"] if now is None else now
+    )
     original["npz_holder"] = holder
     return original
 
 
-def _restore_state_context(forward_state, evaluate_v12, pilot_v12, original):
+def _restore_state_context(forward_state, evaluate_v12, pilot_v12, quick_engine,
+                           npz_cutoffs, original):
     forward_state._load_overrides = original["load_overrides"]
     forward_state.OUT = original["out"]
     forward_state.time = original["state_time"]
-    evaluate_v12._store = original["store"]
-    pilot_v12.npz_freshness = original["freshness"]
+    forward_state.ROOT = original["forward_root"]
+    evaluate_v12.ROOT = original["evaluate_root"]
+    pilot_v12.ROOT = original["pilot_root"]
+    quick_engine.BASE_PATH = original["engine_base_path"]
+    np.load = original["np_load"]
+    npz_cutoffs.last_closed_bar = original["last_closed_bar"]
 
 
 def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
            end_ts: int, output_path: Path, code_root: Path, code_manifest: Path | None = None,
            limit: int | None = None):
-    import tools.v15_forward_state as forward_state
-    import tools.opt.evaluate_v12 as evaluate_v12
-    import tools.opt.v12_pilot as pilot_v12
-
     active_set = json.loads(active_path.read_text())
     if str(active_set.get("sym_side", "")).upper() != symside.upper():
         raise ValueError(f"active set is for {active_set.get('sym_side')}, requested {symside}")
@@ -200,11 +324,36 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
     run_started = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     provenance_root = output_path.parent / (output_path.stem + "_state_provenance")
+    runtime_root, runtime_code, canonical_npz_path = _make_runtime(
+        code_root, npz_path, symside, output_path
+    )
+    env_names = (
+        "BASE_PATH", "V12_BASE_PATH", "V12_NPZ_DIR", "V12_RUN_ONE_SET_PRECEDENCE",
+        "V12_SIM_ALLOW_LIVE_MARKET_FILE", "V12_ALLOW_STALE_NPZ",
+    )
+    old_env = {name: os.environ.get(name) for name in env_names}
+    old_sys_path = list(sys.path)
+    if str(runtime_code) in sys.path:
+        sys.path.remove(str(runtime_code))
+    sys.path.insert(0, str(runtime_code))
+    os.environ["BASE_PATH"] = str(runtime_code)
+    os.environ["V12_BASE_PATH"] = str(runtime_code)
+    os.environ["V12_NPZ_DIR"] = str(canonical_npz_path.parent)
+    os.environ["V12_RUN_ONE_SET_PRECEDENCE"] = "1"
+    os.environ["V12_SIM_ALLOW_LIVE_MARKET_FILE"] = "0"
+    os.environ.pop("V12_ALLOW_STALE_NPZ", None)
+
+    import tools.v15_forward_state as forward_state
+    import tools.opt.evaluate_v12 as evaluate_v12
+    import tools.opt.v12_pilot as pilot_v12
+    import tools.npz_cutoffs as npz_cutoffs
+    import v12_quick_engine as quick_engine
+
     real_time_module = time
     original = _install_state_context(
-        forward_state, evaluate_v12, pilot_v12, arrays, active_set, provenance_root
+        forward_state, evaluate_v12, pilot_v12, quick_engine, npz_cutoffs,
+        canonical_npz_path, runtime_code, active_set, provenance_root,
     )
-    original_clock = forward_state.time
     counts = {name: 0 for name in sorted(_ACTION_TYPES)}
     state_rows = 0
     invalid_counts = {}
@@ -226,6 +375,7 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 "active_set_admission_keys": active_set.get("account_admission_keys"),
                 "active_set_has_current_admission": bool(active_set.get("account_admission_keys")),
                 "code_root": str(code_root),
+                "runtime_code_root": str(runtime_code),
                 "code_manifest": str(code_manifest) if code_manifest else None,
                 "code_manifest_sha256": manifest_hash,
                 "source_hashes": source_hashes,
@@ -238,10 +388,48 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 "npz_open_ts_to_decision_clock_seconds": 900,
                 "decision_clock_semantics": "bar open timestamp t is evaluated as closed at t+900s",
                 "configuration_semantics": "frozen active override snapshot; retrospectively applied to every historical prefix",
+                "npz_freshness_semantics": "actual npz_freshness and npz_cutoffs run on the causal reader prefix with historical decision clock",
+                "canonical_loader_semantics": "actual evaluate_v12._store -> v12_quick_engine.load_npz -> htf_causal_align over exact-path NPZ view",
                 "replay_started_at_wall_utc": run_started,
                 "qty_is_diagnostic_only": True,
             }
             stream.write(json.dumps(header, sort_keys=True, default=str) + "\n")
+            cutoff_index = int(np.searchsorted(timestamps, int(start_ts), side="left"))
+            if cutoff_index >= len(timestamps) or int(timestamps[cutoff_index]) != int(start_ts):
+                raise ValueError("cutoff timestamp must be present in the frozen NPZ")
+            cutoff_prefix = row_prefix(arrays, cutoff_index, len(timestamps))
+            original["npz_holder"]["npz"] = cutoff_prefix
+            cutoff_decision_ts = int(start_ts) + 900
+            original["npz_holder"]["decision_ts"] = cutoff_decision_ts
+            forward_state.time = _ReplayClock(cutoff_decision_ts, real_time_module)
+            cutoff_state = forward_state.state_for(symside, window_days=30)
+            if int(cutoff_state.get("npz_tail") or 0) not in (0, int(start_ts)):
+                raise AssertionError("cutoff state consumed a bar beyond the initial lifecycle boundary")
+            lifecycle = _open_lifecycle_at(cutoff_state.get("ledger"), int(start_ts))
+            stream.write(json.dumps({
+                "record": "initial_lifecycle",
+                "sym_side": symside.upper(),
+                "cutoff_npz_open_ts": int(start_ts),
+                "cutoff_npz_open_utc": _iso(start_ts),
+                "cutoff_decision_clock_ts": cutoff_decision_ts,
+                "cutoff_decision_clock_utc": _iso(cutoff_decision_ts),
+                "state_for_wall_ts": cutoff_state.get("ts"),
+                "prefix_sha256_timestamps_close": _prefix_digest(cutoff_prefix),
+                "ok": cutoff_state.get("ok"),
+                "reason": cutoff_state.get("reason"),
+                "engine_position": {
+                    key: cutoff_state.get(key) for key in (
+                        "open", "engine_qty", "engine_open_qty", "engine_open_px", "engine_open_bar_ts", "acts_last_bar"
+                    )
+                },
+                "open_lifecycle": lifecycle,
+                "settings_sha256": cutoff_state.get("settings_sha256"),
+                "ledger_sha256": cutoff_state.get("ledger_sha256"),
+                "qty_is_diagnostic_only": True,
+            }, sort_keys=True, default=str) + "\n")
+            if cutoff_state.get("ok") is not True:
+                _why = str(cutoff_state.get("reason") or "cutoff_state_failure")
+                invalid_counts[_why] = invalid_counts.get(_why, 0) + 1
             for row_number, idx in enumerate(selected, 1):
                 bar_ts = int(timestamps[idx])
                 decision_ts = bar_ts + 900
@@ -249,6 +437,7 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                     raise AssertionError("decision clock does not resolve to the selected closed bar")
                 prefix = row_prefix(arrays, int(idx), len(timestamps))
                 original["npz_holder"]["npz"] = prefix
+                original["npz_holder"]["decision_ts"] = decision_ts
                 if int(prefix["timestamps"][-1]) != bar_ts:
                     raise AssertionError("causal prefix ends after or before its selected signal bar")
                 forward_state.time = _ReplayClock(decision_ts, real_time_module)
@@ -280,8 +469,7 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                     "ledger_sha256": result.get("ledger_sha256"),
                 }
                 stream.write(json.dumps(state_record, sort_keys=True, default=str) + "\n")
-                action_rows = _actions_at(result.get("ledger"), bar_ts)
-                for event in action_rows:
+                for event in _actions_at(result.get("ledger"), bar_ts):
                     action = str(event.get("type", "")).upper()
                     counts[action] += 1
                     stream.write(json.dumps({
@@ -307,12 +495,22 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 "invalid_state_counts": invalid_counts,
                 "replay_completed_at_wall_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 "provenance_output_dir": str(provenance_root),
+                "runtime_code_root": str(runtime_root),
             }
             stream.write(json.dumps(trailer, sort_keys=True, default=str) + "\n")
     finally:
-        _restore_state_context(forward_state, evaluate_v12, pilot_v12, original)
+        _restore_state_context(
+            forward_state, evaluate_v12, pilot_v12, quick_engine, npz_cutoffs, original
+        )
+        sys.path[:] = old_sys_path
+        for name, value in old_env.items():
+            if value is None:
+                os.environ.pop(name, None)
+            else:
+                os.environ[name] = value
     return {"states_evaluated": state_rows, "action_counts": counts,
-            "invalid_state_counts": invalid_counts, "output": str(output_path)}
+            "invalid_state_counts": invalid_counts, "output": str(output_path),
+            "runtime_root": str(runtime_root)}
 
 
 def main(argv=None):
@@ -323,21 +521,13 @@ def main(argv=None):
     parser.add_argument("--start-ts", required=True, type=int, help="exclusive bar-open timestamp")
     parser.add_argument("--end-ts", required=True, type=int, help="inclusive bar-open timestamp")
     parser.add_argument("--out", required=True, type=Path)
-    parser.add_argument("--code-root", type=Path, default=Path(__file__).resolve().parents[1])
+    parser.add_argument("--code-root", required=True, type=Path)
     parser.add_argument("--code-manifest", type=Path)
     parser.add_argument("--limit", type=int, help="process only the first N selected bars (proof mode)")
     args = parser.parse_args(argv)
-    code_root = args.code_root.resolve()
-    if str(code_root) not in sys.path:
-        sys.path.insert(0, str(code_root))
-    os.environ["BASE_PATH"] = str(code_root)
-    os.environ["V12_BASE_PATH"] = str(code_root)
-    os.environ["V12_NPZ_DIR"] = str(args.npz.resolve().parent)
-    os.environ["V12_RUN_ONE_SET_PRECEDENCE"] = "1"
-    os.environ["V12_SIM_ALLOW_LIVE_MARKET_FILE"] = "0"
     print(json.dumps(replay(
         args.npz, args.active_set, args.sym_side, args.start_ts, args.end_ts,
-        args.out, code_root, args.code_manifest, args.limit,
+        args.out, args.code_root.resolve(), args.code_manifest, args.limit,
     ), sort_keys=True))
 
 

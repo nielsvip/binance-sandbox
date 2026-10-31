@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T03:53:45Z",
+ "ts": "2026-10-31T03:58:53Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 62,
    "open_positions": 13,
-   "unrealised_usd": 0.28,
+   "unrealised_usd": 0.18,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 117,
    "open_positions": 15,
-   "unrealised_usd": 0.04,
+   "unrealised_usd": -0.07,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 9,
    "open_positions": 2,
-   "unrealised_usd": -0.17,
+   "unrealised_usd": -0.21,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,65 +127,109 @@
     "67204"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 127.0
   },
   "men": {
    "pids": [
     "92430"
    ],
    "starts_30m": 1,
-   "log_age_s": 6.0
+   "log_age_s": 78.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 16.0
+   "log_age_s": 1.0
   },
   "inf": {
    "pids": [
     "93155"
    ],
    "starts_30m": 1,
-   "log_age_s": 3214.0
+   "log_age_s": 3522.0
   },
   "flz": {
    "pids": [
     "45392"
    ],
    "starts_30m": 1,
-   "log_age_s": 2993.0
+   "log_age_s": 3302.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 297.0
+   "log_age_s": 34.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 307.0
+   "log_age_s": 36.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T03:53:48Z",
+   "ts": "2026-10-31T03:58:53Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:ASTERUSDT_LONG",
+   "evidence": "31 03:54:07 - WARNING - [men] [REENTRY_GRANDFATHERED] men:ASTERUSDT_LONG: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $37 on bounce (prior max 21.0000)"
+  },
+  {
+   "ts": "2026-10-31T03:58:53Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:EIGENUSDT_SHORT",
+   "evidence": "31 03:54:16 - WARNING - [men] [REENTRY_GRANDFATHERED] men:EIGENUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $80 on bounce (prior max 315.7000)"
+  },
+  {
+   "ts": "2026-10-31T03:58:53Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:IMXUSDT_SHORT",
+   "evidence": "31 03:55:40 - WARNING - [men] [REENTRY_GRANDFATHERED] men:IMXUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $73 on bounce (prior max 131.0000)"
+  },
+  {
+   "ts": "2026-10-31T03:58:53Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "men:PENDLEUSDT_LONG",
+   "evidence": "31 03:55:54 - WARNING - [men] [REENTRY_GRANDFATHERED] men:PENDLEUSDT_LONG: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $541 on bounce (prior max 0.0000)"
+  },
+  {
+   "ts": "2026-10-31T03:58:53Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "men:PENDLEUSDT_LONG",
+   "evidence": "order notional $541.17 > MAX_ORDER_VALUE $300: 31 03:55:54 - INFO - [men] [execute_trade_action][men] \u2705 \u2705 \u2705 \u2705 OPEN men:PENDLEUSDT_LONG @ 1.866700 qty=289.907274 ($541.17) side=BUY | QUICK_OPEN_STRONG_BUY_k1:18/d124/k3:57.0/d3:70.59_@1.8706_REENTRY"
+  },
+  {
+   "ts": "2026-10-31T03:58:56Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "fin",
+   "evidence": "ez_manage_fin.log not written for 127s"
+  },
+  {
+   "ts": "2026-10-31T03:58:56Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 3214s"
+   "evidence": "ez_manage_inf.log not written for 3522s"
   },
   {
-   "ts": "2026-10-31T03:53:48Z",
+   "ts": "2026-10-31T03:58:56Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 2993s"
+   "evidence": "ez_manage_flz.log not written for 3302s"
   }
  ],
  "alert_counts": {
-  "STALE_LOG": 2
+  "CAP_BYPASS": 4,
+  "SIZE_ANOMALY": 1,
+  "STALE_LOG": 3
  },
  "active_interventions": {
   "acct:trc": {
@@ -250,7 +294,14 @@
    "why": "SIZE_ANOMALY order $2967.82 > 1.5x MAX_ORDER_VALUE",
    "undo": "redis-cli -p 6379 DEL open_blocked:fin:RIFUSDT_SHORT",
    "dry_run": false
+  },
+  "key:men:PENDLEUSDT_LONG": {
+   "ts": 1793418974.591674,
+   "until": 1793426174.591677,
+   "why": "SIZE_ANOMALY order $541.17 > 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:men:PENDLEUSDT_LONG",
+   "dry_run": false
   }
  },
- "sweep_s": 3.68
+ "sweep_s": 3.51
 }

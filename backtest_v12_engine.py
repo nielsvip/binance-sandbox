@@ -8647,6 +8647,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     _v20_execute_now_original_t = None
     _v20_module_open_original_t = None
     _v20_module_had_open_t = False
+    _v20_bsnap_originals_t = None
     # CRITICAL: V8 backtest must NEVER call Redis. The live config_tradier.Config
     # has _get_regime_from_redis which connects to Redis on every get_symbol_setting()
     # call. On servers without real Redis (S2 dummy/timeout), the GET command blocks
@@ -9176,6 +9177,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
 
         # real tradier execute_now builds fresh TradierAPIClient()s (order_dedupe_guard preflight via factory, settled cash,
         # wrap_tradier_client): broker I/O. Sim broker: connects, has no open orders, every order lookup is filled.
+        _v12_sim_stop_orders = {}
+        _v12_sim_stop_seq = [0]
         class _V12SimTradierClient:
             def __init__(self, *a, **kw):
                 self.account_key = kw.get("account_key") or (a[1] if len(a) > 1 else account_key)
@@ -9189,13 +9192,43 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
 
             async def _request(self, method, path, *a, **kw):
                 if str(path).rstrip("/").endswith("/orders"):
-                    return {"orders": "null"}
+                    _rows = [dict(row) for row in _v12_sim_stop_orders.values()]
+                    return {"orders": {"order": _rows}} if _rows else {"orders": "null"}
                 if "/orders/" in str(path):
-                    return {"order": {"id": str(path).rsplit("/", 1)[-1], "status": "filled"}}
+                    _oid = str(path).rsplit("/", 1)[-1]
+                    _row = _v12_sim_stop_orders.get(_oid)
+                    return {"order": dict(_row)} if _row else {"order": {"id": _oid, "status": "filled"}}
                 return {}
 
             async def get_orders(self, *a, **kw):
-                return []
+                return [dict(row) for row in _v12_sim_stop_orders.values()]
+
+            async def place_order(self, account_key, symbol, side, quantity, order_type="market", stop=0.0, duration="day", **kw):
+                if str(order_type or "").lower() != "stop":
+                    return {"order": {"status": "rejected", "errors": "simulation only supports resting stop fixture orders"}}
+                _v12_sim_stop_seq[0] += 1
+                _oid = f"TRB_SIM_STOP_{_v12_sim_stop_seq[0]}"
+                _row = {
+                    "id": _oid,
+                    "symbol": str(symbol or "").upper(),
+                    "side": str(side or "").lower(),
+                    "type": "stop",
+                    "quantity": int(quantity or 0),
+                    "stop": float(stop or 0.0),
+                    "stop_price": float(stop or 0.0),
+                    "duration": str(duration or "gtc").lower(),
+                    "status": "open",
+                }
+                _v12_sim_stop_orders[_oid] = _row
+                return {"order": dict(_row)}
+
+            async def cancel_order(self, account_key, order_id, *a, **kw):
+                _oid = str(order_id or "")
+                _row = _v12_sim_stop_orders.get(_oid)
+                if not _row:
+                    return {"errors": f"order {_oid} not found"}
+                _row["status"] = "cancelled"
+                return {"order": dict(_row)}
 
             async def get_account_balances(self, *a, **kw):
                 _c = float(os.environ.get("V12_SIM_SETTLED_CASH", "1e12"))
@@ -11962,6 +11995,11 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             _v20_module_had_open_t = "open" in tm_mod.__dict__
             _v20_module_open_original_t = tm_mod.__dict__.get("open", _v20_builtins_t.open)
             _v20_execute_now_original_t = manager.execute_now
+            _v20_bsnap_t = getattr(tm_mod, "_bsnap", None)
+            _v20_bsnap_originals_t = {
+                name: getattr(_v20_bsnap_t, name)
+                for name in ("protective_stops", "order_status", "invalidate")
+            } if _v20_bsnap_t is not None else None
 
             def _v20_redirect_open_t(file, *args, **kwargs):
                 try:
@@ -11973,10 +12011,32 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     return _v20_module_open_original_t(_fixture_path_t, *args, **kwargs)
                 return _v20_module_open_original_t(file, *args, **kwargs)
 
+            def _v20_sim_protective_stops_t(account, symbol, position_side, max_age=20.0):
+                close_side = "sell" if str(position_side or "").upper() == "LONG" else "buy_to_cover"
+                return [
+                    dict(row)
+                    for row in _v12_sim_stop_orders.values()
+                    if str(row.get("symbol", "")).upper() == str(symbol or "").upper()
+                    and str(row.get("side", "")).lower() == close_side
+                    and str(row.get("type", "")).lower() in ("stop", "stop_limit")
+                    and str(row.get("status", "")).lower() in ("open", "pending", "partially_filled")
+                ]
+
+            def _v20_sim_order_status_t(account, order_id, max_age=20.0):
+                row = _v12_sim_stop_orders.get(str(order_id or ""))
+                return str(row.get("status", "")).lower() if row else ""
+
+            def _v20_sim_invalidate_t(account):
+                return None
+
             async def _v20_execute_now_with_fixture_state_t(*args, **kwargs):
                 with _v20_open_lock_t:
                     if _v20_open_active_t[0] == 0:
                         tm_mod.__dict__["open"] = _v20_redirect_open_t
+                        if _v20_bsnap_t is not None:
+                            _v20_bsnap_t.protective_stops = _v20_sim_protective_stops_t
+                            _v20_bsnap_t.order_status = _v20_sim_order_status_t
+                            _v20_bsnap_t.invalidate = _v20_sim_invalidate_t
                     _v20_open_active_t[0] += 1
                 try:
                     return await _v20_execute_now_original_t(*args, **kwargs)
@@ -11988,6 +12048,9 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                                 tm_mod.__dict__["open"] = _v20_module_open_original_t
                             else:
                                 tm_mod.__dict__.pop("open", None)
+                            if _v20_bsnap_t is not None and _v20_bsnap_originals_t is not None:
+                                for _name_t, _function_t in _v20_bsnap_originals_t.items():
+                                    setattr(_v20_bsnap_t, _name_t, _function_t)
 
             manager.execute_now = _v20_execute_now_with_fixture_state_t
     _v8_wall_deadline_t = float(__import__('os').environ.get("V8_MAX_WALL_SECS", "0") or 0)

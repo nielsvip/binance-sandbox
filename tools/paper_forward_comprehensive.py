@@ -360,26 +360,32 @@ def load_events(days: int):
     return events
 
 
-def score(events, horizon_bars: int):
+def score(events, horizon_bars: int, action_records=None):
     """(per_sym_rows, path_rows): per_sym_rows[(path, sym_side)] -> stats; path pooled."""
     per: dict = collections.defaultdict(list)
     first_seen: dict = {}
     seen_exit, seen_entry = set(), {}
     rc_cache: dict = {}
+    def record(event, status, delta=None, method="UNRESOLVED", **comparison):
+        if action_records is not None:
+            action_records.append({"event": {key: value for key, value in event.items() if not key.startswith("_")}, "path": event.get("_fam"), "status": status, "delta_fraction": delta, "method": method, "comparison": {"native_execution_validated": False, "settings_hash": "UNRECORDED", "price_basis": "15m_bar_proxy", **comparison}})
     for e in events:
         venue, kind, fam = e["_venue"], e.get("kind"), e["_fam"]
         if not fam or fam == "UNKNOWN":
+            record(e, "UNMAPPED_PATH")
             continue
         pk = e.get("position_key", "")
         acct, _, ss = pk.partition(":")
         if not ss or "_" not in ss:
+            record(e, "INVALID_POSITION_KEY")
             continue
         symbol, side = (ss.rsplit("_", 1) + [""])[:2]
         is_long = side == "LONG"
         key = (venue, kind, fam)
         first_seen.setdefault(key, e["_t"])
-        px, _ = close_at(venue, symbol, e["_t"])
+        px, price_ts = close_at(venue, symbol, e["_t"])
         if not px:
+            record(e, "MISSING_PRICE")
             continue
         if kind == "exit":
             if (acct, ss) not in rc_cache:
@@ -391,26 +397,33 @@ def score(events, horizon_bars: int):
             )
             dk = (lifecycle, fam)
             if dk in seen_exit:
+                record(e, "DEDUPLICATED", lifecycle=lifecycle)
                 continue
             seen_exit.add(dk)
             if i >= len(rcs):
                 per[(fam, venue, kind, ss)].append((None, True))
+                record(e, "PENDING_BASELINE", lifecycle=lifecycle, candidate_price=px, candidate_price_bar_ts=price_ts)
                 continue
             real = rcs[i][1]
             d = (px - real) / real if is_long else (real - px) / real
             per[(fam, venue, kind, ss)].append((d, False))
+            record(e, "SCORED", d, "observed_exit_vs_next_recorded_close_no_cost_model", lifecycle=lifecycle, candidate_price=px, candidate_price_bar_ts=price_ts, baseline_price=real, baseline_ts=rcs[i][0])
         else:
             wk = (fam, ss, int(e["_t"] // (BAR * horizon_bars)))
             if wk in seen_entry:
+                record(e, "DEDUPLICATED", comparison_bucket=list(wk))
                 continue
             seen_entry[wk] = True
-            ch, _ = close_at(venue, symbol, e["_t"], offset=horizon_bars)
+            ch, horizon_ts = close_at(venue, symbol, e["_t"], offset=horizon_bars)
             if not ch:
                 per[(fam, venue, kind, ss)].append((None, True))
+                record(e, "PENDING_HORIZON", horizon_bars=horizon_bars, candidate_price=px, candidate_price_bar_ts=price_ts)
                 continue
             cost = COST.get(venue, 0.10) / 100.0
             s = 1.0 if is_long else -1.0
-            per[(fam, venue, kind, ss)].append((s * (ch - px) / px - cost, False))
+            delta = s * (ch - px) / px - cost
+            per[(fam, venue, kind, ss)].append((delta, False))
+            record(e, "SCORED", delta, "entry_15m_horizon_net_fixed_cost", horizon_bars=horizon_bars, candidate_price=px, candidate_price_bar_ts=price_ts, horizon_price=ch, horizon_ts=horizon_ts, cost_fraction=cost)
     return per, first_seen
 
 
@@ -990,12 +1003,17 @@ def main():
         return
     inv = build_inventory()
     events = load_events(a.days)
-    per, first_seen = score(events, a.horizon_bars)
+    action_records = []
+    per, first_seen = score(events, a.horizon_bars, action_records=action_records)
     now = datetime.now(timezone.utc).timestamp()
     per_sym_rows, path_rows = aggregate(
         per, first_seen, now, a.min_days, a.min_syms, a.min_events
     )
     scores = persist(inv, per_sym_rows, path_rows, a, len(events))
+    action_output = OUT / "counterfactual_action_scores.json"
+    action_temporary = OUT / f".counterfactual_action_scores.{os.getpid()}.json"
+    action_temporary.write_text(json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "interpretation": "DIAGNOSTIC_ONLY_15M_PRICE_PROXY_NOT_NATIVE_EXECUTION", "records": action_records}, allow_nan=False))
+    os.replace(action_temporary, action_output)
     try:
         templates_updated = update_template_status_tabs(inv, scores)
         print(f"[paper_forward] template status tab updated={templates_updated or 'already current'}")

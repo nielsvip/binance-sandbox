@@ -105,7 +105,13 @@ def main():
             plan = json.loads(args.plan.read_text()) if args.plan else build_plan(args.root)
             ingest_plan(db, plan)
             ingest_evidence(db, args.root)
+            try:
+                from .paper_counterfactual_sql import ingest_counterfactual
+            except ImportError:
+                from paper_counterfactual_sql import ingest_counterfactual
+            counterfactual = ingest_counterfactual(db, args.root)
             result = summary(db)
+            result["counterfactual_import"] = counterfactual
         elif args.command == "variant":
             overrides = {}
             for assignment in args.set:

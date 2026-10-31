@@ -28432,7 +28432,7 @@ async def check_exit_candidates_for_account(
                                         caution_tag += "_NEAR_DC15"
                                     if (
                                         dc_high_1h > 0
-                                        and current_price >= i.get(dc_high_1h) * 0.998
+                                        and current_price >= dc_high_1h * 0.998
                                     ):
                                         aug_ratio *= 0.5
                                         caution_tag += "_NEAR_DC1H"
