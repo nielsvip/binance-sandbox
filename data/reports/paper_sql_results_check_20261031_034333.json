@@ -1,0 +1,109 @@
+{
+  "checked_at": "2026-10-31T03:43:32.784626+00:00",
+  "status": "INGESTION_WORKING_INDEPENDENT_EXECUTION_NOT_RUNNING",
+  "counts": {
+    "runs": 60974,
+    "results": 2140,
+    "decisions": 17014,
+    "trades": 0,
+    "forward_receipts": 0
+  },
+  "by_evidence": [
+    {
+      "evidence_kind": "catalog_only",
+      "status": "PENDING_PARAMETERS",
+      "count": 17903
+    },
+    {
+      "evidence_kind": "catalog_only",
+      "status": "PENDING_VALIDATED_EXECUTION",
+      "count": 37335
+    },
+    {
+      "evidence_kind": "observational",
+      "status": "OBSERVATIONAL_ONLY",
+      "count": 2140
+    },
+    {
+      "evidence_kind": "timing_shadow",
+      "status": "OBSERVATIONAL_ONLY",
+      "count": 3596
+    }
+  ],
+  "integrity": "ok",
+  "score_computed_times": [
+    "2026-10-31T02:46:53.043793+00:00"
+  ],
+  "top_existing_observational_candidates": [
+    {
+      "path": "QUICK_WT_CROSS_EXIT_1H_BEAR",
+      "venue": "crypto",
+      "kind": "exit",
+      "original_computed_at": "2026-10-31T02:46:53.043793+00:00",
+      "observational_delta_fraction": 0.10028302563542228,
+      "scored_observations": 18,
+      "symbol_sides": 14,
+      "positive_symbol_sides": 11,
+      "age_since_first_seen_days": 9.0,
+      "classification": "DIAGNOSTIC_ONLY_NOT_INDEPENDENT_TRADES"
+    },
+    {
+      "path": "PPL_TP",
+      "venue": "crypto",
+      "kind": "exit",
+      "original_computed_at": "2026-10-31T02:46:53.043793+00:00",
+      "observational_delta_fraction": 0.07039169772579126,
+      "scored_observations": 13,
+      "symbol_sides": 9,
+      "positive_symbol_sides": 6,
+      "age_since_first_seen_days": 9.0,
+      "classification": "DIAGNOSTIC_ONLY_NOT_INDEPENDENT_TRADES"
+    },
+    {
+      "path": "DELTA_EXIT_DC15M_FLOOR_BREAK",
+      "venue": "crypto",
+      "kind": "exit",
+      "original_computed_at": "2026-10-31T02:46:53.043793+00:00",
+      "observational_delta_fraction": 0.04209161338712425,
+      "scored_observations": 38,
+      "symbol_sides": 30,
+      "positive_symbol_sides": 16,
+      "age_since_first_seen_days": 9.0,
+      "classification": "DIAGNOSTIC_ONLY_NOT_INDEPENDENT_TRADES"
+    },
+    {
+      "path": "CYCLE_TP_TIERED_T1_0.30pct",
+      "venue": "crypto",
+      "kind": "exit",
+      "original_computed_at": "2026-10-31T02:46:53.043793+00:00",
+      "observational_delta_fraction": 0.01751891520045327,
+      "scored_observations": 36,
+      "symbol_sides": 31,
+      "positive_symbol_sides": 17,
+      "age_since_first_seen_days": 9.1,
+      "classification": "DIAGNOSTIC_ONLY_NOT_INDEPENDENT_TRADES"
+    },
+    {
+      "path": "SENT_STRAT_DIV",
+      "venue": "stocks",
+      "kind": "entry",
+      "original_computed_at": "2026-10-31T02:46:53.043793+00:00",
+      "observational_delta_fraction": 0.007343459608639557,
+      "scored_observations": 7,
+      "symbol_sides": 6,
+      "positive_symbol_sides": 4,
+      "age_since_first_seen_days": 11.5,
+      "classification": "DIAGNOSTIC_ONLY_NOT_INDEPENDENT_TRADES"
+    }
+  ],
+  "new_verified_forward_results": 0,
+  "promotion_eligible": false,
+  "caveats": [
+    "Exit delta compares refused exit bar close with next actual lifecycle close; it omits modeled costs.",
+    "Entry delta uses 16x15m horizon and fixed costs; it is not comparable to exit delta as strategy PnL.",
+    "Underlying events/lifecycles can be reused across paths; path scores cannot be summed.",
+    "Existing PROMOTE_CANDIDATE verdict does not enforce min_events for pooled path ranking.",
+    "Age since first seen is not continuous independent execution duration.",
+    "All reported candidates are below project promotion sample floors."
+  ]
+}

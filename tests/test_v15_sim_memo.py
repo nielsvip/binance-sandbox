@@ -2,6 +2,7 @@ import copy
 import dataclasses
 import types
 
+import numpy as np
 import pytest
 
 from tools import v15_sim_memo as SM
@@ -84,6 +85,73 @@ def test_type_change_is_a_miss_and_other_npz_or_side_is_a_miss():
     V.simulate_one({"close": [1.0, 3.0]}, "X", True, Cfg(A=2))
     V.simulate_one({"close": [1.0, 2.0]}, "X", False, Cfg(A=2))
     assert V.calls == 4 and SM.stats()["hits"] == 0
+
+
+def test_same_close_with_different_indicator_arrays_is_a_miss():
+    V = _engine()
+    calls = {"n": 0}
+
+    def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
+        calls["n"] += 1
+        value = float(np.asarray(npz["indicator"], dtype=float).sum())
+        return {"gain": value, "ledger": [{"indicator_sum": value}]}
+
+    V.simulate_one = simulate_one
+    assert SM.install(V)
+    first = V.simulate_one({"close": [1.0, 2.0], "indicator": np.array([3.0, 4.0])}, "X", True, Cfg())
+    second = V.simulate_one({"close": [1.0, 2.0], "indicator": np.array([3.0, 9.0])}, "X", True, Cfg())
+    assert calls["n"] == 2
+    assert first["gain"] == 7.0 and second["gain"] == 12.0
+    assert SM.stats() == {"hits": 0, "runs": 2}
+
+
+def test_in_place_indicator_mutation_invalidates_memo():
+    V = _engine()
+    calls = {"n": 0}
+
+    def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
+        calls["n"] += 1
+        value = float(np.asarray(npz["indicator"], dtype=float).sum())
+        return {"gain": value, "ledger": [{"indicator_sum": value}]}
+
+    V.simulate_one = simulate_one
+    assert SM.install(V)
+    npz = {"close": [1.0, 2.0], "indicator": np.array([3.0, 4.0])}
+    first = V.simulate_one(npz, "X", True, Cfg())
+    npz["indicator"][0] = 10.0
+    second = V.simulate_one(npz, "X", True, Cfg())
+    assert calls["n"] == 2
+    assert first["gain"] == 7.0 and second["gain"] == 14.0
+    assert SM.stats() == {"hits": 0, "runs": 2}
+
+
+def test_template_layer_is_applied_before_cfg_proxy():
+    V = _engine()
+
+    def ensure_template_layer(cfg, sym, is_long):
+        if type(cfg) is Cfg:
+            layered = copy.copy(cfg)
+            if layered.A == 1:
+                layered.A = 42
+            return layered
+        return cfg
+
+    def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
+        cfg = V.ensure_template_layer(cfg, sym, is_long)
+        cfg.SIDE_INFO = {"effective_a": cfg.A}
+        return {"gain": cfg.A, "ledger": [{"a": cfg.A}]}
+
+    V.ensure_template_layer = ensure_template_layer
+    V.simulate_one = simulate_one
+    assert SM.install(V)
+    original = Cfg()
+    result = V.simulate_one({"close": [1.0, 2.0]}, "X", True, original)
+    assert result["gain"] == 42
+    assert original.A == 1 and not hasattr(original, "SIDE_INFO")
+    replay = V.simulate_one({"close": [1.0, 2.0]}, "X", True, original)
+    assert replay == result and replay is not result
+    assert original.A == 1 and not hasattr(original, "SIDE_INFO")
+    assert SM.stats() == {"hits": 1, "runs": 1}
 
 
 def test_disabled_without_env(monkeypatch):

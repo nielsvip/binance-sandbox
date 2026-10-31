@@ -65,9 +65,9 @@ def canonical_tradeable_sym_side(symbol: str, is_long: bool, account: str, trade
     """Check the exact canonical account:symbol_side entry authority."""
     if not tradeable_keys or not account:
         return False
-    key = f"{str(account).strip().lower()}:{str(symbol).strip().upper()}_{'LONG' if is_long else 'SHORT'}"
+    key = f"{str(account).strip()}:{str(symbol).strip().upper()}_{'LONG' if is_long else 'SHORT'}"
     try:
-        return key.lower() in {str(value).strip().lower() for value in tradeable_keys}
+        return key in {str(value).strip() for value in tradeable_keys}
     except TypeError:
         return False
 

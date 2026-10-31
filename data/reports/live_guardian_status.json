@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T03:38:26Z",
+ "ts": "2026-10-31T03:43:43Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 61,
    "open_positions": 12,
-   "unrealised_usd": 0.21,
+   "unrealised_usd": 0.26,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 115,
    "open_positions": 14,
-   "unrealised_usd": 0.04,
+   "unrealised_usd": 0.14,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -77,7 +77,7 @@
   "inf": {
    "fills_6h": 9,
    "open_positions": 2,
-   "unrealised_usd": -0.12,
+   "unrealised_usd": -0.13,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 38,
    "open_positions": 7,
-   "unrealised_usd": 0.2,
+   "unrealised_usd": 0.17,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,72 +127,64 @@
     "67204"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 46.0
   },
   "men": {
    "pids": [
     "92430"
    ],
    "starts_30m": 2,
-   "log_age_s": 117.0
+   "log_age_s": 96.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 10.0
   },
   "inf": {
    "pids": [
     "93155"
    ],
    "starts_30m": 1,
-   "log_age_s": 2295.0
+   "log_age_s": 2611.0
   },
   "flz": {
    "pids": [
     "45392"
    ],
    "starts_30m": 1,
-   "log_age_s": 2075.0
+   "log_age_s": 2390.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 250.0
+   "log_age_s": 565.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 267.0
+   "log_age_s": 582.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T03:38:26Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "fin:AVAXUSDC_LONG",
-   "evidence": "31 03:24:21 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:AVAXUSDC_LONG: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $140 on bounce (prior max 3.8100)"
-  },
-  {
-   "ts": "2026-10-31T03:38:30Z",
+   "ts": "2026-10-31T03:43:46Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "inf",
-   "evidence": "ez_manage_inf.log not written for 2295s"
+   "evidence": "ez_manage_inf.log not written for 2611s"
   },
   {
-   "ts": "2026-10-31T03:38:30Z",
+   "ts": "2026-10-31T03:43:46Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 2075s"
+   "evidence": "ez_manage_flz.log not written for 2390s"
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 1,
   "STALE_LOG": 2
  },
  "active_interventions": {
@@ -267,5 +259,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 3.99
+ "sweep_s": 3.01
 }

@@ -107,7 +107,7 @@ def test_wrong_engine_identity_refuses_before_replay(tmp_path, monkeypatch):
     result = run_audit(tmp_path, "ang", "QNTUSDT_LONG", engine_module_path=engine)
     assert result["status"] == "REFUSED_ENGINE_IDENTITY"
     assert "engine_identity_mismatch" in result["labels"]
-    assert result["engine_identity"]["candidate_source_path"] == str(engine)
+    assert result["engine_identity"]["baseline_source_path"] == str(engine)
 
 
 def test_supplied_matching_engine_is_loaded_for_audit_and_restored(
@@ -139,6 +139,7 @@ def test_supplied_matching_engine_is_loaded_for_audit_and_restored(
         import v12_quick_engine
 
         called["path"] = v12_quick_engine.__file__
+        called["engine_result"] = v12_quick_engine.simulate_one()
         called["args"] = kwargs
         return {"status": "TESTED"}
 
@@ -146,5 +147,50 @@ def test_supplied_matching_engine_is_loaded_for_audit_and_restored(
     result = run_audit(tmp_path, "ang", "QNTUSDT_LONG", engine_module_path=engine)
     assert result == {"status": "TESTED"}
     assert called["path"] == str(engine)
-    assert called["args"]["engine_module_path"] == engine.resolve()
+    assert called["engine_result"] == 17
+    assert called["args"]["baseline_engine_module_path"] == engine.resolve()
+    assert called["args"]["candidate_engine_module_path"] == engine.resolve()
     assert sys.modules.get("v12_quick_engine") is previous
+
+
+def test_candidate_engine_may_differ_from_exact_baseline_engine(tmp_path, monkeypatch):
+    import ast
+
+    from tools import account_projection_audit as audit
+
+    baseline = tmp_path / "baseline.py"
+    candidate = tmp_path / "candidate.py"
+    baseline.write_text("def simulate_one():\n    return 1\n")
+    candidate.write_text("def simulate_one():\n    return 2\n")
+    tree = ast.parse(baseline.read_text())
+    expected = audit._sha256_bytes(ast.dump(tree, include_attributes=False).encode())
+    state = {"engine_ast_sha256": expected}
+    monkeypatch.setattr(
+        audit,
+        "_snapshot_for",
+        lambda *args: (
+            tmp_path / "latest.json",
+            tmp_path / "snapshot.json",
+            {"state_sha256": "state-hash"},
+        ),
+    )
+    monkeypatch.setattr(
+        audit, "_state_by_hash", lambda *args: (tmp_path / "state.json", state)
+    )
+    seen = {}
+
+    def fake_run(root, account, sym_side, **kwargs):
+        seen.update(kwargs)
+        return {"status": "PAIRED"}
+
+    monkeypatch.setattr(audit, "_run_audit_with_engine", fake_run)
+    result = run_audit(
+        tmp_path,
+        "ang",
+        "QNTUSDT_LONG",
+        baseline_engine_module_path=baseline,
+        candidate_engine_module_path=candidate,
+    )
+    assert result == {"status": "PAIRED"}
+    assert seen["baseline_engine_module_path"] == baseline.resolve()
+    assert seen["candidate_engine_module_path"] == candidate.resolve()

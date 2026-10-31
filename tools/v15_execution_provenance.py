@@ -454,6 +454,8 @@ class EngineInvocationCapture:
                             call_args[3] = cfg
                         else:
                             call_kwargs["cfg"] = cfg
+                    if isinstance(getattr(cfg, "_FX_PROBE_SINK", None), dict):
+                        return owner._previous(*call_args, **call_kwargs)
                     capture = _capture_call(
                         tuple(call_args),
                         call_kwargs,

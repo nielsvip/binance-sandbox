@@ -34,6 +34,8 @@ def test_canonical_tradeable_sym_side_is_side_specific_and_fails_closed_when_abs
     assert not canonical_tradeable_sym_side("RETAINEDUSDC", False, "ang", keys)
     assert not canonical_tradeable_sym_side("OTHERUSDC", True, "ang", keys)
     assert not canonical_tradeable_sym_side("RETAINEDUSDC", True, "ang", set())
+    assert not canonical_tradeable_sym_side("RETAINEDUSDC", True, "ANG", keys)
+    assert canonical_tradeable_sym_side("retainedusdc", True, "ang", keys)
 
 
 def _wr_npz(n=110):
@@ -53,6 +55,8 @@ def _wr_npz(n=110):
         "stoch_k_15m_prev": k15_prev,
         "stoch_k_1h": np.full(n, 30.0),
         "stoch_k_4h": np.full(n, 50.0),
+        "wt_cross_bull_15m": np.zeros(n),
+        "wt_cross_bear_15m": np.zeros(n),
         "ha_4h": np.ones(n, dtype=np.int8),
         "dc_low_15m": np.full(n, 80.0),
         "dc_high_15m": np.full(n, 120.0),
@@ -85,6 +89,7 @@ def _wr_cfg(enabled):
     cfg.CRYPTO_ROUND_TRIP_COMMISSION_PCT = 0.04
     cfg.COMMISSION_BUFFER_PCT = 0.08
     cfg._DECISION_START_TS = 0.0
+    cfg.ENTRY_ISOLATE_FAMILY = "WR_PULLBACK"
     return cfg
 
 
@@ -104,3 +109,15 @@ def test_wr_switch_changes_actual_simulate_one_open_bar_not_just_score():
     off_rows = [row for row in off["ledger"] if row.get("type") == "OPEN" and row.get("bar") == 12]
     assert on_rows
     assert not off_rows
+
+
+def test_wr_15m_wt_cross_decoder_opens_without_stoch_turn():
+    import v12_quick_engine as vq
+
+    npz = _wr_npz()
+    npz["stoch_k_15m_prev"][12] = 20.0
+    npz["wt_cross_bull_15m"][12] = 1.0
+    cfg = _wr_cfg(True)
+    assert bool(vq.compute_entry_signals(npz, len(npz["close_15m"]), True, cfg)[12])
+    result = vq.simulate_one(npz, "RETAINEDUSDC", True, cfg)
+    assert any(row.get("type") == "OPEN" and row.get("bar") == 12 for row in result["ledger"])

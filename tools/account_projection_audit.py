@@ -29,10 +29,29 @@ def _canonical_sha256(value):
     return _sha256_bytes(_canonical_bytes(value))
 
 
-def _engine_ast_sha256(path):
-    source = Path(path).read_text()
+def _engine_ast_sha256(path, source_bytes=None):
+    source = (Path(path).read_bytes() if source_bytes is None else source_bytes).decode(
+        "utf-8"
+    )
     tree = ast.parse(source)
     return _sha256_bytes(ast.dump(tree, include_attributes=False).encode())
+
+
+def _load_engine_source(path):
+    engine_path = Path(path).resolve()
+    source_bytes = engine_path.read_bytes()
+    source_sha256 = _sha256_bytes(source_bytes)
+    source_ast_sha256 = _engine_ast_sha256(engine_path, source_bytes)
+    spec = importlib.util.spec_from_file_location("v12_quick_engine", engine_path)
+    if spec is None or spec.loader is None:
+        raise ValueError("engine module path is not importable")
+    module = importlib.util.module_from_spec(spec)
+    exec(compile(source_bytes, str(engine_path), "exec"), module.__dict__)
+    module._audit_loaded_source_sha256 = source_sha256
+    module._audit_loaded_source_ast_sha256 = source_ast_sha256
+    if _sha256_bytes(engine_path.read_bytes()) != source_sha256:
+        raise ValueError("engine source changed while loading")
+    return module, source_ast_sha256, source_sha256
 
 
 def _array_hash(value):
@@ -225,7 +244,8 @@ def _run_audit_with_engine(
     max_snapshot_age_s=30.0,
     window_days=30,
     npz_dir=None,
-    engine_module_path=None,
+    baseline_engine_module_path=None,
+    candidate_engine_module_path=None,
 ):
     """Run only after every consumed source link and baseline ledger hash verifies."""
     root = Path(root).resolve()
@@ -360,13 +380,10 @@ def _run_audit_with_engine(
         }
 
     source_engine_ast = state.get("engine_ast_sha256")
-    engine_path = (
-        Path(engine_module_path).resolve()
-        if engine_module_path
-        else (root / "v12_quick_engine.py")
-    )
-    candidate_engine_sha = _sha256_bytes(engine_path.read_bytes())
-    candidate_engine_ast = _engine_ast_sha256(engine_path)
+    baseline_engine_path = Path(baseline_engine_module_path).resolve()
+    candidate_engine_path = Path(candidate_engine_module_path).resolve()
+    baseline_engine_sha = engine._audit_loaded_source_sha256
+    baseline_engine_ast = engine._audit_loaded_source_ast_sha256
     baseline = evaluate_prepared_sanitized(
         prepared, dict(overrides), window_days, include_ledger=True
     )
@@ -417,9 +434,9 @@ def _run_audit_with_engine(
                 "settings_sha256": settings["sha256"],
                 "settings_updated_at": settings["updated_at"],
                 "engine_source_ast_sha256": source_engine_ast,
-                "candidate_engine_file_sha256": candidate_engine_sha,
-                "candidate_engine_ast_sha256": candidate_engine_ast,
-                "candidate_engine_source_path": str(engine_path),
+                "baseline_engine_file_sha256": baseline_engine_sha,
+                "baseline_engine_ast_sha256": baseline_engine_ast,
+                "baseline_engine_source_path": str(baseline_engine_path),
                 "npz_input_sha256": input_hashes,
                 "npz_file_path": str(npz_path) if npz_path else None,
                 "npz_file_sha256": npz_file_sha256,
@@ -452,6 +469,80 @@ def _run_audit_with_engine(
     if not baseline_completed:
         raise ValueError("canonical no-context baseline is invalid; projection refused")
 
+    candidate_engine = engine
+    if baseline_engine_sha != _sha256_bytes(candidate_engine_path.read_bytes()):
+        candidate_engine, _, _ = _load_engine_source(candidate_engine_path)
+        sys.modules["v12_quick_engine"] = candidate_engine
+        candidate_baseline = evaluate_prepared_sanitized(
+            prepared, dict(overrides), window_days, include_ledger=True
+        )
+        candidate_baseline_sha, candidate_baseline_ledger = _ledger_hash(
+            candidate_baseline
+        )
+        if candidate_baseline_sha != baseline_ledger_sha:
+            consumed_ledger = (
+                state.get("ledger") if isinstance(state.get("ledger"), list) else []
+            )
+            candidate_differences = []
+            for index in range(
+                max(len(baseline_ledger), len(candidate_baseline_ledger))
+            ):
+                baseline_row = (
+                    _safe_event(baseline_ledger[index], None)
+                    if index < len(baseline_ledger)
+                    else None
+                )
+                candidate_row = (
+                    _safe_event(candidate_baseline_ledger[index], None)
+                    if index < len(candidate_baseline_ledger)
+                    else None
+                )
+                if baseline_row != candidate_row:
+                    candidate_differences.append(
+                        {
+                            "index": index,
+                            "baseline": baseline_row,
+                            "candidate": candidate_row,
+                        }
+                    )
+            return {
+                "schema_version": 1,
+                "audit_type": "read_only_current_bar_account_projection",
+                "status": "REFUSED_CANDIDATE_BASELINE_MISMATCH",
+                "labels": [
+                    "projection_not_run",
+                    "candidate_no_context_ledger_mismatch",
+                ],
+                "identity": {"account_key": account, "sym_side": sym_side},
+                "source": {
+                    "decision_state_path": str(state_path),
+                    "decision_state_sha256": state_pointer,
+                    "npz_input_sha256": input_hashes,
+                    "npz_file_path": str(npz_path) if npz_path else None,
+                    "npz_file_sha256": npz_file_sha256,
+                    "baseline_engine_source_path": str(baseline_engine_path),
+                    "baseline_engine_file_sha256": baseline_engine_sha,
+                    "baseline_engine_ast_sha256": baseline_engine_ast,
+                    "candidate_engine_source_path": str(candidate_engine_path),
+                    "candidate_engine_file_sha256": candidate_engine._audit_loaded_source_sha256,
+                    "candidate_engine_ast_sha256": candidate_engine._audit_loaded_source_ast_sha256,
+                },
+                "baseline_gate": {
+                    "passed": False,
+                    "consumed_ledger_sha256": consumed_ledger_sha,
+                    "baseline_ledger_sha256": baseline_ledger_sha,
+                    "candidate_no_context_ledger_sha256": candidate_baseline_sha,
+                    "consumed_event_count": len(consumed_ledger),
+                    "candidate_event_count": len(candidate_baseline_ledger),
+                    "structural_differences_vs_baseline": candidate_differences,
+                },
+                "projection": {"status": "NOT_RUN_CANDIDATE_BASELINE_MISMATCH"},
+            }
+    engine = candidate_engine
+    sys.modules["v12_quick_engine"] = engine
+    candidate_engine_sha = engine._audit_loaded_source_sha256
+    candidate_engine_ast = engine._audit_loaded_source_ast_sha256
+
     context = {
         "schema_version": 1,
         "account_key": account,
@@ -466,115 +557,6 @@ def _run_audit_with_engine(
         "config_sha256": str(state["settings_sha256"]),
     }
 
-
-def run_audit(
-    root,
-    account,
-    sym_side,
-    *,
-    max_snapshot_age_s=30.0,
-    window_days=30,
-    npz_dir=None,
-    engine_module_path=None,
-):
-    root = Path(root).resolve()
-    account = str(account).strip().lower()
-    sym_side = str(sym_side).strip().upper()
-    pointer_path, _, snapshot = _snapshot_for(root, account, sym_side)
-    _, state = _state_by_hash(root, snapshot.get("state_sha256", ""))
-    expected_ast = state.get("engine_ast_sha256")
-    engine_path = (
-        Path(engine_module_path).resolve()
-        if engine_module_path
-        else (root / "v12_quick_engine.py")
-    )
-    try:
-        actual_ast = _engine_ast_sha256(engine_path)
-        source_sha256 = _sha256_bytes(engine_path.read_bytes())
-    except (OSError, SyntaxError, UnicodeError) as exc:
-        return {
-            "schema_version": 1,
-            "audit_type": "read_only_current_bar_account_projection",
-            "status": "REFUSED_ENGINE_IDENTITY",
-            "labels": ["projection_not_run", "engine_identity_unverified"],
-            "identity": {"account_key": account, "sym_side": sym_side},
-            "engine_identity": {
-                "expected_ast_sha256": expected_ast,
-                "source_path": str(engine_path),
-                "error": f"{type(exc).__name__}: {exc}"[:200],
-            },
-        }
-    if not expected_ast or actual_ast != expected_ast:
-        return {
-            "schema_version": 1,
-            "audit_type": "read_only_current_bar_account_projection",
-            "status": "REFUSED_ENGINE_IDENTITY",
-            "labels": ["projection_not_run", "engine_identity_mismatch"],
-            "identity": {"account_key": account, "sym_side": sym_side},
-            "source": {
-                "snapshot_pointer_path": str(pointer_path),
-                "decision_state_sha256": snapshot.get("state_sha256"),
-            },
-            "engine_identity": {
-                "expected_ast_sha256": expected_ast,
-                "candidate_ast_sha256": actual_ast,
-                "candidate_source_sha256": source_sha256,
-                "candidate_source_path": str(engine_path),
-            },
-        }
-    previous = sys.modules.get("v12_quick_engine")
-    spec = importlib.util.spec_from_file_location("v12_quick_engine", engine_path)
-    if spec is None or spec.loader is None:
-        return {
-            "schema_version": 1,
-            "audit_type": "read_only_current_bar_account_projection",
-            "status": "REFUSED_ENGINE_IDENTITY",
-            "labels": ["projection_not_run", "engine_identity_unloadable"],
-            "identity": {"account_key": account, "sym_side": sym_side},
-            "engine_identity": {
-                "candidate_ast_sha256": actual_ast,
-                "candidate_source_path": str(engine_path),
-            },
-        }
-    module = importlib.util.module_from_spec(spec)
-    sys.modules["v12_quick_engine"] = module
-    try:
-        spec.loader.exec_module(module)
-        if _engine_ast_sha256(module.__file__) != expected_ast:
-            return {
-                "schema_version": 1,
-                "audit_type": "read_only_current_bar_account_projection",
-                "status": "REFUSED_ENGINE_IDENTITY",
-                "labels": ["projection_not_run", "loaded_engine_identity_mismatch"],
-                "identity": {"account_key": account, "sym_side": sym_side},
-                "engine_identity": {
-                    "expected_ast_sha256": expected_ast,
-                    "candidate_ast_sha256": actual_ast,
-                    "candidate_source_path": str(engine_path),
-                },
-            }
-        return _run_audit_with_engine(
-            root,
-            account,
-            sym_side,
-            max_snapshot_age_s=max_snapshot_age_s,
-            window_days=window_days,
-            npz_dir=npz_dir,
-            engine_module_path=engine_path,
-        )
-    except Exception as exc:
-        return {
-            "schema_version": 1,
-            "audit_type": "read_only_current_bar_account_projection",
-            "status": "REFUSED",
-            "reason": f"{type(exc).__name__}: {exc}"[:300],
-            "projection": {"status": "NOT_RUN"},
-        }
-    finally:
-        if previous is None:
-            sys.modules.pop("v12_quick_engine", None)
-        else:
-            sys.modules["v12_quick_engine"] = previous
     original_simulate = engine.simulate_one
     simulation_results = []
 
@@ -639,9 +621,12 @@ def run_audit(
             "settings_sha256": settings["sha256"],
             "settings_updated_at": settings["updated_at"],
             "engine_source_ast_sha256": source_engine_ast,
+            "baseline_engine_file_sha256": baseline_engine_sha,
+            "baseline_engine_ast_sha256": baseline_engine_ast,
+            "baseline_engine_source_path": str(baseline_engine_path),
             "candidate_engine_file_sha256": candidate_engine_sha,
             "candidate_engine_ast_sha256": candidate_engine_ast,
-            "candidate_engine_source_path": str(engine_path),
+            "candidate_engine_source_path": str(candidate_engine_path),
             "npz_input_sha256": input_hashes,
             "npz_file_path": str(npz_path) if npz_path else None,
             "npz_file_sha256": npz_file_sha256,
@@ -671,6 +656,98 @@ def run_audit(
     }
 
 
+def run_audit(
+    root,
+    account,
+    sym_side,
+    *,
+    max_snapshot_age_s=30.0,
+    window_days=30,
+    npz_dir=None,
+    engine_module_path=None,
+    baseline_engine_module_path=None,
+    candidate_engine_module_path=None,
+):
+    root = Path(root).resolve()
+    account = str(account).strip().lower()
+    sym_side = str(sym_side).strip().upper()
+    pointer_path, _, snapshot = _snapshot_for(root, account, sym_side)
+    _, state = _state_by_hash(root, snapshot.get("state_sha256", ""))
+    expected_ast = state.get("engine_ast_sha256")
+    if engine_module_path:
+        baseline_engine_module_path = baseline_engine_module_path or engine_module_path
+        candidate_engine_module_path = (
+            candidate_engine_module_path or engine_module_path
+        )
+    baseline_engine_path = Path(
+        baseline_engine_module_path or (root / "v12_quick_engine.py")
+    ).resolve()
+    candidate_engine_path = Path(
+        candidate_engine_module_path or baseline_engine_path
+    ).resolve()
+    try:
+        baseline_module, actual_ast, source_sha256 = _load_engine_source(
+            baseline_engine_path
+        )
+    except (OSError, SyntaxError, UnicodeError) as exc:
+        return {
+            "schema_version": 1,
+            "audit_type": "read_only_current_bar_account_projection",
+            "status": "REFUSED_ENGINE_IDENTITY",
+            "labels": ["projection_not_run", "engine_identity_unverified"],
+            "identity": {"account_key": account, "sym_side": sym_side},
+            "engine_identity": {
+                "expected_ast_sha256": expected_ast,
+                "source_path": str(baseline_engine_path),
+                "error": f"{type(exc).__name__}: {exc}"[:200],
+            },
+        }
+    if not expected_ast or actual_ast != expected_ast:
+        return {
+            "schema_version": 1,
+            "audit_type": "read_only_current_bar_account_projection",
+            "status": "REFUSED_ENGINE_IDENTITY",
+            "labels": ["projection_not_run", "engine_identity_mismatch"],
+            "identity": {"account_key": account, "sym_side": sym_side},
+            "source": {
+                "snapshot_pointer_path": str(pointer_path),
+                "decision_state_sha256": snapshot.get("state_sha256"),
+            },
+            "engine_identity": {
+                "expected_ast_sha256": expected_ast,
+                "baseline_ast_sha256": actual_ast,
+                "baseline_source_sha256": source_sha256,
+                "baseline_source_path": str(baseline_engine_path),
+            },
+        }
+    previous = sys.modules.get("v12_quick_engine")
+    sys.modules["v12_quick_engine"] = baseline_module
+    try:
+        return _run_audit_with_engine(
+            root,
+            account,
+            sym_side,
+            max_snapshot_age_s=max_snapshot_age_s,
+            window_days=window_days,
+            npz_dir=npz_dir,
+            baseline_engine_module_path=baseline_engine_path,
+            candidate_engine_module_path=candidate_engine_path,
+        )
+    except Exception as exc:
+        return {
+            "schema_version": 1,
+            "audit_type": "read_only_current_bar_account_projection",
+            "status": "REFUSED",
+            "reason": f"{type(exc).__name__}: {exc}"[:300],
+            "projection": {"status": "NOT_RUN"},
+        }
+    finally:
+        if previous is None:
+            sys.modules.pop("v12_quick_engine", None)
+        else:
+            sys.modules["v12_quick_engine"] = previous
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -691,7 +768,17 @@ def main():
     parser.add_argument(
         "--engine-module-path",
         type=Path,
-        help="Exact engine source used by the consumed forward state",
+        help="Compatibility alias: use this engine for both baseline and candidate",
+    )
+    parser.add_argument(
+        "--baseline-engine-module-path",
+        type=Path,
+        help="Exact engine source identity recorded by the consumed forward state",
+    )
+    parser.add_argument(
+        "--candidate-engine-module-path",
+        type=Path,
+        help="Candidate engine; its no-context ledger must first match the baseline",
     )
     args = parser.parse_args()
     try:
@@ -703,6 +790,8 @@ def main():
             window_days=args.window_days,
             npz_dir=args.npz_dir,
             engine_module_path=args.engine_module_path,
+            baseline_engine_module_path=args.baseline_engine_module_path,
+            candidate_engine_module_path=args.candidate_engine_module_path,
         )
     except Exception as exc:
         result = {

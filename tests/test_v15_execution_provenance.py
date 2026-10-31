@@ -196,6 +196,30 @@ def test_capture_is_thread_scoped_and_does_not_capture_concurrent_unrelated_call
     assert capture.result()["invocation"]["symbol"] == "CAPTURED"
 
 
+def test_capture_skips_filter_exemption_probe_passes():
+    calls = []
+
+    def simulate_one(npz, symbol, is_long, cfg):
+        calls.append(symbol)
+        if isinstance(getattr(cfg, "_FX_PROBE_SINK", None), dict):
+            return {"probe": True}
+        return {"ledger": [{"type": "OPEN", "bar": 1, "price": 1.0}]}
+
+    module = SimpleNamespace(
+        simulate_one=simulate_one, __name__="test_engine", __file__=None
+    )
+    npz = {"timestamps": np.asarray([1]), "close": np.asarray([1.0])}
+    with provenance.capture_engine_invocation(module) as capture:
+        for _ in range(4):
+            probe = SimpleNamespace(_FX_PROBE_SINK={})
+            assert module.simulate_one(npz, "PROBE", True, probe) == {"probe": True}
+        result = module.simulate_one(npz, "ACTUAL", True, _Config())
+    assert result["ledger"][0]["type"] == "OPEN"
+    assert calls == ["PROBE"] * 4 + ["ACTUAL"]
+    assert capture.result()["capture_status"] == "VERIFIED"
+    assert capture.result()["invocation"]["symbol"] == "ACTUAL"
+
+
 def test_real_small_frozen_npz_uses_engine_boundary_capture():
     from tools.opt import evaluate_v12
 

@@ -19,6 +19,7 @@ V12_SIM_MEMO=2 enables (install() is a no-op otherwise). The engine file is not 
 
 import copy as _cp
 import dataclasses as _dcs
+import hashlib as _hh
 import os
 
 _STATE = {"installed": False, "orig": None, "hits": 0, "runs": 0}
@@ -117,11 +118,61 @@ def _replay(ent, npz, cfg):
     return _cp.deepcopy(ent[3])
 
 
+def _hash_npz_value(h, value):
+    try:
+        import numpy as _np
+        if isinstance(value, _np.ndarray):
+            a = _np.asarray(value)
+            h.update(b"A"); h.update(a.dtype.str.encode()); h.update(repr(a.shape).encode())
+            if a.dtype.hasobject:
+                _hash_npz_value(h, a.tolist())
+            else:
+                h.update(memoryview(_np.ascontiguousarray(a)).cast("B"))
+            return True
+        if isinstance(value, _np.generic):
+            return _hash_npz_value(h, value.item())
+    except Exception:
+        return False
+    if value is None or type(value) in _PLAIN:
+        h.update(type(value).__name__.encode()); h.update(repr(value).encode())
+        return True
+    if type(value) in (tuple, list):
+        h.update(type(value).__name__.encode()); h.update(str(len(value)).encode())
+        return all(_hash_npz_value(h, item) for item in value)
+    if type(value) is dict:
+        h.update(b"dict"); h.update(str(len(value)).encode())
+        for key in sorted(value, key=lambda item: repr(item)):
+            if not _hash_npz_value(h, key) or not _hash_npz_value(h, value[key]):
+                return False
+        return True
+    return False
+
+
+def _npz_content_fp(V, npz, is_long):
+    base = V._npz_memo_fp(npz, 0, is_long)
+    if base is None:
+        return None
+    h = _hh.blake2b(digest_size=32)
+    h.update(repr(base).encode())
+    if not isinstance(npz, dict):
+        return None
+    for key in sorted(npz, key=lambda item: repr(item)):
+        if not _hash_npz_value(h, key) or not _hash_npz_value(h, npz[key]):
+            return None
+    return h.digest()
+
+
 def _memo_simulate(V, orig, npz, sym, is_long, cfg, force_initial_seed=False):
+    # Match normal engine template resolution before proxying. The engine only
+    # layers exact QuickConfig instances; a proxy subclass would skip it.
+    # Mutations must target the resolved config: the resolver may return a copy,
+    # and uncached engine writes then do not reach the caller's original cfg.
+    resolve = getattr(V, "ensure_template_layer", None)
+    resolved_cfg = resolve(cfg, sym, is_long) if callable(resolve) else cfg
     missing = V._MISSING
-    fp = V._npz_memo_fp(npz, 0, is_long)
+    fp = _npz_content_fp(V, npz, is_long)
     if fp is None:
-        return orig(npz, sym, is_long, cfg, force_initial_seed)
+        return orig(npz, sym, is_long, resolved_cfg, force_initial_seed)
     tag = (sym, bool(is_long), bool(force_initial_seed))
     idx = _INDEX.setdefault(tag, {})
     for (ifp, ikeys), imap in idx.items():
@@ -131,7 +182,7 @@ def _memo_simulate(V, orig, npz, sym, is_long, cfg, force_initial_seed=False):
             vals = []
             for k in ikeys:
                 try:
-                    vals.append(_hkey(object.__getattribute__(cfg, k), missing))
+                    vals.append(_hkey(object.__getattribute__(resolved_cfg, k), missing))
                 except AttributeError:
                     vals.append(_hkey(missing, missing))
             ent = imap.get(tuple(vals))
@@ -139,7 +190,7 @@ def _memo_simulate(V, orig, npz, sym, is_long, cfg, force_initial_seed=False):
             ent = None
         if ent is not None:
             _STATE["hits"] += 1
-            return _replay(ent, npz, cfg)
+            return _replay(ent, npz, resolved_cfg)
     lin = _LINEAR.setdefault(tag, [])
     for ent in lin:
         if ent[0] != fp:
@@ -147,7 +198,7 @@ def _memo_simulate(V, orig, npz, sym, is_long, cfg, force_initial_seed=False):
         ok = True
         for k, v in ent[1].items():
             try:
-                cur = object.__getattribute__(cfg, k)
+                cur = object.__getattribute__(resolved_cfg, k)
             except AttributeError:
                 cur = missing
             if not V._memo_same(cur, v):
@@ -155,13 +206,13 @@ def _memo_simulate(V, orig, npz, sym, is_long, cfg, force_initial_seed=False):
                 break
         if ok:
             _STATE["hits"] += 1
-            return _replay(ent, npz, cfg)
+            return _replay(ent, npz, resolved_cfg)
     try:
-        names = tuple(sorted(set(f.name for f in _dcs.fields(cfg)) | set(k for k in cfg.__dict__ if not k.startswith("__"))))
+        names = tuple(sorted(set(f.name for f in _dcs.fields(resolved_cfg)) | set(k for k in resolved_cfg.__dict__ if not k.startswith("__"))))
     except Exception:
         return orig(npz, sym, is_long, cfg, force_initial_seed)
-    proxy = object.__new__(_proxy_class(type(cfg), names))
-    st = {"src": cfg, "reads": {}, "writes": {}, "root": proxy, "missing": missing}
+    proxy = object.__new__(_proxy_class(type(resolved_cfg), names))
+    st = {"src": resolved_cfg, "reads": {}, "writes": {}, "root": proxy, "missing": missing}
     object.__setattr__(proxy, "_trk_state", st)
     before = {k: id(v) for k, v in npz.items()}
     _STATE["runs"] += 1
