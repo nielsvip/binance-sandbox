@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from types import SimpleNamespace
 
 from tools import v18_linknet_net_weighted as weighted
 
@@ -58,6 +59,15 @@ def test_source_pins_match_original_net_and_linknet_modules():
     pins = weighted.verify_source_pins()
     assert pins["net_recipe_sha256"] == weighted.PINNED_NET_RECIPE_SHA256
     assert pins["linknet_sha256"] == weighted.PINNED_LINKNET_SHA256
+
+
+def test_training_fails_fast_outside_pinned_context_free_mode(monkeypatch, tmp_path):
+    output = tmp_path / "must_not_be_created"
+    monkeypatch.setattr(weighted.net_recipe.network.HF, "mode", lambda: "serving")
+    args = SimpleNamespace(out=str(output))
+    with pytest.raises(ValueError, match="context_free feature mode required"):
+        weighted.train(args)
+    assert not output.exists()
 
 
 def test_fit_rows_must_be_unique_and_have_both_classes_per_kind():

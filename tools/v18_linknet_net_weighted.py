@@ -126,6 +126,8 @@ class SqrtWeightedNetTrainer(net_recipe.NetTrainer):
 
 
 def train(args):
+    if net_recipe.network.HF.mode() != "context_free":
+        raise ValueError("original context_free feature mode required")
     pins = verify_source_pins()
     output = Path(args.out)
     output.mkdir(parents=True, exist_ok=False)
