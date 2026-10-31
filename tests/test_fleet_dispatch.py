@@ -32,6 +32,31 @@ def test_home_first():
     assert got == {"s1": "BTCUSDT_SHORT", "s2": "BTCUSDT_LONG", "s5": "AAPL_LONG", "s6": "AAPL_SHORT"}
 
 
+def test_catchup_reserves_one_slot_per_host_worst_first():
+    data = fleet4()
+    pend, partial, _ = F.pending_by_cat(UNI, data, NOW)
+    queue = ["ETHUSDT_SHORT", "BTCUSDT_SHORT", "AAPL_LONG", "AAPL_SHORT"]
+    picks, _, _ = F.plan(pend, partial, data, NOW, {}, catchup=queue)
+    got = {h: (s, w) for h, s, w in picks}
+    assert got["s1"] == ("ETHUSDT_SHORT", "catchup CRYPTO_SHORT")
+    assert got["s2"][1].startswith("catchup ")
+    assert got["s5"] == ("AAPL_SHORT", "catchup STOCKS_SHORT")
+    assert got["s6"] == ("AAPL_LONG", "catchup STOCKS_LONG")
+    running = host(running=["ETHUSDT_SHORT"], launches={"ETHUSDT_SHORT": {"mode": "catchup"}}, tails={"BTCUSDT": TAIL})
+    data["s1"] = running
+    pend, partial, _ = F.pending_by_cat(UNI, data, NOW)
+    picks, _, _ = F.plan(pend, partial, data, NOW, {}, catchup=["BTCUSDT_SHORT"])
+    assert all(not (h == "s1" and w.startswith("catchup ")) for h, _, w in picks)
+
+
+def test_catchup_relaunches_only_for_new_chart_run():
+    doc = {"run_id": "new", "rows": [{"symside": "AAPL_LONG", "drop_pp": 22.0}, {"symside": "BTCUSDT_SHORT", "drop_pp": 12.0}]}
+    data = fleet4(s5=host(launches={"AAPL_LONG": {"mode": "catchup", "catchup_run_id": "new"}}))
+    assert F.unlaunched_catchup(doc, data) == ["BTCUSDT_SHORT"]
+    doc["run_id"] = "next"
+    assert F.unlaunched_catchup(doc, data) == ["AAPL_LONG", "BTCUSDT_SHORT"]
+
+
 def test_overflow_when_home_exhausted_follows_priority():
     uni = dict(UNI, CRYPTO_LONG=[])
     data = fleet4()

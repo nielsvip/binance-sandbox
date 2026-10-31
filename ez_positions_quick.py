@@ -27452,8 +27452,11 @@ async def check_exit_candidates_for_account(
                     ):
                         hard_augment = True
                 is_augmented = position.positionAmt > 1.2 * pos_min_qty
-                dc_broken = (is_long and current_price < dc_low_3m) or (
-                    not is_long and current_price > dc_high_3m
+                from vec_decisions.quick_missing_augmented_dc_break import augmented_dc_break_channel
+                _aug_ltf_enabled = bool(_psym_get(symbol, position_side, "LIVE_5m_trading_ENABLED", getattr(config, "LIVE_5m_trading_ENABLED", False)))
+                _aug_dc_level = augmented_dc_break_channel(indicators, is_long, _aug_ltf_enabled)
+                dc_broken = (is_long and current_price < _aug_dc_level) or (
+                    not is_long and current_price > _aug_dc_level
                 )
                 is_h_acc = is_hedge_account(config, account_key)
                 already_hedged = False
@@ -31479,7 +31482,9 @@ async def check_entry_candidates_for_account(
                     # generic_filter_tf (boards promote these switches; unenforced live = over-trade vs
                     # the board's own measurement + 932 QUICK LIVE_ONLY legs). OPEN-only: vec GFTF entry
                     # mask constrains fresh entries; augments ride the augment gates. Fail-open on error.
-                    if _reentry_triggers.should_apply_fresh_open_ftf(curr_amt, _vec_reentry_fire):
+                    from vec_decisions.reentry_triggers import should_apply_fresh_open_ftf as _should_apply_fresh_open_ftf
+                    _reentry_ftf_enabled = bool(_psym_get(symbol, position_side, "REENTRY_ENTRY_FILTER_ENABLED", getattr(config, "REENTRY_ENTRY_FILTER_ENABLED", False)))
+                    if _should_apply_fresh_open_ftf(curr_amt, _vec_reentry_fire, _reentry_ftf_enabled):
                         try:
                             _wftf_get = lambda n, d: _psym_get(symbol, position_side, n, getattr(config, n, d))
                             _wftf_fam = _family_lane_tags(indicators, current_price, is_long, _wftf_get)

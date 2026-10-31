@@ -809,6 +809,8 @@ def catchup_rows(manifest: dict) -> list[dict]:
         drop = (entry.get("deltas") or {}).get("gain_pct")
         if entry.get("status") != "OK" or drop is None or not math.isfinite(float(drop)) or float(drop) >= -1e-9:
             continue
+        if latest_publish(entry["symside"]) > entry["calculated_utc"]:
+            continue
         rows.append({"symside": entry["symside"], "drop_pp": round(-float(drop), 6), "calculated_utc": entry["calculated_utc"], "set_md5": entry["set_md5"], "board_published_utc": entry["board_published_utc"]})
     return sorted(rows, key=lambda row: (-row["drop_pp"], row["symside"]))
 

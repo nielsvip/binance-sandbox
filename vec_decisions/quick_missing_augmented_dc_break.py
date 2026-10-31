@@ -3,6 +3,13 @@
 import numpy as np
 
 
+def augmented_dc_break_channel(indicators, is_long, ltf_enabled):
+    """Select the native source channel or its paired cached 15m channel for AUG only."""
+    if ltf_enabled:
+        return float((indicators or {}).get("dc_low_3m" if is_long else "dc_high_3m", 0.0) or 0.0)
+    return float((indicators or {}).get("dc_low4_15m" if is_long else "dc_high4_15m", 0.0) or 0.0)
+
+
 def augmented_dc_break_pos_min_qty(symbol, price, min_position_usd):
     """Mirror EPQ's max(2 * MIN_POSITION_SIZE / price, exchange minQty)."""
     try:

@@ -61,7 +61,7 @@ def validate_supported_inputs(npz, n, cfg, is_long):
         raise ValueError(
             "AUGMENTED_DC_BREAK is unsupported in HEDGE_MODE without active_hedges tracker state"
         )
-    key = "dc_low_15m" if is_long else "dc_high_15m"
+    key = "dc_low4_15m" if is_long else "dc_high4_15m"
     value = npz.get(key)
     if value is None or getattr(value, "__len__", None) is None or len(value) != n:
         raise ValueError(
@@ -86,8 +86,8 @@ def prepare(npz, n, is_long, cfg, close, safe, symbol=None):
     P["dc20_lvl"] = z
     P["augmented_dc_lvl"] = np.zeros(n)
     if bool(getattr(cfg, "AUGMENTED_DC_BREAK_ENABLED", True)):
-        P["augmented_dc_lvl"] = safe(
-            npz, "dc_low_15m" if is_long else "dc_high_15m", n, 0.0
+        P["augmented_dc_lvl"] = _shift(
+            safe(npz, "dc_low4_15m" if is_long else "dc_high4_15m", n, 0.0)
         )
     P["crack"] = np.zeros(n, dtype=bool)
     # Master 1 is the existing 1m/3m/5m vector-forward lane. Keep sub-15m
@@ -215,8 +215,8 @@ def step(P, cfg, i, px, st):
                 reason = "PEAK_GIVEBACK_GAIN_EROSION_STOP"
             elif _b(cfg, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False) and gain < peak - _f(cfg, "PEAK_GIVEBACK_DROP_PCT", 1.0):
                 reason = "PEAK_GIVEBACK_GAIN_EROSION_STOP"
-    # 9. AUGMENTED_DC_BREAK_REDUCE_TO_MIN; its source's 3m channel is paired
-    # to 15m by SWITCH_WIRING_GUIDE §4. HEDGE_MODE lacks tracker state here, so
+    # 9. AUGMENTED_DC_BREAK_REDUCE_TO_MIN; its 20x3m channel pairs to the prior
+    # 4x15m channel (dc_*4_15m shifted one bar). HEDGE_MODE lacks tracker state here, so
     # that configuration is explicitly fail-closed.
     if reason is None and not in_grace and _b(cfg, "AUGMENTED_DC_BREAK_ENABLED", True):
         from vec_decisions.quick_missing_augmented_dc_break import (

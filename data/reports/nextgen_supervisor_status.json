@@ -489,7 +489,7 @@
   },
   "required_before_s2_comparison": {
     "user_instruction": "Prioritize avoiding prior-profit turning into losses, avoidable fixed stops and late stoch15m exits, with recovery reentry; retain safety stops. Applies crypto and stocks.",
-    "status": "AUDIT_AND_LABEL_DESIGN_IN_PROGRESS_NO_COMPARISON_AUTHORIZED_YET",
+    "status": "PROTECTION_AND_SWITCH_AUTHORITY_REPAIR_REQUIRED",
     "baseline_unchanged_required": true,
     "current_objective_gap": "Aggregate positive gain deltas do not explicitly label peak-profit giveback or recovery quality",
     "evidence": "data/reports/nextgen_profit_protection_ledger_inventory_20261031.json",
@@ -513,6 +513,41 @@
       "scope": "one frozen previous baseline; all four config/ledger/result/cutoff hashes equal; no candidate gain proof"
     },
     "activation_conflicts": "data/reports/nextgen_protection_activation_conflicts_20261031.json",
-    "next": "legal template protection/recovery combinations and native refusal trace for fifth reclaim signal before S2 comparison"
+    "next": "legal template protection/recovery combinations and native refusal trace for fifth reclaim signal before S2 comparison",
+    "second_trace": {
+      "source": "data/reports/nextgen_protection_gate_trace_20261031T020032Z",
+      "status": "BASELINE_4_HASH_MATCH",
+      "events": 13645,
+      "actual_recovery_refusal": "native fireTrue->False frozen engine line20111 hardcoded EMA20 block",
+      "native_exit_refusals": 503,
+      "positive_native_pnl_among_refusals": 0,
+      "earlier_peak_giveback_nonpositive_proposals": 236
+    }
+  },
+  "winning_switch_authority": {
+    "user_instruction": "Positive-delta selected setting for sym_side applies everywhere; config/script cannot override an existing switch; no independent hardcoded exceptions.",
+    "status": "VIOLATIONS_CONFIRMED_REVIEW_FIX_IN_PROGRESS",
+    "findings": [
+      "Native reentry2844 rejected by hardcoded EMA20 check despite accepted/effective KG and reentry-entry gates disabled",
+      "Some selected EMA9/21 TF/count values differ from actual effective config after template layering"
+    ],
+    "evidence": "data/reports/nextgen_pinned_baseline_review_20261030/protection_trace_netgate_actual_analysis.json",
+    "baseline_policy": "Preserve original genuine baseline; separately measure authority repair and do not attribute code-fix effects to NN improvements. No silent baseline restatement.",
+    "deployment": "none",
+    "additional_findings": [
+      "Measured EMA_BLANKET_FILTER_ENABLED already False; offending hardcoded EMA20 veto differs semantically from actual blanket and KG predicates",
+      "Prepared config serialization drops template-layer identity, enabling reoverlay to clobber selected values"
+    ]
+  },
+  "required_execution_order": {
+    "user_instruction_at": "2026-10-31T02:15:02.613847+00:00",
+    "phases": [
+      "unchanged accepted baseline measurement",
+      "EMA_BLANKET-off experiment and retain best measured kindergarten settings",
+      "first row-by-row worst-first pass",
+      "pinpoint switch/filter interaction experiments"
+    ],
+    "new_row_policy": "new or newly wired rows need yellow exploration during first pass plus reserved pinpoint coverage; old pos_sym and structurally masked zero results cannot suppress them",
+    "speed_policy": "demonstrate >=90% reduction only after gain/authority validation on frozen identical inputs; distinguish measured zero from masking/skips/errors"
   }
 }

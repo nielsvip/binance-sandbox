@@ -18198,9 +18198,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _sre_parent_key = f"timestamp_{_sre_tf}"
         if _sre_parent_key in npz:
             _sre_parent_ts = np.asarray(_safe(npz, _sre_parent_key, n, 0.0), dtype=float)
+            _sre_eval_seconds = {"5m": 300, "15m": 900}.get(base_tf, 900)
+            _sre_target_close = np.asarray(ts, dtype=float) + _sre_eval_seconds
             from vec_decisions.tradier_missing_stdev_parent import completed_parent_snapshot_values
             _sre_completed_now, _sre_completed_prev = completed_parent_snapshot_values(
-                _sre_pctb_now, _sre_parent_ts
+                _sre_pctb_now, _sre_parent_ts, _sre_target_close, _sre_tf
             )
     _rule_b_exit_on = _tr_exit15 and bool(getattr(cfg, "RULE_B_5M_EXIT_ENABLED", False))
     if _rule_b_exit_on:
@@ -23851,7 +23853,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         )
         _stdev_reject_fire = False
         _stdev_reject_reason = ""
-        if _sre_on and pos is not None:
+        if _sre_on and pos is not None and _sre_completed_now is not None:
             _sre_ind = {
                 f"bb_pct_b_{_sre_tf}": float(_sre_completed_now[i]),
                 f"bb_pct_b_{_sre_tf}_prev": float(_sre_completed_prev[i]),

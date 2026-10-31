@@ -1,3 +1,5 @@
+import datetime
+
 import numpy as np
 import pytest
 
@@ -48,21 +50,41 @@ def test_fixed_daily_bb_previous_matches_live_previous_row_contract():
 
 
 def test_completed_parent_pair_advances_only_at_new_available_token():
-    current = [0.8, 0.9, 0.7, 0.6, 0.5, 0.4]
-    tokens = [10, 10, 20, 20, 30, 30]
-    completed, previous = completed_parent_snapshot_values(current, tokens)
-    assert np.isnan(completed[:2]).all()
-    np.testing.assert_allclose(completed[2:], [0.9, 0.9, 0.6, 0.6])
-    assert np.isnan(previous[:4]).all()
-    np.testing.assert_allclose(previous[4:], [0.9, 0.9])
+    def epoch(value):
+        return datetime.datetime.fromisoformat(value).replace(tzinfo=datetime.timezone.utc).timestamp()
+
+    current = [0.8, 0.8, 0.9, 0.95, 0.6, 0.5]
+    tokens = [epoch("2026-01-21T00:00:00")] * 2 + [
+        epoch("2026-01-22T00:00:00")
+    ] * 2 + [epoch("2026-01-26T00:00:00")] * 2
+    targets = [
+        epoch("2026-01-21T21:00:00"),
+        epoch("2026-01-21T21:15:00"),
+        epoch("2026-01-22T20:45:00"),
+        epoch("2026-01-22T21:00:00"),
+        epoch("2026-01-26T14:45:00"),
+        epoch("2026-01-26T21:00:00"),
+    ]
+    completed, previous = completed_parent_snapshot_values(
+        current, tokens, targets, "D"
+    )
+    np.testing.assert_allclose(completed, [0.8, 0.8, 0.8, 0.95, 0.95, 0.5])
+    assert np.isnan(previous[:3]).all()
+    np.testing.assert_allclose(previous[3:], [0.8, 0.8, 0.95])
 
 
 def test_completed_parent_values_do_not_depend_on_future_npz_rows():
+    def epoch(value):
+        return datetime.datetime.fromisoformat(value).replace(tzinfo=datetime.timezone.utc).timestamp()
+
     values = [0.8, 0.9, 0.7, 0.6, 0.5, 0.4]
-    tokens = [10, 10, 20, 20, 30, 30]
-    baseline = completed_parent_snapshot_values(values, tokens)
+    tokens = [epoch("2026-01-21T00:00:00")] * 2 + [
+        epoch("2026-01-22T00:00:00")
+    ] * 2 + [epoch("2026-01-26T00:00:00")] * 2
+    target = [epoch("2026-01-21T21:00:00"), epoch("2026-01-21T21:15:00"), epoch("2026-01-22T20:45:00"), epoch("2026-01-22T21:00:00"), epoch("2026-01-26T14:45:00"), epoch("2026-01-26T21:00:00")]
+    baseline = completed_parent_snapshot_values(values, tokens, target, "D")
     changed_future = completed_parent_snapshot_values(
-        values[:4] + [0.99, 0.01], tokens
+        values[:4] + [0.99, 0.01], tokens, target, "D"
     )
     np.testing.assert_allclose(baseline[0][:4], changed_future[0][:4], equal_nan=True)
     np.testing.assert_allclose(baseline[1][:4], changed_future[1][:4], equal_nan=True)

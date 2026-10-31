@@ -1,20 +1,20 @@
 {
  "_meta": {
   "counts": {
-   "EXTRA_ROW": 50,
-   "MISSING_ROW": 105,
-   "NO_BOLD_DEFAULT": 16,
-   "NO_ROW_ANYWHERE": 2643,
-   "ONE_OPTION": 157,
-   "ORPHAN": 4,
-   "VECTOR_ONLY": 55
+   "EXTRA_ROW": 80,
+   "MISSING_ROW": 76,
+   "NO_BOLD_DEFAULT": 23,
+   "NO_ROW_ANYWHERE": 2631,
+   "ONE_OPTION": 115,
+   "ORPHAN": 10,
+   "VECTOR_ONLY": 54
   },
-  "n_switches": 3956,
+  "n_switches": 3984,
   "per_cat_side_switch_counts": {
-   "CRYPTO_LONG": 1117,
-   "CRYPTO_SHORT": 1123,
-   "STOCKS_LONG": 1216,
-   "STOCKS_SHORT": 1197
+   "CRYPTO_LONG": 1181,
+   "CRYPTO_SHORT": 1188,
+   "STOCKS_LONG": 1269,
+   "STOCKS_SHORT": 1254
   },
   "switch_sheets": [
    "STDEV_SLOPE_SIZING",
@@ -1008,6 +1008,26 @@
    "tabs": {},
    "venue": "CRYPTO"
   },
+  "ANG_TIMING_ACCOUNT_VECTOR_READY": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "CRYPTO"
+  },
   "ANG_TIMING_FRESH_BARS": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -1247,6 +1267,31 @@
    "present_in": [],
    "tabs": {},
    "venue": "CRYPTO"
+  },
+  "ANG_TIMING_VECTOR_ACCOUNT_KEY": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE",
+    "VECTOR_ONLY"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "VECTOR_ONLY"
   },
   "API_RATE_LIMIT_PER_MINUTE": {
    "applies_to": [
@@ -1542,49 +1587,6 @@
    "present_in": [],
    "tabs": {},
    "venue": "STOCKS"
-  },
-  "AUGMENTATION_COOLDOWN_MINUTES": {
-   "applies_to": [],
-   "extra_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "flags": [
-    "ORPHAN",
-    "EXTRA_ROW"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 4,
-    "CRYPTO_SHORT": 4,
-    "STOCKS_LONG": 4,
-    "STOCKS_SHORT": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "AUGMENT_TREND"
-    ],
-    "CRYPTO_SHORT": [
-     "AUGMENT_TREND"
-    ],
-    "STOCKS_LONG": [
-     "AUGMENT_TREND"
-    ],
-    "STOCKS_SHORT": [
-     "AUGMENT_TREND"
-    ]
-   },
-   "venue": "ORPHAN"
   },
   "AUGMENT_AT_LOSS_ENABLED_TRADIER": {
    "applies_to": [
@@ -1950,6 +1952,49 @@
    "tabs": {},
    "venue": "STOCKS"
   },
+  "BACKTEST_VALIDATED_GATES_TRADIER": {
+   "applies_to": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 2,
+    "CRYPTO_SHORT": 2,
+    "STOCKS_LONG": 2,
+    "STOCKS_SHORT": 2
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "CRYPTO_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ]
+   },
+   "venue": "STOCKS"
+  },
   "BACKUP_KLINES_CACHE": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -2106,48 +2151,6 @@
    "venue": "CRYPTO"
   },
   "BAND_SLOPE_SIZING_V2_DEPTH_GAIN": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "STDEV_SLOPE_SIZING"
-    ],
-    "CRYPTO_SHORT": [
-     "STDEV_SLOPE_SIZING"
-    ],
-    "STOCKS_LONG": [
-     "STDEV_SLOPE_SIZING"
-    ],
-    "STOCKS_SHORT": [
-     "STDEV_SLOPE_SIZING"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "BAND_SLOPE_SIZING_V2_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -2609,48 +2612,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "BB_FROZEN_STOP_FIELD": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_SHORT": [
-     "EXIT_STRUCTURAL"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "BB_PULLBACK_GATE_LONG_MAX": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -2858,6 +2819,49 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "BB_RECOVERY_EXIT_ENABLED_TRADIER": {
+   "applies_to": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 2,
+    "CRYPTO_SHORT": 2,
+    "STOCKS_LONG": 2,
+    "STOCKS_SHORT": 2
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "EXIT_STRUCTURAL"
+    ],
+    "CRYPTO_SHORT": [
+     "EXIT_STRUCTURAL"
+    ],
+    "STOCKS_LONG": [
+     "EXIT_STRUCTURAL"
+    ],
+    "STOCKS_SHORT": [
+     "EXIT_STRUCTURAL"
+    ]
+   },
+   "venue": "STOCKS"
+  },
   "BB_RECOVERY_EXIT_TOLERANCE_ATR_MULT_TRADIER": {
    "applies_to": [
     "STOCKS_LONG",
@@ -2995,30 +2999,6 @@
    "venue": "BOTH"
   },
   "BB_RSI_STOCH_SCALP_TF": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
-  "BB_SQUEEZE_COOLDOWN": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -3713,48 +3693,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "BOTTOM_EXIT_HTF_WT_VETO_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "BOUNCE_AUGMENT_PAPER": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -3969,30 +3907,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "BOUNCE_TOP_MIN_HOLD_MINUTES": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
   "BOUNCE_TOP_MIN_LOSS_PCT": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -4063,48 +3977,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "BREAKEVEN_DC_FIELD_MODE": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "REDUCE_SIGNAL_RATER"
-    ],
-    "CRYPTO_SHORT": [
-     "REDUCE_SIGNAL_RATER"
-    ],
-    "STOCKS_LONG": [
-     "REDUCE_SIGNAL_RATER"
-    ],
-    "STOCKS_SHORT": [
-     "REDUCE_SIGNAL_RATER"
-    ]
-   },
    "venue": "BOTH"
   },
   "BREAKEVEN_EXIT_AFTER_BARS": {
@@ -4225,6 +4097,50 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
+   "venue": "BOTH"
+  },
+  "BREAKEVEN_GAIN_EROSION_FILTER_TF": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_BOLD_DEFAULT"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 5,
+    "CRYPTO_SHORT": 5,
+    "STOCKS_LONG": 5,
+    "STOCKS_SHORT": 5
+   },
+   "no_bold_default_in": [
+    "STOCKS_LONG"
+   ],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "REDUCE_PROFIT_LOCK"
+    ],
+    "CRYPTO_SHORT": [
+     "REDUCE_PROFIT_LOCK"
+    ],
+    "STOCKS_LONG": [
+     "REDUCE_PROFIT_LOCK"
+    ],
+    "STOCKS_SHORT": [
+     "REDUCE_PROFIT_LOCK"
+    ]
+   },
    "venue": "BOTH"
   },
   "BREAKOUT_DC1H_BYPASS_ENABLED": {
@@ -4740,19 +4656,30 @@
    ],
    "extra_row": [],
    "flags": [
-    "NO_ROW_ANYWHERE"
+    "MISSING_ROW"
    ],
-   "gap_kind": "ALL",
+   "gap_kind": "VENUE",
    "missing_row": [
     "CRYPTO_LONG",
-    "CRYPTO_SHORT",
+    "CRYPTO_SHORT"
+   ],
+   "n_rows": {
+    "STOCKS_LONG": 2,
+    "STOCKS_SHORT": 2
+   },
+   "no_bold_default_in": [],
+   "present_in": [
     "STOCKS_LONG",
     "STOCKS_SHORT"
    ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
+   "tabs": {
+    "STOCKS_LONG": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ]
+   },
    "venue": "BOTH"
   },
   "BREAKOUT_RETEST_ARMED_HTF_STACK_MIN": {
@@ -4836,19 +4763,30 @@
    ],
    "extra_row": [],
    "flags": [
-    "NO_ROW_ANYWHERE"
+    "MISSING_ROW"
    ],
-   "gap_kind": "ALL",
+   "gap_kind": "VENUE",
    "missing_row": [
     "CRYPTO_LONG",
-    "CRYPTO_SHORT",
+    "CRYPTO_SHORT"
+   ],
+   "n_rows": {
+    "STOCKS_LONG": 2,
+    "STOCKS_SHORT": 2
+   },
+   "no_bold_default_in": [],
+   "present_in": [
     "STOCKS_LONG",
     "STOCKS_SHORT"
    ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
+   "tabs": {
+    "STOCKS_LONG": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ]
+   },
    "venue": "BOTH"
   },
   "BREAKOUT_RETEST_ARMED_VOLUME_MULT": {
@@ -5859,30 +5797,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "BTC_BREAKOUT_MIN_HOLD_BARS": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
   "BTC_BREAKOUT_REENTRY_ON_EXIT": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -6431,54 +6345,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "BTC_ENTRY_PRIMARY_REQUIRE_ACCEL_RAMP": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
-  "BTC_ENTRY_PRIMARY_REQUIRE_RZ": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
   "BTC_FIB_LOOKBACK_4H": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -6744,30 +6610,6 @@
    "venue": "BOTH"
   },
   "BTC_HEDGE_DC_RESISTANCE_GATE_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
-  "BTC_HEDGE_MIN_HOLD_BARS": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -7176,30 +7018,6 @@
    "venue": "BOTH"
   },
   "BTC_LEVERAGE": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
-  "BTC_MIN_HOLD_BARS": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -8410,6 +8228,49 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "COMBINED_STOCH_GATE_TRADIER": {
+   "applies_to": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 4,
+    "CRYPTO_SHORT": 4,
+    "STOCKS_LONG": 4,
+    "STOCKS_SHORT": 4
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "CRYPTO_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ]
+   },
+   "venue": "STOCKS"
+  },
   "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -8786,6 +8647,49 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "COOLDOWN_BARS_TRADIER": {
+   "applies_to": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 4,
+    "CRYPTO_SHORT": 4,
+    "STOCKS_LONG": 4,
+    "STOCKS_SHORT": 4
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "CRYPTO_SHORT": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_LONG": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "GLOBAL_RISK_GATES"
+    ]
+   },
+   "venue": "STOCKS"
+  },
   "COOLDOWN_FROM_LIVE_SECONDS_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -9149,41 +9053,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "CRYPTO_SPIKE_FADE_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 2,
-    "CRYPTO_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
    "venue": "BOTH"
   },
   "CRYPTO_SPIKE_FADE_K_EXHAUSTION": {
@@ -9935,6 +9804,55 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "DC_BREAKOUT_OVERBOUGHT_K15M_CAP": {
+   "applies_to": [],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "flags": [
+    "ORPHAN",
+    "NO_BOLD_DEFAULT",
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 3,
+    "CRYPTO_SHORT": 3,
+    "STOCKS_LONG": 3,
+    "STOCKS_SHORT": 3
+   },
+   "no_bold_default_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ],
+    "CRYPTO_SHORT": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ]
+   },
+   "venue": "ORPHAN"
+  },
   "DC_BREAKOUT_TF": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -9949,9 +9867,9 @@
    "gap_kind": "",
    "missing_row": [],
    "n_rows": {
-    "CRYPTO_LONG": 5,
-    "CRYPTO_SHORT": 5,
-    "STOCKS_LONG": 4,
+    "CRYPTO_LONG": 6,
+    "CRYPTO_SHORT": 6,
+    "STOCKS_LONG": 5,
     "STOCKS_SHORT": 5
    },
    "no_bold_default_in": [
@@ -10500,133 +10418,7 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "DC_DAYTRADE_STOP_USE_DC4_15M": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_SHORT": [
-     "EXIT_STRUCTURAL"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "DC_DAYTRADE_STOP_USE_DC_15M": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_SHORT": [
-     "EXIT_STRUCTURAL"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "DC_DAYTRADE_TARGET_DC_BUFFER_PCT": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_SHORT": [
-     "EXIT_STRUCTURAL"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "DC_DAYTRADE_TARGET_PCT": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -10775,6 +10567,49 @@
    "present_in": [],
    "tabs": {},
    "venue": "BOTH"
+  },
+  "DC_ENTRY_VETO_ENABLED_TRADIER": {
+   "applies_to": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 2,
+    "CRYPTO_SHORT": 2,
+    "STOCKS_LONG": 2,
+    "STOCKS_SHORT": 2
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "CRYPTO_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ]
+   },
+   "venue": "STOCKS"
   },
   "DC_HOPELESS_ENABLED": {
    "applies_to": [
@@ -11207,41 +11042,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "DC_TIER_AUG_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 2,
-    "STOCKS_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "DC_WIDTH_CAP_MULT": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -11378,48 +11178,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "DD_BOUNCE_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "AUGMENT_RISK_SIZING"
-    ],
-    "CRYPTO_SHORT": [
-     "AUGMENT_RISK_SIZING"
-    ],
-    "STOCKS_LONG": [
-     "AUGMENT_RISK_SIZING"
-    ],
-    "STOCKS_SHORT": [
-     "AUGMENT_RISK_SIZING"
-    ]
-   },
    "venue": "BOTH"
   },
   "DD_KELLY_ENABLED": {
@@ -11668,6 +11426,55 @@
    "present_in": [],
    "tabs": {},
    "venue": "STOCKS"
+  },
+  "DELTA_EXIT_MIN_HOLD": {
+   "applies_to": [],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "flags": [
+    "ORPHAN",
+    "NO_BOLD_DEFAULT",
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 3,
+    "CRYPTO_SHORT": 3,
+    "STOCKS_LONG": 3,
+    "STOCKS_SHORT": 3
+   },
+   "no_bold_default_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "EXIT_STRUCTURAL"
+    ],
+    "CRYPTO_SHORT": [
+     "EXIT_STRUCTURAL"
+    ],
+    "STOCKS_LONG": [
+     "EXIT_STRUCTURAL"
+    ],
+    "STOCKS_SHORT": [
+     "EXIT_STRUCTURAL"
+    ]
+   },
+   "venue": "ORPHAN"
   },
   "DELTA_EXIT_OVERRIDE_NOLOSS": {
    "applies_to": [
@@ -12660,8 +12467,7 @@
    ],
    "extra_row": [],
    "flags": [
-    "MISSING_ROW",
-    "ONE_OPTION"
+    "MISSING_ROW"
    ],
    "gap_kind": "VENUE",
    "missing_row": [
@@ -12669,8 +12475,8 @@
     "STOCKS_SHORT"
    ],
    "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1
+    "CRYPTO_LONG": 5,
+    "CRYPTO_SHORT": 3
    },
    "no_bold_default_in": [],
    "present_in": [
@@ -13750,36 +13556,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "DYN_STRUCT_TRAIL_MIN_GAIN_PCT": {
-   "applies_to": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_SHORT": [
-     "EXIT_STRUCTURAL"
-    ]
-   },
-   "venue": "STOCKS"
-  },
   "D_TREND_REQUIRED_LIVE_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -14126,48 +13902,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "EMA50_15M_ENTRY_FILTER_PCT": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
    "venue": "BOTH"
   },
   "EMA_9_21_FILTER_TF_LIVE_ENABLED": {
@@ -14822,48 +14556,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SIDE": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "ENTRY_BOUNCE_DEEP_TURN_COMPOSITE_V1_SYMBOLS": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -15088,90 +14780,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "ENTRY_STOCH_PARENT_DIRECT_FAMILY": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "ENTRY_STOCH_PARENT_DIRECT_TURN_DEFINITION": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
    "venue": "BOTH"
   },
   "ENTRY_SYMGATE_ENABLED": {
@@ -16259,19 +15867,30 @@
    ],
    "extra_row": [],
    "flags": [
-    "NO_ROW_ANYWHERE"
+    "MISSING_ROW"
    ],
-   "gap_kind": "ALL",
+   "gap_kind": "VENUE",
    "missing_row": [
     "CRYPTO_LONG",
-    "CRYPTO_SHORT",
+    "CRYPTO_SHORT"
+   ],
+   "n_rows": {
+    "STOCKS_LONG": 2,
+    "STOCKS_SHORT": 2
+   },
+   "no_bold_default_in": [],
+   "present_in": [
     "STOCKS_LONG",
     "STOCKS_SHORT"
    ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
+   "tabs": {
+    "STOCKS_LONG": [
+     "EXIT_VELOCITY"
+    ],
+    "STOCKS_SHORT": [
+     "EXIT_VELOCITY"
+    ]
+   },
    "venue": "BOTH"
   },
   "EXIT_KEY_LEVEL_CRASH_ENABLED": {
@@ -16490,6 +16109,45 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "EXIT_R1_R2_FILTER_TF": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "MISSING_ROW"
+   ],
+   "gap_kind": "SIDE",
+   "missing_row": [
+    "STOCKS_SHORT"
+   ],
+   "n_rows": {
+    "CRYPTO_LONG": 4,
+    "CRYPTO_SHORT": 1,
+    "STOCKS_LONG": 1
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "CRYPTO_SHORT": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_LONG": [
+     "GLOBAL_RISK_GATES"
+    ]
+   },
+   "venue": "BOTH"
+  },
   "EXIT_SENTIMENT_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -16593,6 +16251,26 @@
    "present_in": [],
    "tabs": {},
    "venue": "BOTH"
+  },
+  "EXIT_STRUCT_TF": {
+   "applies_to": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "STOCKS"
   },
   "EXIT_TIGHT_BREAKOUT_SCORER_FILTER_TF": {
    "applies_to": [
@@ -17251,14 +16929,13 @@
    ],
    "extra_row": [],
    "flags": [
-    "NO_BOLD_DEFAULT",
-    "ONE_OPTION"
+    "NO_BOLD_DEFAULT"
    ],
    "gap_kind": "",
    "missing_row": [],
    "n_rows": {
     "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
+    "CRYPTO_SHORT": 2,
     "STOCKS_LONG": 1,
     "STOCKS_SHORT": 1
    },
@@ -18126,90 +17803,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "FG_FEAR_THRESHOLD": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_REVERSAL_BOUNCE"
-    ],
-    "CRYPTO_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "FG_GREED_THRESHOLD": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_REVERSAL_BOUNCE"
-    ],
-    "CRYPTO_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "FH_MOMENTUM_DC_CONFIRM": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -18558,46 +18151,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "FORCE_MIN_ONE_TRADE": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW",
-    "ONE_OPTION"
-   ],
-   "gap_kind": "SIDE",
-   "missing_row": [
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
    "venue": "BOTH"
   },
   "FORCE_REFRESH_SECONDS": {
@@ -19095,8 +18648,7 @@
    ],
    "extra_row": [],
    "flags": [
-    "MISSING_ROW",
-    "ONE_OPTION"
+    "MISSING_ROW"
    ],
    "gap_kind": "SIDE",
    "missing_row": [
@@ -19105,7 +18657,7 @@
    "n_rows": {
     "CRYPTO_LONG": 1,
     "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1
+    "STOCKS_LONG": 4
    },
    "no_bold_default_in": [],
    "present_in": [
@@ -20015,41 +19567,6 @@
    "tabs": {},
    "venue": "STOCKS"
   },
-  "GAP_MOC_HOLD_POSITIVE_BIAS_PCT": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 4,
-    "STOCKS_SHORT": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "GAP_MOC_TS_SESSION_WINDOW_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -20499,20 +20016,37 @@
    ],
    "extra_row": [],
    "flags": [
-    "NO_ROW_ANYWHERE",
     "VECTOR_ONLY"
    ],
-   "gap_kind": "ALL",
-   "missing_row": [
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 3,
+    "CRYPTO_SHORT": 3,
+    "STOCKS_LONG": 3,
+    "STOCKS_SHORT": 3
+   },
+   "no_bold_default_in": [],
+   "present_in": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
     "STOCKS_LONG",
     "STOCKS_SHORT"
    ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
+   "tabs": {
+    "CRYPTO_LONG": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "CRYPTO_SHORT": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_LONG": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "GLOBAL_RISK_GATES"
+    ]
+   },
    "venue": "VECTOR_ONLY"
   },
   "GOLDEN_RULE_DC_15M_ENABLED": {
@@ -20699,89 +20233,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "GOLDEN_RULE_EXIT_MIN_IND": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
-  "GOLDEN_RULE_EXIT_MIN_TFS": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
-  "GOLDEN_RULE_HTF_VETO_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 2,
-    "CRYPTO_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "GOLDEN_RULE_HTF_VOTE_FILTER_TF": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -20815,20 +20266,37 @@
    ],
    "extra_row": [],
    "flags": [
-    "NO_ROW_ANYWHERE",
     "VECTOR_ONLY"
    ],
-   "gap_kind": "ALL",
-   "missing_row": [
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 3,
+    "CRYPTO_SHORT": 3,
+    "STOCKS_LONG": 3,
+    "STOCKS_SHORT": 3
+   },
+   "no_bold_default_in": [],
+   "present_in": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
     "STOCKS_LONG",
     "STOCKS_SHORT"
    ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
+   "tabs": {
+    "CRYPTO_LONG": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "CRYPTO_SHORT": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_LONG": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "GLOBAL_RISK_GATES"
+    ]
+   },
    "venue": "VECTOR_ONLY"
   },
   "GOLDEN_RULE_MULT_15M": {
@@ -20903,6 +20371,49 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "GOLDEN_RULE_MULT_BREAKOUT": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "extra_row": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 3,
+    "CRYPTO_SHORT": 3,
+    "STOCKS_LONG": 3,
+    "STOCKS_SHORT": 3
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ],
+    "CRYPTO_SHORT": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ]
+   },
+   "venue": "CRYPTO"
+  },
   "GOLDEN_RULE_MULT_D": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -20975,6 +20486,49 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "GOLDEN_RULE_RETEST_WINDOW_S": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "extra_row": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 3,
+    "CRYPTO_SHORT": 3,
+    "STOCKS_LONG": 3,
+    "STOCKS_SHORT": 3
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ],
+    "CRYPTO_SHORT": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_BREAKOUT_CHANNEL"
+    ]
+   },
+   "venue": "CRYPTO"
+  },
   "GRACEFUL_EXIT_FILE_TEMPLATE": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -21000,26 +20554,40 @@
     "CRYPTO_LONG",
     "STOCKS_LONG"
    ],
-   "extra_row": [],
+   "extra_row": [
+    "CRYPTO_SHORT",
+    "STOCKS_SHORT"
+   ],
    "flags": [
+    "EXTRA_ROW",
     "ONE_OPTION"
    ],
    "gap_kind": "",
    "missing_row": [],
    "n_rows": {
     "CRYPTO_LONG": 1,
-    "STOCKS_LONG": 1
+    "CRYPTO_SHORT": 1,
+    "STOCKS_LONG": 1,
+    "STOCKS_SHORT": 1
    },
    "no_bold_default_in": [],
    "present_in": [
     "CRYPTO_LONG",
-    "STOCKS_LONG"
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
    ],
    "tabs": {
     "CRYPTO_LONG": [
      "ENTRY_CONFIRMATION_GATES"
     ],
+    "CRYPTO_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
     "STOCKS_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_SHORT": [
      "ENTRY_CONFIRMATION_GATES"
     ]
    },
@@ -21030,26 +20598,40 @@
     "CRYPTO_LONG",
     "STOCKS_LONG"
    ],
-   "extra_row": [],
+   "extra_row": [
+    "CRYPTO_SHORT",
+    "STOCKS_SHORT"
+   ],
    "flags": [
+    "EXTRA_ROW",
     "ONE_OPTION"
    ],
    "gap_kind": "",
    "missing_row": [],
    "n_rows": {
     "CRYPTO_LONG": 1,
-    "STOCKS_LONG": 1
+    "CRYPTO_SHORT": 1,
+    "STOCKS_LONG": 1,
+    "STOCKS_SHORT": 1
    },
    "no_bold_default_in": [],
    "present_in": [
     "CRYPTO_LONG",
-    "STOCKS_LONG"
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
    ],
    "tabs": {
     "CRYPTO_LONG": [
      "ENTRY_CONFIRMATION_GATES"
     ],
+    "CRYPTO_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
     "STOCKS_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_SHORT": [
      "ENTRY_CONFIRMATION_GATES"
     ]
    },
@@ -21185,48 +20767,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "GR_TOTAL_VOTE_SCORE_MIN": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
    "venue": "BOTH"
   },
   "GR_V5_ARM_WINDOW_BARS": {
@@ -23246,30 +22786,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "HEDGE_TRIGGER_GR_SCORE_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
   "HEDGE_TRIGGER_LOSS_PCT": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -23480,6 +22996,51 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
+   "venue": "BOTH"
+  },
+  "HIGH_GAIN_AUGMENTATION_MIN_SIZE": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_BOLD_DEFAULT"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 5,
+    "CRYPTO_SHORT": 5,
+    "STOCKS_LONG": 3,
+    "STOCKS_SHORT": 4
+   },
+   "no_bold_default_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "AUGMENT_RISK_SIZING"
+    ],
+    "CRYPTO_SHORT": [
+     "AUGMENT_RISK_SIZING"
+    ],
+    "STOCKS_LONG": [
+     "AUGMENT_RISK_SIZING"
+    ],
+    "STOCKS_SHORT": [
+     "AUGMENT_RISK_SIZING"
+    ]
+   },
    "venue": "BOTH"
   },
   "HISTORY_PROV_ENABLED": {
@@ -24724,14 +24285,13 @@
    ],
    "extra_row": [],
    "flags": [
-    "NO_BOLD_DEFAULT",
-    "ONE_OPTION"
+    "NO_BOLD_DEFAULT"
    ],
    "gap_kind": "",
    "missing_row": [],
    "n_rows": {
     "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
+    "CRYPTO_SHORT": 2,
     "STOCKS_LONG": 1,
     "STOCKS_SHORT": 1
    },
@@ -24787,41 +24347,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "HTF_TREND_VETO_ON_REDUCE_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 2,
-    "STOCKS_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "HTF_TREND_VETO_SCORE_MIN_ABS": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -24844,83 +24369,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "HTF_VETO_REQUIRE_D": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 2,
-    "CRYPTO_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "HTF_WT_CHURN_REENTRY_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
    "venue": "BOTH"
   },
   "HTF_WT_CHURN_REENTRY_MAX_AGE_MIN": {
@@ -26312,48 +25760,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "K3M_FLOOR_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_SHORT": [
-     "EXIT_STRUCTURAL"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "K3M_FLOOR_LIVE_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -26731,6 +26137,49 @@
     ]
    },
    "venue": "STOCKS/SHORT"
+  },
+  "K_ZONE_VETO_ENABLED_TRADIER": {
+   "applies_to": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 2,
+    "CRYPTO_SHORT": 2,
+    "STOCKS_LONG": 2,
+    "STOCKS_SHORT": 2
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "CRYPTO_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ]
+   },
+   "venue": "STOCKS"
   },
   "LADDER_AUTO_SAVE_SECONDS": {
    "applies_to": [
@@ -27276,7 +26725,55 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "LIVE_ENTRY_ENGINE_DC_ENABLED": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "BOTH"
+  },
   "LIVE_ENTRY_ENGINE_FILTER_TF": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "BOTH"
+  },
+  "LIVE_ENTRY_ENGINE_HTF_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -27325,6 +26822,78 @@
    "venue": "BOTH"
   },
   "LIVE_ENTRY_ENGINE_REENTRY_SIZE_MULT": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "BOTH"
+  },
+  "LIVE_ENTRY_ENGINE_STDEV_MACRO_ENABLED": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "BOTH"
+  },
+  "LIVE_ENTRY_ENGINE_STOCH_ENABLED": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "BOTH"
+  },
+  "LIVE_ENTRY_ENGINE_WT_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -28050,6 +27619,49 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "LONG_STOCH_CHASE_BLOCK": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "STOCKS_LONG"
+   ],
+   "extra_row": [
+    "CRYPTO_SHORT",
+    "STOCKS_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 2,
+    "CRYPTO_SHORT": 2,
+    "STOCKS_LONG": 2,
+    "STOCKS_SHORT": 2
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "CRYPTO_SHORT": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_LONG": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "GLOBAL_RISK_GATES"
+    ]
+   },
+   "venue": "BOTH/LONG"
+  },
   "LONG_STRUCT_EXIT_TF": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -28482,48 +28094,6 @@
    },
    "venue": "BOTH"
   },
-  "LR_BAND_ENTRY_SIDES": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "LR_BAND_EXIT_EXEMPT": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -28860,48 +28430,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "LR_BAND_LADDER_MODE": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "LR_BAND_LADDER_TF_BOTTOM": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -28951,48 +28479,6 @@
    "venue": "BOTH"
   },
   "LR_BAND_LADDER_TOP_MULT": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "LR_BAND_LADDER_TRIGGER": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -29173,30 +28659,6 @@
    "venue": "BOTH"
   },
   "LR_BAND_SLOPE_FLIP_EXIT_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
-  "LR_BAND_SLOPE_FLIP_MIN_HOLD_MIN": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -29988,48 +29450,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "MANDATORY_REENTRY_WT_FILTER_TF_MODE": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_REVERSAL_BOUNCE"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_REVERSAL_BOUNCE"
-    ],
-    "STOCKS_LONG": [
-     "ENTRY_REVERSAL_BOUNCE"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_REVERSAL_BOUNCE"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "MARGIN_FREE_CLOSE_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -30617,13 +30037,15 @@
    "missing_row": [],
    "n_rows": {
     "CRYPTO_LONG": 4,
-    "CRYPTO_SHORT": 3,
+    "CRYPTO_SHORT": 4,
     "STOCKS_LONG": 4,
-    "STOCKS_SHORT": 5
+    "STOCKS_SHORT": 4
    },
    "no_bold_default_in": [
     "CRYPTO_LONG",
-    "CRYPTO_SHORT"
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
    ],
    "present_in": [
     "CRYPTO_LONG",
@@ -31251,6 +30673,46 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "MIN_EDGE_OVER_FEE_ENABLED": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "CRYPTO"
+  },
+  "MIN_EDGE_OVER_FEE_MULT": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "CRYPTO"
+  },
   "MIN_EXIT_TF_AGAINST_TRADIER": {
    "applies_to": [
     "STOCKS_LONG",
@@ -31295,7 +30757,56 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "MIN_HOLD_BARS_15m": {
+  "MIN_HOLD_MINUTES_TRADIER": {
+   "applies_to": [],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "flags": [
+    "ORPHAN",
+    "NO_BOLD_DEFAULT",
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 5,
+    "CRYPTO_SHORT": 5,
+    "STOCKS_LONG": 4,
+    "STOCKS_SHORT": 4
+   },
+   "no_bold_default_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "CRYPTO_SHORT": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_LONG": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "GLOBAL_RISK_GATES"
+    ]
+   },
+   "venue": "ORPHAN"
+  },
+  "MIN_HOLD_PROTECTION_EXEMPT": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -31318,94 +30829,6 @@
    "present_in": [],
    "tabs": {},
    "venue": "BOTH"
-  },
-  "MIN_HOLD_BARS_TRADIER": {
-   "applies_to": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "STOCKS"
-  },
-  "MIN_HOLD_LIVE_SECONDS_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE",
-    "VECTOR_ONLY"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "VECTOR_ONLY"
-  },
-  "MIN_HOLD_MINUTES_TRADIER": {
-   "applies_to": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "flags": [
-    "EXTRA_ROW"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 4,
-    "CRYPTO_SHORT": 4,
-    "STOCKS_LONG": 4,
-    "STOCKS_SHORT": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "STOCKS"
   },
   "MIN_KLINES_THRESHOLD": {
    "applies_to": [
@@ -32737,41 +32160,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "MOMENTUM_TP_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 2,
-    "CRYPTO_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "MOMENTUM_WATCHDOG_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -33599,146 +32987,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "MTF_ATR_TRAIL_TF": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 4,
-    "CRYPTO_SHORT": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_VELOCITY"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_VELOCITY"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "MTF_BB_REJECT_EXIT_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 2,
-    "CRYPTO_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_VELOCITY"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_VELOCITY"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "MTF_BB_REJECT_EXIT_LOOKBACK": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 2,
-    "CRYPTO_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_VELOCITY"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_VELOCITY"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "MTF_DC_REJECT_EXIT_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 2,
-    "CRYPTO_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_VELOCITY"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_VELOCITY"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "MTF_DC_REJECT_EXIT_LOOKBACK": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -33781,41 +33029,6 @@
    },
    "venue": "BOTH"
   },
-  "MTF_DC_REJECT_EXIT_TF": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 4,
-    "CRYPTO_SHORT": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_VELOCITY"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_VELOCITY"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "MTF_DC_REJECT_FILTER_TF": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -33844,41 +33057,6 @@
    "tabs": {
     "CRYPTO_SHORT": [
      "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "MTF_DC_REJECT_USE_DC4": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 2,
-    "CRYPTO_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_VELOCITY"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_VELOCITY"
     ]
    },
    "venue": "BOTH"
@@ -33931,41 +33109,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "MTF_GR_EXIT_GATE_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 2,
-    "CRYPTO_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_VELOCITY"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_VELOCITY"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "MTF_GR_EXIT_MIN_IND": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -33988,41 +33131,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "MTF_GR_EXIT_MIN_TFS": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 3,
-    "CRYPTO_SHORT": 3
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_VELOCITY"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_VELOCITY"
-    ]
-   },
    "venue": "BOTH"
   },
   "MTF_GR_MIN_TFS": {
@@ -34113,76 +33221,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "MTF_WT_CROSS_EXIT_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 2,
-    "CRYPTO_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_VELOCITY"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_VELOCITY"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "MTF_WT_CROSS_EXIT_TF": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 2,
-    "CRYPTO_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_VELOCITY"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_VELOCITY"
-    ]
-   },
    "venue": "BOTH"
   },
   "MTS_BOTTOM_MIN": {
@@ -34695,133 +33733,7 @@
    },
    "venue": "BOTH"
   },
-  "MU_CORRECTION_HTF_TFS": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "MU_CORRECTION_LTF_FALL_MIN_TFS": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "MU_CORRECTION_LTF_FALL_TFS": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "MU_CORRECTION_MIN_GAIN_PCT": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -35129,8 +34041,8 @@
    ],
    "n_rows": {
     "CRYPTO_SHORT": 40,
-    "STOCKS_LONG": 40,
-    "STOCKS_SHORT": 32
+    "STOCKS_LONG": 50,
+    "STOCKS_SHORT": 40
    },
    "no_bold_default_in": [],
    "present_in": [
@@ -35220,48 +34132,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "NEWBORN_LOSS_KILL_VEL_TF": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
    "venue": "BOTH"
   },
   "NEWBORN_PROTECT_FILTER_TF": {
@@ -35562,48 +34432,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "NOLOSS_MIN_PROFIT_PCT": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "REDUCE_PROFIT_LOCK"
-    ],
-    "CRYPTO_SHORT": [
-     "REDUCE_PROFIT_LOCK"
-    ],
-    "STOCKS_LONG": [
-     "REDUCE_PROFIT_LOCK"
-    ],
-    "STOCKS_SHORT": [
-     "REDUCE_PROFIT_LOCK"
-    ]
-   },
    "venue": "BOTH"
   },
   "NOLOSS_MIN_PROFIT_PCT_TRADIER": {
@@ -36185,48 +35013,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "OBLIGATORY_REENTRY_SMA_FIELD": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "REENTRY_WINDOWED"
-    ],
-    "CRYPTO_SHORT": [
-     "REENTRY_WINDOWED"
-    ],
-    "STOCKS_LONG": [
-     "REENTRY_WINDOWED"
-    ],
-    "STOCKS_SHORT": [
-     "REENTRY_WINDOWED"
-    ]
-   },
    "venue": "BOTH"
   },
   "OBLIGATORY_SECTOR_HEDGE_ENABLED": {
@@ -37085,19 +35871,30 @@
    ],
    "extra_row": [],
    "flags": [
-    "NO_ROW_ANYWHERE"
+    "MISSING_ROW"
    ],
-   "gap_kind": "ALL",
+   "gap_kind": "VENUE",
    "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
     "STOCKS_LONG",
     "STOCKS_SHORT"
    ],
-   "n_rows": {},
+   "n_rows": {
+    "CRYPTO_LONG": 2,
+    "CRYPTO_SHORT": 2
+   },
    "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "EXIT_VELOCITY"
+    ],
+    "CRYPTO_SHORT": [
+     "EXIT_VELOCITY"
+    ]
+   },
    "venue": "BOTH"
   },
   "OPTIONS_ALERT_ABS_LOSS_PP": {
@@ -40449,6 +39246,26 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "PARITY_NON_VECTORIZABLE_SWITCHES": {
+   "applies_to": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "STOCKS"
+  },
   "PARITY_VEC_EXACT_FAMILIES": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -40616,41 +39433,6 @@
    "present_in": [],
    "tabs": {},
    "venue": "STOCKS"
-  },
-  "PARTIAL_PROFIT_LOCK_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 2,
-    "STOCKS_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "REDUCE_PROFIT_LOCK"
-    ],
-    "STOCKS_SHORT": [
-     "REDUCE_PROFIT_LOCK"
-    ]
-   },
-   "venue": "BOTH"
   },
   "PARTIAL_PROFIT_LOCK_SLIPPAGE_PCT": {
    "applies_to": [
@@ -40846,45 +39628,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "SIDE",
-   "missing_row": [
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 4,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
    "venue": "BOTH"
   },
   "PEAK_GIVEBACK_NEGATIVE_GAIN_FLOOR_PCT": {
@@ -42281,6 +41024,65 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "QTY_STREAK_MAX_MULT": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "MISSING_ROW"
+   ],
+   "gap_kind": "VENUE",
+   "missing_row": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "n_rows": {
+    "CRYPTO_LONG": 3,
+    "CRYPTO_SHORT": 3
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "STDEV_SLOPE_SIZING"
+    ],
+    "CRYPTO_SHORT": [
+     "STDEV_SLOPE_SIZING"
+    ]
+   },
+   "venue": "BOTH"
+  },
+  "QTY_STREAK_WIN_STEP": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "BOTH"
+  },
   "QUICK_BANDAID_OFF_VEC_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -42766,6 +41568,26 @@
     ]
    },
    "venue": "BOTH"
+  },
+  "QUICK_REDUCE_NATIVE_ENABLED": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "CRYPTO"
   },
   "QUICK_REDUCE_STRONG_REDUCE_VEC_ENABLED": {
    "applies_to": [
@@ -43442,30 +42264,6 @@
    "venue": "BOTH"
   },
   "RATIO_CLOSE_LOSING_MIN_SKEW_PP": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
-  "RATIO_CLOSE_LOSING_OVERWEIGHT": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -46485,7 +45283,10 @@
   "REENTRY_TIER2_MAX_MINUTES": {
    "applies_to": [],
    "extra_row": [
-    "STOCKS_LONG"
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
    ],
    "flags": [
     "ORPHAN",
@@ -46495,16 +45296,34 @@
    "gap_kind": "",
    "missing_row": [],
    "n_rows": {
-    "STOCKS_LONG": 4
+    "CRYPTO_LONG": 4,
+    "CRYPTO_SHORT": 4,
+    "STOCKS_LONG": 4,
+    "STOCKS_SHORT": 4
    },
    "no_bold_default_in": [
-    "STOCKS_LONG"
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
    ],
    "present_in": [
-    "STOCKS_LONG"
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
    ],
    "tabs": {
+    "CRYPTO_LONG": [
+     "REENTRY_WINDOWED"
+    ],
+    "CRYPTO_SHORT": [
+     "REENTRY_WINDOWED"
+    ],
     "STOCKS_LONG": [
+     "REENTRY_WINDOWED"
+    ],
+    "STOCKS_SHORT": [
      "REENTRY_WINDOWED"
     ]
    },
@@ -46539,41 +45358,6 @@
    },
    "venue": "ORPHAN"
   },
-  "REENTRY_TIER2_MIN_MINUTES": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 3,
-    "CRYPTO_SHORT": 3
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "REENTRY_WINDOWED"
-    ],
-    "CRYPTO_SHORT": [
-     "REENTRY_WINDOWED"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "REENTRY_TIER2_MIN_MINUTES_TRADIER": {
    "applies_to": [
     "STOCKS_LONG",
@@ -46603,41 +45387,6 @@
     ]
    },
    "venue": "STOCKS"
-  },
-  "REENTRY_TIER2_PRICE_PCT": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 3,
-    "CRYPTO_SHORT": 3
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "REENTRY_WINDOWED"
-    ],
-    "CRYPTO_SHORT": [
-     "REENTRY_WINDOWED"
-    ]
-   },
-   "venue": "BOTH"
   },
   "REENTRY_TIER2_PRICE_PCT_TRADIER": {
    "applies_to": [
@@ -46708,19 +45457,42 @@
     "CRYPTO_LONG",
     "CRYPTO_SHORT"
    ],
-   "extra_row": [],
+   "extra_row": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
    "flags": [
-    "NO_ROW_ANYWHERE"
+    "EXTRA_ROW"
    ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {},
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 2,
+    "CRYPTO_SHORT": 2,
+    "STOCKS_LONG": 2,
+    "STOCKS_SHORT": 2
+   },
    "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "REENTRY_WINDOWED"
+    ],
+    "CRYPTO_SHORT": [
+     "REENTRY_WINDOWED"
+    ],
+    "STOCKS_LONG": [
+     "REENTRY_WINDOWED"
+    ],
+    "STOCKS_SHORT": [
+     "REENTRY_WINDOWED"
+    ]
+   },
    "venue": "CRYPTO"
   },
   "REENTRY_WAVETREND_CONFIRM_ENABLED": {
@@ -46987,30 +45759,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "REGIME_RANGING_MIN_HOLD_BARS": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
   "REGIME_RANGING_NOLOSS_MIN": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -47204,30 +45952,6 @@
    "venue": "BOTH"
   },
   "REGIME_TRENDING_K_ZONE_BONUS": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
-  "REGIME_TRENDING_MIN_HOLD_BARS": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -50679,36 +49403,6 @@
    "present_in": [],
    "tabs": {},
    "venue": "BOTH"
-  },
-  "SATOSHIT_SHORT_HA_STREAK_MIN": {
-   "applies_to": [
-    "CRYPTO_SHORT",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_SHORT": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_SHORT",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH/SHORT"
   },
   "SATOSHIT_SHORT_MFI_MIN": {
    "applies_to": [
@@ -55458,7 +54152,7 @@
    "n_rows": {
     "CRYPTO_LONG": 2,
     "CRYPTO_SHORT": 2,
-    "STOCKS_LONG": 1,
+    "STOCKS_LONG": 4,
     "STOCKS_SHORT": 4
    },
    "no_bold_default_in": [],
@@ -55544,7 +54238,7 @@
    "n_rows": {
     "CRYPTO_LONG": 2,
     "CRYPTO_SHORT": 2,
-    "STOCKS_LONG": 1,
+    "STOCKS_LONG": 4,
     "STOCKS_SHORT": 4
    },
    "no_bold_default_in": [],
@@ -55587,7 +54281,7 @@
    "n_rows": {
     "CRYPTO_LONG": 2,
     "CRYPTO_SHORT": 2,
-    "STOCKS_LONG": 1,
+    "STOCKS_LONG": 4,
     "STOCKS_SHORT": 4
    },
    "no_bold_default_in": [],
@@ -55609,6 +54303,49 @@
     ],
     "STOCKS_SHORT": [
      "GLOBAL_RISK_GATES"
+    ]
+   },
+   "venue": "BOTH/SHORT"
+  },
+  "SHORT_RSI_MIN_1H": {
+   "applies_to": [
+    "CRYPTO_SHORT",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "STOCKS_LONG"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 4,
+    "CRYPTO_SHORT": 4,
+    "STOCKS_LONG": 4,
+    "STOCKS_SHORT": 4
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "CRYPTO_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
     ]
    },
    "venue": "BOTH/SHORT"
@@ -56567,6 +55304,26 @@
    },
    "venue": "VECTOR_ONLY"
   },
+  "STALE_SET_APPLY_EPOCH": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "CRYPTO"
+  },
   "STALE_SET_HALT_DAYS": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -56638,6 +55395,26 @@
    "present_in": [],
    "tabs": {},
    "venue": "BOTH"
+  },
+  "STALE_SET_RECALC_EPOCH": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "CRYPTO"
   },
   "STALE_WARNING_INTERVAL_SECONDS": {
    "applies_to": [
@@ -56804,7 +55581,9 @@
    },
    "no_bold_default_in": [
     "CRYPTO_LONG",
-    "CRYPTO_SHORT"
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
    ],
    "present_in": [
     "CRYPTO_LONG",
@@ -56965,6 +55744,141 @@
    "present_in": [],
    "tabs": {},
    "venue": "BOTH"
+  },
+  "STDEV_BOUNCE_PCTB_LONG": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "STOCKS_LONG"
+   ],
+   "extra_row": [
+    "CRYPTO_SHORT",
+    "STOCKS_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 3,
+    "CRYPTO_SHORT": 3,
+    "STOCKS_LONG": 3,
+    "STOCKS_SHORT": 3
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_REVERSAL_BOUNCE"
+    ],
+    "CRYPTO_SHORT": [
+     "ENTRY_REVERSAL_BOUNCE"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_REVERSAL_BOUNCE"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_REVERSAL_BOUNCE"
+    ]
+   },
+   "venue": "BOTH/LONG"
+  },
+  "STDEV_BOUNCE_PCTB_SHORT": {
+   "applies_to": [
+    "CRYPTO_SHORT",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "STOCKS_LONG"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 3,
+    "CRYPTO_SHORT": 3,
+    "STOCKS_LONG": 3,
+    "STOCKS_SHORT": 3
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_REVERSAL_BOUNCE"
+    ],
+    "CRYPTO_SHORT": [
+     "ENTRY_REVERSAL_BOUNCE"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_REVERSAL_BOUNCE"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_REVERSAL_BOUNCE"
+    ]
+   },
+   "venue": "BOTH/SHORT"
+  },
+  "STDEV_BOUNCE_SCORE": {
+   "applies_to": [],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "flags": [
+    "ORPHAN",
+    "NO_BOLD_DEFAULT",
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 3,
+    "CRYPTO_SHORT": 3,
+    "STOCKS_LONG": 3,
+    "STOCKS_SHORT": 3
+   },
+   "no_bold_default_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_REVERSAL_BOUNCE"
+    ],
+    "CRYPTO_SHORT": [
+     "ENTRY_REVERSAL_BOUNCE"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_REVERSAL_BOUNCE"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_REVERSAL_BOUNCE"
+    ]
+   },
+   "venue": "ORPHAN"
   },
   "STDEV_BREAKOUT_COOLDOWN": {
    "applies_to": [
@@ -57406,7 +56320,7 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "STDEV_BULL_SLOPE_BOOST_ENABLED": {
+  "STDEV_BULL_SLOPE_BOOST_MULT": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -57446,7 +56360,7 @@
    },
    "venue": "BOTH"
   },
-  "STDEV_BULL_SLOPE_BOOST_MULT": {
+  "STDEV_LADDER_MAX_MULT": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -57455,32 +56369,27 @@
    ],
    "extra_row": [],
    "flags": [
-    "MISSING_ROW",
-    "ONE_OPTION"
+    "MISSING_ROW"
    ],
-   "gap_kind": "SIDE",
+   "gap_kind": "VENUE",
    "missing_row": [
-    "STOCKS_SHORT"
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
    ],
    "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1
+    "STOCKS_LONG": 3,
+    "STOCKS_SHORT": 3
    },
    "no_bold_default_in": [],
    "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG"
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
    ],
    "tabs": {
-    "CRYPTO_LONG": [
-     "STDEV_SLOPE_SIZING"
-    ],
-    "CRYPTO_SHORT": [
-     "STDEV_SLOPE_SIZING"
-    ],
     "STOCKS_LONG": [
+     "STDEV_SLOPE_SIZING"
+    ],
+    "STOCKS_SHORT": [
      "STDEV_SLOPE_SIZING"
     ]
    },
@@ -57622,48 +56531,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "STDEV_SLOPE_LOOKBACK_15M": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "STDEV_SLOPE_SIZING"
-    ],
-    "CRYPTO_SHORT": [
-     "STDEV_SLOPE_SIZING"
-    ],
-    "STOCKS_LONG": [
-     "STDEV_SLOPE_SIZING"
-    ],
-    "STOCKS_SHORT": [
-     "STDEV_SLOPE_SIZING"
-    ]
-   },
    "venue": "BOTH"
   },
   "STDEV_SLOPE_LOOKBACK_1H": {
@@ -57960,48 +56827,6 @@
    },
    "venue": "BOTH"
   },
-  "STDEV_SLOPE_SIZING_MODE": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "STDEV_SLOPE_SIZING"
-    ],
-    "CRYPTO_SHORT": [
-     "STDEV_SLOPE_SIZING"
-    ],
-    "STOCKS_LONG": [
-     "STDEV_SLOPE_SIZING"
-    ],
-    "STOCKS_SHORT": [
-     "STDEV_SLOPE_SIZING"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "STOCH_1H_EXIT_K_MIN": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -58210,31 +57035,6 @@
    "tabs": {},
    "venue": "VECTOR_ONLY"
   },
-  "STOCKS_OPENING_BUFFER_ENTRY_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE",
-    "VECTOR_ONLY"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "VECTOR_ONLY"
-  },
   "STOCKS_OPEN_CEIL_SPS_ENABLED": {
    "applies_to": [
     "STOCKS_LONG",
@@ -58324,26 +57124,6 @@
    "present_in": [],
    "tabs": {},
    "venue": "VECTOR_ONLY"
-  },
-  "STOCK_LIVE_AUGMENT_ONLY": {
-   "applies_to": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "STOCKS"
   },
   "STOCK_SENTIMENT_STRATEGY_ENABLED": {
    "applies_to": [
@@ -58642,30 +57422,6 @@
    "venue": "BOTH"
   },
   "STRUCTURAL_RANGE_SHIFT_K_LOW": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
-  "STRUCTURAL_RANGE_SHIFT_PROXIMITY_BPS": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -59577,6 +58333,30 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "SYMBOL_LOSS_STREAK_BREAKER_ENABLED": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "BOTH"
+  },
   "SYMBOL_PERF_DECAY_HOURS": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -59770,30 +58550,6 @@
    "venue": "BOTH"
   },
   "SYNTHETIC_LOSER_THRESHOLD_PCT": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
-  "TARGET_DC_IMMEDIATE_REENTRY_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -61061,41 +59817,6 @@
    "tabs": {},
    "venue": "STOCKS"
   },
-  "TRADIER_DC_DAYTRADE_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 2,
-    "STOCKS_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "TRADIER_DC_DAYTRADE_MAX_HOLD_MINUTES": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -61119,164 +59840,6 @@
    "present_in": [],
    "tabs": {},
    "venue": "BOTH"
-  },
-  "TRADIER_DC_DAYTRADE_REQUIRE_1H_EXPANSION": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 2,
-    "STOCKS_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "TRADIER_DC_DAYTRADE_STOP_PCT": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 4,
-    "STOCKS_SHORT": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_SHORT": [
-     "EXIT_STRUCTURAL"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "TRADIER_DC_DAYTRADE_STOP_USE_DC4_15M": {
-   "applies_to": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "flags": [
-    "EXTRA_ROW",
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_SHORT": [
-     "EXIT_STRUCTURAL"
-    ]
-   },
-   "venue": "STOCKS"
-  },
-  "TRADIER_DC_DAYTRADE_STOP_USE_DC_15M": {
-   "applies_to": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "flags": [
-    "EXTRA_ROW",
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_SHORT": [
-     "EXIT_STRUCTURAL"
-    ]
-   },
-   "venue": "STOCKS"
   },
   "TRADIER_DC_DAYTRADE_TARGET_DC_BUFFER_PCT": {
    "applies_to": [
@@ -61321,41 +59884,6 @@
     ]
    },
    "venue": "STOCKS"
-  },
-  "TRADIER_DC_DAYTRADE_TARGET_PCT": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 4,
-    "STOCKS_SHORT": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
   },
   "TRADIER_DC_DAYTRADE_TARGET_USE_DC4_15M": {
    "applies_to": [
@@ -61445,41 +59973,6 @@
    },
    "venue": "STOCKS"
   },
-  "TRADIER_DC_POSITION_ENTRY_THRESHOLD": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 4,
-    "STOCKS_SHORT": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
   "TRADIER_EMERGENCY_ANTI_CHURN_GATES_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -61502,278 +59995,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "TRADIER_ENTRY_SCORE_THRESHOLD": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 4,
-    "STOCKS_SHORT": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "TRADIER_FH_MOMENTUM_DC_CONFIRM": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 2,
-    "STOCKS_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "TRADIER_FH_MOMENTUM_DC_MAX_LONG": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "STOCKS_LONG"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "SIDE",
-   "missing_row": [
-    "CRYPTO_LONG"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH/LONG"
-  },
-  "TRADIER_FH_MOMENTUM_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 2,
-    "STOCKS_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "TRADIER_FH_MOMENTUM_MFI_CONFIRM": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 2,
-    "STOCKS_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "TRADIER_FH_MOMENTUM_MFI_MIN": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 4,
-    "STOCKS_SHORT": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "TRADIER_FH_MOMENTUM_MIN_MOVE_PCT": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 4,
-    "STOCKS_SHORT": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "TRADIER_FH_MOMENTUM_WINDOW_MINUTES": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 4,
-    "STOCKS_SHORT": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "GLOBAL_RISK_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
    "venue": "BOTH"
   },
   "TRADIER_FIXED_STOP_BROKER_BACKSTOP_ENABLED": {
@@ -61952,6 +60173,68 @@
    "tabs": {},
    "venue": "STOCKS"
   },
+  "TRADIER_K_ZONE_LONG_THRESHOLD_TRADIER": {
+   "applies_to": [
+    "STOCKS_LONG"
+   ],
+   "extra_row": [
+    "CRYPTO_LONG"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 3,
+    "STOCKS_LONG": 4
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "STOCKS_LONG"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ]
+   },
+   "venue": "STOCKS/LONG"
+  },
+  "TRADIER_K_ZONE_SHORT_THRESHOLD_TRADIER": {
+   "applies_to": [
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [
+    "CRYPTO_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_SHORT": 3,
+    "STOCKS_SHORT": 4
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_SHORT",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ]
+   },
+   "venue": "STOCKS/SHORT"
+  },
   "TRADIER_LOCAL_EXTREMES_SCORING_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -62095,27 +60378,58 @@
    },
    "venue": "BOTH/LONG"
   },
-  "TRADIER_MIN_HOLD_MINUTES": {
+  "TRADIER_MFI_ENTRY_LONG_TRADIER": {
    "applies_to": [
+    "STOCKS_LONG"
+   ],
+   "extra_row": [
+    "CRYPTO_LONG"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 4,
+    "STOCKS_LONG": 4
+   },
+   "no_bold_default_in": [],
+   "present_in": [
     "CRYPTO_LONG",
-    "CRYPTO_SHORT",
+    "STOCKS_LONG"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ]
+   },
+   "venue": "STOCKS/LONG"
+  },
+  "TRADIER_MIN_HOLD_MINUTES": {
+   "applies_to": [],
+   "extra_row": [
     "STOCKS_LONG",
     "STOCKS_SHORT"
    ],
-   "extra_row": [],
    "flags": [
-    "MISSING_ROW"
+    "ORPHAN",
+    "NO_BOLD_DEFAULT",
+    "EXTRA_ROW"
    ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
+   "gap_kind": "",
+   "missing_row": [],
    "n_rows": {
     "STOCKS_LONG": 4,
     "STOCKS_SHORT": 4
    },
-   "no_bold_default_in": [],
+   "no_bold_default_in": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
    "present_in": [
     "STOCKS_LONG",
     "STOCKS_SHORT"
@@ -62128,7 +60442,78 @@
      "EXIT_STRUCTURAL"
     ]
    },
-   "venue": "BOTH"
+   "venue": "ORPHAN"
+  },
+  "TRADIER_MIN_HOLD_MINUTES_SHORT": {
+   "applies_to": [],
+   "extra_row": [
+    "STOCKS_SHORT"
+   ],
+   "flags": [
+    "ORPHAN",
+    "NO_BOLD_DEFAULT",
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "STOCKS_SHORT": 4
+   },
+   "no_bold_default_in": [
+    "STOCKS_SHORT"
+   ],
+   "present_in": [
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "STOCKS_SHORT": [
+     "EXIT_STRUCTURAL"
+    ]
+   },
+   "venue": "ORPHAN/SHORT"
+  },
+  "TRADIER_MI_ENTRY_ENABLED_TRADIER": {
+   "applies_to": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 2,
+    "CRYPTO_SHORT": 2,
+    "STOCKS_LONG": 2,
+    "STOCKS_SHORT": 2
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "CRYPTO_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ]
+   },
+   "venue": "STOCKS"
   },
   "TRADIER_MI_EXIT_ENABLED_TRADIER": {
    "applies_to": [
@@ -62149,41 +60534,6 @@
    "present_in": [],
    "tabs": {},
    "venue": "STOCKS"
-  },
-  "TRADIER_MI_SUBSIGNAL_MIN_COUNT": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_LONG": 4,
-    "STOCKS_SHORT": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
-   "venue": "BOTH"
   },
   "TRADIER_NOLOSS_SRS_BYPASS": {
    "applies_to": [
@@ -62707,7 +61057,7 @@
    "n_rows": {
     "CRYPTO_LONG": 5,
     "CRYPTO_SHORT": 5,
-    "STOCKS_LONG": 4,
+    "STOCKS_LONG": 5,
     "STOCKS_SHORT": 5
    },
    "no_bold_default_in": [],
@@ -62775,6 +61125,68 @@
     ]
    },
    "venue": "BOTH/SHORT"
+  },
+  "TRADIER_RSI_ENTRY_LONG_TRADIER": {
+   "applies_to": [
+    "STOCKS_LONG"
+   ],
+   "extra_row": [
+    "CRYPTO_LONG"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 4,
+    "STOCKS_LONG": 4
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "STOCKS_LONG"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ]
+   },
+   "venue": "STOCKS/LONG"
+  },
+  "TRADIER_RSI_ENTRY_SHORT_TRADIER": {
+   "applies_to": [
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [
+    "CRYPTO_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_SHORT": 4,
+    "STOCKS_SHORT": 4
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_SHORT",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ]
+   },
+   "venue": "STOCKS/SHORT"
   },
   "TRADIER_RSI_LONG_15M": {
    "applies_to": [
@@ -62976,33 +61388,6 @@
    "tabs": {},
    "venue": "BOTH/SHORT"
   },
-  "TRADIER_RSI_SHORT_REL_VOLUME_MIN": {
-   "applies_to": [
-    "CRYPTO_SHORT",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "SIDE",
-   "missing_row": [
-    "CRYPTO_SHORT"
-   ],
-   "n_rows": {
-    "STOCKS_SHORT": 4
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_SHORT": [
-     "GLOBAL_RISK_GATES"
-    ]
-   },
-   "venue": "BOTH/SHORT"
-  },
   "TRADIER_RSI_SHORT_RVOL_15M": {
    "applies_to": [
     "CRYPTO_SHORT",
@@ -63066,6 +61451,130 @@
    "present_in": [],
    "tabs": {},
    "venue": "BOTH"
+  },
+  "TRADIER_STOCH_ENTRY_LONG_TRADIER": {
+   "applies_to": [
+    "STOCKS_LONG"
+   ],
+   "extra_row": [
+    "CRYPTO_LONG"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 4,
+    "STOCKS_LONG": 4
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "STOCKS_LONG"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_CONFIRMATION_GATES"
+    ]
+   },
+   "venue": "STOCKS/LONG"
+  },
+  "TRADIER_STOCH_ENTRY_SHORT_TRADIER": {
+   "applies_to": [
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [
+    "CRYPTO_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_SHORT": 4,
+    "STOCKS_SHORT": 4
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_SHORT",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_CONFIRMATION_GATES"
+    ]
+   },
+   "venue": "STOCKS/SHORT"
+  },
+  "TRADIER_STOCH_EXTREME_LONG_TRADIER": {
+   "applies_to": [
+    "STOCKS_LONG"
+   ],
+   "extra_row": [
+    "CRYPTO_LONG"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_LONG": 3,
+    "STOCKS_LONG": 4
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "STOCKS_LONG"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_LONG": [
+     "GLOBAL_RISK_GATES"
+    ]
+   },
+   "venue": "STOCKS/LONG"
+  },
+  "TRADIER_STOCH_EXTREME_SHORT_TRADIER": {
+   "applies_to": [
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [
+    "CRYPTO_SHORT"
+   ],
+   "flags": [
+    "EXTRA_ROW"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_SHORT": 3,
+    "STOCKS_SHORT": 4
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_SHORT",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_SHORT": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "GLOBAL_RISK_GATES"
+    ]
+   },
+   "venue": "STOCKS/SHORT"
   },
   "TRADIER_STREAMING_URL": {
    "applies_to": [
@@ -63184,22 +61693,35 @@
     "STOCKS_LONG",
     "STOCKS_SHORT"
    ],
-   "extra_row": [],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
    "flags": [
-    "ONE_OPTION"
+    "EXTRA_ROW"
    ],
    "gap_kind": "",
    "missing_row": [],
    "n_rows": {
+    "CRYPTO_LONG": 3,
+    "CRYPTO_SHORT": 3,
     "STOCKS_LONG": 1,
     "STOCKS_SHORT": 1
    },
    "no_bold_default_in": [],
    "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
     "STOCKS_LONG",
     "STOCKS_SHORT"
    ],
    "tabs": {
+    "CRYPTO_LONG": [
+     "EXIT_STRUCTURAL"
+    ],
+    "CRYPTO_SHORT": [
+     "EXIT_STRUCTURAL"
+    ],
     "STOCKS_LONG": [
      "EXIT_STRUCTURAL"
     ],
@@ -63214,22 +61736,35 @@
     "STOCKS_LONG",
     "STOCKS_SHORT"
    ],
-   "extra_row": [],
+   "extra_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
    "flags": [
-    "ONE_OPTION"
+    "EXTRA_ROW"
    ],
    "gap_kind": "",
    "missing_row": [],
    "n_rows": {
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
+    "CRYPTO_LONG": 3,
+    "CRYPTO_SHORT": 3,
+    "STOCKS_LONG": 3,
+    "STOCKS_SHORT": 3
    },
    "no_bold_default_in": [],
    "present_in": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
     "STOCKS_LONG",
     "STOCKS_SHORT"
    ],
    "tabs": {
+    "CRYPTO_LONG": [
+     "EXIT_STRUCTURAL"
+    ],
+    "CRYPTO_SHORT": [
+     "EXIT_STRUCTURAL"
+    ],
     "STOCKS_LONG": [
      "EXIT_STRUCTURAL"
     ],
@@ -66830,30 +65365,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "V8Q_MIN_HOLD_BARS": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
   "V8Q_STRENGTH_FILTER_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -67115,7 +65626,47 @@
    "tabs": {},
    "venue": "VECTOR_ONLY"
   },
+  "VEC_BACKSTOP_ENABLED": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "CRYPTO"
+  },
   "VEC_BACKSTOP_SYNC_ENABLED": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "CRYPTO"
+  },
+  "VEC_BAR_STATE_REMOVED": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT"
@@ -67194,6 +65745,30 @@
    "present_in": [],
    "tabs": {},
    "venue": "CRYPTO"
+  },
+  "VEC_CROSS_CONFIRM_REQUIRES_BOARD": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "BOTH"
   },
   "VEC_DRIVEN_CONSUMER_INTERVAL_S": {
    "applies_to": [
@@ -67853,6 +66428,30 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "VEC_PRIORITY_ENABLED": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "NO_ROW_ANYWHERE"
+   ],
+   "gap_kind": "ALL",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "n_rows": {},
+   "no_bold_default_in": [],
+   "present_in": [],
+   "tabs": {},
+   "venue": "BOTH"
+  },
   "VEC_RATIO_REDUCE_PROXY_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -68182,7 +66781,9 @@
   "VIGILANCE_BLOCK_HOURS": {
    "applies_to": [
     "CRYPTO_LONG",
-    "CRYPTO_SHORT"
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
    ],
    "extra_row": [],
    "flags": [
@@ -68191,13 +66792,15 @@
    "gap_kind": "ALL",
    "missing_row": [
     "CRYPTO_LONG",
-    "CRYPTO_SHORT"
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
    ],
    "n_rows": {},
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "CRYPTO"
+   "venue": "BOTH"
   },
   "VIGILANCE_CONSEC_UNTIL_UTC": {
    "applies_to": [
@@ -68222,22 +66825,37 @@
   "VIGILANCE_DC4_STOP_ARMED": {
    "applies_to": [
     "CRYPTO_LONG",
-    "CRYPTO_SHORT"
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
    ],
    "extra_row": [],
    "flags": [
-    "NO_ROW_ANYWHERE"
+    "MISSING_ROW"
    ],
-   "gap_kind": "ALL",
+   "gap_kind": "VENUE",
    "missing_row": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT"
    ],
-   "n_rows": {},
+   "n_rows": {
+    "STOCKS_LONG": 2,
+    "STOCKS_SHORT": 2
+   },
    "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "CRYPTO"
+   "present_in": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "STOCKS_LONG": [
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_SHORT": [
+     "GLOBAL_RISK_GATES"
+    ]
+   },
+   "venue": "BOTH"
   },
   "VIX_EXTREME_THRESHOLD": {
    "applies_to": [
@@ -68447,89 +67065,6 @@
      "ENTRY_CONFIRMATION_GATES"
     ]
    },
-   "venue": "BOTH"
-  },
-  "VOL_SPIKE_COOLDOWN": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
-  "VOL_SPIKE_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "MISSING_ROW"
-   ],
-   "gap_kind": "VENUE",
-   "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 2,
-    "CRYPTO_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_CONFIRMATION_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_CONFIRMATION_GATES"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "VOL_SPIKE_LS_MAX_IMBALANCE": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
    "venue": "BOTH"
   },
   "VOL_SPIKE_MIN_ALIGNMENT": {
@@ -69486,6 +68021,35 @@
    "tabs": {},
    "venue": "BOTH"
   },
+  "WIN_TRAIL_EROSION_PCT": {
+   "applies_to": [],
+   "extra_row": [
+    "CRYPTO_SHORT"
+   ],
+   "flags": [
+    "ORPHAN",
+    "NO_BOLD_DEFAULT",
+    "EXTRA_ROW",
+    "ONE_OPTION"
+   ],
+   "gap_kind": "",
+   "missing_row": [],
+   "n_rows": {
+    "CRYPTO_SHORT": 1
+   },
+   "no_bold_default_in": [
+    "CRYPTO_SHORT"
+   ],
+   "present_in": [
+    "CRYPTO_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_SHORT": [
+     "EXIT_STRUCTURAL"
+    ]
+   },
+   "venue": "ORPHAN"
+  },
   "WORKER_INSTANCE_ID": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -69847,7 +68411,7 @@
    "tabs": {},
    "venue": "VECTOR_ONLY"
   },
-  "WT_15M_BOUNCE_HIGH_1H_GT_PREV": {
+  "WT_15M_BOUNCE_BB_MAX": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -69856,31 +68420,25 @@
    ],
    "extra_row": [],
    "flags": [
-    "NO_BOLD_DEFAULT"
+    "MISSING_ROW"
    ],
-   "gap_kind": "",
-   "missing_row": [],
+   "gap_kind": "SIDE",
+   "missing_row": [
+    "STOCKS_SHORT"
+   ],
    "n_rows": {
-    "CRYPTO_LONG": 10,
-    "CRYPTO_SHORT": 2,
-    "STOCKS_LONG": 12,
-    "STOCKS_SHORT": 11
+    "CRYPTO_LONG": 3,
+    "CRYPTO_SHORT": 4,
+    "STOCKS_LONG": 18
    },
-   "no_bold_default_in": [
-    "CRYPTO_LONG"
-   ],
+   "no_bold_default_in": [],
    "present_in": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
+    "STOCKS_LONG"
    ],
    "tabs": {
     "CRYPTO_LONG": [
-     "ENTRY_REVERSAL_BOUNCE",
-     "ENTRY_BREAKOUT_CHANNEL",
-     "EXIT_STRUCTURAL",
-     "EXIT_VELOCITY",
      "GLOBAL_RISK_GATES"
     ],
     "CRYPTO_SHORT": [
@@ -69893,80 +68451,6 @@
      "EXIT_VELOCITY",
      "AUGMENT_RISK_SIZING",
      "REDUCE_PROFIT_LOCK"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_REVERSAL_BOUNCE",
-     "ENTRY_BREAKOUT_CHANNEL",
-     "ENTRY_CONFIRMATION_GATES",
-     "EXIT_STRUCTURAL",
-     "EXIT_VELOCITY",
-     "REENTRY_WINDOWED",
-     "REENTRY_ADAPTIVE",
-     "AUGMENT_RISK_SIZING",
-     "REDUCE_PROFIT_LOCK",
-     "REDUCE_SIGNAL_RATER"
-    ]
-   },
-   "venue": "BOTH"
-  },
-  "WT_15M_BOUNCE_LOW_1H_GT_PREV": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_BOLD_DEFAULT"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 10,
-    "CRYPTO_SHORT": 2,
-    "STOCKS_LONG": 12,
-    "STOCKS_SHORT": 11
-   },
-   "no_bold_default_in": [
-    "CRYPTO_LONG"
-   ],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "ENTRY_REVERSAL_BOUNCE",
-     "ENTRY_BREAKOUT_CHANNEL",
-     "EXIT_STRUCTURAL",
-     "EXIT_VELOCITY",
-     "GLOBAL_RISK_GATES"
-    ],
-    "CRYPTO_SHORT": [
-     "ENTRY_REVERSAL_BOUNCE"
-    ],
-    "STOCKS_LONG": [
-     "ENTRY_REVERSAL_BOUNCE",
-     "ENTRY_BREAKOUT_CHANNEL",
-     "EXIT_STRUCTURAL",
-     "EXIT_VELOCITY",
-     "AUGMENT_RISK_SIZING",
-     "REDUCE_PROFIT_LOCK"
-    ],
-    "STOCKS_SHORT": [
-     "ENTRY_REVERSAL_BOUNCE",
-     "ENTRY_BREAKOUT_CHANNEL",
-     "ENTRY_CONFIRMATION_GATES",
-     "EXIT_STRUCTURAL",
-     "EXIT_VELOCITY",
-     "REENTRY_WINDOWED",
-     "REENTRY_ADAPTIVE",
-     "AUGMENT_RISK_SIZING",
-     "REDUCE_PROFIT_LOCK",
-     "REDUCE_SIGNAL_RATER"
     ]
    },
    "venue": "BOTH"
@@ -69995,6 +68479,57 @@
    "present_in": [],
    "tabs": {},
    "venue": "VECTOR_ONLY"
+  },
+  "WT_15M_BOUNCE_REL_VOL_GT_1": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "MISSING_ROW"
+   ],
+   "gap_kind": "SIDE",
+   "missing_row": [
+    "CRYPTO_SHORT"
+   ],
+   "n_rows": {
+    "CRYPTO_LONG": 10,
+    "STOCKS_LONG": 12,
+    "STOCKS_SHORT": 8
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "CRYPTO_LONG",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "CRYPTO_LONG": [
+     "ENTRY_REVERSAL_BOUNCE",
+     "ENTRY_BREAKOUT_CHANNEL",
+     "EXIT_STRUCTURAL",
+     "EXIT_VELOCITY",
+     "GLOBAL_RISK_GATES"
+    ],
+    "STOCKS_LONG": [
+     "ENTRY_REVERSAL_BOUNCE",
+     "ENTRY_BREAKOUT_CHANNEL",
+     "EXIT_STRUCTURAL",
+     "EXIT_VELOCITY",
+     "AUGMENT_RISK_SIZING",
+     "REDUCE_PROFIT_LOCK"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_REVERSAL_BOUNCE",
+     "ENTRY_BREAKOUT_CHANNEL",
+     "EXIT_STRUCTURAL",
+     "EXIT_VELOCITY"
+    ]
+   },
+   "venue": "BOTH"
   },
   "WT_15M_SAME_HEDGE_COOLDOWN_SEC": {
    "applies_to": [
@@ -70507,7 +69042,7 @@
    "missing_row": [],
    "n_rows": {
     "CRYPTO_LONG": 4,
-    "CRYPTO_SHORT": 5,
+    "CRYPTO_SHORT": 4,
     "STOCKS_LONG": 4,
     "STOCKS_SHORT": 4
    },
@@ -70551,7 +69086,7 @@
     "STOCKS_LONG"
    ],
    "n_rows": {
-    "CRYPTO_LONG": 3
+    "CRYPTO_LONG": 4
    },
    "no_bold_default_in": [],
    "present_in": [
@@ -71678,7 +70213,7 @@
     "CRYPTO_LONG": 2,
     "CRYPTO_SHORT": 2,
     "STOCKS_LONG": 2,
-    "STOCKS_SHORT": 1
+    "STOCKS_SHORT": 2
    },
    "no_bold_default_in": [],
    "present_in": [
@@ -71901,30 +70436,6 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "WT_EXHAUST_EXIT_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "NO_ROW_ANYWHERE"
-   ],
-   "gap_kind": "ALL",
-   "missing_row": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {},
-   "no_bold_default_in": [],
-   "present_in": [],
-   "tabs": {},
-   "venue": "BOTH"
-  },
   "WT_EXIT_MIN_TFS_LIVE_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
@@ -71944,36 +70455,6 @@
    "present_in": [],
    "tabs": {},
    "venue": "CRYPTO"
-  },
-  "WT_EXIT_TFS_TRADIER": {
-   "applies_to": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "STOCKS_LONG": [
-     "EXIT_STRUCTURAL"
-    ],
-    "STOCKS_SHORT": [
-     "EXIT_STRUCTURAL"
-    ]
-   },
-   "venue": "STOCKS"
   },
   "WT_EXIT_VELOCITY_TRADIER": {
    "applies_to": [
@@ -72109,48 +70590,6 @@
    "no_bold_default_in": [],
    "present_in": [],
    "tabs": {},
-   "venue": "BOTH"
-  },
-  "WT_MOMENTUM_EXIT_ENABLED": {
-   "applies_to": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "extra_row": [],
-   "flags": [
-    "ONE_OPTION"
-   ],
-   "gap_kind": "",
-   "missing_row": [],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 1,
-    "STOCKS_LONG": 1,
-    "STOCKS_SHORT": 1
-   },
-   "no_bold_default_in": [],
-   "present_in": [
-    "CRYPTO_LONG",
-    "CRYPTO_SHORT",
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "tabs": {
-    "CRYPTO_LONG": [
-     "EXIT_VELOCITY"
-    ],
-    "CRYPTO_SHORT": [
-     "EXIT_VELOCITY"
-    ],
-    "STOCKS_LONG": [
-     "EXIT_VELOCITY"
-    ],
-    "STOCKS_SHORT": [
-     "EXIT_VELOCITY"
-    ]
-   },
    "venue": "BOTH"
   },
   "WT_MTF_VEL_GATE_ENABLED": {
@@ -72294,7 +70733,7 @@
    "tabs": {},
    "venue": "BOTH"
   },
-  "WT_VEL_DECAY_EXIT_ENABLED": {
+  "WT_TOP_ENTRY_ENABLED": {
    "applies_to": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT",
@@ -72307,24 +70746,59 @@
    ],
    "gap_kind": "VENUE",
    "missing_row": [
-    "STOCKS_LONG",
-    "STOCKS_SHORT"
-   ],
-   "n_rows": {
-    "CRYPTO_LONG": 1,
-    "CRYPTO_SHORT": 2
-   },
-   "no_bold_default_in": [],
-   "present_in": [
     "CRYPTO_LONG",
     "CRYPTO_SHORT"
    ],
+   "n_rows": {
+    "STOCKS_LONG": 2,
+    "STOCKS_SHORT": 2
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
    "tabs": {
-    "CRYPTO_LONG": [
-     "GLOBAL_RISK_GATES"
+    "STOCKS_LONG": [
+     "ENTRY_REVERSAL_BOUNCE"
     ],
-    "CRYPTO_SHORT": [
-     "GLOBAL_RISK_GATES"
+    "STOCKS_SHORT": [
+     "ENTRY_REVERSAL_BOUNCE"
+    ]
+   },
+   "venue": "BOTH"
+  },
+  "WT_TOP_ENTRY_TF": {
+   "applies_to": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT",
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "extra_row": [],
+   "flags": [
+    "MISSING_ROW"
+   ],
+   "gap_kind": "VENUE",
+   "missing_row": [
+    "CRYPTO_LONG",
+    "CRYPTO_SHORT"
+   ],
+   "n_rows": {
+    "STOCKS_LONG": 4,
+    "STOCKS_SHORT": 4
+   },
+   "no_bold_default_in": [],
+   "present_in": [
+    "STOCKS_LONG",
+    "STOCKS_SHORT"
+   ],
+   "tabs": {
+    "STOCKS_LONG": [
+     "ENTRY_REVERSAL_BOUNCE"
+    ],
+    "STOCKS_SHORT": [
+     "ENTRY_REVERSAL_BOUNCE"
     ]
    },
    "venue": "BOTH"

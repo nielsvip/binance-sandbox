@@ -38,5 +38,6 @@ def test_each_switch_independent():
 def test_worker_ftf_is_fresh_open_only_for_explicit_reentry_lane():
     assert R.should_apply_fresh_open_ftf(0.0, False)
     assert not R.should_apply_fresh_open_ftf(0.0, True)
+    assert R.should_apply_fresh_open_ftf(0.0, True, True)
     assert not R.should_apply_fresh_open_ftf(1.0, False)
     assert R.fire(ON, True, 100.2, 100.0, 110.0, 105.0, 105.0, 99.5, 100.4, 99.0, 5, 3, 1) == "REENTRY_HIGHER_LOW"

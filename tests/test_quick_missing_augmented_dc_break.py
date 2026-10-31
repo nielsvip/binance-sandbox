@@ -5,6 +5,7 @@ import pytest
 import v12_quick_engine as v12
 from vec_decisions import live_exit_chain as lec
 from vec_decisions.quick_missing_augmented_dc_break import (
+    augmented_dc_break_channel,
     augmented_dc_break_fires,
     augmented_dc_break_pos_min_qty,
     augmented_dc_break_reduce_qty,
@@ -15,20 +16,31 @@ def _arrays():
     n = 100
     close = np.full(n, 99.3, dtype=float)
     close[0] = 99.0
-    dc_low_15m = np.full(n, 99.0)
-    dc_low_15m[0] = 80.0
-    dc_low_15m[1] = 100.0
+    close[1:5] = 101.0
+    low = close - 0.2
+    high = close + 0.2
+    low[0] = 98.5
+    low[1:5] = 100.5
+    close[5] = 99.3
+    low[5] = 99.0
+    high[5] = 99.6
+    dc_low4_15m = np.full(n, 99.0)
+    dc_low4_15m[0:4] = 98.0
+    dc_low4_15m[4] = 100.5
+    dc_low4_15m[5] = 99.0
     return {
         "timestamps": np.arange(n, dtype=float) * 900.0 + 1700000000.0,
         "close": close,
         "close_15m": close,
         "open_15m": close,
-        "high_15m": close,
-        "low_15m": close,
+        "high_15m": high,
+        "low_15m": low,
         "dc_high_15m": np.full(n, 110.0),
-        "dc_low_15m": dc_low_15m,
+        "dc_low_15m": np.full(n, 90.0),
         "dc_high_15m_prev": np.full(n, 110.0),
-        "dc_low_15m_prev": dc_low_15m,
+        "dc_low_15m_prev": np.full(n, 90.0),
+        "dc_high4_15m": np.full(n, 110.0),
+        "dc_low4_15m": dc_low4_15m,
         "dc_high_4h": np.full(n, 150.0),
         "dc_low_4h": np.full(n, 50.0),
         "dc_high_4h_prev": np.full(n, 150.0),
@@ -102,7 +114,7 @@ def test_live_exit_chain_requires_supported_pair_and_uses_symbol_minimum():
     hit = lec.step(
         prepared,
         cfg,
-        1,
+        5,
         99.3,
         {
             "gain": (99.3 / 99.0 - 1.0) * 100.0,
@@ -136,10 +148,18 @@ def test_simulate_one_books_augmented_dc_break_only_when_switch_is_on():
     ]
     opens = [row for row in on["ledger"] if row.get("type") == "OPEN"]
     assert len(opens) == 1
-    assert len(on_rows) == 1 and on_rows[0]["bar"] == 1
+    assert len(on_rows) == 1 and on_rows[0]["bar"] == 5
     assert not off_rows
     pos_min = augmented_dc_break_pos_min_qty("1000PEPEUSDC", 99.3, 1.0)
     expected = augmented_dc_break_reduce_qty(
         opens[0]["qty"], pos_min, 0.3, 0.5, 0.15, 0.25, 0.5
     )
     assert np.isclose(on_rows[0]["qty"], expected)
+
+
+def test_native_aug_channel_switch_preserves_ltf_and_pairs_only_this_path():
+    indicators = {"dc_low_3m": 98.0, "dc_high_3m": 102.0, "dc_low4_15m": 99.0, "dc_high4_15m": 101.0}
+    assert augmented_dc_break_channel(indicators, True, True) == 98.0
+    assert augmented_dc_break_channel(indicators, False, True) == 102.0
+    assert augmented_dc_break_channel(indicators, True, False) == 99.0
+    assert augmented_dc_break_channel(indicators, False, False) == 101.0

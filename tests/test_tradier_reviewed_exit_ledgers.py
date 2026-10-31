@@ -216,19 +216,21 @@ def test_k5m_gain_uses_open_cost_basis_after_augment_and_partial_reduce():
 
 def test_stdev_reject_stock_switch_changes_simulate_one_ledger():
     npz = _base_npz()
-    fire_bar = 202
+    n = len(npz["close"])
+    ts = np.asarray(npz["timestamps"], dtype=np.int64)
+    fire_target = int(np.datetime64("2026-10-19T19:45:00").astype("datetime64[s]").astype(np.int64))
+    fire_bar = int(np.searchsorted(ts, fire_target))
+    assert fire_bar < n and ts[fire_bar] == fire_target
     npz["close"][fire_bar] = 103.0
     if "close_15m" in npz:
         npz["close_15m"][fire_bar] = 103.0
-    n = len(npz["close"])
     npz["bb_pct_b_D"] = np.full(n, 0.5)
-    npz["timestamp_D"] = np.ones(n)
+    npz["timestamp_D"] = np.full(n, float(np.datetime64("2026-10-16T00:00:00").astype("datetime64[s]").astype(np.int64)))
     npz["wt_velocity_1h"] = np.zeros(n)
-    npz["bb_pct_b_D"][:200] = 0.9
-    npz["bb_pct_b_D"][200:fire_bar] = 0.6
-    npz["timestamp_D"][200:] = 2.0
-    npz["bb_pct_b_D"][fire_bar:] = 0.6
-    npz["timestamp_D"][fire_bar:] = 3.0
+    npz["bb_pct_b_D"][:] = 0.9
+    monday_open = int(np.searchsorted(ts, int(np.datetime64("2026-10-19T13:30:00").astype("datetime64[s]").astype(np.int64))))
+    npz["timestamp_D"][monday_open:] = float(np.datetime64("2026-10-19T00:00:00").astype("datetime64[s]").astype(np.int64))
+    npz["bb_pct_b_D"][monday_open:] = 0.6
     npz["wt_velocity_1h"][fire_bar] = -1.0
     off = _run(npz, "STDEV_REJECT_EXIT_ENABLED", False)
     on = _run(npz, "STDEV_REJECT_EXIT_ENABLED", True)

@@ -102,6 +102,20 @@ def test_journal_identity_change_refuses_resume(tmp_path):
         FrameJournal(path, {"settings_sha256": "b", "code_sha256": "x", "scenario_id": "paper"})
 
 
+def test_journal_iter_frames_is_lazy_and_ordered(tmp_path):
+    journal = FrameJournal(
+        tmp_path / "frames.sqlite3",
+        {"settings_sha256": "a", "code_sha256": "x", "scenario_id": "paper"},
+    )
+    journal.append_frame(101, {"close": 1})
+    journal.append_frame(102, {"close": 2})
+    iterator = journal.iter_frames()
+    assert next(iterator)["ts"] == 101
+    assert next(iterator)["ts"] == 102
+    iterator.close()
+    journal.close()
+
+
 def test_journal_validates_identity_and_rejects_bool_timestamps(tmp_path):
     with pytest.raises(ValueError, match="requires nonempty"):
         FrameJournal(tmp_path / "missing.sqlite3", {"settings_sha256": "a", "code_sha256": "x"})

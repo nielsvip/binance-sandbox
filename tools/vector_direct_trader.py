@@ -361,12 +361,8 @@ def deterioration_halts(root: Path) -> dict:
 def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: int, alert=None) -> dict:
     """Latch a fresh, same-settings 30D loss of at least 15 percentage points.
 
-    MASS BRAKE (2026-10-30). This latch is permanent and forbids reentry, and its second arm fires on a mere SIGN FLIP
-    (`published > 0 >= current`), not only on the 5 pp drop — so a broad down day can latch the whole book at once with
-    no way back. That is what happened: 163 sides latched in the 7 minutes 04:38–04:45Z and the file ended up holding
-    **187 sides against a 90-side universe**, every account drained to zero and nothing could reopen. A pass that would
-    latch more than DETERIORATION_MASS_PCT of the sides it actually evaluated is therefore a DEFECT SIGNATURE, not 163
-    independent deteriorations: it latches NOTHING and rings. Ordinary one-off deteriorations still latch normally."""
+    A mass change is treated as a likely data or settings fault and refused. Existing latches are released after a fresh,
+    matching-settings replay measures a drop below 15 pp."""
     path = root / "data" / "vector_direct" / "deteriorated_crypto.json"
     latched = read_json(path, {}) or {}
     if not isinstance(latched, dict):

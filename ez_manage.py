@@ -15287,6 +15287,25 @@ def _min_viable_qty(symbol_min_qty, symbol_min_notional, current_price):
         return 0.0
 
 
+def _flat_reentry_qty_floor(quantity, action, original_action_was_reentry, position, min_position_size, current_price, exchange_min_qty):
+    """Keep a flat REENTRY's positive decision alive when native indicator sizing subtracts it below the open floor."""
+    try:
+        qty = float(quantity)
+        price = float(current_price)
+        minimum = float(min_position_size)
+        exchange_min = float(exchange_min_qty)
+        amount = safe_fetch_float(getattr(position, "positionAmt", 0.0), 0.0) if position is not None else 0.0
+        if not all(math.isfinite(value) for value in (qty, price, minimum, exchange_min, amount)):
+            return quantity
+        if action != "OPEN" or not original_action_was_reentry or amount != 0.0 or price <= 0.0 or minimum <= 0.0:
+            return quantity
+        if qty > 3.0 * minimum / price:
+            return quantity
+        return max(6.0 * minimum / price, 1.2 * exchange_min)
+    except (TypeError, ValueError, OverflowError):
+        return quantity
+
+
 _CRYPTO_QTY_SUFFIXES = ("USDT", "USDC", "USD1", "USDS", "BUSD", "FDUSD", "TUSD", "DAI")
 
 
@@ -30462,9 +30481,17 @@ class MultiAccountTradeManager:
                 _vxf_q0 = quantity
                 quantity = max(6 * config.MIN_POSITION_SIZE / current_price, 1.2 * exchange_min_qty)
                 logger.warning(f"[VEC_EXACT_SIZE_FLOOR] {position_key}: live sizing left ${_vxf_q0 * current_price:.2f} -> floored to ${quantity * current_price:.2f} (vec decision kept)")
-            if quantity <= 3 * config.MIN_POSITION_SIZE / current_price and _original_action_was_reentry:
-                _reentry_q0 = quantity
-                quantity = max(6 * config.MIN_POSITION_SIZE / current_price, 1.2 * exchange_min_qty)
+            _reentry_q0 = quantity
+            quantity = _flat_reentry_qty_floor(
+                quantity,
+                action,
+                _original_action_was_reentry,
+                position,
+                config.MIN_POSITION_SIZE,
+                current_price,
+                exchange_min_qty,
+            )
+            if quantity != _reentry_q0:
                 logger.warning(f"[REENTRY_SIZE_FLOOR] {position_key}: live sizing left ${_reentry_q0 * current_price:.2f} -> floored to ${quantity * current_price:.2f} (flat reentry kept)")
             if quantity <= 3 * config.MIN_POSITION_SIZE / current_price:
                 logger.warning(

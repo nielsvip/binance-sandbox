@@ -1,0 +1,814 @@
+{
+  "created_at_utc": "2026-10-31T02:11:29.847760+00:00",
+  "destination_root": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z",
+  "destination_volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+  "files": [
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/HANDOVER_MUSE_20261008.md",
+      "sha256": "6ae4cc327a6ebd0a52c3973553430ecd70e801de1336da115f27b852c893e9cd",
+      "size_bytes": 9254,
+      "source_path": "/home/niels/binance-sandbox/data/causal/HANDOVER_MUSE_20261008.md",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/SWITCH_CAUSAL_REPORT_20261012.md",
+      "sha256": "8f067e81c16f6cd7b59738e3a48a76d5e65115944600b8321c490c3e4d469e64",
+      "size_bytes": 23626,
+      "source_path": "/home/niels/binance-sandbox/data/causal/SWITCH_CAUSAL_REPORT_20261012.md",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/causal_map.md",
+      "sha256": "f7cacb500791a3c84110cde935385ddb298b99eb179ca761e91f190690ec2942",
+      "size_bytes": 34537,
+      "source_path": "/home/niels/binance-sandbox/data/causal/causal_map.md",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/causal_map_CRYPTO_LONG.csv",
+      "sha256": "5154806620ad3e3ca45ab9abdbe2ecc89b0f8bfbb89a457470fbc21efdbc8d4e",
+      "size_bytes": 153313,
+      "source_path": "/home/niels/binance-sandbox/data/causal/causal_map_CRYPTO_LONG.csv",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/causal_map_CRYPTO_SHORT.csv",
+      "sha256": "0a6cfbfb514053d37264ba72e056db2ab9c9448d1a4fd5fc5bbfdbd72c3e7052",
+      "size_bytes": 135152,
+      "source_path": "/home/niels/binance-sandbox/data/causal/causal_map_CRYPTO_SHORT.csv",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/causal_map_STOCKS_LONG.csv",
+      "sha256": "bbd8cf137e41030ef8f012c73a207ae178489891108da1e630fbb9f96873b7ad",
+      "size_bytes": 136584,
+      "source_path": "/home/niels/binance-sandbox/data/causal/causal_map_STOCKS_LONG.csv",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/causal_map_STOCKS_SHORT.csv",
+      "sha256": "7d771c4dc62da6b37cafa5c65b8c992cba01ba17cd086e1cc742fc5fa7b2f064",
+      "size_bytes": 128669,
+      "source_path": "/home/niels/binance-sandbox/data/causal/causal_map_STOCKS_SHORT.csv",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/fault_levers.csv",
+      "sha256": "d8db09ab09d9c3dec3a07469d2ede2d45de91aff108e7482e8f200c27cfba292",
+      "size_bytes": 26658,
+      "source_path": "/home/niels/binance-sandbox/data/causal/fault_levers.csv",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/rescue_outcomes.json",
+      "sha256": "76f3bef8e51db813e1e0c5f0c91ffce2574ba0c693202f7cbe86110176497c96",
+      "size_bytes": 358518,
+      "source_path": "/home/niels/binance-sandbox/data/causal/rescue_outcomes.json",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/rescue_outcomes.md",
+      "sha256": "87ee9574ae2f45cb0300b7b84701ba18f3b3bcf8e05c6d99f940a4b5d493661b",
+      "size_bytes": 20475,
+      "source_path": "/home/niels/binance-sandbox/data/causal/rescue_outcomes.md",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/switch_causal_profile.json",
+      "sha256": "751fb42cdc23a12a54697c17ad6ab80b9a63cf8f1b0d1ea8b4928fe028514d8f",
+      "size_bytes": 28436007,
+      "source_path": "/home/niels/binance-sandbox/data/causal/switch_causal_profile.json",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/switch_causal_profile.md",
+      "sha256": "93ed2df4b15ada7583c65e3f83eeaef9071b7086487dac5903897663fe4007bf",
+      "size_bytes": 28395,
+      "source_path": "/home/niels/binance-sandbox/data/causal/switch_causal_profile.md",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/switch_flip_study.json",
+      "sha256": "39935154ed48c69b69fa75e88aae03c41d8431fc273334a32d2697f8a2251ccc",
+      "size_bytes": 28603,
+      "source_path": "/home/niels/binance-sandbox/data/causal/switch_flip_study.json",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/switch_flip_study.md",
+      "sha256": "856ea9c46bd6462ccfb5e8c6753115027bb3a31bd3f99ea917fc23d576183c04",
+      "size_bytes": 1266,
+      "source_path": "/home/niels/binance-sandbox/data/causal/switch_flip_study.md",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/v17_priors.json",
+      "sha256": "aeba875ee110c3d620b6a57bd7b554a6840a56cbae5aaed2e7c52bda3657ffc2",
+      "size_bytes": 5135572,
+      "source_path": "/home/niels/binance-sandbox/data/causal/v17_priors.json",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/causal/v17_priors.md",
+      "sha256": "31a74d3f4c4bd0326cf1f307ce9398d5b70f9aa763610e4ba7c2c7327567d355",
+      "size_bytes": 43287,
+      "source_path": "/home/niels/binance-sandbox/data/causal/v17_priors.md",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/encyclopedia_v2/graph.json",
+      "sha256": "22e72ba3baff67730fd5789fec14cc66033b0887688dccd200ab05ae12082039",
+      "size_bytes": 8651212,
+      "source_path": "/home/niels/binance-sandbox/data/encyclopedia_v2/graph.json",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/encyclopedia_v2/graph.md",
+      "sha256": "071674b997426de9471028ee5b9bc4b7c9f0884a594d4e6dc877e1c7dbc10582",
+      "size_bytes": 72818,
+      "source_path": "/home/niels/binance-sandbox/data/encyclopedia_v2/graph.md",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/encyclopedia_v2/template_row_utility.csv",
+      "sha256": "887d050d7fd20f3934382708c42ca58c7a9d172e84de53904f2d7a7c82c635ab",
+      "size_bytes": 2213153,
+      "source_path": "/home/niels/binance-sandbox/data/encyclopedia_v2/template_row_utility.csv",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/encyclopedia_v2/template_row_utility.md",
+      "sha256": "5056bf90480bae8b9f4995765e1b30096c3ab4c62d65d3ba224f173f2c4e8b0f",
+      "size_bytes": 1890927,
+      "source_path": "/home/niels/binance-sandbox/data/encyclopedia_v2/template_row_utility.md",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/endgame/endgame_knowledge_fleet.json",
+      "sha256": "95a162a71dffb8a8097adb45ea2f31e38d33b0435f5b27c1df6651e6fbe0c797",
+      "size_bytes": 601968,
+      "source_path": "/home/niels/binance-sandbox/data/endgame/endgame_knowledge_fleet.json",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260813.jsonl",
+      "sha256": "88d965e7669be7ce606a47655fc1f3969ea5d33837eaeeac8b8b893c536ab291",
+      "size_bytes": 44774,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260813.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260814.jsonl",
+      "sha256": "1c428993faf18dee84001120559f959313adf5b1ac8135eb5ddb1e1f6ae9a728",
+      "size_bytes": 35917,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260814.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260815.jsonl",
+      "sha256": "47beff17146ff129df549e74adb3cbf63cf1ee1c75377f0472e4bc3b9f1d07ad",
+      "size_bytes": 51241,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260815.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260816.jsonl",
+      "sha256": "3f6a4df652f64864d2aaa966c22e297ee31c26a7f0bfd88a1403edaea284e203",
+      "size_bytes": 8431,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260816.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260817.jsonl",
+      "sha256": "e030665df601d150cd46329f5d5a43d7f2fcd3bdc97b5cf34ff2fa36f021afa9",
+      "size_bytes": 324060,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260817.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260901.jsonl",
+      "sha256": "b252b1ef377285c00bce2a21aa6b7ac93138c1716c9fd0d5204d9acd51c6485b",
+      "size_bytes": 6846,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260901.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260902.jsonl",
+      "sha256": "99117b3f01577e739f886b9e1e6b69ba4daf53a9ed41c734173ce0d0e86a6da6",
+      "size_bytes": 27459,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260902.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260903.jsonl",
+      "sha256": "8cf2d88b0de63bc485d4d217782c3266880fd431d305e856428e98e8a8361ee0",
+      "size_bytes": 58280,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260903.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260904.jsonl",
+      "sha256": "5b31610c6a51f78a04d4ab414907711302e2f37df88bda008d162b06681211bd",
+      "size_bytes": 15614,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260904.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260905.jsonl",
+      "sha256": "4b5917fa59771844a2e628e4566f6084dfea710fea8be813a702d53bcb1fd3d4",
+      "size_bytes": 106947,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260905.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260906.jsonl",
+      "sha256": "f26e8cbd34996111ae2eb37f8e7cced517cd8842d5fea58a21ce35d740fd9096",
+      "size_bytes": 141334,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260906.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260907.jsonl",
+      "sha256": "25662ee02981dc42c1b6a28b5fc59e0cdf4ecf624bf5ad6f1f6bf32e27559a86",
+      "size_bytes": 69205,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260907.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260908.jsonl",
+      "sha256": "48512d448301e4c2c6b4e35a07b9899b7082f82206e792c8c2e4a687250e3163",
+      "size_bytes": 114659,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260908.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260909.jsonl",
+      "sha256": "7e818b6394d0ad0cf52b33663de7d5fda1a9df238524deed2c6f772f3169e5de",
+      "size_bytes": 118595,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260909.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260910.jsonl",
+      "sha256": "0d7140c8ff93c77e319e4c4c059f5793fffdceb535a5c22ce50e3b8e30b8808d",
+      "size_bytes": 49087,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260910.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260911.jsonl",
+      "sha256": "4ab3dc0191cb59892f115a00e7c2661656fa6ce13dba2f2b215a68a1e18dc8a4",
+      "size_bytes": 65329,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260911.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260912.jsonl",
+      "sha256": "85d7158011a7b38b50c569131a3b3ddc022a3e7549f2ce32b6e34f474c0907ef",
+      "size_bytes": 115816,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260912.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260913.jsonl",
+      "sha256": "4f61ae4c3c8773f03dc79025576878a2dd536b0e87ef63a616bf826975c9a42d",
+      "size_bytes": 65662,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260913.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260914.jsonl",
+      "sha256": "a47c5709ad6df7170c605afa35db617e9e892753310498d2b489e2c5219bb8d2",
+      "size_bytes": 70929,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260914.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260915.jsonl",
+      "sha256": "c9559a86a44d92d761965f0a49fde60600a026b6852795dd9542f2613677ace9",
+      "size_bytes": 20096,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260915.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260916.jsonl",
+      "sha256": "4098d78f7e99f98731f60728ea5948e7d618b832dd45b30843a0f4b08ddcf196",
+      "size_bytes": 86869,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260916.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260917.jsonl",
+      "sha256": "9db9e70571d9298da1a39a0cc8f28d32199ca8f7fc559e3382b84a4d96b4b403",
+      "size_bytes": 168190,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260917.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260918.jsonl",
+      "sha256": "06067ebe4b1d3e38842084a89b9cb3c56662e2fbdaacbf83bb4db85337f41c43",
+      "size_bytes": 137465,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260918.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260919.jsonl",
+      "sha256": "048f8b5231f5da2d06effad7f823bcf71c53c94aedacc9a494e14c5ac5de9772",
+      "size_bytes": 111465,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260919.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260920.jsonl",
+      "sha256": "4a1f08cee8163617954acfe796b5daa6f871d3154045498de11f027f2486aeba",
+      "size_bytes": 114753,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260920.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260921.jsonl",
+      "sha256": "0598575fe9f49596b32137579c8fce21e98ea2641c5f35a082ef7481a1b30396",
+      "size_bytes": 134615,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260921.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260922.jsonl",
+      "sha256": "90075cdeb126948c05ed1406c05899ea78782ada78275c8033789da311d242aa",
+      "size_bytes": 116329,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260922.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260923.jsonl",
+      "sha256": "93abed014f585597af916a5ac69380701a0e155429ff53519a1c383f5522ed85",
+      "size_bytes": 91216,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260923.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260924.jsonl",
+      "sha256": "51d2012d4acdb9b49e67473c6c03cf8dbc47746431a6d060756b03b36f954923",
+      "size_bytes": 96573,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260924.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260925.jsonl",
+      "sha256": "cd04a177dab0994ffe058465d4f57a3efcd6d6fec204ea0898c69357b6dbaadb",
+      "size_bytes": 110495,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260925.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260926.jsonl",
+      "sha256": "3181c75b85310571d4408f32f303b8d28ffa07b614510354b766c75c705718dc",
+      "size_bytes": 86174,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260926.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260927.jsonl",
+      "sha256": "a14613207989b5d63c283fba80ba4c859ee772de76a4f982879d65fd3700f0bc",
+      "size_bytes": 81015,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260927.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260928.jsonl",
+      "sha256": "8d92f3e41119bd247b0d3f5747897af2f44c9bf9b9b719bdf775dd0ad338a4de",
+      "size_bytes": 52942,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260928.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260929.jsonl",
+      "sha256": "c483bf799f26e3caeb1c0cd6013bec835eb5a82e23227661bea199fefb56803b",
+      "size_bytes": 119715,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260929.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20260930.jsonl",
+      "sha256": "7419e166b0f27a278db30491837844cf69c8ff4532f2ff3a6744c3b0b2b52a1e",
+      "size_bytes": 107238,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20260930.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20261001.jsonl",
+      "sha256": "07b1b9417e0243ea3d8c28ea91b99206f9c620c94fcaca8ca5fbf03a5b38c86d",
+      "size_bytes": 78717,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20261001.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20261002.jsonl",
+      "sha256": "068e1eaa5f8c19ce2bfdd758d53cb829920890be3b3d1f45f773f79aa8bc92e6",
+      "size_bytes": 47609,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20261002.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20261003.jsonl",
+      "sha256": "4cb3c2d5688e5566e78b766759af1950378ca7e33f1ed3c3e196198f116179d3",
+      "size_bytes": 63480,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20261003.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20261004.jsonl",
+      "sha256": "6073c390a171406c3bc642e877d543ff584909edc4642181392e344f525e73fa",
+      "size_bytes": 32629,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20261004.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20261005.jsonl",
+      "sha256": "d325ba3098aa40f76075990b51976a767b816e2d3fc745ad7773c7635f1e5287",
+      "size_bytes": 6702,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20261005.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20261024.jsonl",
+      "sha256": "eaf0a9d2e9ba17a1d0cc9b21179e79a06c6d688c9535a5957befb8746eac232f",
+      "size_bytes": 289,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20261024.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20261025.jsonl",
+      "sha256": "966dd10f35a966611b9ec31a709702558f869cd4461ad9ebce8a8bbcb8e29f2d",
+      "size_bytes": 289,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20261025.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20261028.jsonl",
+      "sha256": "9daf03d6b861396686e44952d378fbd595c10bb8851b42d0482bcff89f5e2b08",
+      "size_bytes": 873,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20261028.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20261029.jsonl",
+      "sha256": "bffd3b3e621da7221cec0fc3a3d9c90ad9fe642ae1362daecf04392d282fbe49",
+      "size_bytes": 4349,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20261029.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/ang_20261030.jsonl",
+      "sha256": "63cefb1f96425aef31d99c0f42cabc22d3198163a0c238238d113e97cda23b9f",
+      "size_bytes": 2902,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/ang_20261030.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/fin_20260812.jsonl",
+      "sha256": "0b9bd81fc699e7036b40b2b45f3cca8ec713490c9a6effb6b744811e4397dd93",
+      "size_bytes": 223766,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/fin_20260812.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/fin_20260813.jsonl",
+      "sha256": "02e4a983bbe8be7318fd03088b912d083428e2668631cb934be41ae5d05fdc62",
+      "size_bytes": 529162,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/fin_20260813.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/fin_20260814.jsonl",
+      "sha256": "e16c7b9f31510193b92c1e33c51fb3556ff38cf5e4584a284ffb685b440c778e",
+      "size_bytes": 624837,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/fin_20260814.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/fin_20260815.jsonl",
+      "sha256": "1cb5d63af9ab9760901ef5d273fd699d4b3828310ce7400d2e37529f1feec165",
+      "size_bytes": 390302,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/fin_20260815.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/fin_20260816.jsonl",
+      "sha256": "88d1c11c24ef58543fc5a5d7581d8bebc011f41a9e107aca83497140dfd01433",
+      "size_bytes": 298266,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/fin_20260816.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/fin_20260817.jsonl",
+      "sha256": "db64ea1945b0a879daf9a47ec11c416c192c5180e3fd278d21a6eb5fb716b821",
+      "size_bytes": 442206,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/fin_20260817.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/fin_20260818.jsonl",
+      "sha256": "56f401bf7295d35b540fca783923f3c397f5dab87960359b8438c813f024bae2",
+      "size_bytes": 13170,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/fin_20260818.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/flz_20260812.jsonl",
+      "sha256": "6656504682814fbecc82ac569dcab2698cbbba5b355f227a834fe9e55b473d9c",
+      "size_bytes": 243703,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/flz_20260812.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/flz_20260813.jsonl",
+      "sha256": "c2e25fdf60130fbd627670731233031eb8e28fcece5e7cd66f5aa94ed1f1fd02",
+      "size_bytes": 2592,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/flz_20260813.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/flz_20260817.jsonl",
+      "sha256": "c517ce1f23556d6bf346e0fcf935f3514b934cdb4a11952026374a66b4596a1c",
+      "size_bytes": 5495,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/flz_20260817.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/flz_20260818.jsonl",
+      "sha256": "dcec79dda35a3dd590f03f55f63720d6162b8862604cee0c0d7d61964be5e3e7",
+      "size_bytes": 2479,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/flz_20260818.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/inf_20260812.jsonl",
+      "sha256": "9ce993c811c91dee1021ecbe99f9c9c96936f8444b393d9e9a331db5203d4681",
+      "size_bytes": 391269,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/inf_20260812.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/inf_20260813.jsonl",
+      "sha256": "f976396f03f2c97ffa3f34c6652fb4915b9fc5ea8acec59c1d1b4cf67440eb16",
+      "size_bytes": 520435,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/inf_20260813.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/inf_20260814.jsonl",
+      "sha256": "877aea59f884dac736361b501ea785746a8a737f1857510bf1859d5c7996710f",
+      "size_bytes": 388243,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/inf_20260814.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/inf_20260815.jsonl",
+      "sha256": "f87251e2c4a554aaff4131bf996b1f02bec0961544b1bff71bcb3161484dc966",
+      "size_bytes": 255151,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/inf_20260815.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/inf_20260816.jsonl",
+      "sha256": "a6361db5cd628c77bed30240d659c6bd87643fe29afd03be43a7f8b8af788e78",
+      "size_bytes": 111729,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/inf_20260816.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/inf_20260817.jsonl",
+      "sha256": "08fc05dd5262de4d79eb21d1320862bf5d75949fe35bd8950fdf3b2e117d0b0d",
+      "size_bytes": 536645,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/inf_20260817.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/inf_20260818.jsonl",
+      "sha256": "a886c45d666dc9cc3c8391b82febf02752057c4d061365f2ce7b2c55bb3def00",
+      "size_bytes": 6923,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/inf_20260818.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/men_20260812.jsonl",
+      "sha256": "f2b56d2511b5c0b964554b5dcfdbf458c3c365dd917e973ea7c60e57082874ad",
+      "size_bytes": 472183,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/men_20260812.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/men_20260813.jsonl",
+      "sha256": "6410fadd593e3728837c3304d815ca897a83003d55b6061de46f6d3d81c9c3bc",
+      "size_bytes": 759309,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/men_20260813.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/men_20260814.jsonl",
+      "sha256": "e2decb1c9082131472765c004b1c6fa0de9ae8a9d074238408b4e6f3e456e5ac",
+      "size_bytes": 182318,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/men_20260814.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/men_20260815.jsonl",
+      "sha256": "cc631b381f0d39cf015f11ea4865872323ca4bc6af605c97e65ca3accb594853",
+      "size_bytes": 241240,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/men_20260815.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/men_20260816.jsonl",
+      "sha256": "eda9829fa71e23d50ea6084e5c6f5628906c63fa79e04f467237278a73f9d0dd",
+      "size_bytes": 120939,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/men_20260816.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/men_20260817.jsonl",
+      "sha256": "b8aa20c1791e1e69124c86cbe5328c37037d35cdd8f5cdc2358e490f95c068fc",
+      "size_bytes": 584373,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/men_20260817.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/men_20260818.jsonl",
+      "sha256": "f2799ed808c9303a07f99d3f124f65e6ee2cc21aa14506be0b4ed050361b10aa",
+      "size_bytes": 42639,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/men_20260818.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/men_20260819.jsonl",
+      "sha256": "ffb9b6e65f228ff6b66b35f210c440eb2308885df5ba255939ed3f1139e66318",
+      "size_bytes": 87187,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/men_20260819.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/men_20260820.jsonl",
+      "sha256": "15f3211d6aeff6100e2957f0aec76834d846ee17e6b88bd0ce305eab00d71d8c",
+      "size_bytes": 10373,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/men_20260820.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/tra_20260814.jsonl",
+      "sha256": "6ac52af97d10f938410b5d7b76422309bdd6bf7848b96a08952277a245255c9b",
+      "size_bytes": 582,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/tra_20260814.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/trb_20260812.jsonl",
+      "sha256": "6b79541d5c870fc8ca890d340c2ed809ab525695f9a3afe0b238002d31d82466",
+      "size_bytes": 23418,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/trb_20260812.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/trb_20260813.jsonl",
+      "sha256": "846ca18b2ba130994cbd5384da93d483ec0742a3ca4ab9dba65858a5c60f65aa",
+      "size_bytes": 50235,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/trb_20260813.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/trb_20260817.jsonl",
+      "sha256": "85ba347ae516d53ea3a1b572f6ecc027adf9bcd680545898a4aa0b7bb1a87a8a",
+      "size_bytes": 23707,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/trb_20260817.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/trb_20260818.jsonl",
+      "sha256": "6676e6cd88a183a8484ddbe934e1f886240d21eef1d0e1934f495fb9e1f9fc2d",
+      "size_bytes": 9262,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/trb_20260818.jsonl",
+      "source_pre_post_stable": true
+    },
+    {
+      "destination_match": true,
+      "destination_path": "/Volumes/WD25/binance_archive/s1_ancillary_20261031T0205Z/data/per_trade_returns/trc_20260817.jsonl",
+      "sha256": "c0d6871ef906ad1a50a42b97fef49a8ed97ad1351ba76b2035e9b0a373fbcf36",
+      "size_bytes": 296,
+      "source_path": "/home/niels/binance-sandbox/data/per_trade_returns/trc_20260817.jsonl",
+      "source_pre_post_stable": true
+    }
+  ],
+  "limitations": [
+    "Only these four bounded source families were copied; large SQLite DBs were not copied or snapshotted.",
+    "No source deletion or modification.",
+    "Source files were pre/post SHA256 stable; exact same content hashes verified at WD25."
+  ],
+  "schema": "s1_ancillary_copy_receipt/1",
+  "scope": [
+    "data/causal direct regular JSON/Markdown/CSV",
+    "data/encyclopedia_v2 direct regular JSON/Markdown/CSV",
+    "data/endgame/endgame_knowledge_fleet.json",
+    "data/per_trade_returns direct regular JSONL"
+  ],
+  "source_host": "s1-int",
+  "source_manifest_file_count": 99,
+  "total_bytes": 59087602
+}

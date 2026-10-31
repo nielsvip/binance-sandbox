@@ -125,14 +125,22 @@ class FrameJournal:
 
     def frames(self) -> list[dict[str, Any]]:
         """Replay original JSON inputs in durable sequence order."""
-        return [
-            {"sequence": int(seq), "ts": float(ts), "payload": json.loads(body),
-             "input_hash": digest, "receipt_hash": receipt_hash,
-             "receipt": json.loads(receipt_json) if receipt_json is not None else None}
-            for seq, ts, body, digest, receipt_hash, receipt_json in self._db.execute(
-                "SELECT sequence,closed_ts,payload,input_hash,receipt_hash,receipt_json FROM frames ORDER BY sequence"
-            )
-        ]
+        return list(self.iter_frames())
+
+    def iter_frames(self):
+        """Lazily replay durable input rows without materializing the journal."""
+        cursor = self._db.execute(
+            "SELECT sequence,closed_ts,payload,input_hash,receipt_hash,receipt_json FROM frames ORDER BY sequence"
+        )
+        try:
+            for seq, ts, body, digest, receipt_hash, receipt_json in cursor:
+                yield {
+                    "sequence": int(seq), "ts": float(ts), "payload": json.loads(body),
+                    "input_hash": digest, "receipt_hash": receipt_hash,
+                    "receipt": json.loads(receipt_json) if receipt_json is not None else None,
+                }
+        finally:
+            cursor.close()
 
 
 class _ForwardSteps:
@@ -147,6 +155,11 @@ class _ForwardSteps:
 
     def __aiter__(self):
         return self
+
+    async def aclose(self):
+        close = getattr(self._source, "aclose", None)
+        if close is not None:
+            await close()
 
     async def __anext__(self):
         if self._finished:
@@ -189,4 +202,4 @@ async def historical_or_forward_steps(
             yield item
     finally:
         # No implicit finish: break/cancellation must not certify a complete run.
-        pass
+        await steps.aclose()

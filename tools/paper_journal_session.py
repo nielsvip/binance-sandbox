@@ -1,7 +1,7 @@
 """Experimental adapter joining a durable frame journal to the scalar engine.
 
-The isolation receipt is a launcher assertion, not proof that this process is
-network-isolated. This module contains no strategy or PnL calculations.
+The worker-hook check does not establish deployment or comprehensive security.
+This module contains no strategy or PnL calculations.
 """
 
 from __future__ import annotations
@@ -10,12 +10,13 @@ import hashlib
 import json
 import math
 import os
+import re
+import sys
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Mapping
 
 from tools.paper_frame_stream import FrameJournal
-from tools import paper_worker_isolation
 
 
 _SACRED_FIELDS = (
@@ -57,6 +58,8 @@ def preserve_source_times(mutated: dict, original: Mapping) -> dict:
 
 class JournalForwardSession:
     """Feed durable closed-bar frames into existing stores without engine resets."""
+
+    preserve_source_times = staticmethod(preserve_source_times)
 
     def __init__(
         self,
@@ -104,17 +107,40 @@ class JournalForwardSession:
         active = [key for key in replay_ingest if os.environ.get(key) == "1"]
         if active:
             raise RuntimeError("paper forward rejects vector replay/ingest: " + ", ".join(active))
+        from tools import paper_worker_isolation
+
         isolation_receipt = paper_worker_isolation.require_installed()
         if isolation_receipt.get("network_denied") is not True or not isolation_receipt.get("write_root"):
             raise RuntimeError("paper forward requires an installed worker isolation hook")
+        write_root = Path(isolation_receipt["write_root"]).resolve()
+        try:
+            self.journal.path.resolve().relative_to(write_root)
+        except ValueError as exc:
+            raise RuntimeError("paper journal must be inside the isolated write root") from exc
+        settings_hash = str(self._identity.get("settings_sha256", ""))
+        code_hash_identity = str(self._identity.get("code_sha256", ""))
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", settings_hash):
+            raise RuntimeError("paper journal settings_sha256 must be a 64-character SHA-256")
+        if not re.fullmatch(r"[0-9a-fA-F]{64}", code_hash_identity):
+            raise RuntimeError("paper journal code_sha256 must be a 64-character SHA-256")
         if not self.code_path.is_file():
             raise RuntimeError("engine code path is unavailable for journal identity check")
+        running_engine = sys.modules.get("backtest_v12_engine")
+        running_path = Path(getattr(running_engine, "__file__", "")).resolve() if running_engine else None
+        if running_path is None or self.code_path.resolve() != running_path:
+            raise RuntimeError("supplied code_path does not resolve to the running backtest_v12_engine")
         code_hash = hashlib.sha256(self.code_path.read_bytes()).hexdigest()
         if code_hash != self._identity.get("code_sha256"):
             raise RuntimeError("paper journal code hash does not match engine file")
-        for store in stores.values():
+        first_iter = self.journal.iter_frames()
+        first_frame = next(first_iter, None)
+        first_iter.close()
+        if first_frame is None:
+            raise RuntimeError("paper forward journal has no input frames")
+        for symbol, store in stores.items():
             if not hasattr(store, "ts_to_idx") or not hasattr(store, "timestamps"):
                 raise RuntimeError("paper forward store lacks timestamp index")
+            self._validate_store_timestamps(symbol, store, first_frame["ts"])
 
     def bind(self, executed_trades: list, positions: Mapping[str, Any]) -> None:
         if self._executed_trades is not None:
@@ -126,14 +152,17 @@ class JournalForwardSession:
     async def frames(self):
         if self._frames is not None:
             raise RuntimeError("paper journal frames may only be consumed once")
-        self._frames = self.journal.frames()
-        for frame in self._frames:
-            if self._last_ts is not None and frame["ts"] <= self._last_ts:
-                raise RuntimeError("journal replay timestamps are not strictly increasing")
-            self._current = frame
-            self._last_ts = frame["ts"]
-            yield frame
-        self._exhausted = True
+        self._frames = self.journal.iter_frames()
+        try:
+            for frame in self._frames:
+                if self._last_ts is not None and frame["ts"] <= self._last_ts:
+                    raise RuntimeError("journal replay timestamps are not strictly increasing")
+                self._current = frame
+                self._last_ts = frame["ts"]
+                yield frame
+            self._exhausted = True
+        finally:
+            self._frames.close()
 
     async def before_step(self, ts: float) -> None:
         if self._executed_trades is None or self._positions is None:
@@ -144,19 +173,35 @@ class JournalForwardSession:
             raise RuntimeError("previous journal bar has not committed")
         await self.apply_frame(self._current["payload"], self.stores)
         for symbol, store in self.stores.items():
-            idx = store.ts_to_idx.get(ts, -1)
-            if idx < 0:
-                raise RuntimeError(f"frame {ts} missing from store {symbol}")
-            stamp = float(store.timestamps[idx])
+            self._validate_store_timestamps(symbol, store, float(ts), required_ts=float(ts))
+        self._pending_ts = float(ts)
+
+    @staticmethod
+    def _validate_store_timestamps(symbol: str, store: Any, upper_bound: float, required_ts: float | None = None) -> None:
+        previous = None
+        found = False
+        for source_ts in store.timestamps:
+            stamp = float(source_ts)
             if stamp > 1e11:
                 stamp /= 1000.0
-            if stamp != float(ts):
-                raise RuntimeError(f"store {symbol} timestamp index mismatch at {ts}")
-            for source_ts in store.timestamps[: idx + 1]:
-                normalized = float(source_ts) / 1000.0 if float(source_ts) > 1e11 else float(source_ts)
-                if normalized > float(ts):
-                    raise RuntimeError(f"store {symbol} has a future row in the evaluated prefix")
-        self._pending_ts = float(ts)
+            if not math.isfinite(stamp) or stamp <= 0:
+                raise RuntimeError(f"store {symbol} contains a nonpositive or nonfinite timestamp")
+            if previous is not None and stamp <= previous:
+                raise RuntimeError(f"store {symbol} timestamps are not strictly increasing")
+            if stamp > upper_bound:
+                raise RuntimeError(f"store {symbol} contains a future row beyond {upper_bound}")
+            if required_ts is not None and stamp == required_ts:
+                found = True
+            previous = stamp
+        if required_ts is not None:
+            idx = store.ts_to_idx.get(required_ts, -1)
+            if idx < 0 or idx >= len(store.timestamps):
+                raise RuntimeError(f"frame {required_ts} missing from store {symbol}")
+            mapped = float(store.timestamps[idx])
+            if mapped > 1e11:
+                mapped /= 1000.0
+            if not found or mapped != required_ts:
+                raise RuntimeError(f"store {symbol} timestamp index mismatch at {required_ts}")
 
     def _position_snapshot(self) -> dict:
         rows = {}

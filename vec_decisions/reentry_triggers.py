@@ -26,8 +26,8 @@ def any_enabled(cfg) -> bool:
     return any(_on(cfg, s) for s in SWITCHES)
 
 
-def should_apply_fresh_open_ftf(curr_amt, explicit_reentry) -> bool:
-    return float(curr_amt or 0.0) == 0.0 and not bool(explicit_reentry)
+def should_apply_fresh_open_ftf(curr_amt, explicit_reentry, reentry_filter_enabled=False) -> bool:
+    return float(curr_amt or 0.0) == 0.0 and (not bool(explicit_reentry) or bool(reentry_filter_enabled))
 
 
 def fire(cfg, is_long: bool, close: float, prev_close: float, exit_px: float, dc4_prev: float, dc4_prev2: float,
