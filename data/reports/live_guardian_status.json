@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T16:28:01Z",
+ "ts": "2026-10-31T16:33:10Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 0,
    "open_positions": 18,
-   "unrealised_usd": 1.44,
+   "unrealised_usd": 1.7,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 7,
    "open_positions": 3,
-   "unrealised_usd": -0.16,
+   "unrealised_usd": -0.09,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 0,
    "open_positions": 3,
-   "unrealised_usd": 0.02,
+   "unrealised_usd": 0.01,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,111 +127,87 @@
     "19581"
    ],
    "starts_30m": 1,
-   "log_age_s": 14.0
+   "log_age_s": 27.0
   },
   "men": {
    "pids": [
     "73227"
    ],
    "starts_30m": 1,
-   "log_age_s": 567.0
+   "log_age_s": 49.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 2.0
   },
   "inf": {
    "pids": [
     "72669"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 89.0
   },
   "flz": {
    "pids": [
     "87309"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 0.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 42344.0
+   "log_age_s": 42652.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 42660.0
+   "log_age_s": 42967.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T16:28:01Z",
+   "ts": "2026-10-31T16:33:10Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:FLUXUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T11:14:33Z bar=2026-10-31T10:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T16:28:02Z",
+   "ts": "2026-10-31T16:33:10Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:BANDUSDT_LONG",
    "evidence": "REDUCE CYCLE_TP_TIERED_T2_0.50pct_gain0.86 decided 2026-10-31T15:08:43Z bar=2026-10-31T13:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T16:28:02Z",
+   "ts": "2026-10-31T16:33:10Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:BANDUSDT_LONG",
    "evidence": "REDUCE SATOSHIT_EXIT_PARTIAL 0.70 decided 2026-10-31T15:08:43Z bar=2026-10-31T13:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T16:28:03Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "flz:BTCUSDC_LONG",
-   "evidence": "31 16:14:02 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:BTCUSDC_LONG: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $2000 \u2014 restoring $309 on bounce (prior max 0.0160)"
-  },
-  {
-   "ts": "2026-10-31T16:28:03Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "flz:BTCUSDC_LONG",
-   "evidence": "order notional $308.63 > MAX_ORDER_VALUE $300: 31 16:14:02 - INFO - [flz] [execute_trade_action][flz] \u2705 \u2705 \u2705 \u2705 OPEN flz:BTCUSDC_LONG @ 77501.300000 qty=0.003982 ($308.63) side=BUY | QUICK_OPEN_STRONG_BUY_k1:79/d178/k3:88.48/d3:86.67_@77498.5590_REE"
-  },
-  {
-   "ts": "2026-10-31T16:28:04Z",
-   "severity": "WARN",
-   "kind": "ATTEMPT_STORM_KEY",
-   "key": "men:IMXUSDT_SHORT",
-   "evidence": "45 execute_now attempts in 5 min (pre-gate)"
-  },
-  {
-   "ts": "2026-10-31T16:28:04Z",
+   "ts": "2026-10-31T16:33:11Z",
    "severity": "WARN",
    "kind": "ATTEMPT_STORM_KEY",
    "key": "ang:IMXUSDT_SHORT",
    "evidence": "45 execute_now attempts in 5 min (pre-gate)"
   },
   {
-   "ts": "2026-10-31T16:28:04Z",
-   "severity": "CRITICAL",
-   "kind": "STALE_LOG",
-   "key": "men",
-   "evidence": "ez_manage_men.log not written for 567s"
+   "ts": "2026-10-31T16:33:11Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "men:IMXUSDT_SHORT",
+   "evidence": "45 execute_now attempts in 5 min (pre-gate)"
   }
  ],
  "alert_counts": {
   "VEC_DECISION_NOT_FILLED": 3,
-  "CAP_BYPASS": 1,
-  "SIZE_ANOMALY": 1,
-  "ATTEMPT_STORM_KEY": 2,
-  "STALE_LOG": 1
+  "ATTEMPT_STORM_KEY": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -284,5 +260,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 3.11
+ "sweep_s": 1.4
 }
