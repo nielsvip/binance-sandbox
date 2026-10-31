@@ -216,17 +216,19 @@ def test_k5m_gain_uses_open_cost_basis_after_augment_and_partial_reduce():
 
 def test_stdev_reject_stock_switch_changes_simulate_one_ledger():
     npz = _base_npz()
-    fire_bar = 201
+    fire_bar = 202
     npz["close"][fire_bar] = 103.0
     if "close_15m" in npz:
         npz["close_15m"][fire_bar] = 103.0
-    npz["bb_pct_b_D"] = np.full(len(npz["close"]), 0.5)
-    npz["timestamp_D"] = np.zeros(len(npz["close"]))
-    npz["wt_velocity_1h"] = np.zeros(len(npz["close"]))
-    npz["bb_pct_b_D"][fire_bar - 1] = 0.9
-    npz["bb_pct_b_D"][fire_bar] = 0.6
-    npz["timestamp_D"][fire_bar - 1] = 1.0
-    npz["timestamp_D"][fire_bar] = 2.0
+    n = len(npz["close"])
+    npz["bb_pct_b_D"] = np.full(n, 0.5)
+    npz["timestamp_D"] = np.ones(n)
+    npz["wt_velocity_1h"] = np.zeros(n)
+    npz["bb_pct_b_D"][:200] = 0.9
+    npz["bb_pct_b_D"][200:fire_bar] = 0.6
+    npz["timestamp_D"][200:] = 2.0
+    npz["bb_pct_b_D"][fire_bar:] = 0.6
+    npz["timestamp_D"][fire_bar:] = 3.0
     npz["wt_velocity_1h"][fire_bar] = -1.0
     off = _run(npz, "STDEV_REJECT_EXIT_ENABLED", False)
     on = _run(npz, "STDEV_REJECT_EXIT_ENABLED", True)

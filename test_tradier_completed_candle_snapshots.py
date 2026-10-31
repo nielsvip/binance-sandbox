@@ -19,8 +19,10 @@ from tools.exposure_ladder import (
     all_exits_off,
 )
 from tradier_indicators import (
+    COMPLETED_SNAPSHOT_DEMAND_SWITCHES,
     IndicatorCalculator,
     _snapshot_available_at,
+    completed_candle_frame,
     produce_completed_candle_snapshot,
 )
 
@@ -68,9 +70,16 @@ def test_every_required_timeframe_uses_only_the_latest_completed_candle_and_full
         assert snapshot is not None
         assert set(snapshot.__dataclass_fields__) == required
         assert snapshot.source_ts == int(asof.timestamp())
-        assert snapshot.previous_source_ts is not None and snapshot.previous_source_ts < snapshot.source_ts
-        assert snapshot.close == frame["close"].iloc[-2]
-        assert snapshot.high == frame["high"].iloc[-2]
+        assert snapshot.previous_source_ts is not None and snapshot.previous_source_ts <= snapshot.source_ts
+        completed_frame = completed_candle_frame(frame, tf, asof)
+        completed_close = completed_frame["close"].astype(float)
+        assert snapshot.close == completed_close.iloc[-1]
+        assert snapshot.bb_pct_b == ti.bb_features(completed_close, length=20, std_mult=2.0)[2]
+        assert snapshot.bb_pct_b_prev == ti.bb_features(completed_close.iloc[:-1], length=20, std_mult=2.0)[2]
+        fields = snapshot.as_indicator_fields()
+        assert fields[f"_completed_bb_pct_b_{tf}"] == snapshot.bb_pct_b
+        assert fields[f"_completed_bb_pct_b_{tf}_prev"] == snapshot.bb_pct_b_prev
+        assert snapshot.high == completed_frame["high"].iloc[-1]
         assert snapshot.close != 999.0
         assert snapshot.wt_cross in {"BULL", "BEAR", "NONE"}
         for field in ("stoch_k", "stoch_d", "wt1", "wt2", "dc_high", "dc_low", "dc_high_prev", "dc_low_prev", "bb_upper", "bb_lower", "bb_pct_b", "bb_pct_b_prev", "atr"):
@@ -117,11 +126,19 @@ def test_default_off_hot_path_does_not_call_producer_but_direct_demand_does(monk
     monkeypatch.setattr(ti, "produce_completed_candle_snapshot", spy)
     monkeypatch.setattr(ti.config, "COMPLETED_CANDLE_SNAPSHOT_DIRECT_ENABLED", False)
     monkeypatch.setattr(ti.config, "LONG_WAIT_DIRECT_ENABLED", False)
+    for switch in COMPLETED_SNAPSHOT_DEMAND_SWITCHES:
+        monkeypatch.setattr(ti.config, switch, False)
     result = IndicatorCalculator().compute(frame.copy(), "TEST", "5m", None, now.to_pydatetime(), False)
     assert calls == [] and "_completed_close_5m" not in result
     monkeypatch.setattr(ti.config, "LONG_WAIT_DIRECT_ENABLED", True)
     result = IndicatorCalculator().compute(frame.copy(), "TEST", "5m", None, now.to_pydatetime(), False)
     assert len(calls) == 1 and "_completed_close_5m" in result
+    monkeypatch.setattr(ti.config, "LONG_WAIT_DIRECT_ENABLED", False)
+    monkeypatch.setattr(ti.config, "STDEV_REJECT_EXIT_ENABLED", True)
+    result = IndicatorCalculator().compute(frame.copy(), "TEST", "5m", None, now.to_pydatetime(), False)
+    assert len(calls) == 2
+    assert "_completed_bb_pct_b_5m" in result
+    assert "_completed_bb_pct_b_5m_prev" in result
 
 
 def test_prepared_route_knobs_are_default_off_and_ladder_clearers_include_all_action_toggles():
@@ -132,3 +149,46 @@ def test_prepared_route_knobs_are_default_off_and_ladder_clearers_include_all_ac
     exit_off = all_exits_off()
     assert all(entry_off[name] is False for name in PREPARED_DIRECT_ENTRY_OFF)
     assert all(exit_off[name] is False for name in PREPARED_DIRECT_EXIT_OFF)
+
+
+def test_daily_completed_bb_pair_stays_stable_after_hours_and_before_next_close():
+    dates = pd.DatetimeIndex([
+        pd.Timestamp("2026-01-05 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-06 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-07 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-08 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-09 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-12 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-13 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-14 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-15 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-16 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-20 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-21 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-22 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-23 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-26 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-27 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-28 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-29 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-01-30 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-02-02 16:00", tz="America/New_York"),
+        pd.Timestamp("2026-02-03 16:00", tz="America/New_York"),
+    ]).tz_convert("UTC")
+    close = 100.0 + np.arange(len(dates)) * 0.4 + np.sin(np.arange(len(dates)) / 2.0)
+    frame = pd.DataFrame({
+        "timestamp": dates,
+        "open": close - 0.2,
+        "high": close + 0.5,
+        "low": close - 0.5,
+        "close": close,
+        "volume": np.full(len(dates), 1000.0),
+    })
+    friday_close = pd.Timestamp("2026-01-30 21:00", tz="UTC")
+    monday_premarket = pd.Timestamp("2026-02-02 14:00", tz="UTC")
+    friday = produce_completed_candle_snapshot(frame, "D", friday_close)
+    monday = produce_completed_candle_snapshot(frame, "D", monday_premarket)
+    assert friday is not None and monday is not None
+    assert friday.source_ts == monday.source_ts
+    assert friday.bb_pct_b == monday.bb_pct_b
+    assert friday.bb_pct_b_prev == monday.bb_pct_b_prev

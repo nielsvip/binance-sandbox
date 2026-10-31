@@ -1,22 +1,21 @@
 # -*- coding: utf-8 -*-
 """live_exit_chain (Agent C wave 2, batch b2c, 2026-10-01) — numpy/stateful twin of the LIVE CRYPTO technical-exit chain
-ez_positions_quick.check_exit_candidates_for_account -> process_single_exit, lines 14109-14830 (the code that decides hard_exit_reason, then
-STALE_PRICE_ABORT (14720-14735) and the CLOSE-vs-REDUCE split (14770-14800)).
+ez_positions_quick.process_single_exit, current hard_exit_reason and CLOSE-vs-REDUCE branches.
 
 Live semantics mirrored (precedence = code order; first hit wins):
-  PARABOLIC_EXIT (14141) · STRUCTURAL_RANGE_SHIFT_EXIT (14172) · KEY_LEVEL_CRASH sev>=3 (14283) · BREAKEVEN_GAIN_EROSION (14544, config OFF)
-  · DC4/DC LOW|HIGH 3M GAIN_EROSION_STOP (BREAKEVEN_DC_LOW4_ENABLED, 14571; HTF_EXIT_VETO skips it) · WT_CROSS_EXIT (14602)
-  · STDEV_REJECT_EXIT (14641, config OFF) · PEAK_GIVEBACK_PROTECTION (14652) · AUGMENTED_DC_BREAK_REDUCE_TO_MIN (14696)
+  PARABOLIC_EXIT · STRUCTURAL_RANGE_SHIFT_EXIT · KEY_LEVEL_CRASH sev>=3 · BREAKEVEN_GAIN_EROSION
+  · DC4/DC LOW|HIGH GAIN_EROSION_STOP (BREAKEVEN_DC_LOW4_ENABLED; HTF_EXIT_VETO skips it) · WT_CROSS_EXIT
+  · STDEV_REJECT_EXIT · PEAK_GIVEBACK_PROTECTION · AUGMENTED_DC_BREAK_REDUCE_TO_MIN
 Post-chain: STALE_PRICE_ABORT (fresh price == bar price in the sim): a hit with gain < -0.01 is dropped unless the reason contains BREAKEVEN / DC_LOW4_3M /
 DC_HIGH4_3M / PEAK_GIVEBACK or (LOSS_TECHNICAL_EXIT_NO_STALE_BLOCK) WT_CROSS_EXIT / STDEV_BREAKOUT / STRUCTURAL_RANGE_SHIFT / PARABOLIC_EXIT.
 CLOSE-vs-REDUCE: reason containing CLOSE|STOP|KILL = full close; else REDUCE of 15%/25% (0<=gain<1: <0.5 / >=0.5), 50% (1<=gain<3), else all-but-dust.
 Not modeled (documented, NOT fabricated): K1M_EXTREME_REVERSE (needs k_1m, no 1m array; default OFF), TREND_REVERSAL_EXIT (TREND_ACCOUNTS=[] in config),
 STDEV_BREAKOUT_EXIT (default OFF), KEY_LEVEL severity-2 HEDGE, key-level monitor signal file, hedge states, delta_tracker bull_accel in PARABOLIC (assumed True).
-USER ORDER 2026-10-01 (b2c2): NO 3m/1m/5m data in the vector system. Every 3m/1m-dependent term is IGNORED (switch stays, exit is INERT in vec: 'needs 3m, ignored') — NOT approximated.
-INERT in vec (need 3m): PARABOLIC_EXIT, STRUCTURAL_RANGE_SHIFT_EXIT (its cascade requires the 3m WT cross), DC4/DC LOW|HIGH 3M stop (BREAKEVEN_DC_LOW4_ENABLED),
+SWITCH_WIRING_GUIDE §4 sets 15m as the policy floor. STRUCTURAL_RANGE_SHIFT_EXIT pairs its former 3m WT confirm to the real 15m WT pair and shares that predicate with the native source; it is therefore active without invented 3m data.
+INERT in vec pending a separately paired implementation: PARABOLIC_EXIT (3m structure plus delta_tracker bull_accel), DC4/DC LOW|HIGH stop (BREAKEVEN_DC_LOW4_ENABLED),
 AUGMENTED_DC_BREAK_REDUCE_TO_MIN, DC_BASIS_3M_REDUCE, MOMENTUM_TP branches B/C/D/E/F/G, R1_DC_LOW4_3M_EMERGENCY (also forced OFF by the user), K1M_EXTREME_REVERSE.
-LIVE for 15m+: WT_CROSS_EXIT (3m veto ignored = no suppression), KEY_LEVEL_CRASH, PEAK_GIVEBACK, HTF_EXIT_VETO, BREAKEVEN_GAIN_EROSION, STDEV_REJECT, R2, MOMENTUM_TP branch A.
-(historic b2c text below describes the removed 15m floors and is kept only as record)
+LIVE for 15m+: STRUCTURAL_RANGE_SHIFT_EXIT, WT_CROSS_EXIT (3m veto ignored = no suppression), KEY_LEVEL_CRASH, PEAK_GIVEBACK, HTF_EXIT_VETO, BREAKEVEN_GAIN_EROSION, STDEV_REJECT, R2, MOMENTUM_TP branch A.
+(historic b2c text below describes removed channel floors and is kept only as record)
 3m FLOORS (REMOVED in b2c2) (the NPZ has NO 3m/1m arrays and no 3m kline history older than ~3.4 days exists anywhere): every '3m' structure was mapped to the nearest 15m quantity:
   dc_low4_3m/dc_high4_3m (4x3m = 12 min channel)  -> low_15m_prev / high_15m_prev (prior 15m bar extreme, 15 min window)
   dc_low_3m/dc_high_3m  (20x3m = 60 min channel)  -> dc_low4_15m / dc_high4_15m shifted by one bar (4x15m = 60 min, prior bars only)

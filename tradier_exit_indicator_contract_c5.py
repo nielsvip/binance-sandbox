@@ -47,12 +47,26 @@ def completed_parent_value_pair(
     retain the prior *distinct parent*, not use the current value as its own
     predecessor.
     """
-    current = _number(indicators, f"bb_pct_b_{timeframe}", 0.5)
-    explicit_previous = indicators.get(f"bb_pct_b_{timeframe}_prev")
-    if explicit_previous is not None:
-        return current, _number(
-            indicators, f"bb_pct_b_{timeframe}_prev", current
-        )
+    completed_current_key = f"_completed_bb_pct_b_{timeframe}"
+    current_key = (
+        completed_current_key
+        if completed_current_key in indicators
+        else f"bb_pct_b_{timeframe}"
+    )
+    current = _number(indicators, current_key, 0.5)
+    previous_keys = (
+        f"_completed_bb_pct_b_{timeframe}_prev",
+        f"_lc_bb_pct_b_{timeframe}_prev",
+        f"bb_pct_b_{timeframe}_prev",
+    )
+    explicit_previous_key = next(
+        (key for key in previous_keys if key in indicators), None
+    )
+    if explicit_previous_key is not None:
+        previous_value = indicators.get(explicit_previous_key)
+        if previous_value is None:
+            return current, float("nan")
+        return current, _number(indicators, explicit_previous_key, float("nan"))
     token = indicators.get(
         f"_completed_source_ts_{timeframe}",
         indicators.get(f"timestamp_{timeframe}"),

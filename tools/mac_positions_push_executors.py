@@ -44,7 +44,7 @@ SSH = ["ssh", "-o", "ControlMaster=auto", "-o", "ControlPath=/tmp/binance-positi
 LAST_ROUTE = {}
 REPORT_LOCK = threading.Lock()
 LIFECYCLE = ("entry_price", "opened_at", "entry_time", "max_gain", "gain", "prev_gain", "last_signal", "was_reduced",
-             "was_reentered", "mark_price", "last_updated", "max_quantity", "cycle_peak_gain", "trade_wing")
+             "was_reentered", "mark_price", "last_updated", "max_quantity", "cycle_peak_gain", "trade_wing", "fixed_stop_price", "fixed_stop_anchor", "fixed_stop_armed")
 
 
 def stamp(epoch=None):

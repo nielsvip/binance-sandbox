@@ -215,7 +215,10 @@ SEVENDAY_STRICT_ACCOUNTS = tuple(x.strip() for x in os.environ.get("VD_SEVENDAY_
 # sides is therefore a PIPELINE FAULT, not a signal to stop trading: it rings CRITICAL and entries continue on the
 # published 30D sets. The moment the lane publishes even one side the gate binds strictly, per side, everywhere.
 SEVENDAY_LANE_DOWN_BRAKE = os.environ.get("VD_SEVENDAY_LANE_DOWN_BRAKE", "1") == "1"
-SEVENDAY_MAX_AGE_S = float(os.environ.get("VD_SEVENDAY_MAX_AGE_S", str(24 * 3600)))
+# USER 2026-10-31: "making sure no sym_side ever exceeds 24hr (whcih would block trading - actually we should make
+# that ~30hrs ot give it some more time and consistency)". The run starts 20:15 daily, so 30 h leaves a ~6 h
+# cushion: a side recomputed late one night does not fall out of the window before the next run reaches it.
+SEVENDAY_MAX_AGE_S = float(os.environ.get("VD_SEVENDAY_MAX_AGE_S", str(30 * 3600)))
 # each 7D arm trades its CONTROL account's book and nothing else: fin -> men, trc -> trb (the same mapping universe() uses)
 SEVENDAY_BOOK = {"fin": "men", "trc": "trb"}
 MAC_POSITIONS = os.environ.get("VD_MAC_POSITIONS", "1") == "1"
@@ -285,6 +288,26 @@ def actual_reduction_is_profitable(symbol_side, position, price):
     floor = max(entry, break_even) if is_long else min(entry, break_even)
     gain = (price - floor) if is_long else (floor - price)
     return gain > 0.0, {"entry": entry, "break_even": break_even, "price": price, "profit_floor": floor, "gain_per_unit_before_exit_fee": gain}
+
+
+def verified_fixed_stop_trigger(symbol_side, position):
+    if position.get("position_source") != "mac_snapshot_broker_verified":
+        return None
+    source = position.get("mac") or {}
+    try:
+        opened = dt.datetime.fromisoformat(str(source["opened_at"]).replace("Z", "+00:00")).timestamp()
+        anchor, level = float(source["fixed_stop_anchor"]), float(source["fixed_stop_price"])
+        entry, source_entry, mark = float(position["entry"]), float(source["entry_price"]), float(position["price"])
+        if source.get("fixed_stop_armed") is not True or not all(math.isfinite(value) and value > 0 for value in (opened, anchor, level, entry, source_entry, mark)):
+            return None
+        if abs(opened - anchor) > 0.001 or abs(entry - source_entry) > max(1e-10, entry * 1e-6):
+            return None
+        crossed = mark <= level if split_ss(symbol_side)[1] == "LONG" else mark >= level
+        if not crossed:
+            return None
+        return {"kind": "LIFECYCLE_BOUND_FIXED_STOP_CROSSED", "anchor": anchor, "level": level, "broker_mark": mark, "broker_entry": entry, "mac_source_file": source.get("source_file"), "source_file_epoch": source.get("source_file_epoch")}
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return None
 
 
 def load_env_files(paths) -> dict:
@@ -1934,9 +1957,10 @@ class Trader:
         for o in orders:
             orders_n += 1
             symbol, side = split_ss(o["ss"])
-            if o["act"] == "REDUCE" or (self.venue == "crypto" and o["ss"] in submitted_sides):
+            if o["act"] in ("REDUCE", "CLOSE") or (self.venue == "crypto" and o["ss"] in submitted_sides):
                 try:
                     pos = self.broker.positions(acct)
+                    self.annotate_with_mac(acct, pos)
                 except Exception as exc:
                     self._ledger({"event": "ORDER", "acct": acct, "ss": o["ss"], "act": o["act"], "key": o["key"], "status": "POSITION_REFRESH_FAILED", "detail": str(exc)[:160], "final": False})
                     log(f"{acct} {o['ss']} {o['act']} held: broker position refresh failed: {str(exc)[:160]}")
@@ -1980,7 +2004,7 @@ class Trader:
                         log(f"{acct} {o['ss']} {o['act']} REFUSED_NOT_FRESH_7D: {why_7d}")
                     continue
             try:
-                price = self.broker.price(symbol) if o["act"] == "REDUCE" else (float((pos.get(o["ss"]) or {}).get("price") or 0.0) or self.broker.price(symbol))
+                price = self.broker.price(symbol) if o["act"] in ("REDUCE", "CLOSE") else (float((pos.get(o["ss"]) or {}).get("price") or 0.0) or self.broker.price(symbol))
                 qty, why = self.broker.size(o, held, price)
             except RestBlocked as exc:
                 log(f"{acct} {o['ss']}: {exc}")
@@ -1988,15 +2012,18 @@ class Trader:
             except Exception as exc:
                 qty, why, price = 0.0, f"sizing failed: {str(exc)[:120]}", 0.0
             row.update({"price": price, "qty": qty, "notional": round(qty * price, 4) if price else None})
-            if o["act"] == "REDUCE":
+            if o["act"] in ("REDUCE", "CLOSE"):
                 profitable, profit_check = actual_reduction_is_profitable(o["ss"], pos.get(o["ss"]) or {}, price)
                 row["actual_profit_check"] = profit_check
-                if not profitable:
-                    row.update({"status": "REFUSED_NONPROFIT_REDUCE", "final": False})
+                stop_trigger = verified_fixed_stop_trigger(o["ss"], pos.get(o["ss"]) or {}) if o["act"] == "CLOSE" and not profitable else None
+                if stop_trigger:
+                    row["stop_trigger_authorization"] = stop_trigger
+                if not profitable and not stop_trigger:
+                    row.update({"status": "REFUSED_NONPROFIT_REDUCE" if o["act"] == "REDUCE" else "REFUSED_NONSTOP_LOSS_CLOSE", "final": False})
                     if o["key"] not in self.quiet:
                         self.quiet.add(o["key"])
                         self._ledger(row)
-                        self.alert("NONPROFIT_REDUCE_REFUSED", account=acct, sym_side=o["ss"], profit_check=profit_check, severity="CRITICAL")
+                        self.alert(row["status"], account=acct, sym_side=o["ss"], profit_check=profit_check, severity="CRITICAL")
                     continue
             if qty <= 0:
                 row.update({"status": "SKIP_SIZE", "detail": why, "final": True})

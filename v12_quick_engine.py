@@ -18190,17 +18190,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         getattr(cfg, "STDEV_REJECT_EXIT_ENABLED", False)
     )
     _sre_tf = str(getattr(cfg, "STDEV_REJECT_EXIT_TF", "D"))
-    _sre_pctb_now = _sre_velocity = _sre_parent_ts = _sre_pctb_prev = None
-    _sre_parent_state = {}
+    _sre_pctb_now = _sre_velocity = _sre_parent_ts = None
+    _sre_completed_now = _sre_completed_prev = None
     if _sre_on:
-        _sre_pctb_now = np.asarray(_safe(npz, f"bb_pct_b_{_sre_tf}", n, 0.5), dtype=float)
+        _sre_pctb_now = np.asarray(_safe(npz, f"bb_pct_b_{_sre_tf}", n, np.nan), dtype=float)
         _sre_velocity = np.asarray(_safe(npz, "wt_velocity_1h", n, 0.0), dtype=float)
         _sre_parent_key = f"timestamp_{_sre_tf}"
         if _sre_parent_key in npz:
             _sre_parent_ts = np.asarray(_safe(npz, _sre_parent_key, n, 0.0), dtype=float)
-        _sre_prev_key = f"bb_pct_b_{_sre_tf}_prev"
-        if _sre_prev_key in npz:
-            _sre_pctb_prev = np.asarray(_safe(npz, _sre_prev_key, n, 0.5), dtype=float)
+            from vec_decisions.tradier_missing_stdev_parent import completed_parent_snapshot_values
+            _sre_completed_now, _sre_completed_prev = completed_parent_snapshot_values(
+                _sre_pctb_now, _sre_parent_ts
+            )
     _rule_b_exit_on = _tr_exit15 and bool(getattr(cfg, "RULE_B_5M_EXIT_ENABLED", False))
     if _rule_b_exit_on:
         _rule_b_low15 = np.asarray(_safe(npz, "low_15m", n, 0.0), dtype=float)
@@ -23828,22 +23829,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _stdev_reject_reason = ""
         if _sre_on and pos is not None:
             _sre_ind = {
-                f"bb_pct_b_{_sre_tf}": float(_sre_pctb_now[i]),
+                f"bb_pct_b_{_sre_tf}": float(_sre_completed_now[i]),
+                f"bb_pct_b_{_sre_tf}_prev": float(_sre_completed_prev[i]),
                 "wt_velocity_1h": float(_sre_velocity[i]),
             }
-            if _sre_pctb_prev is not None:
-                _sre_ind[f"bb_pct_b_{_sre_tf}_prev"] = float(_sre_pctb_prev[i])
-            if _sre_parent_ts is not None:
-                _sre_ind[f"timestamp_{_sre_tf}"] = float(_sre_parent_ts[i])
-            from tradier_exit_indicator_contract_c5 import completed_parent_value_pair
-
-            _sre_now_bar, _sre_prev_bar = completed_parent_value_pair(
-                _sre_ind,
-                timeframe=_sre_tf,
-                state=_sre_parent_state,
-                state_key=f"{sym}:{'LONG' if is_long else 'SHORT'}:STDEV_REJECT:{_sre_tf}",
-            )
-            _sre_ind[f"bb_pct_b_{_sre_tf}_prev"] = float(_sre_prev_bar)
             _stdev_reject_fire, _stdev_reject_reason = (
                 vec_decisions.check_exit_candidates_stocks__stdev_reject_exit.check_stdev_reject_exit(
                     cfg, _sre_ind, live_pnl_pct, is_long

@@ -38330,20 +38330,14 @@ class StockStrategy:
                 _sre_tf = str(_cfg_auto("STDEV_REJECT_EXIT_TF", "D"))
                 _sre_zone = float(_cfg_auto("STDEV_REJECT_EXIT_ZONE", 0.80))
                 _sre_ret = float(_cfg_auto("STDEV_REJECT_EXIT_RETURN", 0.65))
-                _stdev_ind = (
-                    _exit_ind
-                    if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith(
-                        "tradier-matrix-exec-c5"
-                    )
-                    else i
-                )
+                _stdev_ind = _exit_ind
                 from tradier_exit_indicator_contract_c5 import (
                     completed_parent_value_pair as _c5_parent_pair,
                 )
                 _sre_pctb_now, _sre_pctb_prev = _c5_parent_pair(
                     _stdev_ind,
                     timeframe=_sre_tf,
-                    state=self.__dict__.setdefault("_c5_stdev_parent_state", {}),
+                    state={},
                     state_key=f"{symbol}:{'LONG' if is_long else 'SHORT'}:STDEV_REJECT:{_sre_tf}",
                 )
                 _sre_vel = float(_stdev_ind.get("wt_velocity_1h", 0) or 0)

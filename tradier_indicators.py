@@ -264,9 +264,9 @@ def _ordinary_parent_available_at(label_dt: datetime, timeframe: str) -> datetim
             datetime.combine(session_date, dt_time(16, 0))
         )
     elif timeframe == "4h":
-        if label_et.time() < dt_time(13, 0):
+        if label_et.time() < dt_time(12, 45):
             available_et = ET.localize(
-                datetime.combine(session_date, dt_time(13, 0))
+                datetime.combine(session_date, dt_time(12, 45))
             )
         elif label_et.time() < dt_time(16, 0):
             available_et = ET.localize(

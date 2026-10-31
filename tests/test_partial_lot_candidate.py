@@ -136,7 +136,14 @@ def test_research_trader_copy_routes_every_non_close_order_through_shared_partia
 def test_research_engine_copy_gates_each_common_partial_mutator_before_state_commit():
     root = Path(__file__).resolve().parents[1]
     source = (root / "tools/research/v12_quick_engine_partial_candidate.py").read_text()
-    assert source.count("_account_partial_ok(") == 14  # definition + 13 REDUCE paths
+    assert source.count("_account_partial_ok(") == 15  # definition + 14 REDUCE paths
+    early_bb_start = source.index("# EPQ evaluates BB_RECOVERY before PARABOLIC/SRS")
+    early_bb_end = source.index("# 2026-10-01 b2c LIVE CRYPTO EXIT CHAIN hook", early_bb_start)
+    early_bb = source[early_bb_start:early_bb_end]
+    assert "if _account_partial_ok(pos, _bbr_qty_early, px):" in early_bb
+    assert early_bb.index("_account_partial_ok(pos, _bbr_qty_early, px)") < early_bb.index('pos["realized"] +=')
+    assert early_bb.index("_account_partial_ok(pos, _bbr_qty_early, px)") < early_bb.index('events.append(')
+    assert "if not _account_partial_ok" not in early_bb
     assert "_ctp_fired.add(int(_ctp_idx))" in source
     assert source.index("_account_partial_ok(pos, _ctp_qty, px)") < source.index("_ctp_fired.add(int(_ctp_idx))")
     assert source.index("_account_partial_ok(pos, _ppl_qty, px)") < source.index("pos[\"realized\"] += _realized_ppl")

@@ -42,6 +42,7 @@ def _npz(bb_recovery=False):
         arrays["bb_upper_1h"] = np.full(n, 101.0)
         arrays["bb_lower_1h"] = np.full(n, 99.0)
         arrays["k_1h"][1] = 80.0
+        arrays["stoch_k_1h"][1] = 80.0
     return arrays
 
 

@@ -1,11 +1,12 @@
 """check_exit_candidates_crypto__structural_range_shift — STRUCTURAL_RANGE_SHIFT exit
 predicate (shared scalar+vectorized).
 
-LIVE SOURCE: ez_positions_quick.py check_exit_candidates_for_account, lines
-13758-13799 (STRUCTURAL RANGE SHIFT EXIT — CASCADE, USER 2026-04-14):
+LIVE SOURCE: ez_positions_quick.py process_single_exit, lines
+26622-26699 (STRUCTURAL RANGE SHIFT EXIT — CASCADE, USER 2026-04-14):
 
   GATE (caller): not hard_exit_reason, not is_hedge, not _in_grace_period,
-       STRUCTURAL_RANGE_SHIFT_EXIT (default False)
+       STRUCTURAL_RANGE_SHIFT_EXIT (template default: CRYPTO_LONG=False; other
+       three cat_sides=True)
   TF -> (high_field, low_field) via STRUCTURAL_RANGE_SHIFT_TF (default 'dc_4h')
   Requires entry_price > 0 and srs_high > 0 and srs_low > 0.
   LONG  (entry > srs_high):
@@ -36,7 +37,7 @@ NPZ / indicator fields read (TF-dependent high/low + fixed K/WT set):
   Precompute writes the required 15m/1h fields.
 
 Config:
-  STRUCTURAL_RANGE_SHIFT_EXIT          (default False)
+  STRUCTURAL_RANGE_SHIFT_EXIT          (cat_side template defaults above; config fallback True)
   STRUCTURAL_RANGE_SHIFT_TF            (default 'dc_4h')
   STRUCTURAL_RANGE_SHIFT_K_HIGH        (default 75.0)
   STRUCTURAL_RANGE_SHIFT_K_LOW         (default 25.0)
@@ -55,7 +56,7 @@ _FIELD_MAP = {
 def _srs_fires(entry_price, current_price, srs_high, srs_low, k1h, k1h_prev, k15, k15_prev,
                w1_1h, w2_1h, w1_15m, w2_15m, w1_3m, w2_3m, is_long,
                k_hi, k_lo, band) -> bool:
-    """PURE per-bar fire test. Mirrors live 13783-13797 EXACTLY."""
+    """Pure per-bar SRS test with the source predicates and paired 15m LTF policy."""
     if not (entry_price > 0 and srs_high > 0 and srs_low > 0):
         return False
     if is_long:

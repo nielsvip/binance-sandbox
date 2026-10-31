@@ -124,3 +124,21 @@ def test_parent_pair_restart_and_skipped_observation_are_explicit():
     assert first_after_start == (0.72, 0.72)
     assert after_skipped_parent == (0.41, 0.72)
     assert after_restart == (0.41, 0.41)
+
+
+def test_completed_snapshot_values_override_state_and_raw_formed_values():
+    indicators = {
+        "bb_pct_b_D": 0.21,
+        "bb_pct_b_D_prev": 0.95,
+        "_completed_bb_pct_b_D": 0.62,
+        "_completed_bb_pct_b_D_prev": 0.83,
+        "_completed_source_ts_D": 200,
+        "wt_velocity_1h": -1.0,
+    }
+    pair = completed_parent_value_pair(
+        indicators,
+        timeframe="D",
+        state={},
+        state_key="AAPL:LONG:STDEV_REJECT:D",
+    )
+    assert pair == (0.62, 0.83)

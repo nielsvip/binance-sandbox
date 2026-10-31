@@ -1,0 +1,455 @@
+{
+  "accepted_baseline": {
+    "local_verified_copy": "data/reports/accepted_baseline_provenance_20261030T235242Z/starts/1INCHUSDT_SHORT_autopsy_base.json",
+    "s2_path": "/home/niels/v15_bench/reviews/prior_oracle_20261031T000747Z/source_provenance/1INCH_captured.json",
+    "sha256": "6da197e310f62ceaa212f62b98c83f8469e19100fa8555bedb9f4161563b5b4d",
+    "values": {
+      "BREAKEVEN_GAIN_EROSION_ENABLED": false,
+      "BREAKEVEN_GAIN_EROSION_FILTER_TF": "15m",
+      "COMMISSION_BUFFER_PCT": 0.08,
+      "HARD_BREAKEVEN_FLOOR_ENABLED": true,
+      "HARD_BREAKEVEN_MIN_PEAK_PCT": 0.5,
+      "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": "OFF",
+      "PEAK_GIVEBACK_DROP_PCT": 0.5,
+      "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED": false,
+      "PEAK_GIVEBACK_HARD_ZERO_ENABLED": true,
+      "PEAK_GIVEBACK_MIN_PEAK_PCT": 0.5,
+      "PEAK_GIVEBACK_PROTECTION_ENABLED": true,
+      "REENTRY_EXIT_RECLAIM_BUFFER_PCT": 0.2,
+      "REENTRY_EXIT_RECLAIM_ENABLED": true,
+      "REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED": false,
+      "STOP_RECLAIM_BUFFER_PCT": 0.1,
+      "STOP_RECLAIM_MAX_SWEEP_PCT": 1.5,
+      "STOP_RECLAIM_REENTRY_ENABLED": true,
+      "STOP_RECLAIM_REQUIRE_HTF": true
+    }
+  },
+  "candidates": [
+    {
+      "fields": [
+        {
+          "baseline": false,
+          "baseline_type": "bool",
+          "candidate": true,
+          "candidate_type": "bool",
+          "field": "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED",
+          "template_rows": [
+            {
+              "bold": true,
+              "row": 6,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": false
+            },
+            {
+              "bold": false,
+              "row": 5,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": true
+            }
+          ]
+        },
+        {
+          "baseline": 0.08,
+          "baseline_type": "float",
+          "candidate": 0.04,
+          "candidate_type": "float",
+          "field": "COMMISSION_BUFFER_PCT",
+          "template_rows": [
+            {
+              "bold": true,
+              "row": 173,
+              "tab": "EXIT_STRUCTURAL",
+              "value": 0.08
+            },
+            {
+              "bold": false,
+              "row": 172,
+              "tab": "EXIT_STRUCTURAL",
+              "value": 0.04
+            }
+          ]
+        }
+      ],
+      "id": "PG_DROP_TRIGGER_x_COMMISSION_BUFFER_004",
+      "kind": "cross-row switch-switch"
+    },
+    {
+      "fields": [
+        {
+          "baseline": false,
+          "baseline_type": "bool",
+          "candidate": true,
+          "candidate_type": "bool",
+          "field": "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED",
+          "template_rows": [
+            {
+              "bold": true,
+              "row": 6,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": false
+            },
+            {
+              "bold": false,
+              "row": 5,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": true
+            }
+          ]
+        },
+        {
+          "baseline": 0.5,
+          "baseline_type": "float",
+          "candidate": 0.25,
+          "candidate_is_below_0_5": true,
+          "candidate_type": "float",
+          "field": "PEAK_GIVEBACK_DROP_PCT",
+          "template_rows": [
+            {
+              "bold": true,
+              "row": 12,
+              "tab": "EXIT_STRUCTURAL",
+              "value": 0.5
+            },
+            {
+              "bold": false,
+              "row": 11,
+              "tab": "EXIT_STRUCTURAL",
+              "value": 0.25
+            }
+          ]
+        }
+      ],
+      "id": "PG_DROP_TRIGGER_x_DROP_PCT_025",
+      "kind": "cross-row switch-switch"
+    },
+    {
+      "fields": [
+        {
+          "baseline": false,
+          "baseline_type": "bool",
+          "candidate": true,
+          "candidate_type": "bool",
+          "field": "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED",
+          "template_rows": [
+            {
+              "bold": true,
+              "row": 6,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": false
+            },
+            {
+              "bold": false,
+              "row": 5,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": true
+            }
+          ]
+        },
+        {
+          "baseline": 0.5,
+          "baseline_type": "float",
+          "candidate": 0.25,
+          "candidate_is_below_0_5": true,
+          "candidate_type": "float",
+          "field": "PEAK_GIVEBACK_MIN_PEAK_PCT",
+          "template_rows": [
+            {
+              "bold": true,
+              "row": 48,
+              "tab": "EXIT_STRUCTURAL",
+              "value": 0.5
+            },
+            {
+              "bold": false,
+              "row": 50,
+              "tab": "EXIT_STRUCTURAL",
+              "value": 0.25
+            }
+          ]
+        }
+      ],
+      "id": "PG_DROP_TRIGGER_x_MIN_PEAK_025",
+      "kind": "cross-row switch-switch"
+    },
+    {
+      "context": "HARD_BREAKEVEN_FLOOR_ENABLED is True in accepted baseline and remains unchanged; it is the BGE override, not a BGE yellow.",
+      "fields": [
+        {
+          "baseline": false,
+          "baseline_type": "bool",
+          "candidate": true,
+          "candidate_type": "bool",
+          "field": "BREAKEVEN_GAIN_EROSION_ENABLED",
+          "template_rows": [
+            {
+              "bold": true,
+              "row": 41,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": false
+            },
+            {
+              "bold": false,
+              "row": 42,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": true
+            }
+          ]
+        },
+        {
+          "baseline": false,
+          "baseline_type": "bool",
+          "candidate": true,
+          "candidate_type": "bool",
+          "field": "REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED",
+          "template_rows": [
+            {
+              "bold": true,
+              "row": 3,
+              "tab": "REENTRY_WINDOWED",
+              "value": false
+            },
+            {
+              "bold": false,
+              "row": 4,
+              "tab": "REENTRY_WINDOWED",
+              "value": true
+            }
+          ]
+        }
+      ],
+      "id": "BGE_PARENT_x_REENTRY_CROSSBACK",
+      "kind": "cross-row switch-switch"
+    },
+    {
+      "fields": [
+        {
+          "baseline": false,
+          "baseline_type": "bool",
+          "candidate": true,
+          "candidate_type": "bool",
+          "field": "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED",
+          "template_rows": [
+            {
+              "bold": true,
+              "row": 6,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": false
+            },
+            {
+              "bold": false,
+              "row": 5,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": true
+            }
+          ]
+        },
+        {
+          "baseline": "OFF",
+          "baseline_type": "str",
+          "candidate": "15m",
+          "candidate_type": "str",
+          "field": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF",
+          "template_rows": [
+            {
+              "domain": [
+                "OFF",
+                "D",
+                "4h",
+                "1h",
+                "15m"
+              ],
+              "exact_yellow_header": "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=15m",
+              "row": 5,
+              "tab": "REDUCE_PROFIT_LOCK"
+            }
+          ]
+        }
+      ],
+      "id": "PG_DROP_TRIGGER_x_OWN_YELLOW_TF_15M",
+      "kind": "row-switch plus exact row-yellow filter",
+      "limitation": "This is the peak-giveback BE-erosion filter, not a BREAKEVEN_GAIN_EROSION_FILTER_TF yellow."
+    },
+    {
+      "context": "Protective close plus existing global favorable exit-price crossback requirement for subsequent reentries; no stop setting changes.",
+      "fields": [
+        {
+          "baseline": false,
+          "baseline_type": "bool",
+          "candidate": true,
+          "candidate_type": "bool",
+          "field": "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED",
+          "template_rows": [
+            {
+              "bold": true,
+              "row": 6,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": false
+            },
+            {
+              "bold": false,
+              "row": 5,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": true
+            }
+          ]
+        },
+        {
+          "baseline": false,
+          "baseline_type": "bool",
+          "candidate": true,
+          "candidate_type": "bool",
+          "field": "REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED",
+          "template_rows": [
+            {
+              "bold": true,
+              "row": 3,
+              "tab": "REENTRY_WINDOWED",
+              "value": false
+            },
+            {
+              "bold": false,
+              "row": 4,
+              "tab": "REENTRY_WINDOWED",
+              "value": true
+            }
+          ]
+        }
+      ],
+      "id": "PG_DROP_TRIGGER_x_REENTRY_CROSSBACK",
+      "kind": "cross-row switch-switch"
+    }
+  ],
+  "constraints": [
+    "Research candidates only; no baseline/default/engine/template changes and no engine run.",
+    "The fixed stop is unchanged; no stop weakening candidate included.",
+    "Do not label these predicted or measured gain improvements.",
+    "BGE-specific yellow is absent; do not substitute the separate peak-giveback BE-erosion yellow."
+  ],
+  "created_at_utc": "2026-10-31T02:01:03Z",
+  "proposal_provenance": {
+    "checked_artifact": {
+      "path": "data/reports/nextgen_inference_activation_20261030/context/data/learn/linknet_proposals_v2_CRYPTO_SHORT.json",
+      "result": "no matching protection/reentry fields in proposal payload",
+      "sha256": "b89ca7b0f1c81c8fd1c68ef81a13b158c31505e1e578c0111f515405495f2e1b"
+    },
+    "diagnostic_source": {
+      "path": "data/reports/nextgen_protection_activation_conflicts_20261031.json",
+      "role": "activation gap evidence only, not a candidate proposal or outcome evidence",
+      "sha256": "91b358a044996dda27c854138ec4f9f5f95fa3c7487b8ef9e9a202e405b10df0"
+    },
+    "matching_linknet_candidate_found": false,
+    "root_directed_candidate_set": true
+  },
+  "reentry_recovery": {
+    "accepted_values": {
+      "REENTRY_EXIT_RECLAIM_BUFFER_PCT": 0.2,
+      "REENTRY_EXIT_RECLAIM_ENABLED": true,
+      "REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED": false,
+      "STOP_RECLAIM_BUFFER_PCT": 0.1,
+      "STOP_RECLAIM_MAX_SWEEP_PCT": 1.5,
+      "STOP_RECLAIM_REENTRY_ENABLED": true,
+      "STOP_RECLAIM_REQUIRE_HTF": true
+    },
+    "candidate_pairs": [
+      {
+        "fields": [
+          "REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED=True",
+          "REENTRY_EXIT_RECLAIM_BUFFER_PCT=0.5"
+        ],
+        "note": "both exact template rows; tighter favorable exit-price reclaim hurdle; no fixed-stop changes"
+      },
+      {
+        "fields": [
+          "REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED=True",
+          "STOP_RECLAIM_MAX_SWEEP_PCT=0.8"
+        ],
+        "note": "both exact template rows; smaller permissible stop sweep, HTF requirement remains True; no fixed-stop changes"
+      }
+    ],
+    "template_rows": [
+      {
+        "baseline_row": 3,
+        "baseline_value": false,
+        "field": "REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED",
+        "row": 4,
+        "tab": "REENTRY_WINDOWED",
+        "value": true
+      },
+      {
+        "baseline_row": 95,
+        "baseline_value": 0.2,
+        "field": "REENTRY_EXIT_RECLAIM_BUFFER_PCT",
+        "row": 94,
+        "tab": "REENTRY_WINDOWED",
+        "value": 0.5
+      },
+      {
+        "baseline_row": 134,
+        "baseline_value": 1.5,
+        "field": "STOP_RECLAIM_MAX_SWEEP_PCT",
+        "row": 136,
+        "tab": "REENTRY_WINDOWED",
+        "value": 0.8
+      },
+      {
+        "baseline_already_true": true,
+        "bold": true,
+        "field": "STOP_RECLAIM_REENTRY_ENABLED",
+        "row": 208,
+        "tab": "REENTRY_WINDOWED",
+        "value": true
+      },
+      {
+        "baseline_already_true": true,
+        "bold": true,
+        "field": "STOP_RECLAIM_REQUIRE_HTF",
+        "row": 229,
+        "tab": "REENTRY_WINDOWED",
+        "value": true
+      }
+    ]
+  },
+  "schema": "protection_quartet_template_domain_audit/1",
+  "strict_type_check": {
+    "candidate_values_checked": {
+      "BREAKEVEN_GAIN_EROSION_ENABLED": true,
+      "BREAKEVEN_GAIN_EROSION_FILTER_TF": "15m",
+      "COMMISSION_BUFFER_PCT": 0.04,
+      "HARD_BREAKEVEN_FLOOR_ENABLED": true,
+      "HARD_BREAKEVEN_MIN_PEAK_PCT": 0.25,
+      "PEAK_GIVEBACK_BE_EROSION_FILTER_TF": "15m",
+      "PEAK_GIVEBACK_DROP_PCT": 0.25,
+      "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED": true,
+      "PEAK_GIVEBACK_MIN_PEAK_PCT": 0.25,
+      "REENTRY_EXIT_RECLAIM_BUFFER_PCT": 0.5,
+      "REENTRY_REQUIRES_EXIT_CROSSBACK_ENABLED": true,
+      "STOP_RECLAIM_MAX_SWEEP_PCT": 0.8
+    },
+    "reference_files_sha256": {
+      "config.py": "3a789487426ef363a86887ea03fe04e2ff1b49af8f891308509ee5482f305501",
+      "tools/switch_types.py": "47eb23adbc2135d2d94f11500c67ce8f9af4a2e1c5edd195e6ad343699763048",
+      "v12_quick_engine.py": "c86aded579e52f23ba8865de0d8b46a7f72b4e71ecfeab136ac5510567fb64fa"
+    },
+    "reference_root": "S2 /home/niels/v15_bench/reviews/prior_oracle_20261031T000747Z/reference",
+    "result": "all listed candidate types/values accepted by frozen reference coerce",
+    "tool": "tools/switch_types.py coerce(strict_unknown=True)"
+  },
+  "symbol_side": "1INCHUSDT_SHORT",
+  "template": {
+    "classifier": "tools/v18_binding_map.read_template; row-level yellow fill headers only",
+    "path": "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx",
+    "sha256": "ec3384e042f6e22114e79c8586de634931de5f0c7b84f7df596b2ad93862c7b1"
+  },
+  "yellow_domain_facts": {
+    "BREAKEVEN_GAIN_EROSION_ENABLED_row42_yellows": [],
+    "BREAKEVEN_GAIN_EROSION_FILTER_TF_yellow_cells_in_workbook": 0,
+    "HARD_BREAKEVEN_MIN_PEAK_PCT_yellow_cells_in_workbook": 0,
+    "REDUCE_PROFIT_LOCK_row5": [
+      "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=OFF",
+      "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=D",
+      "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=4h",
+      "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=1h",
+      "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=15m"
+    ]
+  }
+}
