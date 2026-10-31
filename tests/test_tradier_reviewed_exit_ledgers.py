@@ -331,3 +331,125 @@ def test_stdev_bb_rz_exit_obeys_native_scorer_hold_stale_and_cash_gates():
     cash.SIM_ACCOUNT = "tra"
     cash_result = V.simulate_one(npz, "SYNTH", True, cash, force_initial_seed=True)
     assert _reason_events(cash_result, "STDEV_BB_RZ_EXIT") == []
+
+
+def test_wt_min_tfs_uses_native_master_scorer_hold_and_precedes_stdev():
+    npz = _base_npz()
+    fire_bar = 201
+    npz["timestamps"] = 1699972200.0 + np.arange(len(npz["close"])) * 900.0
+    npz["close"][fire_bar] = 104.0
+    if "close_15m" in npz:
+        npz["close_15m"][fire_bar] = 104.0
+    for tf in ("5m", "15m", "1h", "4h", "D"):
+        npz[f"wt1_{tf}"] = np.zeros(len(npz["close"]))
+        npz[f"wt2_{tf}"] = np.zeros(len(npz["close"]))
+        npz[f"wt1_{tf}"][fire_bar] = 0.0
+        npz[f"wt2_{tf}"][fire_bar] = 1.0
+    npz["bb_pct_b_D"] = np.full(len(npz["close"]), 0.5)
+    npz["bb_pct_b_D_prev"] = np.full(len(npz["close"]), 0.5)
+    npz["bb_pct_b_D"][fire_bar] = 0.9
+    npz["bb_pct_b_D_prev"][fire_bar] = 1.1
+    npz["wt_velocity_1h"] = np.full(len(npz["close"]), -1.0)
+    npz["age_5m"] = np.zeros(len(npz["close"]))
+
+    off_cfg = _cfg()
+    off_cfg.WT_DC_EXIT_ENABLED = True
+    off_cfg.STOCKS_WTDC_SCORER_EXIT_ENABLED = True
+    off_cfg.WT_DC_EXIT_THRESHOLD = 1000.0
+    off_cfg.WT_EXIT_VETO_ENABLED_TRADIER = False
+    off_cfg.WT_EXIT_MIN_TFS_TRADIER = 5
+    off_cfg.SIM_ACCOUNT = "margin"
+    off = V.simulate_one(npz, "WT_MIN_TFS_TEST", True, off_cfg, force_initial_seed=True)
+    assert _reason_events(off, "WT_EXIT_TFS_VARFIX") == []
+
+    on_cfg = _cfg()
+    on_cfg.WT_DC_EXIT_ENABLED = True
+    on_cfg.STOCKS_WTDC_SCORER_EXIT_ENABLED = True
+    on_cfg.WT_DC_EXIT_THRESHOLD = 1000.0
+    on_cfg.WT_EXIT_VETO_ENABLED_TRADIER = True
+    on_cfg.WT_EXIT_TFS_TRADIER = "5m+15m+1h+4h+D"
+    on_cfg.WT_EXIT_MIN_TFS_TRADIER = 5
+    on_cfg.STDEV_BB_RZ_EXIT_ENABLED = True
+    on_cfg.STDEV_BB_RZ_EXIT_TF = "D"
+    on_cfg.SIM_ACCOUNT = "margin"
+    on = V.simulate_one(npz, "WT_MIN_TFS_TEST", True, on_cfg, force_initial_seed=True)
+    fires = _reason_events(on, "WT_EXIT_TFS_VARFIX")
+    assert len(fires) == 1
+    assert fires[0]["bar_exit"] == fire_bar
+    assert fires[0]["reason"] == "WT_EXIT_TFS_VARFIX(5/5>=5:5m+15m+1h+4h+D)_g=4.00%"
+    assert _reason_events(on, "STDEV_BB_RZ_EXIT") == []
+
+    nonhold_cfg = _cfg()
+    nonhold_cfg.WT_DC_EXIT_ENABLED = True
+    nonhold_cfg.STOCKS_WTDC_SCORER_EXIT_ENABLED = True
+    nonhold_cfg.WT_DC_EXIT_THRESHOLD = -1.0
+    nonhold_cfg.WT_EXIT_VETO_ENABLED_TRADIER = True
+    nonhold_cfg.WT_EXIT_MIN_TFS_TRADIER = 5
+    nonhold_cfg.SIM_ACCOUNT = "margin"
+    nonhold = V.simulate_one(npz, "WT_MIN_TFS_TEST", True, nonhold_cfg, force_initial_seed=True)
+    assert _reason_events(nonhold, "WT_EXIT_TFS_VARFIX") == []
+
+    cash_cfg = _cfg()
+    cash_cfg.WT_DC_EXIT_ENABLED = True
+    cash_cfg.STOCKS_WTDC_SCORER_EXIT_ENABLED = True
+    cash_cfg.WT_DC_EXIT_THRESHOLD = 1000.0
+    cash_cfg.WT_EXIT_VETO_ENABLED_TRADIER = True
+    cash_cfg.WT_EXIT_MIN_TFS_TRADIER = 5
+    cash_cfg.SIM_ACCOUNT = "tra"
+    cash = V.simulate_one(npz, "WT_MIN_TFS_TEST", True, cash_cfg, force_initial_seed=True)
+    assert _reason_events(cash, "WT_EXIT_TFS_VARFIX") == []
+
+    stale = {key: value.copy() if isinstance(value, np.ndarray) else value for key, value in npz.items()}
+    stale["age_5m"][fire_bar] = 601.0
+    stale["close"][fire_bar] = 100.2
+    if "close_15m" in stale:
+        stale["close_15m"][fire_bar] = 100.2
+    stale_cfg = _cfg()
+    stale_cfg.WT_DC_EXIT_ENABLED = True
+    stale_cfg.STOCKS_WTDC_SCORER_EXIT_ENABLED = True
+    stale_cfg.WT_DC_EXIT_THRESHOLD = 1000.0
+    stale_cfg.WT_EXIT_VETO_ENABLED_TRADIER = True
+    stale_cfg.WT_EXIT_MIN_TFS_TRADIER = 5
+    stale_cfg.SIM_ACCOUNT = "margin"
+    stale_result = V.simulate_one(stale, "WT_MIN_TFS_TEST", True, stale_cfg, force_initial_seed=True)
+    assert _reason_events(stale_result, "WT_EXIT_TFS_VARFIX") == []
+
+
+def test_native_wt_min_tfs_ast_order_is_master_then_stdev_within_scorer_hold():
+    import ast
+    from pathlib import Path
+
+    tree = ast.parse(Path("tradier_manage.py").read_text())
+    evaluator = next(
+        node
+        for cls in ast.walk(tree)
+        if isinstance(cls, ast.ClassDef) and cls.name == "TradierStopEvaluator"
+        for node in cls.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and node.name == "evaluate_stop"
+    )
+    hold_branch = next(
+        node
+        for node in ast.walk(evaluator)
+        if isinstance(node, ast.If)
+        and "_wtdc_exit_enabled" in ast.dump(node.test)
+        and "_exit_score" in ast.dump(node.test)
+        and "_exit_threshold" in ast.dump(node.test)
+        and "Lt" in ast.dump(node.test)
+    )
+    hold_tests = [
+        node
+        for node in hold_branch.body
+        if isinstance(node, ast.If)
+    ]
+    master_index = next(
+        index
+        for index, node in enumerate(hold_tests)
+        if "WT_EXIT_VETO_ENABLED_TRADIER" in ast.dump(node.test)
+    )
+    stdev_index = next(
+        index
+        for index, node in enumerate(hold_tests)
+        if "STDEV_BB_RZ_EXIT_ENABLED" in ast.dump(node.test)
+    )
+    assert master_index < stdev_index

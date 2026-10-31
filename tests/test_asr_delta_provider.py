@@ -130,3 +130,70 @@ def test_incremental_stream_uses_one_tracker_and_rejects_time_reversal():
     assert observed[-1]["delta_signal_present"] is True
     with np.testing.assert_raises_regex(ValueError, "moved backward"):
         stream.update({"_tick_ts": int(ts[-2])}, None)
+
+
+def test_raw_npz_delta_binding_matches_actual_indicator_store_rows(tmp_path):
+    from backtest_v8_harness import IndicatorStore
+    from config import Config
+    from vec_decisions.asr_delta_provider import delta_indicator_arrays
+    from vec_decisions.asr_input_adapter import paired_indicator_view
+    from vec_decisions.live_indicator_labels import decode_live_indicator_labels
+
+    n = 12
+    timestamps = np.arange(n, dtype=np.int64) * 900 + 1_790_000_000
+    rng = np.random.default_rng(116)
+    arrays = {"timestamps": timestamps, "close": 0.01 + np.cumsum(rng.normal(0.0, 0.0001, n))}
+    for tf in ("1m", "3m", "15m", "1h", "4h", "D"):
+        arrays[f"wt1_{tf}"] = rng.normal(0.0, 30.0, n)
+        arrays[f"wt2_{tf}"] = rng.normal(0.0, 30.0, n)
+        arrays[f"wt_velocity_{tf}"] = rng.normal(0.0, 2.0, n)
+        arrays[f"wt_acceleration_{tf}"] = rng.normal(0.0, 1.0, n)
+        arrays[f"wt_bullish_{tf}"] = rng.integers(0, 2, n, dtype=np.int8)
+        arrays[f"wt_cross_bull_{tf}"] = rng.integers(0, 2, n, dtype=np.int8)
+        arrays[f"wt_cross_bear_{tf}"] = rng.integers(0, 2, n, dtype=np.int8)
+        arrays[f"wt_momentum_state_{tf}"] = rng.integers(-2, 3, n, dtype=np.int8)
+        arrays[f"dc_basis_{tf}"] = rng.normal(0.0, 1.0, n)
+        arrays[f"dc_basis_{tf}_prev"] = rng.normal(0.0, 1.0, n)
+        arrays[f"dc_high_{tf}"] = rng.normal(2.0, 1.0, n)
+        arrays[f"dc_high_{tf}_prev"] = rng.normal(2.0, 1.0, n)
+        arrays[f"dc_low_{tf}"] = rng.normal(-2.0, 1.0, n)
+        arrays[f"dc_low_{tf}_prev"] = rng.normal(-2.0, 1.0, n)
+        arrays[f"dc_position_{tf}"] = rng.uniform(0.0, 1.0, n)
+        arrays[f"dc_width_{tf}"] = rng.uniform(0.0, 5.0, n)
+        arrays[f"stoch_k_{tf}"] = rng.uniform(0.0, 100.0, n)
+        arrays[f"stoch_d_{tf}"] = rng.uniform(0.0, 100.0, n)
+        arrays[f"wt_signal_{tf}"] = rng.integers(-1, 2, n, dtype=np.int8)
+    path = tmp_path / "delta_indicator_store_fixture.npz"
+    np.savez(path, **arrays)
+    cfg = Config()
+    tracker_cfg = native_delta_tracker_config(cfg)
+    store = IndicatorStore(str(path))
+    rows = []
+    for index in range(n):
+        snapshot = decode_live_indicator_labels(store.build_indicator_dict(index))
+        ind, metrics, missing = paired_indicator_view(snapshot, snapshot, False)
+        assert not missing
+        row = dict(ind)
+        row.update(metrics)
+        rows.append(row)
+    raw = {key: value for key, value in arrays.items()}
+    direct_view = delta_indicator_arrays(raw, False)
+    for index, row in enumerate(rows):
+        for key in ("current_price", "_tick_ts", "k_3m", "d_3m", "k_1h", "wt_momentum_state_1h", "wt_signal_15m", "dc_position_4h"):
+            direct = direct_view[key][index] if key in direct_view else None
+            actual = row.get(key)
+            if hasattr(direct, "item"):
+                direct = direct.item()
+            if hasattr(actual, "item"):
+                actual = actual.item()
+            assert direct == actual, (index, key, direct, actual)
+    direct_result = replay_delta_tracker_arrays(
+        raw, symbol="TEST", cfg=tracker_cfg, use_ltf=False, timestamps=timestamps,
+        is_long=True, position_states=[None] * n,
+    )
+    native_rows_result = replay_delta_tracker_arrays(
+        raw, symbol="TEST", cfg=tracker_cfg, use_ltf=False, timestamps=timestamps,
+        is_long=True, position_states=[None] * n, producer_rows=rows,
+    )
+    for key in direct_result["signals"]:
+        np.testing.assert_array_equal(direct_result["signals"][key], native_rows_result["signals"][key], err_msg=key)

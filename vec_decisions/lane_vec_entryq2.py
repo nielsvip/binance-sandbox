@@ -465,8 +465,9 @@ def wt_exhaust_require_gain_mask(npz: Mapping[str, Any], n: int, is_long: bool, 
 # === 17. WT_EXIT_MIN_TFS_TRADIER (tm:19507-19526) — WT-against count over cfg TFs ===
 @_fail_open
 def wt_exit_min_tfs_mask(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any) -> np.ndarray | None:
-    tfs = _parse_tf_list(getattr(cfg, "WT_EXIT_TFS_TRADIER", "5m+15m+1h+4h+D"), "5m+15m+1h+4h+D")
-    need = _i(cfg, "WT_EXIT_MIN_TFS_TRADIER", 5)
+    raw_tfs = getattr(cfg, "WT_EXIT_TFS_TRADIER", "5m+15m+1h+4h+D")
+    tfs = [t.strip() for t in str(raw_tfs).replace("+", ",").split(",") if t.strip()]
+    need = _i(cfg, "WT_EXIT_MIN_TFS_TRADIER", 4) or 4
     against = np.zeros(n, dtype=int)
     pairs = 0
     for _tf in tfs:

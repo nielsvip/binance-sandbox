@@ -15919,17 +15919,23 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         pass
     # WIRING LANES F2/F3 2026-10-05: exit twins (entryq2 exhaust/trend/wrong-side + gates2 all-tf-against close); fail-open.
+    _wt_exit_min_tfs_mask = None
     try:
         import vec_decisions.lane_vec_entryq2 as _lve2x
 
         for _sw in (
             "WRONG_SIDE_WT_TFS_REQUIRED",
-            "WT_EXIT_MIN_TFS_TRADIER",
             "TREND_EXIT_SCORE_FLIP",
         ):
             _m = _lve2x.get(_sw, npz, n, is_long, cfg)
             if _m is not None:
                 exit_sig = exit_sig | np.asarray(_m, dtype=bool)
+        if str(getattr(cfg, "MODE", "crypto")).lower() == "tradier" and bool(
+            getattr(cfg, "WT_EXIT_VETO_ENABLED_TRADIER", False)
+        ):
+            _wt_exit_min_tfs_mask = _lve2x.get(
+                "WT_EXIT_MIN_TFS_TRADIER", npz, n, is_long, cfg
+            )
         for _sw in (
             "RULE_B_3M_EXIT_ENABLED",
             "WT_EXHAUST_EXIT_MIN_GAIN_PCT",
@@ -19066,6 +19072,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _wsx_dch = _safe(npz, "dc_high_15m", n, 0.0)
             except Exception:
                 _wsx_score = None
+
+    if _wt_exit_min_tfs_mask is not None and _wsx_score is not None:
+        _wt_exit_min_tfs_mask = np.asarray(_wt_exit_min_tfs_mask, dtype=bool)
+        _wt_exit_min_tfs_mask &= np.asarray(_wsx_score, dtype=float) < float(_wsx_thr)
 
     _stdev_bbrz_mask = None
     _stdev_bbrz_now = None
@@ -23682,6 +23692,51 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                     closed, reason = True, _wsx_reason
             except Exception:
                 pass
+        # Native evaluate_stop checks this in the scorer-hold branch, after its
+        # mandatory WT/DC score exit and before STDEV_BB_RZ_EXIT. Keep it out of
+        # the earlier generic exit_sig OR so a disabled master or non-hold score
+        # cannot create a stock-only close.
+        if (
+            not closed
+            and is_tradier
+            and pos is not None
+            and _wt_exit_min_tfs_mask is not None
+            and _wsx_score is not None
+            and i < len(_wt_exit_min_tfs_mask)
+            and bool(_wt_exit_min_tfs_mask[i])
+        ):
+            _wt_age_now = float(_safe(npz, "age_5m", n, 0.0)[i])
+            _wt_stale_max = float(getattr(cfg, "WT_DC_EXIT_STALE_MAX_S", 600))
+            _wt_cash_guard = (
+                _cash_settle.sim_account(cfg) == "tra" and held_bars * bmin < 5760.0
+            )
+            if not _wt_cash_guard and not (_wt_age_now > _wt_stale_max):
+                _wt_tf_raw = getattr(cfg, "WT_EXIT_TFS_TRADIER", "5m+15m+1h+4h+D")
+                _wt_exit_tfs = [
+                    _tf.strip()
+                    for _tf in str(_wt_tf_raw).replace("+", ",").split(",")
+                    if _tf.strip()
+                ]
+                try:
+                    _wt_exit_need = int(float(getattr(cfg, "WT_EXIT_MIN_TFS_TRADIER", 4)) or 4)
+                except (TypeError, ValueError):
+                    _wt_exit_need = 4
+                _wt_against_tfs = []
+                for _wt_tf in _wt_exit_tfs:
+                    _wt1_now = float(_safe(npz, f"wt1_{_wt_tf}", n, 0.0)[i])
+                    _wt2_now = float(_safe(npz, f"wt2_{_wt_tf}", n, 0.0)[i])
+                    if not (np.isfinite(_wt1_now) and np.isfinite(_wt2_now)):
+                        continue
+                    if (is_long and _wt1_now < _wt2_now) or (
+                        not is_long and _wt1_now > _wt2_now
+                    ):
+                        _wt_against_tfs.append(_wt_tf)
+                if _wt_exit_tfs and len(_wt_against_tfs) >= _wt_exit_need:
+                    reason = (
+                        f"WT_EXIT_TFS_VARFIX({len(_wt_against_tfs)}/{len(_wt_exit_tfs)}"
+                        f">={_wt_exit_need}:{'+'.join(_wt_against_tfs)})_g={live_pnl_pct:.2f}%"
+                    )
+                    closed = True
         if not closed and pos is not None and _stdev_bbrz_mask is not None and _wsx_score is not None:
             try:
                 _stdev_bbrz_acct = _cash_settle.sim_account(cfg)

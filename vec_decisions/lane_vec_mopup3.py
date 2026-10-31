@@ -43,13 +43,12 @@ NPZ reality (probed on backtest_v8/indicators/AAPL.npz, 940 keys):
     wt_cross_rising = (w1>w2) (:1231); wt_divergence +1=BULL/-1=BEAR (:1288-1293);
     wt_momentum_state -2=EXHAUST_DOWN/+2=EXHAUST_UP (:1260-1262, sibling
     grey_wire_exits.py:24).
-MTS frozen subset: live scores 6 TFs (1m/3m/15m/1h/4h/D, weights 1/2/3/5/8/5);
-the twin scores the 4 frozen TFs (15m/1h/4h/D, live weights 3/5/8/5,
-normalised by available weight). 1m/3m legs are uncomputable — omitted, never
-defaulted. 0dc_* overlay omitted when keys are absent = live-default no-op
-(0.5/0.5/0/1.0 produce zero adjustment, :861-885). Scalp-dc convergence legs
-default to 0.5 when dc_position_3m is absent = live default (:932), so all
-convergence bonuses stay off on frozen NPZ unless the caller supplies the key.
+MTS scores now delegate to the shared six-timeframe native/NumPy provider
+(`vec_decisions.asr_mts_provider.analyze_mts_state_array`), using resolved
+per-symbol `MTS_WEIGHT_*` values and the paired 15m inputs when LTF is off.
+`0dc_*` overlays are read only when present in the supplied producer snapshot;
+otherwise native source defaults apply. The shared provider preserves native
+convergence defaults and reports absent producer fields for diagnostics.
 
 SKIPPED (honest stop — no bar predicate in live; not in SUPPORTED):
   LEADERBOARD_FILTER — membership veto on runtime winners/losers dicts

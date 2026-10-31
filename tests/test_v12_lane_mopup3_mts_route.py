@@ -59,3 +59,62 @@ def test_v12_entry_signal_route_consumes_full_native_mts_scores(monkeypatch):
     v12.compute_entry_signals(npz, n, True, cfg, "SYNTH")
     assert len(seen) == 1
     assert seen[0] is None
+
+
+def test_mts_v12_consumer_matches_actual_indicator_store_snapshot(tmp_path):
+    import ast
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    from backtest_v8_harness import IndicatorStore
+    from vec_decisions.asr_input_adapter import paired_indicator_view
+    from vec_decisions.live_indicator_labels import decode_live_indicator_labels
+
+    n = 7
+    timestamps = np.arange(n, dtype=np.int64) * 900 + 1_790_000_000
+    arrays = {"timestamps": timestamps, "close": np.linspace(100.0, 103.0, n)}
+    for offset, tf in enumerate(("1m", "3m", "15m", "1h", "4h", "D")):
+        arrays[f"k_{tf}"] = np.linspace(10.0 + offset, 80.0 - offset, n)
+        arrays[f"d_{tf}"] = np.linspace(15.0, 75.0, n)
+        arrays[f"k_{tf}_prev"] = np.linspace(12.0, 78.0, n)
+        arrays[f"wt1_{tf}"] = np.linspace(-55.0, 25.0, n)
+        arrays[f"wt2_{tf}"] = np.linspace(-45.0, 20.0, n)
+        arrays[f"wt_cross_{tf}"] = np.asarray([-1, 0, 1, 1, 0, -1, 0], dtype=np.int8)
+        arrays[f"wt_cross_value_{tf}"] = np.linspace(-60.0, 60.0, n)
+        arrays[f"wt_cross_prev_value_{tf}"] = np.linspace(60.0, -60.0, n)
+        arrays[f"wt_cross_rising_{tf}"] = np.asarray([0, 1, 1, 0, 1, 0, 1], dtype=np.int8)
+        arrays[f"wt_velocity_{tf}"] = np.linspace(-5.0, 5.0, n)
+        arrays[f"wt_cross_bars_ago_{tf}"] = np.asarray([0, 1, 2, 4, 8, 12, 999], dtype=np.int16)
+        arrays[f"wt_divergence_{tf}"] = np.asarray([-1, 0, 1, 2, -2, 0, 1], dtype=np.int8)
+        arrays[f"wt_momentum_state_{tf}"] = np.asarray([-2, -1, 0, 1, 2, 0, -2], dtype=np.int8)
+        arrays[f"wt_bullish_{tf}"] = np.asarray([1, 1, 0, 1, 0, 0, 1], dtype=np.int8)
+        arrays[f"dc_position_{tf}"] = np.linspace(0.05, 0.95, n)
+        arrays[f"dc_width_{tf}"] = np.linspace(1.0, 7.0, n)
+    path = tmp_path / "mts_indicator_store_fixture.npz"
+    np.savez(path, **arrays)
+    store = IndicatorStore(str(path))
+    cfg = v12.QuickConfig()
+    cfg.USE_1M_3M_SIGNALS_ENABLED = False
+    cfg.TF_SCALP = "3m"
+    cfg.MTS_WEIGHT_1m = 3.0
+    cfg.MTS_WEIGHT_3m = 5.0
+    cfg.MTS_WEIGHT_15m = 8.0
+    cfg.MTS_WEIGHT_1h = 12.0
+    cfg.MTS_WEIGHT_4h = 4.0
+    cfg.MTS_WEIGHT_D = 2.0
+    native_source = Path(__file__).resolve().parents[1] / "ez_positions_quick.py"
+    tree = ast.parse(native_source.read_text())
+    node = next(item for item in tree.body if isinstance(item, ast.FunctionDef) and item.name == "analyze_multi_tf_state")
+    namespace = {"config": SimpleNamespace(TF_SCALP="3m")}
+    exec(compile(ast.Module(body=[node], type_ignores=[]), str(native_source), "exec"), namespace)
+    native_analyzer = namespace["analyze_multi_tf_state"]
+    raw = {key: arrays[key] for key in arrays if key != "timestamps"}
+    raw["timestamps"] = timestamps
+    vector = analyze_mts_state_array(raw, cfg=cfg, is_long=True, n=n)
+    for index in range(n):
+        snapshot = decode_live_indicator_labels(store.build_indicator_dict(index))
+        ind, metrics, missing = paired_indicator_view(snapshot, snapshot, False)
+        assert not missing
+        native = native_analyzer(ind, metrics, True, float(snapshot["current_price"]))
+        assert vector["bottom_score"][index] == native["bottom_score"]
+        assert vector["entry_quality"][index] == native["entry_quality"]

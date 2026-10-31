@@ -5,8 +5,7 @@ from collections.abc import Mapping, Sequence
 
 import numpy as np
 
-from vec_decisions.asr_input_adapter import paired_npz_view
-from vec_decisions.live_indicator_labels import decode_live_indicator_labels
+from vec_decisions.asr_ordered_composer import bind_asr_npz_arrays
 
 
 _OUTPUT_FIELDS = (
@@ -102,6 +101,65 @@ def native_delta_tracker_config(config):
         "structural_exit_gate_enabled": getattr(config, "STRUCTURAL_EXIT_GATE_ENABLED", True),
     }
 
+def delta_indicator_arrays(npz, use_ltf):
+    """Bind arrays like IndicatorStore.build_indicator_dict + live label decode."""
+    arrays = bind_asr_npz_arrays(npz, {"USE_1M_3M_SIGNALS_ENABLED": bool(use_ltf)})
+    arrays = {key: np.asarray(value).copy() if isinstance(value, np.ndarray) else value for key, value in arrays.items()}
+    n = len(np.asarray(arrays["timestamps"]).reshape(-1)) if "timestamps" in arrays else 0
+    def alias(key, source):
+        if key not in arrays and source in arrays:
+            arrays[key] = np.asarray(arrays[source]).copy()
+    timestamps = np.asarray(arrays.get("timestamps", np.arange(n)), dtype=np.int64).reshape(-1)
+    arrays.setdefault("_tick_ts", timestamps.astype(float))
+    arrays.setdefault("ts", timestamps.astype(float))
+    if "current_price" not in arrays and "close" in arrays:
+        arrays["current_price"] = np.asarray(arrays["close"], dtype=float).copy()
+    for tf in ("1m", "3m", "5m", "15m", "1h", "4h", "D"):
+        alias(f"k_{tf}", f"stoch_k_{tf}")
+        alias(f"d_{tf}", f"stoch_d_{tf}")
+        if f"stoch_k_{tf}" in arrays:
+            prev_key = f"k_{tf}_prev"
+            if prev_key not in arrays:
+                source = np.asarray(arrays[f"stoch_k_{tf}"]).reshape(-1)
+                previous = source.copy()
+                if n > 1:
+                    previous[1:] = source[:-1]
+                arrays[prev_key] = previous
+        if f"stoch_d_{tf}" in arrays and f"d_{tf}_prev" not in arrays:
+            source = np.asarray(arrays[f"stoch_d_{tf}"]).reshape(-1)
+            previous = source.copy()
+            if n > 1:
+                previous[1:] = source[:-1]
+            arrays[f"d_{tf}_prev"] = previous
+    for field in ("wt1", "wt2", "wt_score", "wt_velocity", "wt_bullish", "wt_cross_bull", "wt_cross_bear", "wt_momentum_state"):
+        source_tf = "3m" if f"{field}_3m" in arrays else ("5m" if f"{field}_5m" in arrays else None)
+        if source_tf and f"{field}_1m" not in arrays:
+            arrays[f"{field}_1m"] = np.asarray(arrays[f"{field}_{source_tf}"]).copy()
+        if source_tf and f"{field}_1m_prev" not in arrays and f"{field}_{source_tf}_prev" in arrays:
+            arrays[f"{field}_1m_prev"] = np.asarray(arrays[f"{field}_{source_tf}_prev"]).copy()
+    for tf in ("1m", "3m", "5m", "15m", "1h", "4h", "D"):
+        bull = arrays.get(f"wt_cross_bull_{tf}")
+        bear = arrays.get(f"wt_cross_bear_{tf}")
+        if bull is not None or bear is not None:
+            shape = np.asarray(bull if bull is not None else bear).shape
+            labels = np.full(shape, None, dtype=object)
+            if bull is not None:
+                labels[np.asarray(bull, dtype=bool)] = "BULL"
+            if bear is not None:
+                labels[np.asarray(bear, dtype=bool)] = "BEAR"
+            arrays[f"wt_cross_{tf}"] = labels
+    for tf in ("5m", "15m", "1h", "4h", "D"):
+        alias(f"rel_vol_{tf}", f"relative_volume_{tf}")
+    for key, value in tuple(arrays.items()):
+        if not isinstance(key, str) or key in ("timestamps", "_tick_ts", "ts"):
+            continue
+        arr = np.asarray(value)
+        if arr.dtype.kind in "f" and np.any(np.isnan(arr)):
+            arr[np.isnan(arr)] = 0.0
+            arrays[key] = arr
+    return arrays
+
+
 def replay_delta_tracker_arrays(npz, *, symbol, cfg, use_ltf, timestamps,
                                is_long, position_states=None, warmup_mask=None,
                                external_context=None, producer_rows=None):
@@ -143,8 +201,7 @@ def replay_delta_tracker_arrays(npz, *, symbol, cfg, use_ltf, timestamps,
                     for key in producer_keys if key not in ("timestamps",)}
         arrays = selected
     else:
-        selected = paired_npz_view(npz, bool(use_ltf))
-        arrays = decode_live_indicator_labels(selected)
+        arrays = delta_indicator_arrays(npz, bool(use_ltf))
         arrays = {key: np.asarray(value) for key, value in arrays.items()
                   if isinstance(value, (np.ndarray, list, tuple)) and np.asarray(value).ndim > 0
                   and np.asarray(value).shape[0] == n}
