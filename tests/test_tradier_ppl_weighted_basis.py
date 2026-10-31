@@ -1,6 +1,10 @@
+import sys
+
 import numpy as np
 
 import v12_quick_engine as v12
+
+sys.path.insert(0, "tests")
 
 
 def test_simulate_one_passes_weighted_position_basis_to_ppl_after_augment(monkeypatch):
@@ -75,3 +79,76 @@ def test_simulate_one_passes_weighted_position_basis_to_ppl_after_augment(monkey
     assert augment["bar"] == 1
     bar_one_basis = next(entry for px, entry in seen if px == 105.0)
     assert 100.0 < bar_one_basis < 105.0
+
+
+def test_tradier_simulate_one_passes_weighted_stock_basis_to_ppl_after_native_augment(monkeypatch):
+    from test_tradier_reviewed_exit_ledgers import _base_npz, _cfg
+
+    npz = _base_npz()
+    npz["low"] = np.full(len(npz["close"]), 100.0)
+    augment_bar = 201
+    npz["close"][augment_bar] = 99.8
+    npz["low"][augment_bar] = 99.8
+    npz["close_15m"][augment_bar] = 99.8
+    npz["low_15m_prev"][augment_bar - 1] = 98.0
+    npz["low_15m_prev"][augment_bar] = 99.0
+    npz["dc_low_15m_prev"][augment_bar - 1] = 94.0
+    npz["dc_low_15m_prev"][augment_bar] = 95.0
+    cfg = _cfg()
+    cfg.AUGMENT_AT_LOSS_ENABLED = True
+    seen = []
+
+    def record_ppl(config, is_tradier, is_long, px, entry_px, gain_pct, state):
+        if is_tradier:
+            seen.append((int(np.where(npz["close"] == px)[0][0]), float(entry_px)))
+        return "", 0.0, "", state
+
+    monkeypatch.setattr(v12.vec_decisions.reduce_profit_lock, "ppl_step", record_ppl)
+    result = v12.simulate_one(npz, "SYNTH", True, cfg, force_initial_seed=True)
+    augment = next(row for row in result["ledger"] if row.get("type") == "AUGMENT")
+    assert augment["bar"] == augment_bar
+    weighted_basis = next(entry for bar, entry in seen if bar == augment_bar)
+    assert 99.8 < weighted_basis < 100.0
+
+
+def test_tradier_simulate_one_blocks_red_mark_close_with_positive_lifecycle_pnl(monkeypatch):
+    from test_tradier_reviewed_exit_ledgers import _base_npz, _cfg
+    from vec_decisions import net_exit_gate
+
+    npz = _base_npz()
+    npz["close"][201] = 110.0
+    npz["close_15m"][201] = 110.0
+    npz["close"][202:] = 99.0
+    npz["close_15m"][202:] = 99.0
+    npz["dc_low_15m"] = np.full(len(npz["close"]), 80.0)
+    npz["dc_low_4h"] = np.full(len(npz["close"]), 70.0)
+    npz["dc_high_4h"] = np.full(len(npz["close"]), 130.0)
+    npz["low"] = np.full(len(npz["close"]), 100.0)
+    npz["low"][202:] = 99.0
+    cfg = _cfg()
+    decisions = []
+
+    def action(config, is_tradier, is_long, px, entry_px, gain_pct, state):
+        if px == 110.0:
+            return "REDUCE", 0.5, "TEST_PROFIT_REDUCE", state
+        if px == 99.0:
+            return "CLOSE_REMAINDER", 1.0, "TEST_RED_MARK_CLOSE", state
+        return "", 0.0, "", state
+
+    original = net_exit_gate.vector_exit_event_allowed
+
+    def observe(event, position, before_position, *args, **kwargs):
+        accepted = original(event, position, before_position, *args, **kwargs)
+        if event.get("reason") == "TEST_RED_MARK_CLOSE":
+            decisions.append((dict(event), accepted))
+        return accepted
+
+    monkeypatch.setattr(v12.vec_decisions.reduce_profit_lock, "ppl_step", action)
+    monkeypatch.setattr(net_exit_gate, "vector_exit_event_allowed", observe)
+    result = v12.simulate_one(npz, "SYNTH", True, cfg, force_initial_seed=True)
+    assert decisions, result.get("ledger")
+    close_decision, accepted = next(row for row in decisions if row[0].get("bar_exit") == 202)
+    assert close_decision["pnl_dollars"] > 0.0
+    assert close_decision["exit_price"] < close_decision["entry_price"]
+    assert accepted is False
+    assert not any(row.get("type") == "CLOSE" and row.get("bar_exit") == 202 for row in result["ledger"])

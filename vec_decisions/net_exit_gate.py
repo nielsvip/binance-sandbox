@@ -37,7 +37,7 @@ def estimated_net_gain_positive(gross_gain_pct, estimated_fee_pct):
     return math.isfinite(gross) and gross - fee > 0.0
 
 
-def vector_exit_event_allowed(event, position, before_position, mandatory_dc4_buffer_pct=0.25, is_long=True, half_fee=0.0, additional_fee_pct=0.0, require_positive_mark_gain=False):
+def vector_exit_event_allowed(event, position, before_position, mandatory_dc4_buffer_pct=0.25, is_long=True, half_fee=0.0, additional_fee_pct=0.0, require_positive_mark_gain=False, current_mark_fee_pct=None):
     """Accept ordinary simulated exits only when modeled net plus fee buffer stays positive."""
     if not isinstance(event, dict):
         return False
@@ -47,7 +47,7 @@ def vector_exit_event_allowed(event, position, before_position, mandatory_dc4_bu
     reason = event.get("exit_reason") or event.get("reason")
     if vector_exit_is_mandatory(event, mandatory_dc4_buffer_pct):
         return True
-    if require_positive_mark_gain:
+    if require_positive_mark_gain or current_mark_fee_pct is not None:
         entry_price = None
         for source in (position, before_position):
             if isinstance(source, dict):
@@ -65,7 +65,7 @@ def vector_exit_event_allowed(event, position, before_position, mandatory_dc4_bu
             mark_gain_pct = ((mark_price - entry_price) / entry_price * 100.0) if is_long else ((entry_price - mark_price) / entry_price * 100.0)
         except (TypeError, ValueError):
             return False
-        return estimated_net_gain_positive(mark_gain_pct, 0.0)
+        return estimated_net_gain_positive(mark_gain_pct, 0.0 if current_mark_fee_pct is None else current_mark_fee_pct)
     try:
         extra_fee = max(0.0, float(additional_fee_pct)) / 100.0
         if "pnl_dollars" in event:

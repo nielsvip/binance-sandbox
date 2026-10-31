@@ -1,8 +1,8 @@
 {
-  "coverage_status": "Partial shared scalar/NumPy components plus policy-selected native/vector input adaptation. Native scalar source has source-AST differential tests for covered fragments. NumPy score components still lack a complete ordered ASR array composer and v12 action consumer; account/tracker, registry, gate/return, and time-state inputs remain unresolved.",
+  "coverage_status": "Partial shared scalar/NumPy components plus policy-selected native/vector input adaptation. Native scalar source has pre-edit AST differential tests for covered fragments. NumPy components include additional ordered stages but remain without a complete ordered ASR composer or v12 action consumer; cross-symbol context and causal state must be supplied explicitly.",
   "current_asr_mutation_semantics": "Count includes initialization plus direct score assignment/augmented-assignment statements still inside rate(); shared scalar hooks remove corresponding inline statements. It is a source mutation census, not the uncovered-component count.",
-  "current_native_score_mutations_including_initialization": 267,
-  "current_native_sha256": "7011117214381ab9008b09c6d55b793036de232652236b86a3a54979345bc174",
+  "current_native_score_mutations_including_initialization": 254,
+  "current_native_sha256": "cb34e37f0a066f8ad96011c5278605a24775f1875c9fba9c1eee753d51798523",
   "existing_vector_related_modules": [
     "vec_decisions/quick_missing_entry_score.py (partial, no v12 caller found)",
     "vec_paths/live_entry_engine.py (separate LIVE_ENTRY_ENGINE score, not AdvancedSignalRater aggregate)",
@@ -12,10 +12,10 @@
     "vec_paths/exit_tight_breakout_scorer.py (exit component)"
   ],
   "function": {
-    "all_score_mutations_including_initialization": 267,
-    "direct_score_mutations_after_entry_scoring_begins": 266,
-    "end_line": 8194,
-    "ifs": 646,
+    "all_score_mutations_including_initialization": 254,
+    "direct_score_mutations_after_entry_scoring_begins": 253,
+    "end_line": 8146,
+    "ifs": 628,
     "name": "AdvancedSignalRater.rate",
     "returns": 104,
     "start_line": 3616
@@ -23,7 +23,7 @@
   "input_policy_adapter": {
     "module": "vec_decisions/asr_input_adapter.py",
     "native_entry_line": 3637,
-    "policy": "Per-symbol USE_1M_3M_SIGNALS_ENABLED. OFF pairs raw 1m/3m/5m fields and 3m event cache with actual 15m peers when present; higher TFs preserved. ON preserves micro values and reports required missing fields. Input mappings are copied. NumPy ASR component adapters use paired_npz_view.",
+    "policy": "Per-symbol USE_1M_3M_SIGNALS_ENABLED. OFF maps/creates 1m,3m,5m aliases from actual paired 15m fields, overriding contradictory micro values; maps 3m event cache to actual 15m events; preserves higher TFs. ON leaves micro inputs untouched and reports required missing fields. Input mappings are copied. NumPy components use paired_npz_view.",
     "tests": [
       "tests/test_asr_input_adapter.py",
       "tests/test_asr_policy_native_and_array_binding.py"
@@ -398,10 +398,10 @@
     ]
   },
   "non_npz_score_inputs": [
-    "history_score_mod from tracker history",
-    "long_short_ratio from account portfolio",
-    "top_sent/bot_sent and rank data from cross-symbol registry",
-    "global_sent and local sentiment aggregation",
+    "history_score_mod from account-symbol exit_candidate stats; must be reconstructed from accepted event history or explicitly supplied",
+    "long_short_ratio from the account portfolio state",
+    "top/bottom sentiment and ranking points from cross-sectional indicator registry",
+    "global/local sentiment from the cross-symbol normalization/shard aggregator",
     "delta active-time state and reentry markers",
     "early-return MTS/HTF/regime/eligibility gates and tracker state"
   ],
@@ -427,28 +427,8 @@
       "line": 4959
     },
     {
-      "component": "channel K cross",
+      "component": "channel K cross (first call; second call is a separate ordered stage)",
       "line": 5041
-    },
-    {
-      "component": "channel K cross second pass",
-      "line": 5079
-    },
-    {
-      "component": "KX delta",
-      "line": 5633
-    },
-    {
-      "component": "R-M delta",
-      "line": 6158
-    },
-    {
-      "component": "DC breakout delta",
-      "line": 6187
-    },
-    {
-      "component": "exit-tight breakout delta",
-      "line": 6338
     },
     {
       "component": "channel confluence",
@@ -459,12 +439,20 @@
       "line": 8007
     },
     {
-      "component": "late score segment",
-      "line": 8114
+      "component": "post-rank multipliers and early final score clamp",
+      "line": 8021
     },
     {
-      "component": "final score tail",
-      "line": 8187
+      "component": "post-log DC-width sufficiency multiplier",
+      "line": 8029
+    },
+    {
+      "component": "late score segment",
+      "line": 8066
+    },
+    {
+      "component": "final tail",
+      "line": 8144
     }
   ],
   "pre_wire_source_sha256": "7634c897c67a28dbbfcbf99f39cabc1e564084bf82d07f632b6042267399d1a8",
@@ -8655,7 +8643,9 @@
         "apply_channel_confluence_vec"
       ]
     },
-    "vec_decisions/asr_rank_sentiment_score.py scalar and NumPy; native hook at ez_positions_quick.py:8007; differential against pre-edit AST block"
+    "vec_decisions/asr_rank_sentiment_score.py scalar and NumPy; native hook at ez_positions_quick.py:8007; differential against pre-edit AST block",
+    "vec_decisions/asr_rank_sentiment_score.py scalar/NumPy; native hook at ez_positions_quick.py:8007; exact pre-edit AST comparison",
+    "vec_decisions/asr_post_rank_score.py scalar/NumPy; native hook at ez_positions_quick.py post-rank block; exact pre-edit AST comparison and Python precedence cases"
   ],
   "source_file": "ez_positions_quick.py",
   "source_sha256": "7634c897c67a28dbbfcbf99f39cabc1e564084bf82d07f632b6042267399d1a8",
@@ -8666,15 +8656,15 @@
     },
     {
       "range": "7133-7960",
-      "status": "reentry/exit control flow and score contributions remain; several fields require live state"
+      "status": "reentry/exit control flow and score contributions remain; some fields require causal replay state"
     },
     {
-      "range": "8023-8080",
-      "status": "post-score K/gain multipliers remain inline"
+      "range": "remaining",
+      "status": "no full ordered NumPy composer and no v12 action consumer; external context must be explicitly supplied"
     },
     {
-      "range": "all",
-      "status": "no full ordered NumPy composer and no v12 action consumer"
+      "range": "fullcrosssection",
+      "status": "live sentiment/rank context depends on exact per-symbol raw score, global scaling/shards and universe ranking; do not use the backtest WT15m approximation as parity"
     }
   ]
 }

@@ -18,6 +18,7 @@ written to data/v15_gate_flags.json on both hosts (the pilot reads defaults from
 champion. On FAIL nothing is deployed. Decisions: ~/v15_bench/gate/decisions.jsonl + GATE_STATUS.md. Never reverts production.
 """
 import argparse
+import ast
 import datetime as dt
 import hashlib
 import json
@@ -28,6 +29,7 @@ import shutil
 import subprocess
 import sys
 import time
+import types
 from pathlib import Path
 
 HOME = Path.home()
@@ -102,6 +104,7 @@ GATED_PREFIX = ("tools/v15_", "tools/v17_", "tools/v18_")
 # does not exist is skipped (not failed), exactly as the local branch already did.
 GATED_DATA_RE = re.compile(r"^data/(brain/v18_brain_[A-Za-z0-9_]+|learn/(?:digest|needed_filters|switch_profile|positives_all|binding_map|linknet_proposals|must_pos)_[A-Za-z0-9_]+)\.json(?:\.gz)?$")
 MODEL_BUNDLE_PATH = "tools/v18_model_bundle.json"
+MODEL_HOLDOUT_DAYS = 7
 MODEL_CATEGORIES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
 MODEL_ARTIFACT_NAMES = {f"{kind}_{category}.json{'.gz' if kind == 'positives_all' else ''}" for category in MODEL_CATEGORIES for kind in ("v18_brain", "digest", "needed_filters", "switch_profile", "positives_all", "binding_map", "linknet_proposals", "must_pos")}
 CODE_EXCLUDE = ["data", "backtest_v8", "backtest_v7", "SPREADSHEETS", "klines_*", "archive", "backups", ".venv", "backtest_framework", ".git", "logs", "*.log", "*.db", "*.sqlite", "*.npz", "*.xlsx", "__pycache__", ".history", ".elastic"]
@@ -154,7 +157,98 @@ def model_snapshot_pin():
         raise ValueError("model comparison requires a snapshot manifest with exactly eight unique sides")
     if set(gate_sides()) != set(sides):
         raise ValueError("model comparison gate side selection must equal the complete pinned snapshot side set")
-    return {"snapshot_id": SNAP, "manifest_sha256": hashlib.sha256(raw).hexdigest(), "sides": sides}
+    holdout_start_by_side = {}
+    for side in sides:
+        symbol = side.rsplit("_", 1)[0]
+        npz = snapshot / "npz" / f"{symbol}.npz"
+        if npz.is_symlink() or not npz.is_file():
+            raise ValueError(f"model comparison snapshot NPZ is missing or symlinked: {symbol}")
+        npz_record = (manifest.get("npz") or {}).get(symbol) or {}
+        if npz_record.get("md5") != md5(npz) or npz_record.get("bytes") != npz.stat().st_size:
+            raise ValueError(f"model comparison snapshot NPZ differs from its frozen manifest: {symbol}")
+        code = "import numpy as np,sys; z=np.load(sys.argv[1],mmap_mode='r',allow_pickle=True); k=next((k for k in z.files if 'timestamp' in k and '15m' in k),None); print('' if k is None or len(z[k]) < 2 else float(z[k][-1]))"
+        result = subprocess.run([str(SRC / ".venv" / "bin" / "python"), "-c", code, str(npz)], capture_output=True, text=True, timeout=120)
+        try:
+            last_bar = float(result.stdout.strip()) if result.returncode == 0 else math.nan
+        except (ValueError, TypeError):
+            last_bar = math.nan
+        if not math.isfinite(last_bar):
+            raise ValueError(f"model comparison cannot read final 15m timestamp from snapshot NPZ: {symbol}")
+        start = dt.datetime.fromtimestamp(last_bar - MODEL_HOLDOUT_DAYS * 86400, dt.timezone.utc)
+        holdout_start_by_side[side] = start.isoformat(timespec="seconds").replace("+00:00", "Z")
+    return {"snapshot_id": SNAP, "manifest_sha256": hashlib.sha256(raw).hexdigest(), "sides": sides, "holdout_days": MODEL_HOLDOUT_DAYS, "npz_sha256_by_symbol": {side.rsplit("_", 1)[0]: sha256(snapshot / "npz" / f"{side.rsplit('_', 1)[0]}.npz") for side in sides}, "oos_start_by_side": holdout_start_by_side}
+
+
+def model_training_market_max_by_category(root):
+    root = Path(root)
+    latest = {}
+    for category in MODEL_CATEGORIES:
+        values = []
+        sources = ((f"data/brain/v18_brain_{category}.json", ("_meta", "last_ts")), (f"data/learn/digest_{category}.json", ("meta", "era_cut")), (f"data/learn/linknet_proposals_{category}.json", ("meta", "corpus_last_ts")))
+        for relative, keys in sources:
+            path = root / relative
+            if path.is_symlink() or not path.is_file():
+                raise ValueError(f"model training window source is missing or symlinked: {relative}")
+            document = json.loads(path.read_text())
+            value = document
+            for key in keys:
+                value = value.get(key) if isinstance(value, dict) else None
+            if not isinstance(value, str):
+                raise ValueError(f"model training market cutoff is absent: {relative}:{'.'.join(keys)}")
+            try:
+                stamp = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+            except ValueError as exc:
+                raise ValueError(f"invalid model training market cutoff {relative}: {value}") from exc
+            if stamp.tzinfo is None:
+                raise ValueError(f"model training market cutoff lacks timezone: {relative}")
+            values.append(stamp.astimezone(dt.timezone.utc))
+        latest[category] = max(values).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return latest
+
+
+def champion_resolved_model_inventory(root, env):
+    root = Path(root).resolve()
+    planner = root / "tools" / "v15_v18_planner.py"
+    source = planner.read_bytes()
+    functions = [node for node in ast.parse(source).body if isinstance(node, ast.FunctionDef) and node.name == "learn_file"]
+    if len(functions) != 1:
+        raise ValueError("current champion planner must define exactly one learn_file resolver")
+    namespace = {"Path": Path, "os": types.SimpleNamespace(environ=dict(env)), "__file__": str(planner)}
+    exec(compile(ast.Module(body=functions, type_ignores=[]), str(planner), "exec"), namespace)
+    resolved = {}
+    for name in sorted(MODEL_ARTIFACT_NAMES):
+        sub = "brain" if name.startswith("v18_brain_") else "learn"
+        path = Path(namespace["learn_file"](name, root, sub))
+        if not path.is_absolute():
+            path = root / path
+        path = Path(os.path.abspath(path))
+        if path.is_symlink() or not path.is_file():
+            raise ValueError(f"current champion resolver did not return a regular model file: {name}")
+        resolved[name] = {"path": path.relative_to(root).as_posix(), "sha256": sha256(path)}
+    return resolved
+
+
+def validate_model_training_windows(spec, reference_root, candidate_root, snapshot_pin):
+    if int(spec.get("oos_holdout_days") or 0) != snapshot_pin.get("holdout_days"):
+        raise ValueError("comparison spec holdout days differ from exact frozen snapshot holdout")
+    declared = spec.get("training_market_max_by_category")
+    if not isinstance(declared, dict):
+        raise ValueError("comparison spec must pin both arms' training market cutoffs")
+    actual = {"reference": model_training_market_max_by_category(reference_root), "candidate": model_training_market_max_by_category(candidate_root)}
+    for arm in ("reference", "candidate"):
+        if declared.get(arm) != actual[arm]:
+            raise ValueError(f"comparison spec {arm} training market cutoffs differ from pinned model artifacts")
+    starts = snapshot_pin.get("oos_start_by_side") or {}
+    if set(starts) != set(snapshot_pin.get("sides") or []):
+        raise ValueError("exact OOS start timestamps are missing for one or more pinned sides")
+    for side in snapshot_pin["sides"]:
+        category = ("CRYPTO_" if side.split("_", 1)[0].endswith("USDC") or side.split("_", 1)[0].endswith("USDT") else "STOCKS_") + side.rsplit("_", 1)[1]
+        holdout = dt.datetime.fromisoformat(starts[side].replace("Z", "+00:00"))
+        for arm in ("reference", "candidate"):
+            trained = dt.datetime.fromisoformat(actual[arm][category].replace("Z", "+00:00"))
+            if trained >= holdout:
+                raise ValueError(f"{arm} model training market cutoff overlaps exact OOS holdout for {side}")
+    return actual
 
 
 def model_runtime_pin(runtime_spec):
@@ -206,7 +300,7 @@ def model_arm_flags(spec, arm_name, base_flags, cli_flags):
     return flags
 
 
-def model_comparison_spec_pin(path, reference_root, candidate_root, reference_pin, candidate_pin, champion_tree=None, base_flags=None, cli_flags=None):
+def model_comparison_spec_pin(path, reference_root, candidate_root, reference_pin, candidate_pin, snapshot_pin, champion_tree=None, base_flags=None, cli_flags=None):
     path = Path(path).resolve()
     raw = path.read_bytes()
     spec = json.loads(raw)
@@ -222,13 +316,33 @@ def model_comparison_spec_pin(path, reference_root, candidate_root, reference_pi
             raise ValueError(f"comparison spec {arm_name} bundle path differs from the submitted bundle")
         if arm.get("sha256") != pin.get("manifest_sha256"):
             raise ValueError(f"comparison spec {arm_name} bundle manifest hash differs from submitted bundle")
+    baseline_provenance = spec.get("baseline_provenance") or {}
+    if baseline_provenance.get("mode") != "current_champion_resolver":
+        raise ValueError("canonical comparison baseline must be pinned to the current champion resolver")
+    champion_root = Path(champion_tree).resolve() if champion_tree is not None else CHAMP / "tree"
+    champion_meta_path = CHAMP / "meta.json"
+    if not champion_meta_path.is_file() or baseline_provenance.get("champion_meta_sha256") != sha256(champion_meta_path):
+        raise ValueError("comparison baseline does not pin current champion metadata")
+    champion_meta = json.loads(champion_meta_path.read_text())
+    resolver_env = dict(champion_meta.get("env") or {})
+    resolver_env.update(champion_meta.get("flags") or {})
+    resolved = champion_resolved_model_inventory(champion_root, resolver_env)
+    if baseline_provenance.get("resolved_artifacts") != resolved:
+        raise ValueError("comparison baseline resolver paths or hashes differ from current champion")
+    reference_declaration = json.loads((Path(reference_root) / MODEL_BUNDLE_PATH).read_text())
+    if reference_declaration.get("linknet_activation"):
+        raise ValueError("current champion reference bundle must not add a LinkNet activation declaration")
+    for name, record in resolved.items():
+        if reference_pin.get("artifact_sha256", {}).get(f"data/brain/{name}" if name.startswith("v18_brain_") else f"data/learn/{name}") != record["sha256"]:
+            raise ValueError(f"reference model bundle is not byte-identical to current champion resolver output: {name}")
+    training_windows = validate_model_training_windows(spec, reference_root, candidate_root, snapshot_pin)
     base_flags = dict(base_flags or {})
     cli_flags = cli_flags or {}
     reference_flags = model_arm_flags(spec, "reference", base_flags, {})
     candidate_flags = model_arm_flags(spec, "candidate", base_flags, cli_flags)
     if not reference_flags or not candidate_flags:
         raise ValueError("comparison spec must pin reference and candidate runtime flags")
-    return {"comparison_id": spec.get("comparison_id"), "path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "runtime": runtime_pin, "base_flags": base_flags, "reference_flags": reference_flags, "candidate_flags": candidate_flags}
+    return {"comparison_id": spec.get("comparison_id"), "path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), "runtime": runtime_pin, "training_market_max_by_category": training_windows, "base_flags": base_flags, "reference_flags": reference_flags, "candidate_flags": candidate_flags}
 
 
 def stage_model_bundle(source, destination):
@@ -356,8 +470,8 @@ def cmd_submit(a):
         try:
             candidate_pin = model_bundle_pin(cd / "tree")
             baseline_pin = stage_model_bundle(a.nn_baseline_bundle, cd / "nn_baseline_bundle")
-            comparison_spec_pin = model_comparison_spec_pin(a.nn_comparison_spec, a.nn_baseline_bundle, cd / "tree", baseline_pin, candidate_pin, CHAMP / "tree", flags, cli_flags)
             snapshot_pin = model_snapshot_pin()
+            comparison_spec_pin = model_comparison_spec_pin(a.nn_comparison_spec, a.nn_baseline_bundle, cd / "tree", baseline_pin, candidate_pin, snapshot_pin, CHAMP / "tree", flags, cli_flags)
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             print(f"[gate] invalid model bundle: {exc}", file=sys.stderr)
             shutil.rmtree(cd)
@@ -712,7 +826,7 @@ def cmd_run(a):
             champion_flags_sha = hashlib.sha256(json.dumps(current_champion_flags, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
             if champion_flags_sha != model_overlay.get("champion_flags_sha256"):
                 raise ValueError("current champion flags changed after model comparison submit")
-            comparison_spec_pin = model_comparison_spec_pin(model_overlay["comparison_spec"]["path"], baseline_source, cd / "tree", baseline_source_pin, candidate_pin, CHAMP / "tree", model_overlay.get("base_flags"))
+            comparison_spec_pin = model_comparison_spec_pin(model_overlay["comparison_spec"]["path"], baseline_source, cd / "tree", baseline_source_pin, candidate_pin, current_snapshot, CHAMP / "tree", model_overlay.get("base_flags"))
             verify_model_runtime_tree(comparison_spec_pin["runtime"], cd / "tree")
             common_env = result_env(meta["env"]) if meta.get("env") is not None else champ_env(champ)
             common_env_sha = hashlib.sha256(json.dumps(common_env, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
@@ -748,11 +862,21 @@ def apply_model_overlay_acceptance(cd, meta, decision):
         return decision
     reasons = []
     expected_sides = set((overlay.get("snapshot") or {}).get("sides") or [])
+    training_windows_verified = False
     try:
-        if model_snapshot_pin() != overlay.get("snapshot"):
+        current_snapshot = model_snapshot_pin()
+        if current_snapshot != overlay.get("snapshot"):
             reasons.append("pinned eight-side snapshot identity changed")
+        baseline_source = Path(overlay["baseline_source_path"])
+        baseline_source_pin = model_bundle_pin(baseline_source)
+        candidate_pin = model_bundle_pin(cd / "tree")
+        comparison_spec_pin = model_comparison_spec_pin(overlay["comparison_spec"]["path"], baseline_source, cd / "tree", baseline_source_pin, candidate_pin, current_snapshot, CHAMP / "tree", overlay.get("base_flags"))
+        if comparison_spec_pin != overlay.get("comparison_spec"):
+            reasons.append("pinned comparison spec, runtime, model training cutoffs, or arm flags changed")
+        else:
+            training_windows_verified = True
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
-        reasons.append(f"pinned snapshot could not be verified: {exc}")
+        reasons.append(f"pinned snapshot/spec/training window could not be verified: {exc}")
     for label, arm in ((f"gate_{meta['id']}_champ", "baseline"), (f"gate_{meta['id']}_cand", "candidate")):
         expected = overlay.get(arm) or {}
         run_dir = BENCH / "runs" / f"{SNAP}__{label}"
@@ -764,8 +888,14 @@ def apply_model_overlay_acceptance(cd, meta, decision):
             if receipt.get("manifest_sha256") != expected.get("manifest_sha256") or receipt.get("artifact_sha256") != expected.get("artifact_sha256"):
                 reasons.append(f"{arm} build_root receipt differs from the pinned bundle")
             verify_model_runtime_tree(overlay["comparison_spec"]["runtime"], run_dir / "root")
+            training_actual = model_training_market_max_by_category(run_dir / "root")
+            training_expected = (overlay.get("comparison_spec") or {}).get("training_market_max_by_category", {}).get(arm)
+            if training_actual != training_expected:
+                reasons.append(f"{arm} run-root model training cutoffs differ from the pinned source artifacts")
+                training_windows_verified = False
         except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
             reasons.append(f"{arm} actual run-root model/runtime verification failed: {exc}")
+            training_windows_verified = False
     rows = decision.get("rows") or []
     row_by_side = {row.get("side"): row for row in rows if isinstance(row, dict)}
     scored = set(decision.get("scored") or [])
@@ -824,6 +954,7 @@ def apply_model_overlay_acceptance(cd, meta, decision):
         "candidate_whole_board_wall_seconds": candidate_wall,
         "whole_board_time_reduction_pct": time_reduction,
         "speed_pass": speed_pass,
+        "training_windows_verified": training_windows_verified,
         "run_root_model_hashes_verified": not any("run-root" in reason or "build_root" in reason for reason in reasons),
         "automatic_promotion_requires_canonical_gate_pass": True,
     }

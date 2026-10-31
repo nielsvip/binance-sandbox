@@ -16122,9 +16122,6 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
 
     def _exit_event_accept_core(event, source):
         nonlocal pos, _pending_exit_restore, cd, has_closed_before, bars_in_pos, _pending_exit_control_restore
-        # Tradier has no fee-positive exit veto; its own close decision and mandatory stops are authoritative.
-        if is_tradier:
-            return True
         if _crypto_final_htf_support is not None and str(event.get("type") or "").upper() in ("CLOSE", "REDUCE") and not event.get("unrealised"):
             from vec_decisions.net_exit_gate import vector_exit_is_mandatory
             _event_bar = event.get("bar_exit", event.get("bar"))
@@ -16146,7 +16143,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         # board are exempt inside the shared predicate, so FIXED_STOP still fires.
         try:
             _mh_type = str(event.get("type") or "").upper()
-            if _mh_type in ("CLOSE", "REDUCE"):
+            if not is_tradier and _mh_type in ("CLOSE", "REDUCE"):
                 _mh_reason = str(event.get("exit_family") or event.get("exit_reason") or event.get("reason") or "")
                 # USER 2026-10-27: ONE name, ONE function, ONE value. The old
                 # second call to a MIN_HOLD_BARS_BEFORE_EXIT gate is gone; this
@@ -16176,7 +16173,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             from vec_decisions.net_exit_gate import vector_exit_event_allowed as _exit_allowed
             _configured_fee_pct = 0.0 if is_tradier else max(0.0, float(getattr(cfg, "COMMISSION_BUFFER_PCT", 0.08) or 0.0))
             _additional_fee_pct = max(0.0, _configured_fee_pct - float(commission_pct or 0.0))
-            _accepted = _exit_allowed(event, pos, _bar_pos_snapshot, 0.25, is_long, half_fee, _additional_fee_pct, require_positive_mark_gain=is_tradier)
+            _accepted = _exit_allowed(event, pos, _bar_pos_snapshot, 0.25, is_long, half_fee, _additional_fee_pct, require_positive_mark_gain=is_tradier, current_mark_fee_pct=None if is_tradier else _configured_fee_pct)
         except Exception:
             _accepted = False
         if not _accepted:

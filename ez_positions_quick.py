@@ -8017,67 +8017,19 @@ class AdvancedSignalRater:
                 sentc,
             )
             logger.info(f" in rate4 {symbol} {score} ")
-            c1_long = k_1m > d_1m
-            c1_short = k_1m < d_1m and true_lag < 10.0
-            if not c1_long and is_long:
-                score = 0.3 * score
-            if is_long and k_1m < 20 or k_3m < 20:
-                score = 1.5 * score
-            if not is_long and k_1m > 80 or k_3m > 80:
-                score = 1.5 * score
-            if not c1_short and not is_long:
-                score = 0.3 * score
-            if not scalp_entry_detected:
-                if (is_long and (k_15m < d_15m or lower_low_15m)) or (
-                    not is_long and (k_15m > d_15m or higher_high_15m)
-                ):
-                    score -= 5
-                if (is_long and k_3m < d_3m) or (not is_long and k_3m > d_3m):
-                    score -= 5
-            if score >= 5:
-                if gain > 3 * config.MIN_GAIN:
-                    score += 4
-                elif gain > 2 * config.MIN_GAIN:
-                    score += 3
-                elif gain > config.MIN_GAIN:
-                    score += 1.5
-            if (is_long and k_1m > 85 or k_3m > 85) or (
-                not is_long and k_1m < 15 or k_3m < 15
-            ):
-                score = 0.2 * score
-            if (is_long and (k_1m < d_1m and true_lag < 10.0) and k_3m < d_3m) or (
-                not is_long and k_1m > d_1m and k_3m > d_3m
-            ):
-                score = 0.1 * score
-            elif (is_long and ((k_1m < d_1m and true_lag < 10.0) or k_3m < d_3m)) or (
-                not is_long and (k_1m > d_1m or k_3m > d_3m)
-            ):
-                score = 0.4 * score
-            if (
-                is_long
-                and k_1m > k_1m_prev + 40.0
-                or k_3m > k_3m_prev + 30.0
-                or k_15m > k_15m_prev + 25.0
-            ) or (
-                not is_long
-                and k_1m < k_1m_prev - 40.0
-                or k_3m < k_3m_prev - 30.0
-                or k_15m < k_15m_prev - 25.0
-            ):
-                score += 6
-            final_score = max(0, min(30, int(round(score))))
-            if "Trend_Continuation_ReEntry" in reasons:
-                score = max(0.8 * score, 10.0)
+            from vec_decisions.asr_post_rank_score import apply_asr_post_rank_scalar, apply_asr_dc_sufficiency_scalar
+            score, final_score = apply_asr_post_rank_scalar(
+                score, is_long, k_1m, d_1m, k_1m_prev, k_3m, d_3m, k_3m_prev,
+                k_15m, d_15m, k_15m_prev, true_lag, scalp_entry_detected,
+                lower_low_15m, higher_high_15m, gain, config.MIN_GAIN,
+                "Trend_Continuation_ReEntry" in reasons,
+            )
             if score > 6.0:
                 logger.info(f" in rate {position_key} {score} {final_score} {k_str} ")
-            if dc_low_3m and dc_low_15m and dc_low_1h:
-                dc_suff = ((dc_high_3m - dc_low_3m) / dc_low_3m) > 0.3 * (
-                    dc_high_1h - dc_low_1h
-                ) / dc_low_1h or (dc_high_3m - dc_low_3m) / dc_low_3m > 0.5 * (
-                    dc_high_15m - dc_low_15m
-                ) / dc_low_15m
-                if not dc_suff:
-                    score *= 0.35
+            score, _dc_sufficient = apply_asr_dc_sufficiency_scalar(
+                score, dc_high_3m, dc_low_3m, dc_high_15m, dc_low_15m,
+                dc_high_1h, dc_low_1h, dc_high_4h, dc_low_4h,
+            )
             rec = "WAIT"
             if (
                 not is_exit

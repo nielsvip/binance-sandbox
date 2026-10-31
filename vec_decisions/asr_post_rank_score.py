@@ -62,9 +62,9 @@ def apply_asr_post_rank_vec(score, is_long, k1, d1, k1_prev, k3, d3, k3_prev, k1
     trend = np.asarray(arrays[15], dtype=bool)
     if is_long:
         result *= np.where(k1 <= d1, 0.3, 1.0)
-        result *= np.where((k1 < 20) | (k3 < 20), 1.5, 1.0)
-    else:
-        result *= np.where((k1 > 80) | (k3 > 80), 1.5, 1.0)
+    result *= np.where(((is_long and (k1 < 20)) | (k3 < 20)), 1.5, 1.0)
+    result *= np.where(((not is_long and (k1 > 80)) | (k3 > 80)), 1.5, 1.0)
+    if not is_long:
         result *= np.where((k1 >= d1) | (lag >= 10.0), 0.3, 1.0)
     if is_long:
         first_penalty = (k15 < d15) | low_low15
@@ -77,15 +77,15 @@ def apply_asr_post_rank_vec(score, is_long, k1, d1, k1_prev, k3, d3, k3_prev, k1
     gain_add = np.select((gain > 3 * min_gain, gain > 2 * min_gain, gain > min_gain), (4.0, 3.0, 1.5), default=0.0)
     result += (result >= 5.0).astype(float) * gain_add
     if is_long:
-        extreme = (k1 > 85) | (k3 > 85)
+        extreme = (k1 > 85) | (k3 > 85) | (k3 < 15)
         both_against = (k1 < d1) & (lag < 10.0) & (k3 < d3)
         one_against = ((k1 < d1) & (lag < 10.0)) | (k3 < d3)
-        overshoot = (k1 > k1_prev + 40.0) | (k3 > k3_prev + 30.0) | (k15 > k15_prev + 25.0)
+        overshoot = (k1 > k1_prev + 40.0) | (k3 > k3_prev + 30.0) | (k15 > k15_prev + 25.0) | (k3 < k3_prev - 30.0) | (k15 < k15_prev - 25.0)
     else:
-        extreme = (k1 < 15) | (k3 < 15)
+        extreme = (k1 < 15) | (k3 < 15) | (k3 > 85)
         both_against = (k1 > d1) & (k3 > d3)
         one_against = (k1 > d1) | (k3 > d3)
-        overshoot = (k1 < k1_prev - 40.0) | (k3 < k3_prev - 30.0) | (k15 < k15_prev - 25.0)
+        overshoot = (k3 > k3_prev + 30.0) | (k15 > k15_prev + 25.0) | (k1 < k1_prev - 40.0) | (k3 < k3_prev - 30.0) | (k15 < k15_prev - 25.0)
     result *= np.where(extreme, 0.2, 1.0)
     result *= np.where(both_against, 0.1, np.where(one_against, 0.4, 1.0))
     result += overshoot.astype(float) * 6.0
