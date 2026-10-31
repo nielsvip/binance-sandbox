@@ -26,8 +26,8 @@ STAGE_INPUTS = {
         "state": (),
     },
     "volume_setup": {
-        "npz": ("relative_volume_1h", "zconviction_augment_long", "zconviction_augment_short", "dc_high_1h", "dc_low_1h", "k_1m", "k_1m_prev", "k_3m", "d_3m"),
-        "state": ("market_price", "trend_ok", "pa_confirm", "pr_confirm"),
+        "npz": ("relative_volume_1h", "dc_high_1h", "dc_low_1h", "k_1m", "k_1m_prev", "k_3m", "d_3m"),
+        "state": ("market_price", "z_conviction", "trend_ok", "pa_confirm", "pr_confirm"),
     },
     "stoch_entry": {
         "npz": ("wt_bullish_3m", "wt_score_3m", "wt_velocity_3m", "wt_cross_bull_3m", "wt_momentum_state_1h", "k_15m", "k_15m_prev", "k_3m", "d_3m"),
@@ -104,11 +104,12 @@ def bind_asr_stage_arrays(npz: Any, cfg: Any, causal_state: Mapping[str, Any], n
         missing_state = [key for key in spec["state"] if key not in causal_state]
         if stage == "volume_setup":
             side_key = "zconviction_augment_long" if is_long else "zconviction_augment_short"
-            if side_key in selected:
+            if "z_conviction" in causal_state:
+                stage_values["z_conviction"] = _as_column(causal_state["z_conviction"], "z_conviction", n)
+            elif side_key in selected:
                 stage_values["z_conviction"] = _as_column(selected[side_key], side_key, n)
             else:
-                missing_npz.append(side_key)
-            missing_npz = [key for key in missing_npz if not key.startswith("zconviction_augment_")]
+                missing_state.append("z_conviction")
         for key in spec["npz"]:
             if key in selected:
                 stage_values[key] = _as_column(selected[key], key, n)

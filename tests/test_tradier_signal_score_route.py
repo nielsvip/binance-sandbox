@@ -6,7 +6,7 @@ sys.path.insert(0, "tests")
 
 import v12_quick_engine as V
 from test_tradier_reviewed_exit_ledgers import _base_npz, _cfg
-from vec_decisions.tradier_signal_score import entry_score_arrays, paired_lower_tf_indicators
+from vec_decisions.tradier_signal_score import entry_score_arrays, paired_lower_tf_indicators, possible_entry_setup_mask
 
 
 def test_paired_lower_tf_stock_score_inputs_use_15m_only_when_ltf_is_off():
@@ -18,6 +18,51 @@ def test_paired_lower_tf_stock_score_inputs_use_15m_only_when_ltf_is_off():
         "dc_low_15m_prev": 99.0,
     }
     assert paired_lower_tf_indicators(source, True) == source
+
+
+def test_paired_lower_tf_inputs_hydrate_absent_5m_aliases_from_15m():
+    source = {
+        "k_15m": 21.0,
+        "d_15m": 19.0,
+        "k_15m_prev": 17.0,
+        "dc_low_15m": 98.0,
+        "dc_high_15m": 102.0,
+        "relative_volume_15m": 1.4,
+        "rel_vol_15m": 1.3,
+        "k_1m": 25.0,
+    }
+    paired = paired_lower_tf_indicators(source, False)
+    for source_key, target_key in (
+        ("k_15m", "k_5m"), ("d_15m", "d_5m"),
+        ("k_15m_prev", "k_5m_prev"), ("dc_low_15m", "dc_low_5m"),
+        ("dc_high_15m", "dc_high_5m"),
+        ("relative_volume_15m", "relative_volume_5m"),
+        ("rel_vol_15m", "rel_vol_5m"),
+    ):
+        assert paired[target_key] == paired[source_key]
+    assert paired["k_1m"] == 25.0
+
+
+def test_native_setup_prefilter_preserves_nonfinite_indicator_comparisons():
+    npz = _base_npz()
+    n = len(npz["close"])
+    for key in ("k_15m", "d_15m", "k_5m", "d_5m", "k_5m_prev", "k_4h", "d_4h", "mfi_4h"):
+        npz[key] = np.full(n, 50.0)
+    npz["k_15m"][3] = np.inf
+    npz["k_15m"][7] = np.nan
+    npz["d_15m"][3] = 40.0
+    cfg = _cfg()
+    cfg.MODE = "tradier"
+    cfg.LTF_SUB15M_TRADING_ENABLED = False
+    cfg.K_ZONE_ENTRY_ENABLED_TRADIER = False
+    cfg.BB_BREAKOUT_ENTRY_TF = "OFF"
+    cfg.ENTRY_SCORE_THRESHOLD = 12.0
+    cfg.BACKTEST_VALIDATED_GATES_TRADIER = False
+    full = entry_score_arrays(npz, n, "SYNTH", True, cfg, np.ones(n, dtype=bool))
+    filtered = entry_score_arrays(npz, n, "SYNTH", True, cfg)
+    assert np.array_equal(full[0], filtered[0])
+    assert np.array_equal(full[1], filtered[1])
+    assert full[2] == filtered[2]
 
 
 def test_native_setup_prefilter_has_no_false_negatives_at_threshold_boundaries():
@@ -41,21 +86,54 @@ def test_native_setup_prefilter_has_no_false_negatives_at_threshold_boundaries()
         "timestamp_1m": np.asarray(npz["timestamps"], dtype=float) - 30.0,
     }.items():
         npz[key] = np.asarray(values, dtype=float)
+    score_configs = ((0.0, "OFF", False), (12.0, "1h", True), (18.0, "4h", False), (30.0, "D", True))
     for is_long in (True, False):
         for ltf_enabled in (False, True):
-            cfg = _cfg()
-            cfg.LTF_SUB15M_TRADING_ENABLED = ltf_enabled
-            cfg.MARKET_QUALITY_SCORE_ENABLED_TRADIER = True
-            cfg.BB_BREAKOUT_ENTRY_TF = "1h"
-            cfg.ENTRY_SCORE_THRESHOLD = 12.0
-            cfg.WT_COMPOSITE_SCORING_ENABLED_TRADIER = False
-            cfg.WT_COMPOSITE_SCORING_ENABLED = False
-            cfg.BACKTEST_VALIDATED_GATES_TRADIER = False
-            full = entry_score_arrays(npz, n, "SYNTH", is_long, cfg, np.ones(n, dtype=bool))
-            filtered = entry_score_arrays(npz, n, "SYNTH", is_long, cfg)
-            assert np.array_equal(full[0], filtered[0])
-            assert np.array_equal(full[1], filtered[1])
-            assert full[2] == filtered[2]
+            for mq_enabled in (False, True):
+                for threshold, bb_tf, k_zone_enabled in score_configs:
+                    cfg = _cfg()
+                    cfg.LTF_SUB15M_TRADING_ENABLED = ltf_enabled
+                    cfg.MARKET_QUALITY_SCORE_ENABLED_TRADIER = mq_enabled
+                    cfg.BB_BREAKOUT_ENTRY_TF = bb_tf
+                    cfg.K_ZONE_ENTRY_ENABLED_TRADIER = k_zone_enabled
+                    cfg.ENTRY_SCORE_THRESHOLD = threshold
+                    cfg.WT_COMPOSITE_SCORING_ENABLED_TRADIER = False
+                    cfg.WT_COMPOSITE_SCORING_ENABLED = False
+                    cfg.BACKTEST_VALIDATED_GATES_TRADIER = False
+                    full = entry_score_arrays(npz, n, "SYNTH", is_long, cfg, np.ones(n, dtype=bool))
+                    filtered = entry_score_arrays(npz, n, "SYNTH", is_long, cfg)
+                    assert np.array_equal(full[0], filtered[0])
+                    assert np.array_equal(full[1], filtered[1])
+                    assert full[2] == filtered[2]
+
+
+def test_native_setup_prefilter_matches_missing_and_future_m1_timestamp_semantics():
+    for timestamp_mode in ("missing", "future"):
+        npz = _base_npz()
+        n = len(npz["close"])
+        for key in ("k_15m", "d_15m", "k_5m", "d_5m", "k_5m_prev", "k_4h", "d_4h", "mfi_4h"):
+            npz[key] = np.full(n, 50.0)
+        npz["k_1m"] = np.full(n, 20.0)
+        npz["d_1m"] = np.full(n, 15.0)
+        npz["k_1m_prev"] = np.full(n, 10.0)
+        if timestamp_mode == "future":
+            npz["timestamp_1m"] = np.asarray(npz["timestamps"], dtype=float) + 60.0
+        else:
+            npz.pop("timestamp_1m", None)
+        cfg = _cfg()
+        cfg.MODE = "tradier"
+        cfg.LTF_SUB15M_TRADING_ENABLED = False
+        cfg.K_ZONE_ENTRY_ENABLED_TRADIER = False
+        cfg.BB_BREAKOUT_ENTRY_TF = "OFF"
+        cfg.ENTRY_SCORE_THRESHOLD = 12.0
+        cfg.BACKTEST_VALIDATED_GATES_TRADIER = False
+        candidates = possible_entry_setup_mask(npz, n, True, cfg)
+        assert np.all(candidates)
+        full = entry_score_arrays(npz, n, "SYNTH", True, cfg, np.ones(n, dtype=bool))
+        filtered = entry_score_arrays(npz, n, "SYNTH", True, cfg)
+        assert np.array_equal(full[0], filtered[0])
+        assert np.array_equal(full[1], filtered[1])
+        assert full[2] == filtered[2]
 
 
 def _mq_crossing_fixture(enabled):

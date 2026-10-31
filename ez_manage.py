@@ -50865,6 +50865,8 @@ async def _process_single_override_check(
                 if _sym_z and (_is_long_z or _is_short_z):
                     _ind_z = await ii(trade_manager, _sym_z)
                     if isinstance(_ind_z, dict):
+                        from vec_decisions.asr_input_adapter import paired_indicator_view
+                        _ind_z, _, _ = paired_indicator_view(_ind_z, {}, bool(_psym_get(_sym_z, _side_z, "USE_1M_3M_SIGNALS_ENABLED", False)))
                         _px_z = await price(_sym_z, position)
                         _px_z = safe_fetch_float(_px_z, 0) or safe_fetch_float(
                             _ind_z.get("current_price"), 0
@@ -50879,19 +50881,8 @@ async def _process_single_override_check(
                         _ha3_z = _ind_z.get("ha_3m", "neutral")
                         _rising_z = (_k3_z > _k3p_z) or (_ha3_z == "green")
                         _falling_z = (_k3_z < _k3p_z) or (_ha3_z == "red")
-                        _trigger_z = (
-                            _is_long_z
-                            and _dch3m_z > 0
-                            and _px_z > 0
-                            and _px_z > _dch3m_z
-                            and _rising_z
-                        ) or (
-                            _is_short_z
-                            and _dcl3m_z > 0
-                            and _px_z > 0
-                            and _px_z < _dcl3m_z
-                            and _falling_z
-                        )
+                        from vec_decisions.tradeable_mandatory_entry import trigger as _mandatory_trigger
+                        _trigger_z = bool(_mandatory_trigger(_px_z, _dch3m_z, _dcl3m_z, _k3_z, _k3p_z, _ha3_z, _is_long_z))
                         if _trigger_z:
                             _tkm_live_ok, _tkm_live_why = True, "PER_SYM_GATE_OFF"
                             try:

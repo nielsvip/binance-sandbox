@@ -38,6 +38,18 @@ def paired_lower_tf_indicators(indicators, ltf_enabled):
             result[key] = result[paired]
         else:
             result.pop(key, None)
+    paired_score_fields = (
+        ("k_15m", "k_5m"), ("d_15m", "d_5m"),
+        ("k_15m_prev", "k_5m_prev"), ("dc_high_15m", "dc_high_5m"),
+        ("dc_low_15m", "dc_low_5m"),
+        ("dc_high_crossover_15m", "dc_high_crossover_5m"),
+        ("dc_low_crossunder_15m", "dc_low_crossunder_5m"),
+        ("relative_volume_15m", "relative_volume_5m"),
+        ("rel_vol_15m", "rel_vol_5m"),
+    )
+    for source, target in paired_score_fields:
+        if target not in result and source in result:
+            result[target] = result[source]
     return result
 
 
@@ -45,7 +57,7 @@ def _column(npz, key, n, default):
     try:
         value = np.asarray(npz[key], dtype=float).reshape(-1)
         if value.size == n:
-            return np.where(np.isfinite(value), value, default)
+            return value
     except (KeyError, TypeError, ValueError):
         pass
     return np.full(n, default, dtype=float)
@@ -53,6 +65,8 @@ def _column(npz, key, n, default):
 
 def possible_entry_setup_mask(npz, n, is_long, cfg):
     """Cheap necessary-condition mask for native good_entry; never excludes a native setup."""
+    if float(getattr(cfg, "ENTRY_SCORE_THRESHOLD", 12.0) or 0.0) <= 0.0:
+        return np.ones(n, dtype=bool)
     ltf = bool(getattr(cfg, "LTF_SUB15M_TRADING_ENABLED", False))
     k5 = _column(npz, "k_5m" if ltf else "k_15m", n, 50.0)
     d5 = _column(npz, "d_5m" if ltf else "d_15m", n, 50.0)
@@ -61,8 +75,16 @@ def possible_entry_setup_mask(npz, n, is_long, cfg):
     d1 = _column(npz, "d_1m", n, 50.0)
     k1p = _column(npz, "k_1m_prev", n, 50.0)
     timestamps = _column(npz, "timestamps", n, 0.0)
-    m1_ts = _column(npz, "timestamp_1m", n, 0.0)
-    fresh = (m1_ts > 0.0) & ((timestamps - m1_ts) < 60.0) & ((timestamps - m1_ts) > 0.0)
+    try:
+        m1_raw = np.asarray(npz["timestamp_1m"], dtype=float).reshape(-1)
+        if m1_raw.size != n:
+            raise ValueError("unaligned timestamp_1m")
+        m1_lag = timestamps - m1_raw
+        fresh = m1_lag < 60.0
+        fresh &= np.isfinite(m1_lag)
+    except (KeyError, TypeError, ValueError):
+        # The scalar scorer defaults a missing/unparseable 1m timestamp to now_ts.
+        fresh = np.ones(n, dtype=bool)
     if is_long:
         zone = float(getattr(cfg, "TRADIER_STOCH_ENTRY_LONG_TRADIER", 30.0))
         extreme = float(getattr(cfg, "TRADIER_STOCH_EXTREME_LONG_TRADIER", 15.0))

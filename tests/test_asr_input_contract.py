@@ -35,3 +35,18 @@ def test_ltf_on_does_not_synthesize_micro_inputs_from_15m():
     npz = {"dc_low_15m": np.ones(n)}
     with pytest.raises(ASRInputUnavailable, match="dc_structure: missing NPZ"):
         bind_asr_stage_arrays(npz, {"USE_1M_3M_SIGNALS_ENABLED": True}, {}, n, False, stages=("dc_structure",))
+
+
+def test_volume_setup_requires_side_specific_conviction_from_explicit_state_or_npz():
+    import numpy as np
+    from vec_decisions.asr_input_contract import ASRInputUnavailable, bind_asr_stage_arrays
+    n = 2
+    npz = {"relative_volume_1h": np.ones(n), "dc_high_1h": np.ones(n), "dc_low_1h": np.ones(n),
+           "k_1m": np.ones(n), "k_1m_prev": np.ones(n), "k_3m": np.ones(n), "d_3m": np.ones(n)}
+    state = {"market_price": np.ones(n), "trend_ok": np.ones(n), "pa_confirm": np.ones(n), "pr_confirm": np.ones(n)}
+    try:
+        bind_asr_stage_arrays(npz, {}, state, n, True, stages=("volume_setup",))
+    except ASRInputUnavailable as error:
+        assert "z_conviction" in str(error)
+    else:
+        raise AssertionError("missing conviction input was accepted")

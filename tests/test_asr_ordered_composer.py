@@ -106,8 +106,10 @@ def test_ordered_numpy_composer_matches_explicit_component_chain():
     score, _ = apply_asr_late_score_vec(late["npz"], n, True, inputs["cfg"], late["gain"], score, late["current_price"])
     tail = stages["finish_tail"]
     final, rec = finish_array(inputs["cfg"], score, tail["current_price"], True, tail["dc_high_1h"], tail["dc_high_3m"], tail["dc_low_1h"], tail["dc_low_3m"], tail["k_1m"], tail["k_3m"], tail["true_lag"], tail["recommendation_before_tail"])
+    stages_before = {key: value.copy() if isinstance(value, dict) else value for key, value in inputs["stages"].items()}
     result = compose_asr_late_score(inputs, True)
-    assert np.array_equal(result["score_after_dc_sufficiency"], score)
+    assert inputs["stages"]["channel_confluence"]["npz"] is stages_before["channel_confluence"]["npz"]
+    assert np.array_equal(result["score_after_late_score"], score)
     assert np.array_equal(result["final_score"], final)
     assert np.array_equal(result["recommendation"], rec)
     assert np.array_equal(result["masks"]["pa_confirm"], pa)
@@ -151,3 +153,10 @@ def test_npz_enum_binding_decodes_measured_codes_and_rejects_unknowns():
         assert "unrecognized encoded ASR labels" in str(error)
     else:
         raise AssertionError("unknown encoded enum was accepted")
+    npz["wt_cross_15m"] = np.array([1.5])
+    try:
+        bind_asr_npz_arrays(npz, cfg)
+    except ValueError as error:
+        assert "unrecognized encoded ASR labels" in str(error)
+    else:
+        raise AssertionError("fractional encoded enum was accepted")

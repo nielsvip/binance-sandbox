@@ -15848,6 +15848,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _entry_or_srcs = (
         []
     )  # 2026-10-06 ENTRY_SOURCE_LABEL (USER: ENTRY_SIGNAL fallback banned): (label, mask) for every non-B OR-source ORed into entry_sig. Label-only; trade logic untouched.
+    from vec_decisions.tradeable_mandatory_entry import entry_mask as _mandatory_entry_mask
+    _mandatory_entry = _mandatory_entry_mask(npz, n, is_long, cfg, close)
+    if np.any(_mandatory_entry):
+        entry_sig = entry_sig | _mandatory_entry
+        _entry_or_srcs.append(("TRADEABLE_KEYS_MANDATORY", _mandatory_entry))
     _tradier_score_mask = getattr(cfg, "_tradier_signal_score_mask", None)
     if _tradier_score_mask is not None:
         _tradier_score_mask = np.asarray(_tradier_score_mask, dtype=bool)
