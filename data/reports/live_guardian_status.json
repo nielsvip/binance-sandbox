@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T05:13:33Z",
+ "ts": "2026-10-31T05:18:49Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 1,
    "open_positions": 1,
-   "unrealised_usd": -0.04,
+   "unrealised_usd": -0.06,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 74,
+   "fills_6h": 75,
    "open_positions": 13,
-   "unrealised_usd": 0.24,
+   "unrealised_usd": 0.29,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 140,
-   "open_positions": 15,
-   "unrealised_usd": 0.07,
+   "fills_6h": 143,
+   "open_positions": 16,
+   "unrealised_usd": 0.09,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -91,8 +91,8 @@
    }
   },
   "flz": {
-   "fills_6h": 41,
-   "open_positions": 8,
+   "fills_6h": 42,
+   "open_positions": 9,
    "unrealised_usd": 0.17,
    "pos_mismatch": 0,
    "vec_parity": {
@@ -127,102 +127,87 @@
     "67104"
    ],
    "starts_30m": 1,
-   "log_age_s": 36.0
+   "log_age_s": 181.0
   },
   "men": {
    "pids": [
-    "92430"
+    "18080"
    ],
    "starts_30m": 1,
-   "log_age_s": 722.0
+   "log_age_s": 1039.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 3.0
+   "log_age_s": 0.0
   },
   "inf": {
    "pids": [
     "68362"
    ],
    "starts_30m": 1,
-   "log_age_s": 51.0
+   "log_age_s": 13.0
   },
   "flz": {
    "pids": [
     "78871"
    ],
    "starts_30m": 1,
-   "log_age_s": 16.0
+   "log_age_s": 7.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 1875.0
+   "log_age_s": 2192.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 2191.0
+   "log_age_s": 2508.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T05:13:35Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "flz:DOGEUSDC_SHORT",
-   "evidence": "31 04:59:41 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:DOGEUSDC_SHORT: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $988 on bounce (prior max 1554.0000)"
-  },
-  {
-   "ts": "2026-10-31T05:13:35Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "flz:DOGEUSDC_SHORT",
-   "evidence": "order notional $988.27 > MAX_ORDER_VALUE $300: 31 04:59:41 - INFO - [flz] [execute_trade_action][flz] \u2705 \u2705 \u2705 \u2705 OPEN flz:DOGEUSDC_SHORT @ 0.075080 qty=13162.936263 ($988.27) side=SELL | QUICK_OPEN_STRONG_SELL_k1:50/d150/k3:50.0/d3:50.0_@0.0750_TIER1"
-  },
-  {
-   "ts": "2026-10-31T05:13:35Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "flz:ZECUSDC_SHORT",
-   "evidence": "31 05:01:10 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:ZECUSDC_SHORT: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $83 on bounce (prior max 1.0020)"
-  },
-  {
-   "ts": "2026-10-31T05:13:35Z",
+   "ts": "2026-10-31T05:18:51Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "flz:HYPEUSDT_SHORT",
    "evidence": "31 05:04:08 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:HYPEUSDT_SHORT: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $27 on bounce (prior max 0.3400)"
   },
   {
-   "ts": "2026-10-31T05:13:35Z",
+   "ts": "2026-10-31T05:18:51Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "flz:BTCUSDC_LONG",
    "evidence": "31 05:04:26 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:BTCUSDC_LONG: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $2000 \u2014 restoring $74 on bounce (prior max 0.0160)"
   },
   {
-   "ts": "2026-10-31T05:13:35Z",
+   "ts": "2026-10-31T05:18:51Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "flz:ZECUSDC_SHORT",
    "evidence": "31 05:06:53 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:ZECUSDC_SHORT: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $73 on bounce (prior max 1.0020)"
   },
   {
-   "ts": "2026-10-31T05:13:35Z",
+   "ts": "2026-10-31T05:18:52Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "fin",
+   "evidence": "ez_manage_fin.log not written for 181s"
+  },
+  {
+   "ts": "2026-10-31T05:18:52Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "men",
-   "evidence": "ez_manage_men.log not written for 722s"
+   "evidence": "ez_manage_men.log not written for 1039s"
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 5,
-  "SIZE_ANOMALY": 1,
-  "STALE_LOG": 1
+  "CAP_BYPASS": 3,
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -282,5 +267,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.48
+ "sweep_s": 2.24
 }

@@ -1,6 +1,6 @@
 {
   "acceptance_contract": "Exact entry/augment/reduce/close action bars; quantities may differ. Focused reachability is not full rolling replay acceptance.",
-  "as_of_utc": "2026-10-31",
+  "as_of_utc": "2026-10-31T05:17:40+00:00",
   "decision_rule": "A vector block or score weight is not treated as full-path parity unless producer predicate, eligibility, downstream gate, and execution reachability are all evidenced.",
   "paths": [
     {
@@ -192,12 +192,12 @@
     },
     {
       "engine": "v12_quick_engine.py:12618-12667 adds an exact per-bar score boost on the Tradier WT_DC scorer path; vec_paths/live_entry_engine.py provides numpy arrays for each scalar engine.",
-      "limitations": "Quick path is scoped to the actual WT_DC score branch and does not implement standalone entry-engine orders or the crypto AdvancedSignalRater aggregate. The AAPL ON/OFF ledger did not demonstrate a new action because other sources already admitted crossing bars.",
-      "native": "tradier_manage.py:21416-21466; the main WT_DC score receives additive LIVE_ENTRY_ENGINE_BOOST_SCORE * max qualifying component score before WT_DC_ENTRY_THRESHOLD and ENTRY_SCORE_THRESHOLD.",
+      "limitations": "The actual entry mask is demonstrated at a same-bar threshold crossing, but simulate_one ON/OFF ledger action bars remained identical because other sources/gates admitted entries; this does not prove a new OPEN action. Full crypto AdvancedSignalRater aggregate remains separate.",
+      "native": "tradier_manage.py:21416-21482 and ez_manage.py:47352-47390 use the same 15m adapter before scalar main-entry scoring; both reentry `_ee_reentry_boost` helpers also use it. Tradier resolves USE_1M_3M_SIGNALS_ENABLED through per-account/symbol _cfg; crypto uses _psym_get.",
       "path": "LIVE_ENTRY_ENGINE",
       "predicate": "WT, STOCH, DC, HTF, and STDEV_MACRO fire/score predicates match the scalar providers; master and component switches apply; qualifying score is max(fire and score >= LIVE_ENTRY_ENGINE_MIN_SCORE), then multiplied by BOOST_SCORE.",
-      "proof": "tests/test_live_entry_engine_array_parity.py (randomized component-wise scalar/vector equality, both sides); full AAPL NPZ scalar/vector comparison 40,571 rows per side, 0 component differences; local 30-day AAPL simulate_one ON/OFF run completed, 5 trades and 10 ledger events each with the same action bars.",
-      "status": "IMPLEMENTED for the Tradier WT_DC scorer route. Numpy component arrays match scalar providers on AAPL full history (40,571 bars, both sides, 0 mismatches) and randomized dual-side tests. A 30-day AAPL simulate_one ON/OFF diagnostic had identical ledger/action bars; the score-stage crossings on that slice were already admitted by other entry routes, so no standalone extra OPEN was observed. Crypto AdvancedSignalRater aggregate remains separate and unimplemented.",
+      "proof": "tests/test_live_entry_engine_array_parity.py (6 passed); tests/test_live_entry_engine_actual_mask.py (1 passed, actual compute_entry_signals WT_DC entry mask changes at AAPL 30d index 103 with boost 5.6); frozen AAPL NPZ 40,571 bars × 2 modes × 2 sides × LTF ON/OFF, zero per-engine fire/score mismatches.",
+      "status": "PAIRED INPUTS IMPLEMENTED in vector provider, Tradier native main-entry/reentry engine, and crypto native main-entry/reentry engine. LTF-off remaps every consumed sub-15m WT, velocity, stochastic current/previous, DC channel, HA, and close input to 15m. Full-history scalar-component comparison is 0-diff in all 8 mode/side/switch combinations. Actual accepted order-action parity remains unproven.",
       "switches": [
         "LIVE_ENTRY_ENGINE_ENABLED",
         "LIVE_ENTRY_ENGINE_WT_ENABLED",
@@ -214,11 +214,11 @@
     },
     {
       "engine": "v12 uses weighted block sum/strength threshold (e.g. :12160-12195, :18718+) that is not the native AdvancedSignalRater score. quick_missing_entry_score.py contains selected bonus predicates only; bonuses cannot be inserted into the unrelated block sum as parity.",
-      "limitations": "WT winner/pullback is now a crypto hard-augment source on its native/v12 hook with the shared execute-time gain gate. This does not solve the full baseline score aggregate, recommendation classes, hard vetoes, or standalone ordinary OPEN/QUICK_OPEN_GOOD reachability.",
+      "limitations": "A new score-contributor file still has no v12 import/call and cannot substitute for the native aggregate. The LIVE_ENTRY_ENGINE component adapter is only an additive Tradier WT_DC scorer input and does not implement the crypto AdvancedSignalRater baseline, recommendation classes, hard vetoes, or QUICK_OPEN_GOOD direct route. Native actual accepted-action wiring remains unproven.",
       "native": "ez_positions_quick.py:3614 onward; ordinary scoring entry in :30705-30730; QUICK_OPEN_STRONG path near :18718+.",
       "path": "AdvancedSignalRater ordinary OPEN / QUICK_OPEN_STRONG / QUICK_OPEN_GOOD aggregate",
       "predicate": "Large score aggregate with many score additions, hard blocks, recommendation classes, direct GOOD/STRONG producer overrides, and execution threshold.",
-      "status": "ARCHITECTURAL GAP for full AdvancedSignalRater aggregate; WT winner/pullback augment is covered separately. No selected bonus is injected into unrelated Quick block strength.",
+      "status": "ARCHITECTURAL GAP for full AdvancedSignalRater aggregate. Root independently confirmed quick_missing_entry_score is not imported/called by v12, vec_paths, or vec_decisions; do not count its pure predicates as wired coverage. No contributor injected into unrelated weighted block-strength sum.",
       "switches": [
         "QUICK_OPEN_STRONG_VEC_ENABLED",
         "ENTRY_SCORE_THRESHOLD",
@@ -257,12 +257,12 @@
     },
     {
       "engine": "v12_quick_engine.py:22552-22635 applies the WT hard-augment source and shared gain gate; vec_decisions/aug_gain_gate.py selects latest close/reduce reference.",
-      "limitations": "No genuine preceding-reduction sequence has yet demonstrated lower-tier 1.5\u20133% acceptance; the path is intentionally gated until that state exists.",
+      "limitations": "No genuine preceding-reduction sequence has yet demonstrated lower-tier 1.5–3% acceptance; path remains gated until that state exists. Shared crypto execute-time gain gate now covers every vector augment source admitted by `_uag_src_ok`, including this source.",
       "native": "ez_positions_quick.py: check_exit_candidates_for_account WT_WINNER_PULLBACK_AUGMENT_ENABLED branch; ez_manage.py execute_trade_action shared AUGMENT gain gate around 27594.",
       "path": "WT_WINNER_PULLBACK_AUGMENT hard augment",
       "predicate": "Crypto only; named switch on; native winner/pullback producer and final WT gate; all AUGMENT events then pass the common live minimum-gain/loser gate using most recent CLOSE or partial REDUCE reference.",
-      "proof": "tests/test_wt_winner_pullback_augment.py (17 passed, including producer-vs-execution-gate distinction, latest partial REDUCE/CLOSE selection, Tradier isolation, switch OFF, and source wiring).",
-      "status": "WIRED native and Quick. The 2.2% bounce producer can fire but is refused by the common gain gate without a preceding REDUCE/CLOSE state. Earlier claim that this fixture booked a native-accepted bounce was incorrect and is withdrawn. Winner above the effective gain tier is exercised both sides; OFF lane emits no family reason.",
+      "proof": "tests/test_wt_winner_pullback_augment.py (17 passed) and tests/test_augment_gain_gate_all_sources.py (1 ledger test); latest REDUCE/CLOSE selection; Tradier isolation; switch OFF; hard winner both sides; low gain producer is refused without required reduction state.",
+      "status": "NATIVE SWITCH-GATED SOURCE + SHARED GAIN GATE WIRED. Its 2.2% bounce producer can fire but is refused without a preceding REDUCE/CLOSE. Previous claim of a booked native-accepted bounce is withdrawn.",
       "switches": [
         "WT_WINNER_PULLBACK_AUGMENT_ENABLED",
         "MIN_GAIN_TO_BUY_AGGRESSIVELY",
@@ -272,14 +272,35 @@
         "USE_1M_3M_SIGNALS_ENABLED"
       ],
       "templates": "Crypto LONG/SHORT AUGMENT_TREND rows exist with True bold and False alternative; no stock row because native source is EPQ crypto-only."
+    },
+    {
+      "path": "Crypto execute-time AUGMENT gain gate across all vector source families",
+      "native": "ez_manage.py:27594-27651 applies the common gain/loser gate to every is_augment action. The earlier WT_3M_FORCE_OPEN_BYPASS_GATES check only bypasses the duplicate-open guard; the following gain gate has no source/reason bypass.",
+      "engine": "v12_quick_engine.py:22590-22640 builds `_uag_src_ok` from HAIKU, DD_BOUNCE, STOCK_LIVE/N4, AT_LOSS, QUICK_OPEN_STRONG, WT winner/pullback, ladder, signal, and FAST_RISER; the shared `vec_decisions.aug_gain_gate.passes` now runs for the entire union.",
+      "predicate": "Existing-position value over MIN_POSITION_SIZE uses shared per-symbol minimum gain; negative gain is always rejected; 0.5x bounce tier requires price beyond latest CLOSE/REDUCE reference, aligned 1h WT, and 15m HL/LH structure.",
+      "switches": [
+        "AUG_GAIN_GATE_LIVE_TWIN_ENABLED",
+        "AUGMENT_MIN_GAIN_PCT",
+        "MIN_GAIN_TO_BUY_AGGRESSIVELY",
+        "AUGMENT_BOUNCE_MIN_GAIN_PCT",
+        "MIN_POSITION_SIZE"
+      ],
+      "templates": "Existing gain-gate master row is True-default; no template edits made.",
+      "proof": "tests/test_augment_gain_gate_all_sources.py proves actual simulate_one AT_LOSS HL source no longer books an AUGMENT at -1%; tests/test_wt_winner_pullback_augment.py passes both side winner fixtures and shared gate cases (18 combined passed).",
+      "limitations": "The unified choke point is applied to all source classes, but only AT_LOSS ledger refusal and WT winner/pullback families currently have source-specific behavior fixtures. Add direct firing-and-block/allow cases for HAIKU, DD_BOUNCE, STOCK_LIVE/N4, QUICK_OPEN_STRONG, ladder/signal, and FAST_RISER before claiming each family individually verified. The new gate test does not validate all native data-producer inputs.",
+      "status": "SHARED VECTOR GATE NOW COVERS ALL `_uag_src_ok` CRYPTO AUGMENT SOURCES. Individual source reachability fixtures remain pending; no source-specific bypass remains at this gate."
     }
   ],
   "recent_verification": {
     "deployment": "No production sync, order placement, service restart, or template write performed.",
     "py_compile": "Passed for modified native/vector modules and tests.",
     "pytest": "77 passed across K1M pairing/precedence, reentry filters/triggers, frozen reentry mask parity, filter gate parity, B04, and WR/LR scalar parity; 6 external websockets deprecation warnings only.",
-    "template": "K1M_EXTREME_REVERSE_ENABLED present only in crypto EXIT_STRUCTURAL: False bold + True option in both long/short books; row intake queued/pushed to S1. No fleet template sync."
+    "template": "K1M_EXTREME_REVERSE_ENABLED present only in crypto EXIT_STRUCTURAL: False bold + True option in both long/short books; row intake queued/pushed to S1. No fleet template sync.",
+    "paired15m_live_entry_engine_and_augment_gate": {
+      "at_utc": "2026-10-31T05:17:40+00:00",
+      "result": "Paired 15m scalar/vector input comparison: 40,571 AAPL bars across crypto/Tradier, LONG/SHORT, LTF on/off yielded zero component score/fire mismatches. Actual WT_DC compute_entry_signals mask toggles at same-bar AAPL index 103 with a 5.6 score boost. simulate_one ledger action bars did not differ on that diagnostic. Shared augment gain gate actual ledger regression blocked -1% AT_LOSS HL add; remaining action/source-family limitations recorded on path entries."
+    }
   },
-  "review_updated_at": "2026-10-31T03:49:39.522731+00:00",
+  "review_updated_at": "2026-10-31T05:17:40+00:00",
   "scope": "ez_positions_quick.py flat OPEN, explicit REENTRY, and vectorizable non-hedge/non-scalp exit paths reviewed in this pass"
 }

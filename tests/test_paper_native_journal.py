@@ -45,6 +45,9 @@ def test_native_journal_skips_aliased_1m_and_archives_eligible_3m_with_conflicts
     assert provenance["source_field"] == "timestamp_3m"
     assert provenance["producer_source_sha256"] == TIMEFRAME_PROVENANCE["crypto"]["3m"]["producer_source_sha256"]
     assert provenance["receipt_verified_native_1m"] is False
+    with sqlite3.connect(db) as connection:
+        source_index = [row[2] for row in connection.execute("PRAGMA index_info(frame_source_window)")]
+    assert source_index == ["host", "venue", "symbol", "timeframe", "source_ts", "sequence"]
 
     changed_same_clock = {"BTCUSDT": _row(observed - 10, 9, observed - 10), "ETHUSDT": _row(observed - 10, 3, observed + 50)}
     snapshot, receipt = _publish(feed, "s1", observed + 60, changed_same_clock)

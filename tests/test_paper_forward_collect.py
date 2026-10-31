@@ -5,7 +5,7 @@ import sqlite3
 import subprocess
 from pathlib import Path
 
-from tools.paper_forward_collect import PaperForwardCollector
+from tools.paper_forward_collect import PaperForwardCollector, ingest_coordinator_database
 from tools.paper_scenario_db import ScenarioDB
 
 
@@ -238,6 +238,29 @@ def test_local_collector_records_terminal_settings_mismatch_without_receipt_db(t
         assert imported["result_valid"] is False
         assert not (Path(imported["bundle_path"]) / "receipts.snapshot.db").exists()
         assert db.query("SELECT status FROM run_current_status WHERE run_id='paper-run-1'")[0][0] == "SETTINGS_MISMATCH"
+
+
+def test_coordinator_repoll_updates_heartbeat_without_rewriting_jobs_or_old_events(tmp_path):
+    source = tmp_path / "fleet.snapshot.sqlite3"
+    _coordinator_snapshot(source, "s1", "DONE")
+    central_path = tmp_path / "central.sqlite"
+    with _collector_db(central_path) as db:
+        db.connection.execute("CREATE TABLE write_counts(kind TEXT NOT NULL)")
+        # Create collector tables before installing triggers against them.
+        from tools.paper_forward_collect import _create_coordinator_tables
+        _create_coordinator_tables(db.connection)
+        db.connection.execute("CREATE TRIGGER count_job_update AFTER UPDATE ON paper_coordinator_jobs BEGIN INSERT INTO write_counts VALUES('job_update'); END")
+        db.connection.execute("CREATE TRIGGER count_event_insert AFTER INSERT ON paper_coordinator_events BEGIN INSERT INTO write_counts VALUES('event_insert'); END")
+        ingest_coordinator_database(db, "s1", source)
+        db.connection.execute("DELETE FROM write_counts")
+        source_connection = sqlite3.connect(source)
+        source_connection.execute("UPDATE coordinator_heartbeat SET at_utc='2026-10-31T00:01:00Z' WHERE host='s1'")
+        source_connection.commit()
+        source_connection.close()
+        ingest_coordinator_database(db, "s1", source)
+        assert db.query("SELECT COUNT(*) FROM write_counts WHERE kind='job_update'")[0][0] == 0
+        assert db.query("SELECT COUNT(*) FROM write_counts WHERE kind='event_insert'")[0][0] == 0
+        assert db.query("SELECT recorded_at FROM paper_coordinator_heartbeats WHERE source_host='s1'")[0][0] == "2026-10-31T00:01:00Z"
         assert db.query("SELECT COUNT(*) FROM forward_receipts WHERE run_id='paper-run-1'")[0][0] == 0
 
 

@@ -165,6 +165,7 @@ def _ingest_coordinator_records(db: ScenarioDB, source_host: str, payload: Mappi
             existing = db.connection.execute("SELECT * FROM paper_coordinator_snapshots WHERE snapshot_hash=?", (snapshot_hash,)).fetchone()
             if existing is None or existing[1] != source_host or existing[3] != "coordinator_only" or existing[4] != summary_json:
                 raise ValueError("immutable coordinator snapshot hash conflict")
+        job_items = []
         for index, raw in enumerate(jobs):
             if not isinstance(raw, Mapping):
                 raise ValueError("coordinator job row must be an object")
@@ -184,19 +185,28 @@ def _ingest_coordinator_records(db: ScenarioDB, source_host: str, payload: Mappi
                 "updated_at": row.get("updated_at") or row.get("updated_at_utc") or row.get("observed_at"),
                 "payload_json": _canonical(row),
             }
-            was_missing = db.connection.execute("SELECT 1 FROM paper_coordinator_jobs WHERE source_host=? AND job_id=?", (source_host, job_id)).fetchone() is None
-            db.connection.execute("INSERT INTO paper_coordinator_jobs VALUES(:source_host,:job_id,:snapshot_hash,:sym_side,:scenario_id,:assigned_host,:status,:updated_at,:payload_json) ON CONFLICT(source_host,job_id) DO UPDATE SET snapshot_hash=excluded.snapshot_hash,sym_side=excluded.sym_side,scenario_id=excluded.scenario_id,assigned_host=excluded.assigned_host,status=excluded.status,updated_at=excluded.updated_at,payload_json=excluded.payload_json", item)
-            if was_missing:
-                created += 1
+            job_items.append(item)
+        insert_cursor = db.connection.executemany("INSERT OR IGNORE INTO paper_coordinator_jobs VALUES(:source_host,:job_id,:snapshot_hash,:sym_side,:scenario_id,:assigned_host,:status,:updated_at,:payload_json)", job_items)
+        created = max(0, insert_cursor.rowcount)
+        db.connection.executemany("UPDATE paper_coordinator_jobs SET snapshot_hash=:snapshot_hash,sym_side=:sym_side,scenario_id=:scenario_id,assigned_host=:assigned_host,status=:status,updated_at=:updated_at,payload_json=:payload_json WHERE source_host=:source_host AND job_id=:job_id AND (sym_side IS NOT :sym_side OR scenario_id IS NOT :scenario_id OR assigned_host IS NOT :assigned_host OR status IS NOT :status OR updated_at IS NOT :updated_at OR payload_json IS NOT :payload_json)", job_items)
         all_jobs = db.connection.execute("SELECT assigned_host,status,scenario_id FROM paper_coordinator_jobs WHERE source_host=?", (source_host,)).fetchall()
         for assigned_host, status, scenario_id in all_jobs:
             by_host_status[(assigned_host, status)] += 1
             if scenario_id is not None:
                 by_host_scenarios.setdefault((assigned_host, status), set()).add(str(scenario_id))
-        db.connection.execute("DELETE FROM paper_coordinator_coverage WHERE source_host=?", (source_host,))
+        active_coverage = set()
         for (assigned_host, status), count in by_host_status.items():
+            active_coverage.add((assigned_host, status))
             row = (source_host, assigned_host, status, snapshot_hash, count, len(by_host_scenarios.get((assigned_host, status), set())))
-            db.connection.execute("INSERT INTO paper_coordinator_coverage VALUES(?,?,?,?,?,?)", row)
+            prior = db.connection.execute("SELECT job_count,scenario_count FROM paper_coordinator_coverage WHERE source_host=? AND assigned_host=? AND status=?", row[:3]).fetchone()
+            if prior is None:
+                db.connection.execute("INSERT INTO paper_coordinator_coverage VALUES(?,?,?,?,?,?)", row)
+            elif tuple(prior) != row[4:]:
+                db.connection.execute("UPDATE paper_coordinator_coverage SET snapshot_hash=?,job_count=?,scenario_count=? WHERE source_host=? AND assigned_host=? AND status=?", (snapshot_hash, *row[4:], *row[:3]))
+        stale_coverage = db.connection.execute("SELECT assigned_host,status FROM paper_coordinator_coverage WHERE source_host=?", (source_host,)).fetchall()
+        for assigned_host, status in stale_coverage:
+            if (assigned_host, status) not in active_coverage:
+                db.connection.execute("DELETE FROM paper_coordinator_coverage WHERE source_host=? AND assigned_host=? AND status=?", (source_host, assigned_host, status))
         if "coverage" in payload:
             coverage_json = _canonical(payload["coverage"])
             db.connection.execute("INSERT INTO paper_coordinator_coverage_reports VALUES(?,?,?) ON CONFLICT(source_host) DO UPDATE SET snapshot_hash=excluded.snapshot_hash,coverage_json=excluded.coverage_json", (source_host, snapshot_hash, coverage_json))
@@ -235,7 +245,10 @@ def ingest_coordinator_database(db: ScenarioDB, source_host: str, path: str | Pa
         if not {"jobs", "events", "coordinator_heartbeat"}.issubset(names):
             raise ValueError("coordinator snapshot lacks jobs/events/coordinator_heartbeat tables")
         jobs = [dict(zip((col[0] for col in connection.execute("SELECT * FROM jobs LIMIT 0").description), row)) for row in connection.execute("SELECT * FROM jobs")]
-        events = [dict(zip((col[0] for col in connection.execute("SELECT * FROM events LIMIT 0").description), row)) for row in connection.execute("SELECT * FROM events")]
+        _create_coordinator_tables(db.connection)
+        last_event_id = db.connection.execute("SELECT COALESCE(MAX(CAST(event_id AS INTEGER)),0) FROM paper_coordinator_events WHERE source_host=?", (source_host,)).fetchone()[0]
+        event_columns = tuple(col[0] for col in connection.execute("SELECT * FROM events LIMIT 0").description)
+        events = [dict(zip(event_columns, row)) for row in connection.execute("SELECT * FROM events WHERE CAST(event_id AS INTEGER)>? ORDER BY CAST(event_id AS INTEGER)", (last_event_id,))]
         heartbeats = [dict(zip((col[0] for col in connection.execute("SELECT * FROM coordinator_heartbeat LIMIT 0").description), row)) for row in connection.execute("SELECT * FROM coordinator_heartbeat")]
     coverage = {}
     grouped = Counter((str(row.get("assigned_host") or "UNKNOWN"), str(row.get("status") or "UNKNOWN").upper()) for row in jobs)

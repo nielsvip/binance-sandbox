@@ -93,8 +93,14 @@ def _journal(path: str | Path) -> tuple[dict, list[dict], dict]:
         if hashlib.sha256(_canonical(receipt).encode()).hexdigest() != receipt_hash:
             raise ValueError(f"receipt hash mismatch at sequence {seq}")
         payload = json.loads(payload_json)
-        observations = [value.get("observation") for value in payload.values() if isinstance(value, dict) and isinstance(value.get("observation"), dict)] if isinstance(payload, dict) else []
+        packed_rows = [value for value in payload.values() if isinstance(value, dict) and isinstance(value.get("observation"), dict)] if isinstance(payload, dict) else []
+        observations = [value["observation"] for value in packed_rows]
         observation = observations[0] if observations else {}
+        if len(observations) != 1:
+            observation_clock_verified = False
+            source_time_alias_verified = False
+            closed_bar_status_verified = False
+            provenance_reasons.append("OBSERVATION_COUNT_NOT_ONE")
         observed_at = observation.get("observed_at_utc")
         frame_timeframe = observation.get("frame_timeframe")
         source_timeframes.append(str(frame_timeframe) if frame_timeframe else None)
@@ -103,24 +109,39 @@ def _journal(path: str | Path) -> tuple[dict, list[dict], dict]:
             if abs(float(ts) - decision_ts) > 0.001:
                 observation_clock_verified = False
                 provenance_reasons.append("OBSERVATION_CLOCK_TIMESTAMP_MISMATCH")
+            if observation.get("decision_clock") != "observed_at_utc":
+                observation_clock_verified = False
+                provenance_reasons.append("OBSERVATION_CLOCK_POLICY_MISMATCH")
         except (TypeError, ValueError, OverflowError):
             decision_ts = None
             observation_clock_verified = False
             provenance_reasons.append("OBSERVATION_CLOCK_TIMESTAMP_MISSING_OR_INVALID")
         source_provenance = observation.get("source_timeframe_provenance") if isinstance(observation.get("source_timeframe_provenance"), Mapping) else {}
+        indicators = packed_rows[0].get("indicators", {}) if packed_rows else {}
+        native_timestamp_verified = False
+        try:
+            native_indicator_ts = _clock_epoch(indicators.get(f"timestamp_{frame_timeframe}"))
+            native_observation_ts = _clock_epoch(observation.get("source_timestamp_epoch_s"))
+            native_timestamp_verified = abs(native_indicator_ts - native_observation_ts) <= 0.001
+        except (TypeError, ValueError, OverflowError):
+            native_timestamp_verified = False
+        producer_hash = source_provenance.get("producer_source_sha256")
         valid_statuses = {"VERIFIED_NATIVE"} if frame_timeframe == "1m" else {"NATIVE_SOURCE", "VERIFIED_NATIVE"}
         alias_verified = (
             source_provenance.get("schema_version") == 1
             and source_provenance.get("timeframe") == frame_timeframe
             and source_provenance.get("source_field") == f"timestamp_{frame_timeframe}"
-            and bool(source_provenance.get("producer_source_sha256"))
+            and isinstance(producer_hash, str) and len(producer_hash) == 64 and all(char in "0123456789abcdefABCDEF" for char in producer_hash)
             and source_provenance.get("status") in valid_statuses
             and (frame_timeframe != "1m" or source_provenance.get("receipt_verified_native_1m") is True)
+            and native_timestamp_verified
         )
+        if not native_timestamp_verified:
+            provenance_reasons.append("NATIVE_TIMESTAMP_FIELD_MISMATCH")
         source_time_alias_verified = source_time_alias_verified and bool(alias_verified)
         frame_closed_bar_verified = observation.get("closed_bar_status_verified") is True or source_provenance.get("closed_bar_status_verified") is True
         closed_bar_status_verified = closed_bar_status_verified and bool(frame_closed_bar_verified)
-        provenance_rows.append({"sequence": int(seq), "frame_timeframe": frame_timeframe, "source_timeframe_provenance": source_provenance, "source_time_alias_verified": bool(alias_verified), "closed_bar_status_verified": bool(frame_closed_bar_verified), "observed_at_utc": observed_at})
+        provenance_rows.append({"sequence": int(seq), "frame_timeframe": frame_timeframe, "source_timeframe_provenance": source_provenance, "native_timestamp_verified": bool(native_timestamp_verified), "source_time_alias_verified": bool(alias_verified), "closed_bar_status_verified": bool(frame_closed_bar_verified), "observed_at_utc": observed_at})
         if decision_ts is not None:
             for event in receipt.get("events", []):
                 if not isinstance(event, Mapping):
@@ -196,6 +217,10 @@ def _store_pair_metadata(db: ScenarioDB, manifest: Mapping[str, Any], settings_h
         source_timeframe_provenance_json TEXT NOT NULL, invalid_reasons_json TEXT NOT NULL,
         input_provenance_valid INTEGER NOT NULL, performance_claim INTEGER NOT NULL
     )""")
+    provenance_columns = {row[1] for row in db.connection.execute("PRAGMA table_info(paper_forward_run_provenance)")}
+    for name, declaration in (("observation_clock_verified", "INTEGER NOT NULL DEFAULT 0"), ("time_policy", "TEXT NOT NULL DEFAULT 'UNVERIFIED'"), ("source_timeframe_provenance_json", "TEXT NOT NULL DEFAULT '[]'")):
+        if name not in provenance_columns:
+            db.connection.execute(f"ALTER TABLE paper_forward_run_provenance ADD COLUMN {name} {declaration}")
     db.connection.execute("DROP VIEW IF EXISTS paper_paired_simulated_cost_readiness")
     db.connection.execute("""CREATE VIEW paper_paired_simulated_cost_readiness AS
         SELECT p.*, ma.code_snapshot_sha256 AS code_snapshot_sha256_a,
@@ -365,7 +390,11 @@ def _store_run_provenance(db: ScenarioDB, manifest: Mapping[str, Any], run_dir: 
         _canonical(gaps), int(observation_clock_verified), time_policy,
         _canonical(journal_provenance.get("frames", [])), _canonical(sorted(set(reasons))), int(not reasons), int(context.get("performance_claim") is True),
     )
-    db.connection.execute("""INSERT INTO paper_forward_run_provenance VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    db.connection.execute("""INSERT INTO paper_forward_run_provenance
+        (run_id,evidence_label,override_issues_json,source_time_semantics,source_timeframe,source_time_alias_verified,
+         closed_bar_status_verified,coverage_gaps_json,observation_clock_verified,time_policy,source_timeframe_provenance_json,
+         invalid_reasons_json,input_provenance_valid,performance_claim)
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ON CONFLICT(run_id) DO UPDATE SET evidence_label=excluded.evidence_label,
         override_issues_json=excluded.override_issues_json,source_time_semantics=excluded.source_time_semantics,
         source_timeframe=excluded.source_timeframe,source_time_alias_verified=excluded.source_time_alias_verified,

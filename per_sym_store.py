@@ -970,6 +970,7 @@ def upsert(
     template_md5: str = None,
     defaults_round: str = None,
     json_path: Path = None,
+    expected_full_config_sha256: str = None,
 ) -> dict:
     """Upsert a per_sym entry.
 
@@ -1052,6 +1053,16 @@ def upsert(
     _ensure_db()
     con = _connect()
     try:
+        if expected_full_config_sha256 is not None:
+            con.execute("BEGIN IMMEDIATE")
+            current_row = con.execute("SELECT full_config_json FROM per_sym_active WHERE sym_side=?", (sym_side,)).fetchone()
+            current_config = {}
+            if current_row and current_row[0]:
+                current_config = json.loads(_maybe_decompress(current_row[0]) or "{}")
+            current_sha256 = hashlib.sha256(json.dumps(current_config or {}, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
+            if current_sha256 != str(expected_full_config_sha256):
+                con.rollback()
+                raise RuntimeError(f"compare-and-swap refused {sym_side}: current full-config SHA256 {current_sha256} != expected {expected_full_config_sha256}")
         con.execute(
             """
             INSERT INTO per_sym_active

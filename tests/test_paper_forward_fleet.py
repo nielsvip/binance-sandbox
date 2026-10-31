@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 
 from tools.paper_fleet_budget import stable_host
-from tools.paper_forward_fleet import DEFAULT_MAX_WORKERS, DEFAULT_POLL_SECONDS, _map_worker_status, coverage_summary, discover_specs, main, reconcile, resource_worker_limit, snapshot_state_database, source_window_available, SpecCache
+from tools.paper_forward_fleet import DEFAULT_MAX_WORKERS, DEFAULT_POLL_SECONDS, _map_worker_status, cached_source_window_available, coverage_summary, discover_specs, main, reconcile, resource_worker_limit, snapshot_state_database, source_window_available, SpecCache
 
 
 def _symbol_for_host(host):
@@ -294,6 +294,61 @@ def test_source_window_surfaces_native_provenance_gap_without_database(tmp_path)
 
     assert not ready
     assert reason == "UNVERIFIED_NATIVE_PROVENANCE: timeframe=1m; blocked_timeframes=1m,5m; eligible_timeframes=3m"
+
+
+def test_shared_sym_side_window_is_resolved_once_for_multiple_scenarios(tmp_path, monkeypatch):
+    import tools.paper_forward_fleet as fleet
+
+    symbol = _symbol_for_host("s1")
+    spec = _spec(tmp_path, f"{symbol}_LONG", "baseline")
+    spec.update(execution_mode="finite_epoch", source_journal="data/paper_forward_lab/native_journal_crypto.sqlite3", frame_timeframe="1m")
+    window = {"window_id": "same-epoch", "source_timeframe": "1m", "start_source_ts": 100.0, "end_source_ts": 160.0}
+    spec["experiment_window"] = window
+    journal = tmp_path / spec["source_journal"]
+    journal.parent.mkdir(parents=True)
+    with sqlite3.connect(journal) as connection:
+        connection.execute("CREATE TABLE journal_meta(key TEXT PRIMARY KEY,value TEXT)")
+        connection.executemany("INSERT INTO journal_meta VALUES(?,?)", [("host", "s1"), ("venue", "crypto"), ("retention_floor_sequence", "0")])
+        connection.execute("CREATE TABLE frames(sequence INTEGER,host TEXT,venue TEXT,symbol TEXT,timeframe TEXT,source_ts REAL)")
+        connection.executemany("INSERT INTO frames VALUES(?,?,?,?,?,?)", [(1, "s1", "crypto", symbol, "1m", 100.0), (2, "s1", "crypto", symbol, "1m", 160.0)])
+    original = fleet.resolve_source_window
+    calls = []
+
+    def counted(*args):
+        calls.append(args)
+        return original(*args)
+
+    monkeypatch.setattr(fleet, "resolve_source_window", counted)
+    candidate = dict(spec, scenario_id="candidate", is_baseline=False)
+    cache = {}
+
+    baseline_result = cached_source_window_available(cache, spec, tmp_path, tmp_path)
+    candidate_result = cached_source_window_available(cache, candidate, tmp_path, tmp_path)
+
+    assert baseline_result == candidate_result == (True, "SOURCE_WINDOW_READY")
+    assert len(calls) == 1
+
+
+def test_unchanged_reconcile_does_not_update_jobs_or_append_duplicate_events(tmp_path):
+    specs = tmp_path / "specs"
+    symbol = _symbol_for_host("s1")
+    candidate = _spec(tmp_path, f"{symbol}_LONG", "wait-for-baseline")
+    _write_specs(specs, {"candidate.json": candidate})
+    observed = {"mem_available_bytes": 16 * 1024**3, "disk_free_bytes": 16 * 1024**3, "load1": 1.0, "ncpu": 16, "cpu_psi_avg10": 0.0}
+    db = tmp_path / "fleet.sqlite3"
+    reconcile(specs, db, tmp_path, "s1", once=True, max_workers=1, observed=observed)
+    with sqlite3.connect(db) as connection:
+        event_count = connection.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+        connection.execute("CREATE TABLE job_update_probe(count INTEGER NOT NULL)")
+        connection.execute("CREATE TRIGGER count_job_update AFTER UPDATE ON jobs BEGIN INSERT INTO job_update_probe VALUES(1); END")
+
+    reconcile(specs, db, tmp_path, "s1", once=True, max_workers=1, observed=observed)
+
+    with sqlite3.connect(db) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM events").fetchone()[0] == event_count
+        assert connection.execute("SELECT COUNT(*) FROM job_update_probe").fetchone()[0] == 0
+        assert connection.execute("SELECT status FROM jobs").fetchone()[0] == "WAITING_FOR_BASELINE"
+        assert connection.execute("SELECT status FROM coordinator_heartbeat WHERE host='s1'").fetchone()[0] == "IDLE"
 
 
 def test_finite_window_pair_waits_for_archive_end_then_runs_baseline_before_candidate(tmp_path):

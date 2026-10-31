@@ -21,9 +21,9 @@ def _fixture(tmp_path):
     manifest = {"run_id": "actual-run-1", "epoch_id": epoch, "scenario_id": "s", "sym_side": "BTCUSDC_LONG", "host": "worker1", "settings_sha256": effective_hash, "parent_settings_sha256": settings, "code_sha256": code, "code_file_hashes": {"backtest_v12_engine.py": code}, "started_at": "1970-01-01T00:00:00Z", "base_settings": base, "effective_settings": effective, "candidate_overrides": candidate, "candidate_getter_resolution": {"BOOL_SWITCH": {"matches": True}}, "source_timeframe": "1m", "source_time_alias_verified": True, "closed_bar_status_verified": True, "source_time_semantics": "native 1m source timeframe; closed-bar status verified", "experiment_window": {"source_timeframe": "1m"}, "context": {"evidence_label": "INDEPENDENT_FORWARD", "source_timeframe": "1m", "source_time_alias_verified": True, "closed_bar_status_verified": True}, "finished": True}
     journal = FrameJournal(tmp_path / "worker.sqlite", {"scenario_id": "s", "run_id": manifest["run_id"], "epoch_id": epoch, "sym_side": "BTCUSDC_LONG", "settings_sha256": effective_hash, "code_sha256": code})
     source_provenance = {"schema_version": 1, "timeframe": "1m", "source_field": "timestamp_1m", "producer_source_sha256": "f" * 64, "status": "VERIFIED_NATIVE", "receipt_verified_native_1m": True}
-    journal.append_frame(100, {"BTCUSDC": {"indicators": {"timestamp_1m": _utc(100)}, "observation": {"observed_at_utc": _utc(100), "source_timestamp": _utc(100), "source_timestamp_epoch_s": 100, "frame_timeframe": "1m", "source_timeframe_provenance": source_provenance}}})
+    journal.append_frame(100, {"BTCUSDC": {"indicators": {"timestamp_1m": _utc(100)}, "observation": {"observed_at_utc": _utc(100), "source_timestamp": _utc(100), "source_timestamp_epoch_s": 100, "frame_timeframe": "1m", "decision_clock": "observed_at_utc", "source_timeframe_provenance": source_provenance}}})
     journal.record_receipt(100, {"events": [{"type": "eta", "action": "OPEN", "status": "FILLED", "position_key": "inf:BTCUSDC_LONG", "position_before": 0, "position_after": 2, "price": 10, "quantity": 2}], "positions": {"inf:BTCUSDC_LONG": {"quantity": 2}}})
-    journal.append_frame(200, {"BTCUSDC": {"indicators": {"timestamp_1m": _utc(200)}, "observation": {"observed_at_utc": _utc(200), "source_timestamp": _utc(200), "source_timestamp_epoch_s": 200, "frame_timeframe": "1m", "source_timeframe_provenance": source_provenance}}})
+    journal.append_frame(200, {"BTCUSDC": {"indicators": {"timestamp_1m": _utc(200)}, "observation": {"observed_at_utc": _utc(200), "source_timestamp": _utc(200), "source_timestamp_epoch_s": 200, "frame_timeframe": "1m", "decision_clock": "observed_at_utc", "source_timeframe_provenance": source_provenance}}})
     journal.record_receipt(200, {"events": [{"type": "webhook", "params": {"type": "MARKET", "side": "SELL"}, "action": "CLOSE", "status": "FILLED", "position_key": "inf:BTCUSDC_LONG", "position_before": 2, "position_after": 0, "price": 12, "quantity": 2}], "positions": {"inf:BTCUSDC_LONG": {"quantity": 0}}})
     journal.close()
     return db, tmp_path / "worker.sqlite", manifest
@@ -389,6 +389,25 @@ def test_observed_clock_must_match_each_journal_frame_timestamp(tmp_path):
     assert provenance["time_policy"] == "UNVERIFIED"
     assert provenance["input_provenance_valid"] == 0
     assert "OBSERVATION_CLOCK_TIMESTAMP_MISMATCH" in provenance["invalid_reasons_json"]
+    db.close()
+
+
+def test_observed_clock_rejects_receipt_events_from_the_future(tmp_path):
+    import sqlite3
+
+    db, journal, manifest = _fixture(tmp_path)
+    connection = sqlite3.connect(journal)
+    receipt = json.loads(connection.execute("SELECT receipt_json FROM frames WHERE sequence=1").fetchone()[0])
+    receipt["events"][0]["timestamp"] = _utc(101)
+    body = json.dumps(receipt, sort_keys=True, separators=(",", ":"))
+    connection.execute("UPDATE frames SET receipt_hash=?,receipt_json=? WHERE sequence=1", (hashlib.sha256(body.encode()).hexdigest(), body))
+    connection.commit()
+    connection.close()
+    ingest(db, journal, manifest)
+    provenance = db.query("SELECT observation_clock_verified,time_policy,invalid_reasons_json FROM paper_forward_run_provenance WHERE run_id='actual-run-1'")[0]
+    assert provenance["observation_clock_verified"] == 0
+    assert provenance["time_policy"] == "UNVERIFIED"
+    assert "RECEIPT_EVENT_AFTER_OBSERVATION_CLOCK" in provenance["invalid_reasons_json"]
     db.close()
 
 

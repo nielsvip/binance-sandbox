@@ -22621,16 +22621,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         )
         # parity-loop-crypto 2026-10-06: live execute_trade_action AUGMENT gain gate (MIN_GAIN, 0.5x at a bounce, LOSER_KILL) on the ladder /
         # bounce / fast-riser sources. Exit reference = last closed trade's exit price (live position.last_reduction_price persists across lifecycles).
-        if (
-            _uag_src_ok
-            and _agg_on
-            and (_gl_fire or bool(augment_sig[i]) or _fr_fire or _hw_fire)
-            and not (_hq_fire or _dd_fire or _n4_fire or _aal_fire)
-            and not (
-                _fx_src
-                and _fxm.aug_exempt(_fx_aug, _fx_src, "AUG_GAIN_GATE_LIVE_TWIN_ENABLED")
-            )
-        ):
+        if _uag_src_ok and _agg_on:
             _agg_exit = vec_decisions.aug_gain_gate.latest_reduction_price(trades, events)
             if not vec_decisions.aug_gain_gate.passes(
                 cfg,

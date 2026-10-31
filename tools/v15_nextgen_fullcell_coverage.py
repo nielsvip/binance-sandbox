@@ -238,7 +238,7 @@ def run(prepared,settings,config,pilot,context,capture,catalog_path,output,worke
             sink.write(json.dumps(result,separators=(',',':'))+'\n')
             sink.flush()
             ledger.commit()
-            receipt=dict(schema='fullcell_actual_coverage_progress/1',observed_at=datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),counts=dict(counts),source_context=context,catalog_sha256=catalog_digest,workers=workers,ordering=ordering,prior_attempt_sources=list(skip_attempts),partial=True,promotion_threshold=101,promotion_enabled=False,scope='breadth-first single frozen context; repeated same trial never increases evidence; failed/skipped/not-applied never zero')
+            receipt=dict(schema='fullcell_actual_coverage_progress/1',observed_at=datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'),counts=dict(counts),source_context=context,catalog_sha256=catalog_digest,workers=workers,shard_index=shard[0],shard_count=shard[1],catalog_start_index=start_index,ordering=ordering,prior_attempt_sources=list(skip_attempts),partial=True,promotion_threshold=101,promotion_enabled=False,scope='breadth-first single frozen context; repeated same trial never increases evidence; failed/skipped/not-applied never zero')
             (output/'progress.json').write_text(json.dumps(receipt,indent=2))
     ledger.close()
     return receipt

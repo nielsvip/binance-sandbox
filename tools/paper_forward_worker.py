@@ -701,6 +701,9 @@ if override_issues:
         "settings_sha256": settings_hash, "code_sha256": code_hash,
         "code_file_hashes": code_file_hashes, "engine_runtime_sha256": identity["engine_runtime_sha256"],
         "runtime_manifest_sha256": runtime_manifest_sha256,
+        "decision_clock": manifest.get("decision_clock", "native_source"),
+        "observation_clock_verified": False, "source_time_alias_verified": False,
+        "source_timeframe_provenance": [], "closed_bar_status_verified": False,
         "override_issues": override_issues, "settings_mismatch_keys": mismatch_keys,
         "reason": "engine rejected one or more requested effective settings",
         "trades": [], "promotion_eligible": False,
@@ -710,6 +713,8 @@ if override_issues:
         status="SETTINGS_MISMATCH", finished=True, ended_at=finished_at,
         reason=mismatch["reason"], override_issues=override_issues,
         settings_mismatch_keys=mismatch_keys, frame_count=0, committed_receipts=0,
+        observation_clock_verified=False, source_time_alias_verified=False,
+        source_timeframe_provenance=[], source_revision_count=0,
         result_file="result.json", result_sha256=hashlib.sha256((root / "result.json").read_bytes()).hexdigest(),
     )
     _atomic_json(result_manifest_path, result_manifest)
@@ -798,7 +803,9 @@ if not first_frame:
     session.stores = stores
 else:
     session._source_frame_count = journal._db.execute("SELECT COUNT(*) FROM frames").fetchone()[0]
-    session.last_source_ts = float(journal._db.execute("SELECT closed_ts FROM frames ORDER BY sequence DESC LIMIT 1").fetchone()[0])
+    last_payload = json.loads(journal._db.execute("SELECT payload FROM frames ORDER BY sequence DESC LIMIT 1").fetchone()[0])
+    last_observation = last_payload.get(symbol, {}).get("observation", {})
+    session.last_source_ts = float(last_observation.get("source_timestamp_epoch_s", journal._db.execute("SELECT closed_ts FROM frames ORDER BY sequence DESC LIMIT 1").fetchone()[0]))
 result_manifest.update(coverage_gaps=session.coverage_gaps, observation_clock_verified=session.observation_clock_verified is True, source_time_alias_verified=session.source_alias_verified is True, source_timeframe_provenance=session.source_timeframe_provenance, source_time_alias="verified_native_by_receipt_provenance" if session.source_alias_verified is True else "unverified", source_revision_count=session.source_revision_count)
 _atomic_json(result_manifest_path, result_manifest)
 session._snapshot_sqlite()

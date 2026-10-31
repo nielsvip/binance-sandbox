@@ -286,8 +286,8 @@ def export_live(a):
 KV_CATSIDE_VERIFIED = "catside_verified"
 
 
-def _stamp(decisions_doc):
-    """Record that each sym_side in this run was re-measured against today's cat_side defaults."""
+def _stamp(decisions_doc, accepted_records):
+    """Record exact accepted incumbent or candidate set hashes from this measured report."""
     try:
         import per_sym_store as PS
         prev = PS.kv_get(KV_CATSIDE_VERIFIED) or {}
@@ -295,13 +295,8 @@ def _stamp(decisions_doc):
             prev = {}
         at = decisions_doc.get("ts") or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         n = 0
-        for x in decisions_doc.get("decisions", []):
-            ss = x.get("sym_side")
-            if not ss or not x.get("verdict"):
-                continue
-            prev[ss] = {"at": at, "verdict": x["verdict"],
-                        "live": (x.get("live") or {}).get("gain_pct"),
-                        "cand": (x.get("candidate") or {}).get("gain_pct")}
+        for ss, record in (accepted_records or {}).items():
+            prev[ss] = {"at": at, "measured_at": at, **record}
             n += 1
         PS.kv_put(KV_CATSIDE_VERIFIED, prev)
         print(f"[h2h-apply] stamped {n} sym_side(s) as cat_side-verified at {at}")
@@ -312,6 +307,7 @@ def _stamp(decisions_doc):
 def apply_(a):
     import per_sym_store as PS
     d = json.load(open(a.inp))
+    report_sha256 = hashlib.sha256(json.dumps(d, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
     todo = [x for x in d.get("decisions", []) if x.get("verdict") == "APPLY_CANDIDATE" and isinstance(x.get("overrides"), dict)]
     print(f"[h2h-apply] {len(todo)} of {len(d.get('decisions', []))} decision(s) would change the live set (tol {d.get('tol')})")
     for x in todo:
@@ -319,20 +315,32 @@ def apply_(a):
     if not a.apply:
         print("[h2h-apply] DRY RUN — pass --apply to write")
         return 0
-    # USER 2026-10-17: a KEEP_LIVE verdict deliberately does NOT rewrite the row, so per_sym_active.updated_at
-    # stays old and the set keeps reading as "stale" although it was just measured and beat today's cat_side
-    # defaults. That is exactly the write-recency-vs-staleness confusion this whole check exists to end, so the
-    # verdict itself is stamped: {SYM_SIDE: {at, verdict, live, cand}} in the store KV, which the auditor reads
-    # to tell "old and never re-checked" apart from "old but verified today". Never fatal — a stamp failure
-    # must not stop a measured winner from going live.
-    _stamp(d)
     ok, fail = 0, []
+    accepted_records = {}
     for x in todo:
         ss = x["sym_side"]
         # Same write contract as tools/v15_suspect_row_rerun.apply_one (USER 2026-10-15: per_sym is a COMPLETE
         # set, never a diff) — the candidate set measured above becomes both overrides and full_config, and
         # per_sym_active_config*.json is written by the store, never by hand.
         cand = dict(x["overrides"])
+        if not x.get("live_set_sha256") or not x.get("candidate_set_sha256") or not x.get("npz_window_sha256"):
+            fail.append(f"{ss}: report lacks exact live/candidate/NPZ-window identity")
+            continue
+        live_now = PS.get_full_config(ss) or {}
+        live_hash = _config_sha256(live_now)
+        latest_diff, latest_meta = _candidate_set(ss)
+        if not isinstance(latest_diff, dict):
+            fail.append(f"{ss}: latest published row unavailable at apply time")
+            continue
+        candidate_now = _candidate_full(live_now, latest_diff)
+        from tools.v15_accepted_provenance import measurement_matches_current
+        cas_ok, cas_why = measurement_matches_current(x, live_now, latest_meta, candidate_now)
+        if not cas_ok:
+            fail.append(f"{ss}: compare-and-swap refused: {cas_why}")
+            continue
+        if live_hash != x.get("live_set_sha256") or _config_sha256(cand) != x.get("candidate_set_sha256"):
+            fail.append(f"{ss}: report lacks exact live/candidate set identity")
+            continue
         # FAIL-CLOSED on set size. A per_sym set may gain keys, never lose them: 2026-10-16 18:24Z a publish-row
         # DIFF was written as the full set and 24 live sym_sides fell from ~3572 keys to 41-856. Checked again
         # here against the CURRENT live set, not only against the export the measurement used.
@@ -354,7 +362,13 @@ def apply_(a):
                 "max_dd_pct": (x.get("candidate") or {}).get("max_dd_pct"), "tim_pct": (x.get("candidate") or {}).get("tim_pct"),
                 "replaced_live_gain_pct": (x.get("live") or {}).get("gain_pct"),
                 "claimed_gain_pct": x.get("claimed_gain"), "claim_not_reproducible_pp": x.get("claim_not_reproducible_pp"),
-                "evidence": str(a.inp)}
+                "evidence": str(a.inp), "h2h_report_sha256": report_sha256,
+                "accepted_verdict": x.get("verdict"), "accepted_set_sha256": x.get("candidate_set_sha256"),
+                "h2h_live_set_sha256": x.get("live_set_sha256"), "h2h_candidate_set_sha256": x.get("candidate_set_sha256"),
+                "h2h_publish_history_id": (x.get("candidate_meta") or {}).get("history_id"),
+                "h2h_publish_at": (x.get("candidate_meta") or {}).get("published_at"),
+                "h2h_npz_window_sha256": x.get("npz_window_sha256"),
+                "incumbent_source_sha256": d.get("incumbent_source_sha256")}
         try:
             PS.upsert(ss, cand, snap, cand, meta, json_path=jp if jp.exists() else None)
             back = PS.get_full_config(ss) or {}
@@ -363,8 +377,28 @@ def apply_(a):
                 fail.append(f"{ss}: {len(miss)} key(s) did not read back (e.g. {miss[:3]})")
                 continue
             ok += 1
+            accepted_records[ss] = {"verdict": "APPLY_CANDIDATE", "accepted_set_sha256": x.get("candidate_set_sha256"),
+                                    "live_set_sha256": x.get("live_set_sha256"), "candidate_set_sha256": x.get("candidate_set_sha256"),
+                                    "report_sha256": report_sha256, "published_history_id": (x.get("candidate_meta") or {}).get("history_id"),
+                                    "npz_window_sha256": x.get("npz_window_sha256")}
         except Exception as e:
             fail.append(f"{ss}: {type(e).__name__}: {str(e)[:70]}")
+    for x in d.get("decisions", []):
+        if x.get("verdict") != "KEEP_LIVE":
+            continue
+        ss = str(x.get("sym_side") or "")
+        current = PS.get_full_config(ss) or {}
+        current_hash = _config_sha256(current)
+        latest_diff, latest_meta = _candidate_set(ss)
+        candidate = _candidate_full(current, latest_diff) if isinstance(latest_diff, dict) else {}
+        from tools.v15_accepted_provenance import measurement_matches_current
+        cas_ok, _ = measurement_matches_current(x, current, latest_meta if isinstance(latest_meta, dict) else {}, candidate)
+        if cas_ok and current_hash == x.get("live_set_sha256"):
+            accepted_records[ss] = {"verdict": "KEEP_LIVE", "accepted_set_sha256": current_hash,
+                                    "live_set_sha256": current_hash, "candidate_set_sha256": x.get("candidate_set_sha256"),
+                                    "report_sha256": report_sha256, "published_history_id": (x.get("candidate_meta") or {}).get("history_id"),
+                                    "npz_window_sha256": x.get("npz_window_sha256")}
+    _stamp(d, accepted_records)
     print(f"[h2h-apply] applied {ok}, failed {len(fail)}")
     for f in fail:
         print(f"   FAIL {f}")

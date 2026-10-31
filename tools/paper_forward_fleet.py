@@ -297,6 +297,23 @@ def source_window_available(spec, specs_dir, root):
     return resolved["ready"], resolved["status"]
 
 
+def cached_source_window_available(cache, spec, specs_dir, root):
+    window = spec.get("experiment_window")
+    journal_value = spec.get("source_journal")
+    journal_path = None
+    if isinstance(journal_value, str) and journal_value.strip():
+        journal_path = Path(journal_value)
+        if not journal_path.is_absolute():
+            journal_path = Path(specs_dir) / journal_path
+        journal_path = str(journal_path.resolve())
+    window_data = window if isinstance(window, dict) else {}
+    window_key = tuple(window_data.get(key) for key in ("window_id", "source_timeframe", "anchor", "start_source_ts", "end_source_ts", "not_before_source_ts", "duration_seconds"))
+    key = (journal_path, spec.get("host"), str(spec.get("venue", "")).lower(), spec.get("sym_side"), spec.get("execution_mode"), window_key)
+    if key not in cache:
+        cache[key] = source_window_available(spec, specs_dir, root)
+    return cache[key]
+
+
 def _connect(db_path):
     db_path = Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -411,6 +428,23 @@ class SpecCache:
 
 
 def _upsert_discovered(connection, rows, host, now):
+    fields = ("spec_id", "status", "pid", "registered_at", "spec_sha256", "detail", "spec_path", "run_id", "epoch_id", "scenario_id", "sym_side", "venue", "window_id", "assigned_host", "is_baseline")
+    existing_by_id = {record[0]: dict(zip(fields, record)) for record in connection.execute("SELECT " + ",".join(fields) + " FROM jobs")}
+    identity_hashes = {}
+    for existing in existing_by_id.values():
+        identity = (existing["run_id"], existing["epoch_id"], existing["scenario_id"], existing["sym_side"])
+        if all(identity) and existing["spec_sha256"]:
+            identity_hashes.setdefault(identity, {})[existing["spec_id"]] = existing["spec_sha256"]
+    for row in rows:
+        spec = row.get("spec") or {}
+        if not spec or not row.get("spec_sha256"):
+            continue
+        identity = (spec.get("run_id"), spec.get("epoch_id"), spec.get("scenario_id"), spec.get("sym_side"))
+        if all(identity):
+            identity_hashes.setdefault(identity, {})[row["spec_id"]] = row["spec_sha256"]
+    duplicate_identities = {identity for identity, versions in identity_hashes.items() if len(versions) > 1 and len(set(versions.values())) > 1}
+    preserved_states = {"REGISTERED", "STARTING", "RUNNING", "WAITING_FRESH_INPUT", "WAITING_FOR_CAPACITY", "RESOURCE_BLOCKED", "WAITING_FOR_SOURCE_WINDOW", "WAITING_FOR_BASELINE", "ASSIGNED_OTHER_HOST", "COMPLETED", "COMPLETED_MULTI_FRAME_ENGINE_RUN", "FAILED", "INTERRUPTED", "SPEC_CHANGED", "PENDING_PARAMETERS", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT", "DATA_GAP", "SETTINGS_MISMATCH", "INVALID_EXPERIMENT_WINDOW"}
+    state_by_id = {}
     for row in rows:
         spec = row.get("spec") or {}
         venue = str(spec.get("venue", "")).lower() or None
@@ -424,38 +458,44 @@ def _upsert_discovered(connection, rows, host, now):
         status = row["status"]
         if status == "REGISTERED" and assigned != host:
             status = "ASSIGNED_OTHER_HOST"
-        old = connection.execute("SELECT status,pid,registered_at,spec_sha256,detail FROM jobs WHERE spec_id=?", (row["spec_id"],)).fetchone()
-        was_pending = bool(old and old[0] == "PENDING_PARAMETERS")
+        old = existing_by_id.get(row["spec_id"])
+        was_pending = bool(old and old["status"] == "PENDING_PARAMETERS")
         ready_from_pending = was_pending and bool(spec.get("launchable", False))
         if spec and row.get("spec_sha256"):
-            prior = connection.execute("""SELECT spec_id,spec_sha256 FROM jobs WHERE run_id=? AND epoch_id=? AND scenario_id=? AND sym_side=? AND spec_id<>? LIMIT 1""",
-                                       (spec.get("run_id"), spec.get("epoch_id"), spec.get("scenario_id"), spec.get("sym_side"), row["spec_id"])).fetchone()
-            if prior and prior[1] != row["spec_sha256"]:
+            identity = (spec.get("run_id"), spec.get("epoch_id"), spec.get("scenario_id"), spec.get("sym_side"))
+            if identity in duplicate_identities:
                 status = "SPEC_CHANGED"
                 row["error"] = "spec changed without a new run_id/epoch_id; refusing duplicate-epoch execution"
-        if old and old[3] and row.get("spec_sha256") and old[3] != row["spec_sha256"] and not was_pending:
+        if old and old["spec_sha256"] and row.get("spec_sha256") and old["spec_sha256"] != row["spec_sha256"] and not was_pending:
             status = "SPEC_CHANGED"
             row["error"] = "spec changed without a new run_id/epoch_id; refusing duplicate-epoch execution"
-        elif old and old[0] in {"STARTING", "RUNNING", "WAITING_FRESH_INPUT", "WAITING_FOR_CAPACITY", "RESOURCE_BLOCKED", "WAITING_FOR_SOURCE_WINDOW", "WAITING_FOR_BASELINE", "ASSIGNED_OTHER_HOST", "COMPLETED", "FAILED", "INTERRUPTED", "SPEC_CHANGED", "PENDING_PARAMETERS"} and not ready_from_pending:
-            status = old[0]
-        registered_at = old[2] if old else now
+        elif status != "SPEC_CHANGED" and old and old["status"] in preserved_states and not ready_from_pending:
+            status = old["status"]
+        registered_at = old["registered_at"] if old else now
         detail = {"error": row.get("error")} if row.get("error") else {}
         detail["launchable"] = bool(spec.get("launchable", True))
         if not spec.get("launchable", True):
             detail["pending_reason"] = spec.get("pending_reason", "PENDING_PARAMETER_VALUES")
-        window_id = (spec.get("experiment_window") or {}).get("window_id")
+        detail_json = json.dumps(detail, sort_keys=True)
+        window = spec.get("experiment_window")
+        window_id = window.get("window_id") if isinstance(window, dict) else None
+        is_baseline = int(spec.get("is_baseline", False) is True)
+        if old and row.get("spec_sha256") and old["spec_sha256"] == row["spec_sha256"] and old["spec_path"] == row["spec_path"] and old["assigned_host"] == assigned and old["run_id"] == spec.get("run_id") and old["epoch_id"] == spec.get("epoch_id") and old["scenario_id"] == spec.get("scenario_id") and old["sym_side"] == spec.get("sym_side") and old["venue"] == venue and old["window_id"] == window_id and old["is_baseline"] == is_baseline and old["status"] in preserved_states and not ready_from_pending:
+            state_by_id[row["spec_id"]] = (old["status"], old["detail"])
+            continue
         connection.execute("""INSERT INTO jobs(spec_id,spec_path,spec_sha256,run_id,epoch_id,scenario_id,sym_side,venue,window_id,
             assigned_host,status,detail,registered_at,updated_at,is_baseline) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(spec_id) DO UPDATE SET spec_path=excluded.spec_path,spec_sha256=excluded.spec_sha256,
             run_id=excluded.run_id,epoch_id=excluded.epoch_id,scenario_id=excluded.scenario_id,
             sym_side=excluded.sym_side,venue=excluded.venue,window_id=excluded.window_id,assigned_host=excluded.assigned_host,
-            status=CASE WHEN jobs.status IN ('RUNNING','WAITING_FRESH_INPUT','COMPLETED','FAILED','INTERRUPTED','SPEC_CHANGED','WAITING_FOR_SOURCE_WINDOW','WAITING_FOR_BASELINE') THEN jobs.status ELSE excluded.status END,
-            detail=excluded.detail,updated_at=excluded.updated_at,is_baseline=excluded.is_baseline""",
+            status=excluded.status,detail=excluded.detail,updated_at=excluded.updated_at,is_baseline=excluded.is_baseline""",
             (row["spec_id"], row["spec_path"], row.get("spec_sha256"), spec.get("run_id"), spec.get("epoch_id"), spec.get("scenario_id"), spec.get("sym_side"), venue, window_id,
-             assigned, status, json.dumps(detail, sort_keys=True), registered_at, now, int(spec.get("is_baseline", False) is True)))
-        if not old or old[0] != status:
+             assigned, status, detail_json, registered_at, now, is_baseline))
+        state_by_id[row["spec_id"]] = (status, detail_json)
+        if not old or old["status"] != status or old["detail"] != detail_json:
             connection.execute("INSERT INTO events(spec_id,at_utc,status,detail) VALUES(?,?,?,?)",
-                               (row["spec_id"], now, status, json.dumps(detail, sort_keys=True)))
+                               (row["spec_id"], now, status, detail_json))
+    return state_by_id
 
 
 def _pid_alive(pid, spec_path=None):
@@ -524,18 +564,34 @@ def resource_worker_limit(observed, venue, host, max_workers=DEFAULT_MAX_WORKERS
 
 def _mark(connection, spec_id, status, now, detail=None, pid=None, exit_code=None, heartbeat=None, run_dir=None, command=None, clear_pid=False):
     rendered_detail = json.dumps(detail or {}, sort_keys=True)
+    old = connection.execute("SELECT status,detail,pid,exit_code,heartbeat_at,run_dir,command_json FROM jobs WHERE spec_id=?", (spec_id,)).fetchone()
+    if old is None:
+        return
+    rendered_command = json.dumps(command) if command else None
+    new_pid = None if clear_pid else old[2] if pid is None else pid
+    new_exit_code = old[3] if exit_code is None else exit_code
+    event_changed = (old[0], old[1], old[2], old[3]) != (status, rendered_detail, new_pid, new_exit_code)
+    new_heartbeat = old[4] if heartbeat is None else heartbeat
+    new_run_dir = old[5] if run_dir is None else str(run_dir)
+    new_command = old[6] if rendered_command is None else rendered_command
+    metadata_changed = (old[4], old[5], old[6]) != (new_heartbeat, new_run_dir, new_command)
+    if not event_changed and not metadata_changed:
+        return
     connection.execute("""UPDATE jobs SET status=?,detail=?,pid=CASE WHEN ? THEN NULL ELSE COALESCE(?,pid) END,exit_code=COALESCE(?,exit_code),
         heartbeat_at=COALESCE(?,heartbeat_at),run_dir=COALESCE(?,run_dir),command_json=COALESCE(?,command_json),updated_at=? WHERE spec_id=?""",
         (status, rendered_detail, int(clear_pid), pid, exit_code, heartbeat, str(run_dir) if run_dir else None,
-         json.dumps(command) if command else None, now, spec_id))
-    connection.execute("INSERT INTO events(spec_id,at_utc,status,detail,pid) VALUES(?,?,?,?,?)", (spec_id, now, status, rendered_detail, pid))
+         rendered_command, now, spec_id))
+    if event_changed:
+        connection.execute("INSERT INTO events(spec_id,at_utc,status,detail,pid) VALUES(?,?,?,?,?)", (spec_id, now, status, rendered_detail, pid))
 
 
 def _set_pending_state(connection, host, status, source_states, now, detail):
     marks = ",".join("?" for _ in source_states)
-    rows = connection.execute(f"SELECT spec_id FROM jobs WHERE assigned_host=? AND status IN ({marks})", (host, *source_states)).fetchall()
-    for (spec_id,) in rows:
-        _mark(connection, spec_id, status, now, detail)
+    rows = connection.execute(f"SELECT spec_id,status,detail FROM jobs WHERE assigned_host=? AND status IN ({marks})", (host, *source_states)).fetchall()
+    rendered = json.dumps(detail or {}, sort_keys=True)
+    for spec_id, prior_status, prior_detail in rows:
+        if prior_status != status or prior_detail != rendered:
+            _mark(connection, spec_id, status, now, detail)
 
 
 def _launch(connection, row, root, now, launcher=subprocess.Popen):
@@ -561,6 +617,7 @@ def reconcile(specs_dir, db_path, root=ROOT, host=None, once=True, dry_run=False
     venue = "crypto" if host in HOSTS_BY_VENUE["crypto"] else "stocks"
     observed = observed if observed is not None else collect_observed(Path(root) / "data")
     capacity, admission = resource_worker_limit(observed, venue, host, max_workers=max_workers)
+    window_cache = {}
     if dry_run:
         plan = []
         dry_baselines = set()
@@ -577,7 +634,7 @@ def reconcile(specs_dir, db_path, root=ROOT, host=None, once=True, dry_run=False
                 if assigned != host:
                     status = "ASSIGNED_OTHER_HOST"
                 elif status == "REGISTERED":
-                    ready, reason = source_window_available(spec, Path(row["spec_path"]).parent, root)
+                    ready, reason = cached_source_window_available(window_cache, spec, Path(row["spec_path"]).parent, root)
                     baseline_key = (spec.get("sym_side"), spec.get("epoch_id"), (spec.get("experiment_window") or {}).get("window_id"))
                     if not spec.get("is_baseline", False) and baseline_key not in dry_baselines:
                         status = "WAITING_FOR_BASELINE"
@@ -591,21 +648,24 @@ def reconcile(specs_dir, db_path, root=ROOT, host=None, once=True, dry_run=False
 
     connection = _connect(db_path)
     now = utc_now()
-    _upsert_discovered(connection, rows, host, now)
+    state_by_id = _upsert_discovered(connection, rows, host, now)
     for row in rows:
         spec = row.get("spec")
         if not spec or row.get("status") != "REGISTERED" or spec.get("launchable", True) is False:
             continue
         if stable_host(spec["venue"], *spec["sym_side"].rsplit("_", 1)) != host:
             continue
-        ready, reason = source_window_available(spec, Path(row["spec_path"]).parent, root)
-        previous = connection.execute("SELECT status FROM jobs WHERE spec_id=?", (row["spec_id"],)).fetchone()
+        ready, reason = cached_source_window_available(window_cache, spec, Path(row["spec_path"]).parent, root)
+        previous = state_by_id.get(row["spec_id"])
+        rendered_detail = json.dumps({"reason": reason}, sort_keys=True)
         if not ready:
             state = "INVALID_EXPERIMENT_WINDOW" if reason == "INVALID_EXPERIMENT_WINDOW" else "WAITING_FOR_SOURCE_WINDOW"
-            if previous and previous[0] != state:
+            if previous and (previous[0] != state or previous[1] != rendered_detail):
                 _mark(connection, row["spec_id"], state, utc_now(), {"reason": reason})
+                state_by_id[row["spec_id"]] = (state, rendered_detail)
         elif previous and previous[0] == "WAITING_FOR_SOURCE_WINDOW":
             _mark(connection, row["spec_id"], "REGISTERED", utc_now(), {"reason": reason})
+            state_by_id[row["spec_id"]] = ("REGISTERED", rendered_detail)
     connection.execute("INSERT INTO coordinator_heartbeat(host,at_utc,status,detail) VALUES(?,?,?,?) ON CONFLICT(host) DO UPDATE SET at_utc=excluded.at_utc,status=excluded.status,detail=excluded.detail",
                        (host, now, "RECONCILING", json.dumps({"spec_count": len(rows)})))
     connection.commit()
@@ -645,13 +705,12 @@ def reconcile(specs_dir, db_path, root=ROOT, host=None, once=True, dry_run=False
     if free_slots:
         for _ in range(free_slots):
             baseline_complete = {(item[0], item[1], item[2]) for item in connection.execute("SELECT DISTINCT sym_side,epoch_id,window_id FROM jobs WHERE assigned_host=? AND is_baseline=1 AND status='COMPLETED'", (host,))}
-            candidates = connection.execute("SELECT spec_id,is_baseline,sym_side,epoch_id,window_id FROM jobs WHERE assigned_host=? AND status IN ('REGISTERED','WAITING_FOR_CAPACITY','RESOURCE_BLOCKED','WAITING_FOR_BASELINE') ORDER BY registered_at,scenario_id,sym_side,spec_id", (host,)).fetchall()
+            candidates = connection.execute("SELECT spec_id,is_baseline,sym_side,epoch_id,window_id,status FROM jobs WHERE assigned_host=? AND status IN ('REGISTERED','WAITING_FOR_CAPACITY','RESOURCE_BLOCKED','WAITING_FOR_BASELINE') ORDER BY registered_at,scenario_id,sym_side,spec_id", (host,)).fetchall()
             ready = []
-            for candidate_id, is_baseline, sym_side, epoch_id, window_id in candidates:
+            for candidate_id, is_baseline, sym_side, epoch_id, window_id, candidate_status in candidates:
                 baseline_key = (sym_side, epoch_id, window_id)
                 if not is_baseline and baseline_key not in baseline_complete:
-                    current = connection.execute("SELECT status FROM jobs WHERE spec_id=?", (candidate_id,)).fetchone()
-                    if current and current[0] != "WAITING_FOR_BASELINE":
+                    if candidate_status != "WAITING_FOR_BASELINE":
                         _mark(connection, candidate_id, "WAITING_FOR_BASELINE", utc_now(), {"reason": "matching sym_side baseline has not completed"})
                     continue
                 if current := row_by_id.get(candidate_id):

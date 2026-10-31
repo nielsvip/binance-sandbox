@@ -55,6 +55,20 @@
     "symbol": "SKYUSDT",
     "side": "SHORT"
   },
+  "ang:EGLDUSDT_SHORT": {
+    "orderId": "4000002013946650",
+    "stopPrice": 3.383,
+    "entry_sig": "2026-10-31 05:01:21.010000+00:00",
+    "symbol": "EGLDUSDT",
+    "side": "SHORT"
+  },
+  "ang:RSRUSDT_SHORT": {
+    "orderId": "4000002013946676",
+    "stopPrice": 0.001461,
+    "entry_sig": "2026-10-31 05:01:22.526000+00:00",
+    "symbol": "RSRUSDT",
+    "side": "SHORT"
+  },
   "ang:WIFUSDC_SHORT": {
     "orderId": "4000002013453521",
     "stopPrice": 0.1803,
@@ -62,11 +76,11 @@
     "symbol": "WIFUSDC",
     "side": "SHORT"
   },
-  "ang:EGLDUSDT_SHORT": {
-    "orderId": "4000002013946650",
-    "stopPrice": 3.383,
-    "entry_sig": "2026-10-31 05:01:21.010000+00:00",
-    "symbol": "EGLDUSDT",
+  "ang:SANDUSDT_SHORT": {
+    "orderId": "4000002013974988",
+    "stopPrice": 0.04779,
+    "entry_sig": "2026-10-31 05:15:14.167000+00:00",
+    "symbol": "SANDUSDT",
     "side": "SHORT"
   }
 }

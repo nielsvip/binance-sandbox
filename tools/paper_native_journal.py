@@ -118,6 +118,7 @@ def _connect(database):
         existing_input_hash TEXT, incoming_input_hash TEXT NOT NULL, reason TEXT NOT NULL
     )""")
     connection.execute("CREATE INDEX IF NOT EXISTS frame_symbol_tf_seq ON frame_index(host,venue,symbol,timeframe,sequence)")
+    connection.execute("CREATE INDEX IF NOT EXISTS frame_source_window ON frame_index(host,venue,symbol,timeframe,source_ts,sequence)")
     view_columns = {row[1] for row in connection.execute("PRAGMA table_info(frames)")}
     if "provenance_json" not in view_columns:
         connection.execute("DROP VIEW IF EXISTS frames")
