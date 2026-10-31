@@ -234,3 +234,46 @@ def test_chained_actual_row_receipts_control_completion_and_resume_not_done_bool
     assert not consumer.verified_completed_rows()['complete']
     with pytest.raises(ValueError, match='incomplete'):
         consumer.require_first_pass_complete([('EXIT', 3, 'FLAG', True)], {'done': {'fake': {'complete': True}}}, {'FLAG': False})
+
+
+def test_budgeted_old_cell_defer_is_durable_debt_not_zero_or_measured_coverage(tmp_path, monkeypatch):
+    import multiprocessing
+    row, base, contexts, _ = fixture(tmp_path)
+    factory = base.context_factory
+    npz_hash = contexts[-1]['current_epoch']['sources'][1]['sha256']
+    def context(chain):
+        result = factory(chain)
+        result['scientific_identity'] = dict(result['scientific_identity'], npz_sha256=npz_hash)
+        result['first_pass_start_chain_sha256'] = C.priority.evidence.guard.fingerprint({'FLAG':False})
+        return result
+    directory = tmp_path/'proofs'
+    directory.mkdir()
+    policy = tmp_path/'budget_policy.json'
+    policy.write_text(json.dumps(dict(schema='first_pass_budget_policy/1', phase_completion='budgeted_with_durable_debt', allow_old_cell_defer=True, new_row_minimum_reserved_fraction=0.5)))
+    def reserve(allocation, current):
+        identity = C.priority.evidence.guard.fingerprint(dict(allocation=allocation,scientific_identity=C.priority.scientific_identity(current)))
+        path = tmp_path/(identity+'.json')
+        path.write_text(json.dumps(dict(schema='first_pass_reservation/1',status='reserved',allocation_sha256=identity,allocation=allocation)))
+        return dict(status='reserved',allocation_sha256=identity,source=dict(path=str(path),sha256=C.priority.evidence.sha(path)))
+    consumer = C.FirstPassConsumer(context,base.classify,reserve,{},lambda *args:1,lambda *args:'known_existing',capture_directory=str(directory),budget_policy_source=dict(path=str(policy),sha256=C.priority.evidence.sha(policy)))
+    consumer.begin_batch({'FLAG':False})
+    legal = C.capture_legal(dict(hdrs=['FILTER=15m','FILTER=1h'],h2f={'FILTER=15m':dict(filter='FILTER',opt='15m'),'FILTER=1h':dict(filter='FILTER',opt='1h')}))
+    selected = consumer.apply(dict(kind='eval',hdrs=[],h2f={}),legal,row,{'FLAG':False})['hdrs'][0]
+    items = [('naked',{'FLAG':True}),(selected,{'FLAG':True,'FILTER':legal['h2f'][selected]['opt']})]
+    consumer.register_plan(row,{'FLAG':False},{'FLAG':True},items,False)
+    monkeypatch.setitem(sys.modules,'v12_quick_engine',SimpleNamespace(__file__=str(tmp_path/'v12_quick_engine.py')))
+    monkeypatch.setitem(sys.modules,'tools.opt.v12_pilot',SimpleNamespace(evaluate_prepared_sanitized=lambda *args:None))
+    monkeypatch.setattr(multiprocessing,'current_process',lambda:SimpleNamespace(name='ForkProcess-test-fixture'))
+    def capture(prepared,settings,evaluate,days):
+        result=dict(valid=True,gain_pct=0.0,execution_ledger=[])
+        configs=[settings]
+        return result,dict(input_cutoff_sha256='d'*64,effective_config_values=configs,effective_config_sha256=C.priority.evidence.guard.fingerprint(configs),execution_ledger_sha256=C.priority.evidence.guard.fingerprint([]),result_sha256=C.priority.evidence.guard.fingerprint(C.priority.evidence.guard.result_fields(result)))
+    monkeypatch.setattr(C.priority.evidence.guard,'capture_actual',capture)
+    for label,settings in items:
+        C.evaluate_fork_worker({},settings,30,consumer.worker_capture_spec())
+    assert consumer.finish_row(row,{'FLAG':False})['status']=='budgeted_row_accounted'
+    receipt=consumer.require_first_pass_complete([('EXIT',3,'FLAG',True)],{}, {'FLAG':False})
+    assert receipt['deferred_unmeasured_cells']==1
+    assert receipt['all_connections_verified'] is False
+    assert receipt['all_eligible_cells_measured_in_this_pass'] is False
+    assert len(list(directory.glob('row_*.json')))==1

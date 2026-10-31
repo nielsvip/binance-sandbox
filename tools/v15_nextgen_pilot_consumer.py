@@ -141,14 +141,7 @@ class FirstPassConsumer:
         self.budget_policy_source = budget_policy_source
         self.budget_policy = None
         if budget_policy_source is not None:
-            path = priority.Path(budget_policy_source['path'])
-            if priority.evidence.sha(path) != budget_policy_source['sha256']:
-                raise ValueError('budget-policy source changed')
-            policy = json.loads(path.read_text())
-            fraction = policy.get('new_row_minimum_reserved_fraction')
-            if policy.get('schema') != 'first_pass_budget_policy/1' or policy.get('phase_completion') != 'budgeted_with_durable_debt' or policy.get('allow_old_cell_defer') is not True or type(fraction) not in (int, float) or not 0 < fraction <= 1:
-                raise ValueError('explicit approved budgeted first-pass policy required')
-            self.budget_policy = priority._freeze(policy)
+            self.budget_policy = priority.bind_budget_policy(budget_policy_source)
     def begin_batch(self, chain):
         context = self.context_factory(copy.deepcopy(chain))
         priority.validate_epoch_sources(context['current_epoch'])
@@ -297,6 +290,12 @@ class FirstPassConsumer:
             policy_source, debt_source = record.get('budget_policy_source'), record.get('durable_debt_source')
             if self.budget_policy_source != policy_source or not debt_source or priority.evidence.sha(debt_source['path']) != debt_source['sha256'] or priority.evidence.sha(policy_source['path']) != policy_source['sha256']:
                 raise ValueError('deferred debt or approved policy source changed')
+            reservation = json.loads(priority.Path(debt_source['path']).read_text())
+            allocated = reservation.get('allocation') or {}
+            expected_id = priority.evidence.guard.fingerprint(dict(allocation=allocated, scientific_identity=record['scientific_identity']))
+            selected = {item['cell']['header'] for item in allocated.get('selected') or []}
+            if reservation.get('schema') != 'first_pass_reservation/1' or reservation.get('allocation_sha256') != expected_id or not selected <= set(record['measurements']) or deferred != {item['cell']['header'] for item in allocated.get('deferred') or []}:
+                raise ValueError('row debt does not match actual reserved/deferred cell allocation')
         for label, measurement in record['measurements'].items():
             binding = legal['h2f'].get(label, {'filter': '__NAKED__', 'opt': None})
             cell = dict(row, filter=binding['filter'], opt=binding['opt'])
@@ -326,17 +325,19 @@ class FirstPassConsumer:
                 except (ValueError, KeyError, json.JSONDecodeError):
                     continue
                 candidates.setdefault(priority.evidence.guard.fingerprint(record['row']), []).append((record, source))
-        prefix, sources, cursor = [], [], seed
+        prefix, sources, cursor, deferred_total, measured_total = [], [], seed, 0, 0
         for row in order['rows']:
             matches = [(record, source) for record, source in candidates.get(priority.evidence.guard.fingerprint(row), []) if record['chain_before_sha256'] == cursor]
-            unique = {(record['chain_after_sha256'], priority.evidence.guard.fingerprint(record['measurements'])) for record, source in matches}
+            unique = {record['chain_after_sha256'] for record, source in matches}
             if len(unique) != 1:
                 break
-            record, source = matches[0]
+            record, source = min(matches, key=lambda item: (len(item[0].get('deferred_unmeasured_cells') or []), item[1]['sha256']))
             prefix.append(dict(row))
             sources.append(source)
             cursor = record['chain_after_sha256']
-        return dict(rows=prefix, sources=sources, final_chain_sha256=cursor, complete=len(prefix) == len(order['rows']), expected_rows=len(order['rows']))
+            deferred_total += len(record.get('deferred_unmeasured_cells') or [])
+            measured_total += len(record.get('measurements') or {})
+        return dict(rows=prefix, sources=sources, final_chain_sha256=cursor, complete=len(prefix) == len(order['rows']), expected_rows=len(order['rows']), deferred_unmeasured_cells=deferred_total, actual_measurement_references=measured_total)
     def resume_completed_rows(self, chain):
         audited = self.verified_completed_rows()
         if audited['final_chain_sha256'] != priority.evidence.guard.fingerprint(chain):
@@ -350,7 +351,7 @@ class FirstPassConsumer:
         self.batch_context = None
     def apply(self, sampled, legal, row, chain):
         context = self.context_factory(copy.deepcopy(chain))
-        context = dict(context, row_status=self.row_status(row, context))
+        context = dict(context, row_status=self.row_status(row, context), budget_policy=self.budget_policy)
         if context.get('phase') != 'post_kg_first_worst_pass' or context.get('row_order') != 'worst_first':
             raise ValueError('actual retained KG phase and verified worst-first order required')
         priority._check_epoch(context['current_epoch'])
@@ -375,8 +376,8 @@ class FirstPassConsumer:
         illegal = set(result.get('hdrs') or ()) - set(legal['hdrs'])
         if illegal:
             raise ValueError('sampled headers escaped actual legal row census')
-        if selected:
-            if result.get('kind') == 'skip' and not str(result.get('reason') or '').startswith(('CARRIED_', 'BRAIN_', 'PRIOR_', 'V20_', 'LOW_YIELD', 'ZERO_FORMULA', 'POS_SYM', 'SKIPPED_SAMPLING')):
+        if result.get('kind') == 'skip':
+            if not str(result.get('reason') or '').startswith(('CARRIED_', 'BRAIN_', 'PRIOR_', 'V20_', 'LOW_YIELD', 'ZERO_FORMULA', 'POS_SYM', 'SKIPPED_SAMPLING')):
                 raise ValueError('structural skip cannot be rescued as exploration')
             result['kind'] = 'eval'
             result['reason'] = ''
@@ -425,7 +426,7 @@ class FirstPassConsumer:
         audited = self.verified_completed_rows()
         if not audited['complete'] or audited['final_chain_sha256'] != priority.evidence.guard.fingerprint(chain):
             raise ValueError('first-pass incomplete or promoted chain differs: research phases remain deferred')
-        receipt = dict(schema='source_bound_first_pass_audit/1', scientific_identity=priority.scientific_identity(context), physical_row_order_sha256=order['physical_row_order_sha256'], actual_row_sources=audited['sources'], complete=True, scope='all legal cells have actual same-era engine/config/ledger/cutoff proofs and chained row transitions; no old done counter or publication print used')
+        receipt = dict(schema='source_bound_first_pass_audit/1', scientific_identity=priority.scientific_identity(context), physical_row_order_sha256=order['physical_row_order_sha256'], actual_row_sources=audited['sources'], complete=True, completion_kind='budgeted_first_pass_accounted', deferred_unmeasured_cells=audited['deferred_unmeasured_cells'], actual_measurement_references=audited['actual_measurement_references'], all_connections_verified=False, all_eligible_cells_measured_in_this_pass=audited['deferred_unmeasured_cells']==0, scope='each legal cell has actual proof or explicit policy-authorized durable deferred debt; mandatory reserved new-row tests require actual proof; deferred cells are never zero or measured coverage; no old done counter/publication print used')
         path = priority.Path(self.capture_directory) / ('first_pass_' + priority.evidence.guard.fingerprint(receipt) + '.json')
         payload = json.dumps(receipt, sort_keys=True, separators=(',', ':')).encode()
         if not path.exists():

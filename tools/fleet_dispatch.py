@@ -51,6 +51,17 @@ PRIORITY_FILE = ROOT / "data" / "fleet_priority.json"
 CATCHUP_FILE = ROOT / "data" / "fleet_catchup.json"
 
 
+def live_catchup_queue(fleet_data, now):
+    """Prioritize measured decay of the actual active live set; chart-board comparisons are diagnostic."""
+    rows = []
+    for host in ("s1", "s5"):
+        for row in (fleet_data.get(host) or {}).get("live_drops") or []:
+            if isinstance(row, dict) and row.get("symside") and float(row.get("drop_pp") or 0) > 0:
+                rows.append({**row, "source_host": host})
+    rows.sort(key=lambda row: (-float(row["drop_pp"]), row["symside"]))
+    return {"schema": "live-active-set-catchup-v1", "run_id": "live-" + time.strftime("%Y%m%d", time.gmtime(now)), "rows": rows, "generated_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now))}
+
+
 def catchup_queue(now):
     try:
         doc = json.loads(CATCHUP_FILE.read_text()) or {}
@@ -236,7 +247,9 @@ class Host:
 
 
 def probe(host, syms):
-    arg = shlex.quote(json.dumps({"syms": sorted(syms)}))
+    name = IP_NAMES.get(host.ip)
+    live_venue = "crypto" if name == "s1" else "stocks" if name == "s5" else None
+    arg = shlex.quote(json.dumps({"syms": sorted(syms), "live_venue": live_venue}))
     rc, out, err = host.feed(f"{PY} - {arg} 2>/dev/null || python3 - {arg}", TOOLS / "fleet_probe.py", 120)
     if rc != 0 or not out.strip():
         return None
@@ -839,7 +852,7 @@ def tick(args):
                 orphan_since.setdefault(cat, now)
         refresh = refresh_by_cat(universe, view, now, pend)
         promote_priority_reruns(pend, refresh, prio)
-        catchup_doc = catchup_queue(now)
+        catchup_doc = live_catchup_queue(data, now)
         catchup = unlaunched_catchup(catchup_doc, view, holds, now)
         picks, why_not, orphans = plan(pend, partial, data, now, orphan_since, frozenset(prio), refresh, catchup)
         rec["pending"] = {c: len(v) for c, v in pend.items()}
@@ -851,6 +864,8 @@ def tick(args):
         rec["skipped_n"] = len(skipped)
         rec["catchup_pending"] = len(catchup)
         rec["catchup_run_id"] = catchup_doc.get("run_id")
+        rec["catchup_source"] = catchup_doc["schema"]
+        rec["catchup_top"] = [(r["symside"], r["drop_pp"], r["source_host"]) for r in catchup_doc["rows"][:8]]
         rec["plan"] = [{"host": h, "ss": s, "why": w, "mode": "catchup" if w.startswith("catchup ") else "slow"} for h, s, w in picks]
         tails = {}
         for d in data.values():

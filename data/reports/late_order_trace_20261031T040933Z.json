@@ -1,0 +1,70 @@
+{
+  "actions_taken": [
+    "Read-only trace; no source edits, service restarts, tests, exchange calls, or orders."
+  ],
+  "conclusion": {
+    "not_proven": [
+      "The identity of the process that wrote the 04:03:37 halt file: the payload and file timestamp prove the rewrite and its declared policy, but the writer's source/log was not found in the available current artifacts.",
+      "This evidence does not establish universal first-minute execution for every side; it demonstrates these 3 late opens on one 15m bar."
+    ],
+    "proven": [
+      "The immediate permission change was the 04:03:37 deterioration_halt.json rewrite; affected old chart sets were stale relative to current per-symbol overrides.",
+      "The live consumer did not validate set identity before applying those halts.",
+      "Plan/control changes were not part of DECISION dedup identity, and the late OPENs were SENT with stale state-only provenance rather than a new DECISION."
+    ]
+  },
+  "evidence": [
+    {
+      "details": "For ACTUSDT_SHORT, QNTUSDT_LONG, and SANDUSDT_SHORT, DECISION rows 8236/8349/8358 concern the same bar=1793418300 and state hashes f866af543655c21c2ea22698b1828a4300ab32035a212ed395ff38670c4ddc37 / de0b7a676df7923c564e64adb9f1cf64e96805cb0fb10b12fa22c6d7c28892d1 / b88ab334b37cc3bb70198e434ddfba2212deaa7c54493f86258fd3ceb91fef14. Each says allowed=false, held=0, and DETERIORATED_NO_REENTRY. OPEN orders with those same state hashes were SENT and FILLED at 04:04:03/06/07 UTC (rows 8412/8419/8421); no new state/decision hash is recorded before those orders. Earlier 03:45 decisions also recorded DETERIORATED_NO_REENTRY (rows 7611/7768/7788).",
+      "rows": [
+        7611,
+        7768,
+        7788,
+        7874,
+        8236,
+        8349,
+        8358,
+        8411,
+        8412,
+        8418,
+        8419,
+        8420,
+        8421
+      ],
+      "source": "S1 data/vector_direct/ledger_crypto_2026-10-31.jsonl"
+    },
+    {
+      "details": "Payload updated_utc=2026-10-31T02:16:51Z, removed_mismatched=140, set_identity_rule says halt only when chart set_md5 equals active per_sym overrides md5, and only BATUSDT_SHORT plus TSLA_SHORT remain in halts. This post-dates the three 04:00 denied decisions and precedes the 04:04 orders. The separate rolling latch file data/vector_direct/deteriorated_crypto.json was empty and mtime 2026-10-30T23:22:21Z.",
+      "mtime_utc": "2026-10-31T04:03:37.418468Z",
+      "source": "S1 /home/niels/binance/data/deterioration_halt.json (also current Mac workspace copy)"
+    },
+    {
+      "details": "Original HALT events: ACT set_md5=1ca30ef8bae7ae5556f8410c813eabd0, QNT=9f626bc0c8c4ec2d13c346109225bc5e, SAND=67271ba974fd4a9a99b5403885fdf997. Current S1 overrides_json were canonicalized using tools/v15_daily_chart_worker.set_md5 (MD5(json.dumps(overrides or {}, sort_keys=True, default=str))): ACT=60c6dd0ec610ad220ab38e403451ee72 (updated_at 00:15:30Z), QNT=0ff42db46efa2ced6ddbf40cc71c6ae0 (03:32:56Z), SAND=015e3ca73cf36b928434f9e2226250fc (10/23 19:33:12Z). All current identities differ from the corresponding original halted chart sets.",
+      "source": "Mac data/reports/deterioration_halt_events.jsonl and S1 data/hourly_reconfig/per_sym_store.db"
+    },
+    {
+      "details": "The gate file's advertised set_identity_rule is not enforced by the live consumer. DECISION signature is [npz_tail, ts, untradeable_bar]; it omits the active halt/gate context and plan output. send_orders attaches state provenance, so a later plan change can execute with the prior denied DECISION's state hash.",
+      "lines": {
+        "DECISION_consumed_dedup_only_state_sig": "1779-1787",
+        "ORDER_uses_order_decision_provenance": "2022 and 2070",
+        "deterioration_halts_trusts_file_without_identity_validation": "364-372"
+      },
+      "source": "S1 live tools/vector_direct_trader.py; Mac workspace tools/vector_direct_trader.py at corresponding locations"
+    }
+  ],
+  "ledger_note": "S1 ledger hash was computed at 04:07Z while the live ledger was still appending; use the listed JSONL row numbers and row content as the primary event evidence, not the hash alone.",
+  "observed_at_utc": "2026-10-31T04:09:33Z",
+  "proposed_repair": [
+    "Validate each halt against the exact active per_sym override MD5 at the consumer. A proven mismatch is stale/diagnostic; if active identity cannot be verified, preserve a fail-closed unverified status and do not silently release. Keep matching valid halts active.",
+    "Create immutable per-account/per-side plan decisions whose identity includes state hash, bar, active-set identity, gate/control context (including halt file digest and matched halt record), account admission, broker-held quantity, planner output and notes. Emit a new DECISION whenever that context or plan changes, even when NPZ tail and state timestamp do not.",
+    "Before sending OPEN/AUGMENT, require a same-bar plan-decision record authorizing that exact action and reference its decision_id/context hash on ORDER; on absent/mismatched provenance, log a critical error and hold the entry until a fresh decision is recorded. Apply the forward patch independently to current Mac source 402ba407 and S1 live source d0db497 after deployment owner review."
+  ],
+  "schema": "live-order-trace-v1",
+  "scope": "S1 live crypto trader late OPEN orders on 2026-10-31 04:00 UTC 15m bar",
+  "source_hashes": {
+    "mac_tools/v15_daily_charts.py_sha256": "570dab1302c741fd2376eb1fcd32f1bc096a8c7926b11bc1b2ec3f36e98e93a2",
+    "mac_tools/vector_direct_trader.py_sha256": "402ba40750eb565c77986f9db98e6de3d7e78ed35eff5b8f0aef4b8ed0a52b4d",
+    "s1_ledger_crypto_2026-10-31.jsonl_sha256_at_04:07": "cf9ed465e624afa59d41545324184f68c50a321a635c97eb0743a8214311c494",
+    "s1_live_tools/vector_direct_trader.py_sha256": "d0db4970851108dfbf20f1ed63fbe971b426b56781db345f4f89cedbee5ba3c7"
+  }
+}

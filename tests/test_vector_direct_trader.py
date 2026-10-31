@@ -257,7 +257,10 @@ def test_pin_keeps_accounts_until_expiry(tmp_path):
 
 
 def test_missed_board_close_is_alerted_and_backstopped_without_takeover(tmp_path):
+    from types import SimpleNamespace
+
     t, sent = _bare_trader(tmp_path, {"ang": {"XUSDT_SHORT": {"qty": 5.0, "price": 1.0}}, "fin": {}})
+    t.a = SimpleNamespace(dry_run=False, force_active=False)
     states = {"XUSDT_SHORT": st(False, acts=[{"type": "CLOSE"}]), "YUSDT_LONG": st(True, acts=[{"type": "OPEN"}], eq=2, oq=1)}
     t.missed_rows = {"ang": [{"acct": "ang", "ss": "XUSDT_SHORT", "want": "FLAT", "bar": BAR}],
                      "fin": [{"acct": "fin", "ss": "YUSDT_LONG", "want": "HOLD", "bar": BAR}]}
@@ -488,10 +491,14 @@ def test_deterioration_halt_waits_for_fresh_wt15_against_and_never_reenters(tmp_
     assert str(BAR) in orders[0]["key"]
     orders, _ = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(False)}, {"XUSDT_LONG": {"qty": 12.0}}, BAR, set(), ALLOW, wt15=with_wt, halted=halted)
     assert [(o["act"], o["qty"]) for o in orders] == [("CLOSE", 12.0)] and orders[0].get("reason") != "DETERIORATED_CLOSE"
-    (tmp_path / "data").mkdir()
+
+
+def test_deterioration_halts_require_exact_active_override_md5(tmp_path):
     import hashlib
-    import sqlite3
     import json
+    import sqlite3
+
+    (tmp_path / "data").mkdir()
     active = {"WT_15M_BOUNCE_OPEN_ENABLED": True}
     md5 = hashlib.md5(json.dumps(active, sort_keys=True, default=str).encode()).hexdigest()
     db_dir = tmp_path / "data" / "hourly_reconfig"
@@ -506,6 +513,50 @@ def test_deterioration_halt_waits_for_fresh_wt15_against_and_never_reenters(tmp_
     assert V.deterioration_halts(tmp_path) == {}
     (tmp_path / "data" / "deterioration_halt.json").write_text("{broken")
     assert V.deterioration_halts(tmp_path) == {}
+
+
+def test_deterioration_halt_unknown_identity_is_explicit_and_blocks_open(tmp_path):
+    import json
+
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "deterioration_halt.json").write_text(json.dumps({"halts": {"XUSDT_LONG": {"set_md5": "old-set"}}}))
+    halts = V.deterioration_halts(tmp_path, tmp_path / "missing" / "per_sym_store.db")
+    assert halts["XUSDT_LONG"]["identity_status"] == "UNVERIFIED"
+    assert halts["XUSDT_LONG"]["identity_error"] == "active settings store unavailable: OperationalError"
+    orders, notes = V.plan_account("ang", "crypto", ["XUSDT_LONG"], {"XUSDT_LONG": st(True)}, {}, BAR, set(), ALLOW, halted=halts)
+    assert orders == [] and notes[0][1] == "DETERIORATED_NO_REENTRY"
+
+
+def test_plan_decision_identity_changes_with_gate_or_plan_and_is_immutable(tmp_path):
+    import json
+
+    state = st(True)
+    state_ref = V.persist_decision_state(tmp_path, state)
+    denied = {"schema": "vector-direct-plan-decision-v1", "acct": "ang", "ss": "XUSDT_LONG", "bar": BAR,
+              "state_provenance": state_ref, "control": {"allowed": False, "halt": {"set_md5": "stale"}, "orders": []}, "orders": []}
+    denied_ref = V.persist_plan_decision(tmp_path, denied)
+    opened = {**denied, "control": {"allowed": True, "halt": None, "orders": [{"act": "OPEN", "key": f"ang|XUSDT_LONG|{BAR}|OPEN", "notional": 15.0}]},
+              "orders": [{"act": "OPEN", "key": f"ang|XUSDT_LONG|{BAR}|OPEN", "notional": 15.0}]}
+    opened_ref = V.persist_plan_decision(tmp_path, opened)
+    assert denied_ref["plan_decision_id"] != opened_ref["plan_decision_id"]
+    assert json.loads((tmp_path / denied_ref["plan_decision_file"]).read_text()) == denied
+    order = {"acct": "ang", "ss": "XUSDT_LONG", **opened["orders"][0], "plan_decision": opened_ref}
+    assert V.validate_plan_decision(tmp_path, "ang", order) == (True, "")
+    assert V.validate_plan_decision(tmp_path, "fin", order) == (False, "plan decision account or side mismatch")
+
+
+def test_plan_decision_requires_matching_order_and_existing_state_provenance(tmp_path):
+    state_ref = V.persist_decision_state(tmp_path, st(True))
+    intent = {"act": "OPEN", "key": f"ang|XUSDT_LONG|{BAR}|OPEN", "notional": 15.0}
+    document = {"schema": "vector-direct-plan-decision-v1", "acct": "ang", "ss": "XUSDT_LONG", "bar": BAR,
+                "state_provenance": state_ref, "control": {"allowed": True}, "orders": [intent]}
+    reference = V.persist_plan_decision(tmp_path, document)
+    order = {"acct": "ang", "ss": "XUSDT_LONG", **intent, "plan_decision": reference}
+    assert V.validate_plan_decision(tmp_path, "ang", order) == (True, "")
+    mismatch = {**order, "key": f"ang|XUSDT_LONG|{BAR + 900}|OPEN"}
+    assert V.validate_plan_decision(tmp_path, "ang", mismatch) == (False, "order intent absent from plan decision")
+    (tmp_path / state_ref["state_file"]).unlink()
+    assert V.validate_plan_decision(tmp_path, "ang", order) == (False, "state provenance missing or hash mismatch")
 
 
 def test_deterioration_short_requires_bullish_wt15_and_rejects_future_bar():

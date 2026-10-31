@@ -60,6 +60,16 @@ def test_catchup_relaunches_only_for_new_chart_run():
     assert F.unlaunched_catchup(doc, data, now=NOW) == ["AAPL_LONG", "BTCUSDT_SHORT"]
 
 
+def test_live_catchup_uses_current_set_vector_loss_global_order():
+    data = fleet4(s1=host(), s5=host())
+    data["s1"]["live_drops"] = [{"symside": "BTCUSDT_SHORT", "drop_pp": 16.0, "settings_updated_at": "new"}]
+    data["s5"]["live_drops"] = [{"symside": "AAPL_LONG", "drop_pp": 23.0, "settings_updated_at": "new"}]
+    doc = F.live_catchup_queue(data, NOW)
+    assert doc["schema"] == "live-active-set-catchup-v1"
+    assert [r["symside"] for r in doc["rows"]] == ["AAPL_LONG", "BTCUSDT_SHORT"]
+    assert doc["rows"][0]["source_host"] == "s5"
+
+
 def test_idle_stock_host_takes_worst_crypto_catchup():
     data = fleet4(s1=host(mem=500), s2=host(mem=500))
     pend, partial, _ = F.pending_by_cat(UNI, data, NOW)

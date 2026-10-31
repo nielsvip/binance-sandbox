@@ -282,6 +282,49 @@ def persist_decision_state(directory, state):
     return {"state_sha256": digest, "state_file": str(relative), "npz_tail": state.get("npz_tail"), "state_ts": state.get("ts"), "settings_sha256": state.get("settings_sha256"), "engine_ast_sha256": state.get("engine_ast_sha256"), "settings_updated_at": state.get("settings_updated_at")}
 
 
+def order_intent(order):
+    return {key: order.get(key) for key in ("act", "key", "qty", "notional", "reason", "why") if order.get(key) is not None}
+
+
+def persist_plan_decision(directory, document):
+    encoded = json.dumps(document, sort_keys=True, separators=(",", ":"), default=str).encode()
+    digest = hashlib.sha256(encoded).hexdigest()
+    relative = Path("plan_decisions") / digest[:2] / f"{digest}.json"
+    path = Path(directory) / relative
+    if not path.exists():
+        atomic_write_json(path, document)
+    return {"plan_decision_id": digest, "plan_decision_file": str(relative)}
+
+
+def validate_plan_decision(directory, acct, order):
+    reference = order.get("plan_decision") or {}
+    decision_id, relative = reference.get("plan_decision_id"), reference.get("plan_decision_file")
+    if not decision_id or not relative:
+        return False, "missing plan decision reference"
+    relative = Path(relative)
+    if relative.is_absolute() or relative.parts[:1] != ("plan_decisions",):
+        return False, "invalid plan decision path"
+    path = Path(directory) / relative
+    document = read_json(path)
+    if not isinstance(document, dict):
+        return False, "plan decision file missing or invalid"
+    encoded = json.dumps(document, sort_keys=True, separators=(",", ":"), default=str).encode()
+    if hashlib.sha256(encoded).hexdigest() != decision_id:
+        return False, "plan decision content hash mismatch"
+    if document.get("acct") != acct or document.get("ss") != order.get("ss"):
+        return False, "plan decision account or side mismatch"
+    state_ref = document.get("state_provenance") or {}
+    state_path = Path(state_ref.get("state_file") or "")
+    if state_path.is_absolute() or state_path.parts[:1] != ("decision_states",):
+        return False, "invalid state provenance path"
+    state = read_json(Path(directory) / state_path)
+    if not isinstance(state, dict) or hashlib.sha256(json.dumps(state, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest() != state_ref.get("state_sha256"):
+        return False, "state provenance missing or hash mismatch"
+    if order_intent(order) not in (document.get("orders") or []):
+        return False, "order intent absent from plan decision"
+    return True, ""
+
+
 def actual_reduction_is_profitable(symbol_side, position, price):
     held = float(position.get("qty") or 0.0)
     entry = float(position.get("entry") or (float(position.get("cost") or 0.0) / held if held > 0 else 0.0))
@@ -365,13 +408,18 @@ def entry_allowed(root: Path, venue: str, acct: str, ss: str) -> bool:
         return True
 
 
-def deterioration_halts(root: Path) -> dict:
+def deterioration_halts(root: Path, store_db=None) -> dict:
     """A chart halt applies only to the exact full set currently active in the live 30D store."""
     doc = read_json(root / "data" / "deterioration_halt.json", {}) or {}
     rows = (doc.get("halts") or {}) if isinstance(doc, dict) else {}
     if not rows:
         return {}
-    db = root / "data" / "hourly_reconfig" / "per_sym_store.db"
+    def unverified(reason):
+        out = {str(ss).upper(): {**(rec if isinstance(rec, dict) else {}), "identity_status": "UNVERIFIED", "identity_error": reason} for ss, rec in rows.items()}
+        if out:
+            log(f"daily chart halt identity unverified for {len(out)} sides; OPEN/AUGMENT remain blocked: {reason}")
+        return out
+    db = Path(store_db) if store_db is not None else root / "data" / "hourly_reconfig" / "per_sym_store.db"
     try:
         con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=2)
         try:
@@ -379,17 +427,22 @@ def deterioration_halts(root: Path) -> dict:
         finally:
             con.close()
     except (sqlite3.Error, OSError) as exc:
-        log(f"daily chart halt set identity unavailable: {exc}; no chart halts applied")
-        return {}
+        return unverified(f"active settings store unavailable: {type(exc).__name__}")
     verified = {}
     for ss, rec in rows.items():
         try:
             raw = active.get(ss)
+            if not raw or not isinstance(rec, dict) or not rec.get("set_md5"):
+                verified[str(ss).upper()] = {**(rec if isinstance(rec, dict) else {}), "identity_status": "UNVERIFIED", "identity_error": "active row or chart set_md5 missing"}
+                continue
             md5 = hashlib.md5(json.dumps(json.loads(raw), sort_keys=True, default=str).encode()).hexdigest() if raw else None
             if md5 == rec.get("set_md5"):
-                verified[str(ss).upper()] = rec
+                verified[str(ss).upper()] = {**rec, "identity_status": "MATCHED"}
         except (TypeError, ValueError):
-            continue
+            verified[str(ss).upper()] = {**(rec if isinstance(rec, dict) else {}), "identity_status": "UNVERIFIED", "identity_error": "active override JSON invalid"}
+    unknown = sorted(ss for ss, rec in verified.items() if rec.get("identity_status") == "UNVERIFIED")
+    if unknown:
+        log(f"daily chart halt identity unverified for {len(unknown)} sides; OPEN/AUGMENT remain blocked: {','.join(unknown[:12])}")
     return verified
 
 
@@ -1655,7 +1708,7 @@ class Trader:
                 self.alert("BACKSTOP_FAILURE_MAC_MISSED_ORDER", account=acct, sym_side=e["ss"], board=e["want"], bar=e["bar"], broker_qty=held, action=orders[-1]["act"])
             orders = [o for o in orders if o["key"] not in self.done]
             if orders:
-                self.capture_order_states(orders, states)
+                self.capture_order_states(orders, states, acct)
                 n += self.send_orders(acct, orders, pos, killed)
         self.missed_rows = {}
         return n
@@ -1705,7 +1758,7 @@ class Trader:
         market_ok = True
         if self.venue == "stocks":
             market_ok = self.broker.market_open() or bool(self.a.assume_open and self.a.dry_run)
-        halted = deterioration_halts(self.root) if not self.state_dir.name.endswith("_7d") else {}
+        halted = deterioration_halts(self.root, self.state_dir.parents[1] / "data" / "hourly_reconfig" / "per_sym_store.db") if not self.state_dir.name.endswith("_7d") else {}
         if self.venue == "crypto":
             halted.update(rolling_deterioration_halts(self.root, self.state_dir, states, bar, alert=self.alert))
         if set(halted) != getattr(self, "halted_now", set()):
@@ -1806,28 +1859,43 @@ class Trader:
             orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), acct_states, pos, bar, self.done, allowed, prev_qty, wt15=self.wt15, noinfo_age=self.noinfo_age,
                                          untradeable=untradeable, untradeable_close=untradeable_close, halted=acct_halted)
             planned_at = time.time()
+            plan_refs = {}
             for o in orders:
                 if o.get("reason") == "UNTRADEABLE_NO_VERDICT":
                     log(f"CRITICAL UNTRADEABLE CLOSE {acct} {o['ss']} qty={o['qty']} — {o['why']}")
                     self.alert("UNTRADEABLE_CLOSE", account=acct, sym_side=o["ss"], qty=o["qty"], why=o["why"], severity="CRITICAL")
-            # consumed_<venue>.json: which state (npz_tail, ts) this account was planned against, first time per state —
-            # read by tools/s1_bar_guarantee.py as the per-bar "executed" stage
+            # Record an immutable decision whenever state, admission, gate context, broker holdings, or the plan changes.
             for ss in set(keys.get(acct, ())) | set(pos):
                 st = acct_states.get(ss) or {}   # the state this account was ACTUALLY planned against (7D for fin)
-                sig = [st.get("npz_tail"), st.get("ts"), (untradeable.get(ss) or {}).get("bar")]
+                state_ref = persist_decision_state(self.out, st)
+                held = float((pos.get(ss) or {}).get("qty") or 0.0)
+                side_orders = [order_intent(o) for o in orders if o["ss"] == ss]
+                side_notes = [n for side, n in notes if side == ss]
+                admission = bool(allowed(acct, ss)) if ss in keys.get(acct, ()) and st.get("open") and not held else None
+                control = {"venue": self.venue, "bar": bar, "state_sha256": state_ref["state_sha256"], "state_sig": [st.get("npz_tail"), st.get("ts")],
+                           "keys_member": ss in keys.get(acct, ()), "allowed": admission, "held": held, "halt": acct_halted.get(ss),
+                           "untradeable": untradeable.get(ss), "orders": side_orders, "notes": side_notes}
+                plan_doc = {"schema": "vector-direct-plan-decision-v1", "acct": acct, "ss": ss, "bar": bar,
+                            "state_provenance": state_ref, "control": control, "orders": side_orders}
+                plan_ref = persist_plan_decision(self.out, plan_doc)
+                plan_refs[ss] = plan_ref
+                sig = [st.get("npz_tail"), st.get("ts"), (untradeable.get(ss) or {}).get("bar"), plan_ref["plan_decision_id"]]
                 row = consumed.setdefault(ss, {}).get(acct)
                 if not row or row.get("sig") != sig or not row.get("decision_provenance"):
                     consumed[ss][acct] = {"sig": sig, "npz_tail": st.get("npz_tail"), "ok": bool(st.get("ok")), "at": planned_at,
                                           "orders": [o["act"] for o in orders if o["ss"] == ss], "keys": [o["key"] for o in orders if o["ss"] == ss],
-                                          "held": float((pos.get(ss) or {}).get("qty") or 0.0), "allowed": bool(allowed(acct, ss)) if (ss in keys.get(acct, ()) and st.get("open") and not (pos.get(ss) or {}).get("qty")) else None,
-                                          "notes": [n for s, n in notes if s == ss], "untradeable_bar": (untradeable.get(ss) or {}).get("bar")}
+                                          "held": held, "allowed": admission, "notes": side_notes, "untradeable_bar": (untradeable.get(ss) or {}).get("bar"),
+                                          "control": control, **plan_ref}
                     try:
-                        consumed[ss][acct]["decision_provenance"] = persist_decision_state(self.out, st)
+                        consumed[ss][acct]["decision_provenance"] = state_ref
                         consumed[ss][acct]["account_execution_context"] = self.capture_account_position(acct, ss, pos.get(ss) or {"qty": 0.0}, consumed[ss][acct]["decision_provenance"], bar)
                         self._ledger({"event": "DECISION", "acct": acct, "ss": ss, "bar": bar, **consumed[ss][acct]})
                     except OSError as exc:
                         self.alert("DECISION_PROVENANCE_WRITE_FAILED", account=acct, sym_side=ss, error=str(exc), severity="CRITICAL")
                     consumed_dirty = True
+            for order in orders:
+                order["bar"] = bar
+                order["plan_decision"] = plan_refs.get(order["ss"])
             self.obs[acct] = (now, {ss: p["qty"] for ss, p in pos.items()})
             for ss, n in notes:
                 if n != "HOLD_NO_FRESH_STATE":
@@ -1853,7 +1921,7 @@ class Trader:
                 except Exception as exc:
                     self.alert("PROTECTED_OTO_CANCEL_FAILED", account=acct, error=str(exc)[:200], severity="CRITICAL")
                     log(f"PROTECTED_OTO_CANCEL_FAILED {acct}: {exc}")
-            self.capture_order_states(orders, acct_states)
+            self.capture_order_states(orders, acct_states, acct)
             orders_n += self.send_orders(acct, orders, pos, killed)
         if consumed_dirty:
             try:
@@ -2003,10 +2071,21 @@ class Trader:
                         "why": f"REBALANCE long book ${book:.0f} > cap ${REBAL_LONG_CAP:.0f} ({how}): {q:.0f} -> {tgt:.0f} sh"})
         return out
 
-    def capture_order_states(self, orders, states):
+    def capture_order_states(self, orders, states, acct=None):
         for order in orders:
             try:
-                order["decision_provenance"] = persist_decision_state(self.out, states.get(order["ss"]) or {})
+                order["acct"] = order.get("acct") or acct
+                state_ref = persist_decision_state(self.out, states.get(order["ss"]) or {})
+                order["decision_provenance"] = state_ref
+                if not validate_plan_decision(self.out, order["acct"], order)[0]:
+                    bar = int(order.get("bar") or str(order.get("key", "")).split("|")[2])
+                    plan_doc = {"schema": "vector-direct-plan-decision-v1", "acct": order.get("acct"), "ss": order["ss"], "bar": bar,
+                                "state_provenance": state_ref, "control": {"source": "order_capture", "prior_decision": order.get("plan_decision")},
+                                "orders": [order_intent(order)]}
+                    order["plan_decision"] = persist_plan_decision(self.out, plan_doc)
+                    self._ledger({"event": "DECISION", "acct": order.get("acct"), "ss": order["ss"], "bar": bar,
+                                  "orders": [order.get("act")], "orders_detail": plan_doc["orders"], **order["plan_decision"],
+                                  "decision_provenance": state_ref, "control": plan_doc["control"]})
             except OSError as exc:
                 order["decision_provenance"] = {"status": "CAPTURE_FAILED", "error": str(exc)}
                 self.alert("DECISION_PROVENANCE_WRITE_FAILED", account=order.get("acct"), sym_side=order["ss"], error=str(exc), severity="CRITICAL")
@@ -2059,7 +2138,7 @@ class Trader:
                     log(f"{acct} {o['ss']} {o['act']} held: broker position refresh failed: {str(exc)[:160]}")
                     continue
             held = float((pos.get(o["ss"]) or {}).get("qty") or 0.0)
-            row = {"event": "ORDER", "acct": acct, "ss": o["ss"], "act": o["act"], "key": o["key"], "why": o["why"], "held": held, "decision_provenance": o.get("decision_provenance") or {"status": "NOT_CAPTURED"}}
+            row = {"event": "ORDER", "acct": acct, "ss": o["ss"], "act": o["act"], "key": o["key"], "why": o["why"], "held": held, "decision_provenance": o.get("decision_provenance") or {"status": "NOT_CAPTURED"}, "plan_decision": o.get("plan_decision") or {"status": "NOT_CAPTURED"}}
             if self.venue == "crypto" and o["act"] in ("OPEN", "AUGMENT") and (self.out / "EXITS_ONLY").exists():
                 if o["key"] not in self.quiet:
                     self.quiet.add(o["key"])
@@ -2095,6 +2174,13 @@ class Trader:
                         self.quiet.add(o["key"])
                         self._ledger(row)
                         log(f"{acct} {o['ss']} {o['act']} REFUSED_NOT_FRESH_7D: {why_7d}")
+                    continue
+            if o["act"] in ("OPEN", "AUGMENT"):
+                decision_ok, decision_detail = validate_plan_decision(self.out, acct, o)
+                if not decision_ok:
+                    row.update({"status": "REFUSED_NO_MATCHING_DECISION", "detail": decision_detail, "final": False})
+                    self._ledger(row)
+                    self.alert("ORDER_DECISION_MISMATCH", account=acct, sym_side=o["ss"], action=o["act"], detail=decision_detail, severity="CRITICAL")
                     continue
             try:
                 price = self.broker.price(symbol) if o["act"] in ("REDUCE", "CLOSE") else (float((pos.get(o["ss"]) or {}).get("price") or 0.0) or self.broker.price(symbol))

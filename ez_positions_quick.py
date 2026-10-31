@@ -23260,8 +23260,9 @@ async def execute_trade_wrapper(
             )
             _is_rz_entry = False
             # WAVETREND ALIGNMENT: require LTF (3m+15m+1h), use 4h/D as sizing discount not gate
-            _gw1_3m = safe_fetch_float(_gate_ind.get("wt1_3m"), 0)
-            _gw2_3m = safe_fetch_float(_gate_ind.get("wt2_3m"), 0)
+            _gate_ltf_tf = "3m" if bool(_psym_cs_get(_gate_symbol, "LONG" if _gate_is_long else "SHORT", "USE_1M_3M_SIGNALS_ENABLED", getattr(config, "USE_1M_3M_SIGNALS_ENABLED", False))) else "15m"
+            _gw1_3m = safe_fetch_float(_gate_ind.get(f"wt1_{_gate_ltf_tf}"), 0)
+            _gw2_3m = safe_fetch_float(_gate_ind.get(f"wt2_{_gate_ltf_tf}"), 0)
             _gw1_15m = safe_fetch_float(_gate_ind.get("wt1_15m"), 0)
             _gw2_15m = safe_fetch_float(_gate_ind.get("wt2_15m"), 0)
             _gw1_1h = safe_fetch_float(_gate_ind.get("wt1_1h"), 0)

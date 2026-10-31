@@ -11,7 +11,9 @@ dispatcher never skips a board the harvester refuses (the 2026-10-27 publish dea
 """
 import glob
 import json
+import math
 import os
+import sqlite3
 import socket
 import subprocess
 import sys
@@ -62,6 +64,46 @@ def _boot():
     return 0
 
 
+def _live_drops(venue, now, tails):
+    """Same active SQL set, same forward vector state, latest available NPZ bar."""
+    if venue not in ("crypto", "stocks"):
+        return []
+    db = os.path.join(SB, "data", "hourly_reconfig", "per_sym_store.db")
+    try:
+        con = sqlite3.connect("file:%s?mode=ro" % db, uri=True, timeout=2)
+        try:
+            baseline = {ss: (updated, gain if gain is not None else acc) for ss, updated, gain, acc in con.execute("SELECT sym_side,updated_at,gain_30d,acc_gain_pct FROM per_sym_active")}
+        finally:
+            con.close()
+    except (sqlite3.Error, OSError):
+        return []
+    expected_crypto = (int(now) // 900 - 1) * 900
+    rows = []
+    for path in glob.glob(os.path.join(SB, "data", "forward_state", "*.json")):
+        try:
+            state = json.load(open(path))
+            ss = str(state.get("sym_side") or os.path.basename(path)[:-5]).upper()
+            symbol = ss.rsplit("_", 1)[0]
+            crypto = symbol.endswith(("USDT", "USDC", "USD1"))
+            if crypto != (venue == "crypto") or state.get("ok") is not True or state.get("window_days") != 30 or state.get("src") != "per_sym_store.active":
+                continue
+            active = baseline.get(ss)
+            if not active or state.get("settings_updated_at") != active[0] or active[1] is None:
+                continue
+            tail = int(state.get("npz_tail") or 0)
+            if venue == "crypto" and tail != expected_crypto:
+                continue
+            if venue == "stocks" and (now - tail > 5 * 86400 or tail < int(tails.get(symbol) or 0)):
+                continue
+            current, base = float(state["gain_pct"]), float(active[1])
+            if not math.isfinite(current) or not math.isfinite(base) or base - current <= 1e-9:
+                continue
+            rows.append({"symside": ss, "drop_pp": round(base - current, 6), "baseline_gain_pct": base, "current_gain_pct": current, "settings_updated_at": active[0], "settings_sha256": state.get("settings_sha256"), "npz_tail": tail})
+        except (OSError, ValueError, TypeError, KeyError, IndexError):
+            continue
+    return sorted(rows, key=lambda row: (-row["drop_pp"], row["symside"]))
+
+
 def _complete_fn(pdir):
     try:
         os.environ["V15_PROGRESS_DIR"] = pdir
@@ -96,7 +138,7 @@ def main():
            "load1": os.getloadavg()[0], "pdir": pdir,
            "repo": os.path.isfile(os.path.join(SB, "v15_pilot.py")),
            "running": _running(), "progress": {}, "tails": {}, "launches": {}, "impossible": {}, "start_refused": {},
-           "start_refused_why": {}, "snapshot_age_s": None}
+           "start_refused_why": {}, "snapshot_age_s": None, "live_drops": []}
     # 2026-10-28 maxsets: age of the Mac live per_sym snapshot the pilot validates at start (BASELINE-PERSYM-SNAPSHOT-INVALID
     # when older than V15_LIVE_SNAPSHOT_MAX_AGE_S); the dispatcher withholds launches it would refuse instead of burning attempts
     try:
@@ -157,6 +199,7 @@ def main():
                 tail = 0
         new_cache[key] = tail
         out["tails"][sym] = tail
+    out["live_drops"] = _live_drops(args.get("live_venue"), now, out["tails"])
     try:
         tmp = "%s.%d" % (CACHE, os.getpid())
         json.dump(new_cache, open(tmp, "w"))

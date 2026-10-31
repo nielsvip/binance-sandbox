@@ -1,0 +1,22 @@
+{
+  "recorded_at_utc": "2026-10-31T04:25Z",
+  "source_host": "s5",
+  "literal_symlink_provenance": {
+    "link_path": "/home/niels/v20_u4/code/SPREADSHEETS",
+    "literal_target": "/home/niels/binance-sandbox/SPREADSHEETS",
+    "component": "V15_365CYCLE_20260929"
+  },
+  "source_path": "/home/niels/binance-sandbox/SPREADSHEETS/V15_365CYCLE_20260929/",
+  "source_file_count": 320,
+  "source_logical_bytes": 502331222,
+  "source_symlinks": 0,
+  "source_open_handles": "lsof +D returned no open handles before transfer",
+  "destination_path": "/Volumes/WD25/binance_archive/s5_spreadsheets_v15_365cycle_20261031T0425Z/",
+  "wd25_volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+  "source_stability": "320-file stat manifests and SHA256 manifests are identical before and after rsync; source inodes/sizes/mtimes unchanged",
+  "verification": "320 source SHA256 entries match 320 WD destination SHA256 entries exactly; logical file bytes sum to source size; no source deletion",
+  "source_stat_manifest_sha256": "e764b97d6196f154cd6f442001908fe5ae791e5892d3f380f30e69fa69b4f6c5",
+  "source_pre_post_and_destination_sha_manifest_sha256": "0d1164064323fc5f053316bdbebad052320d71410a012d2f8d096734d67d3661",
+  "evidence_directory": "data/reports/s5_v15_365cycle_20261031T0425Z/",
+  "scope_limit": "This closes only this dated subdirectory of the 24.19GB SPREADSHEETS target; it does not establish that other workbook paths are duplicate or preserved."
+}

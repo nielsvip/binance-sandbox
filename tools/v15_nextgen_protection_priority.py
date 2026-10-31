@@ -48,6 +48,21 @@ class BoundDomain(FrozenRecord):
     pass
 
 
+class BoundBudgetPolicy(FrozenRecord):
+    pass
+
+
+def bind_budget_policy(source):
+    payload = Path(source['path']).read_bytes()
+    if hashlib.sha256(payload).hexdigest() != source['sha256']:
+        raise ValueError('budget-policy source changed')
+    policy = json.loads(payload)
+    fraction = policy.get('new_row_minimum_reserved_fraction')
+    if policy.get('schema') != 'first_pass_budget_policy/1' or policy.get('phase_completion') != 'budgeted_with_durable_debt' or policy.get('allow_old_cell_defer') is not True or type(fraction) not in (int, float) or not 0 < fraction <= 1:
+        raise ValueError('explicit approved budgeted first-pass policy required')
+    return BoundBudgetPolicy(_source=_freeze(source), **_freeze(policy))
+
+
 def bind_domain_sources(epoch, references):
     _check_epoch(epoch)
     if not references or any(not any(source['path'] == reference['path'] and source['sha256'] == reference['sha256'] for source in epoch['sources']) for reference in references):
@@ -275,7 +290,8 @@ def first_pass_yellows(cells, row_identity, state, context, evaluation_budget, c
         identity = evidence.guard.fingerprint({'row': actual_row, 'filter': cell['filter'], 'opt': cell['opt'], 'scientific_context': scientific})
         measured, measurement_status = _measurement_state(resolved, identity, scientific)
         eligible.setdefault(identity, {'cell': cell, 'identity': identity, 'current_epoch_measured': measured, 'measurement_status': measurement_status})
-    if eligible and evaluation_budget == 0:
+    zero_old_budget = context.get('row_status') == 'known_existing' and isinstance(context.get('budget_policy'), BoundBudgetPolicy) and context['budget_policy']['allow_old_cell_defer'] is True
+    if eligible and evaluation_budget == 0 and not zero_old_budget:
         raise ValueError('mandatory yellow exploration has no existing budget; row remains incomplete, never a measured zero')
     new_row = context.get('row_status') in ('new', 'newly_wired', 'unobserved')
     unknown = [row for row in eligible.values() if not row['current_epoch_measured']]

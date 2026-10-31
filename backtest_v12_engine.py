@@ -12098,6 +12098,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     if forward_session is not None:
         forward_session.bind(executed_trades, manager.position_manager.positions)
     _paper_stream_exhausted_t = False
+    from tools.replay_candidate_cadence import flat_candidate_due, flat_candidate_period
+    _flat_candidate_every_t = flat_candidate_period(os.environ.get("V12_FLAT_CANDIDATE_EVERY", "1"))
+    if _flat_candidate_every_t > 1:
+        v8_logger.warning("[V8_FLAT_CANDIDATE_THROTTLE] every=%d bars; this run is not per-bar parity acceptance", _flat_candidate_every_t)
     async for step, ts in historical_or_forward_steps(all_ts, forward_session):
         if _v8_wall_deadline_t > 0 and (__import__('time').time() - _v8_wall_t0_t) > _v8_wall_deadline_t:
             __import__('sys').stderr.write(f"V8_WALL_TIMEOUT_TRADIER: {__import__('time').time()-_v8_wall_t0_t:.0f}s > {_v8_wall_deadline_t:.0f}s at step {step}/{len(all_ts)} — breaking to emit V8_RESULT\n")
@@ -12963,9 +12967,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                 return _formation_consumer_admitted_t and any(bool(getattr(tm_mod.config, switch_t, False)) for switch_t in switches_t)
 
         _sat_enabled = getattr(tm_mod.config, 'SATOSHIT_ENTRY_FILTER', True)
-        # 2026-10-06 parity lane A: flat-key candidates were evaluated every 3rd 5m bar only; live ticks every few minutes.
-        # V12_FLAT_CANDIDATE_EVERY (default 3 = unchanged); trade-parity runs set 1 (every simulated bar).
-        if step % max(1, int(os.environ.get("V12_FLAT_CANDIDATE_EVERY", "3") or 3)) == 0:
+        # Flat-key candidates default to every simulated bar; explicit throttles are diagnostic-only.
+        if flat_candidate_due(step, _flat_candidate_every_t):
             for s in stores:
                 ind = indicator_cache.get(s.upper(), {})
                 if not ind: continue
