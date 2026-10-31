@@ -106,3 +106,65 @@ def force_open_mask(npz, n, is_long, cfg, close):
         momentum = wt1 - wt2
         trend_ok &= ~(((dc > 80) & (rsi > 70) & (price > anchor * 1.02)) | ((price > anchor * 1.03) & (momentum > 0)))
     return above & favor & gr_ok & trend_ok & (price > 0)
+
+
+def stateful_fire(npz, index, is_long, cfg, price, position_value, state, bar_ts):
+    """Return a native-sized force-open action when room and pacing allow it.
+
+    State is committed by the caller only after its OPEN/AUGMENT order guards
+    accept the action. Replay timestamps provide the deterministic clock.
+    """
+    if not bool(getattr(cfg, "WT_3M_FORCE_OPEN_ENABLED", True)):
+        return None
+    build = bool(getattr(cfg, "WT_3M_FORCE_OPEN_BUILD_TO_TARGET", True))
+    if position_value > 0 and not build:
+        return None
+    hard_cap = float(getattr(cfg, "HARD_MAX_SYMBOL_VALUE_TRADIER", 2500.0) or 2500.0)
+    trb_cap = float(getattr(cfg, "TRB_MAX_SYMBOL_VALUE", 2500.0) or 2500.0)
+    target = min(
+        float(getattr(cfg, "WT_3M_FORCE_OPEN_TARGET_USD", 2500.0) or 2500.0),
+        hard_cap,
+        trb_cap,
+    )
+    if target <= position_value or target <= 0 or price <= 0:
+        return None
+    timestamp = float(bar_ts)
+    day = int(timestamp // 86400)
+    previous_day = state.get("day")
+    day_count = int(state.get("count", 0)) if previous_day == day else 0
+    max_per_day = int(getattr(cfg, "WT_3M_FORCE_OPEN_MAX_TRADES_PER_DAY", 4) or 4)
+    if day_count >= max_per_day:
+        return None
+    cooldown = float(getattr(cfg, "WT_3M_FORCE_OPEN_COOLDOWN_SEC", 900.0) or 900.0)
+    last_ts = state.get("last_ts")
+    if last_ts is not None and timestamp - float(last_ts) < cooldown:
+        return None
+    ladder = 1.0
+    if bool(getattr(cfg, "WT_3M_FORCE_OPEN_TF_LADDER", True)):
+        ladder_mult = float(getattr(cfg, "WT_3M_FORCE_OPEN_TF_LADDER_MULT", 1.0) or 1.0)
+        n = len(npz.get("timestamps", ()))
+        for tf in ("15m", "1h", "4h", "D"):
+            w1 = _array(npz, f"wt1_{tf}", n)[index]
+            w2 = _array(npz, f"wt2_{tf}", n)[index]
+            if (is_long and w1 > w2) or (not is_long and w1 < w2):
+                ladder += ladder_mult
+    size = float(getattr(cfg, "WT_3M_FORCE_OPEN_SIZE_USD", 1200.0) or 1200.0) * ladder
+    if build:
+        size = min(size, max(0.0, target - float(position_value)))
+    size = min(size, float(getattr(cfg, "DG_MAX_FORCE_OPEN_NOTIONAL_USD", 2000.0) or 2000.0))
+    if size < 1.0:
+        return None
+    action = "AUGMENT" if position_value > 0 else "OPEN"
+    side = "LONG" if is_long else "SHORT"
+    direction = "above" if is_long else "below"
+    reason = f"WT_3M_FORCE_OPEN_{side}_{direction}_sma200_15m_x{ladder:.0f}_posval{position_value:.0f}of{target:.0f}_px{price:.4f}"
+    return {"action": action, "size_usd": size, "qty": max(size / price, 1.0), "reason": reason, "day": day}
+
+
+def commit_state(state, decision, bar_ts):
+    if decision is None:
+        return
+    day = int(float(bar_ts) // 86400)
+    state["count"] = int(state.get("count", 0)) + 1 if state.get("day") == day else 1
+    state["day"] = day
+    state["last_ts"] = float(bar_ts)

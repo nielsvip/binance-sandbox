@@ -62,6 +62,56 @@ def _prefix_digest(timestamps, close, index):
     return digest.hexdigest()
 
 
+def _verified_software_stop_ohlc_cross(sym_side, position, bar_ts, open_price, high, low, engine_stop_events):
+    if not isinstance(position, dict) or position.get("position_source") != "mac_snapshot_broker_verified":
+        return None
+    mac = position.get("mac") or {}
+    try:
+        side = str(sym_side).rsplit("_", 1)[1].upper()
+        opened_at = int(__import__("datetime").datetime.fromisoformat(str(mac["opened_at"]).replace("Z", "+00:00")).timestamp())
+        anchor = float(mac["fixed_stop_anchor"])
+        level = float(mac["fixed_stop_price"])
+        entry = float(position["entry"])
+        source_entry = float(mac["entry_price"])
+        open_price, high, low = float(open_price), float(high), float(low)
+        bar_ts = int(bar_ts)
+    except (KeyError, TypeError, ValueError, OverflowError, IndexError):
+        return None
+    if side not in ("LONG", "SHORT") or mac.get("fixed_stop_armed") is not True:
+        return None
+    source_file = str(mac.get("source_file") or "").replace(chr(92), "/").lower()
+    expected_book = "long_positions.json" if side == "LONG" else "short_positions.json"
+    if not source_file.endswith(expected_book):
+        return None
+    if not all(np.isfinite(value) and value > 0 for value in (anchor, level, entry, source_entry, open_price, high, low)):
+        return None
+    if abs(float(anchor) - opened_at) > 0.001 or abs(entry - source_entry) > max(1e-10, entry * 1e-6):
+        return None
+    crossed = low <= level if side == "LONG" else high >= level
+    if not crossed:
+        return None
+    matches = []
+    for event in engine_stop_events or ():
+        if not isinstance(event, dict) or event.get("type") != "CLOSE":
+            continue
+        if event.get("mandatory_stop_kind") != "DC15_FROZEN_DEFAULT":
+            continue
+        event_bar = int(event.get("bar_ts") or event.get("ts") or bar_ts)
+        event_level = float(event.get("fixed_stop_level") or event.get("exit_price") or event.get("price") or 0.0)
+        if event_bar == bar_ts and event_level > 0 and abs(event_level - level) <= max(1e-10, level * 1e-6):
+            matches.append(event)
+    if not matches:
+        return None
+    fill_price = min(open_price, level) if side == "LONG" else max(open_price, level)
+    return {"kind": "LIFECYCLE_BOUND_FIXED_STOP_OHLC_CROSSED", "bar_ts": bar_ts,
+            "side": side, "anchor": anchor, "level": level, "opened_at_epoch": opened_at,
+            "entry": entry, "open": open_price, "high": high, "low": low,
+            "modeled_fill_price": fill_price, "ohlc_source": "frozen_npz_contract_candle",
+            "position_source": position.get("position_source"),
+            "mac_source_file": mac.get("source_file"), "source_file_epoch": mac.get("source_file_epoch"),
+            "matching_engine_stop_event_count": len(matches)}
+
+
 def _validate_state_stream(args, arrays, active):
     raw = Path(args.state_stream).read_bytes()
     stream_sha256 = hashlib.sha256(raw).hexdigest()
@@ -530,6 +580,21 @@ def replay(args):
     if not publisher_root.is_relative_to(isolation_root):
         raise RuntimeError(f"Replay MAC position publisher root escapes isolated candidate: {publisher_root}")
     broker.lifecycle = lifecycle
+    _original_verified_fixed_stop_trigger = trader_module.verified_fixed_stop_trigger
+    def _replay_verified_fixed_stop_trigger(position_side, position):
+        existing = _original_verified_fixed_stop_trigger(position_side, position)
+        if existing is not None:
+            return existing
+        proof = position.get("_replay_verified_software_stop_ohlc_cross") if isinstance(position, dict) else None
+        if not isinstance(proof, dict) or proof.get("kind") != "LIFECYCLE_BOUND_FIXED_STOP_OHLC_CROSSED":
+            return None
+        if (proof.get("position_source") != "mac_snapshot_broker_verified"
+                or str(proof.get("side") or "").upper() != str(position_side).rsplit("_", 1)[1].upper()
+                or int(proof.get("bar_ts") or 0) != int(broker.bar_ts)
+                or abs(float(proof.get("level") or 0.0) - float((position.get("mac") or {}).get("fixed_stop_price") or 0.0)) > max(1e-10, float(proof.get("level") or 0.0) * 1e-6)):
+            return None
+        return {key: value for key, value in proof.items() if key != "modeled_fill_price"} | {"modeled_fill_price": proof.get("modeled_fill_price")}
+    trader_module.verified_fixed_stop_trigger = _replay_verified_fixed_stop_trigger
 
     manifest = {"record": "vector_consumer_manifest", "schema_version": 1, "account": args.account,
                 "sym_side": sym_side, "active_set_sha256": _sha(args.active_set), "npz_sha256": _sha(args.npz),
@@ -552,9 +617,9 @@ def replay(args):
                            "market_mode": getattr(config, "MARKET_MODE", None),
                            "market_mode_file": str(config.MARKET_MODE_FILE),
                            "market_mode_file_exists": Path(config.MARKET_MODE_FILE).exists()},
-                "protection": "actual vector_direct_stops.Stops; causal NPZ DC15 values; in-memory algo endpoint",
+                "protection": "actual vector_direct_stops.Stops 0.40% exchange backstop plus lifecycle-bound 0.25% software-stop OHLC authorization; in-memory algo endpoint",
                 "native_lifecycle": "ez_manage.Position.from_dict/to_dict + native fixed-stop freeze/arming + mac_positions_push_executors.document + Trader.annotate_with_mac; simulated source books are run-owned",
-                "standing_stop_fill_assumption": "a contract-candle high/low crossing triggers the persisted in-memory MARK_PRICE algo; fill uses stop level or gap open; this is not mark-price execution proof",
+                "standing_stop_fill_assumption": "contract-candle high/low proxy separately triggers persisted in-memory MARK_PRICE exchange backstop (0.40%) or an authenticated lifecycle-bound native software stop (0.25%); fills use stop level or gap open; neither is mark-price execution proof",
                 "fee_funding_model": args.fee_funding_model,
                 "standing_stop_fill_model": args.standing_stop_fill_model,
                 "acceptance_status": "diagnostic_only_contract_ohlc_stop_proxy_and_incomplete_fee_funding",
@@ -606,6 +671,12 @@ def replay(args):
                 invalid[reason] = invalid.get(reason, 0) + 1
             positions = broker.positions(args.account)
             lifecycle.merge(positions)
+            software_stop_proof = None
+            if args.standing_stop_fill_model == "contract_ohlc_trigger_at_stop_or_gap_open" and positions.get(sym_side):
+                software_stop_proof = _verified_software_stop_ohlc_cross(
+                    sym_side, positions[sym_side], bar, bar_open[npz_index], bar_high[npz_index], bar_low[npz_index], engine_stop_events)
+                if software_stop_proof:
+                    positions[sym_side]["_replay_verified_software_stop_ohlc_cross"] = software_stop_proof
             if positions.get(sym_side) and (positions[sym_side].get("position_source") != "mac_snapshot_broker_verified"
                     or not positions[sym_side].get("mac", {}).get("fixed_stop_armed")
                     or float(positions[sym_side].get("mac", {}).get("fixed_stop_price") or 0.0) <= 0.0):
@@ -643,7 +714,15 @@ def replay(args):
             _write(target, {"record": "planner_bar", "account": args.account, "sym_side": sym_side,
                             "bar_ts": bar, "phase": phase, "orders": orders,
                             "position_before": positions.get(sym_side), "state_ok": state.get("ok")})
+            if software_stop_proof and any(order.get("act") == "CLOSE" for order in orders):
+                _write(target, {"record": "mock_software_stop_cross", "account": args.account,
+                                "sym_side": sym_side, "bar_ts": bar, "proof": software_stop_proof,
+                                "fill_model": "contract_ohlc_trigger_at_stop_or_gap_open"})
+            _close_price_before_stop_fill = broker.price_now
+            if software_stop_proof and any(order.get("act") == "CLOSE" for order in orders):
+                broker.price_now = float(software_stop_proof["modeled_fill_price"])
             trader.send_orders(args.account, orders, positions, False)
+            broker.price_now = _close_price_before_stop_fill
             previous_observed = {ss: float(position.get("qty") or 0.0) for ss, position in positions.items()}
             previous_observed_at = bar + trader_module.BAR_S
             _write(target, {"record": "mock_position", "account": args.account, "sym_side": sym_side,

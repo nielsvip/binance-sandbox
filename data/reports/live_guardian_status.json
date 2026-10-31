@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T08:13:58Z",
+ "ts": "2026-10-31T08:19:09Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 2,
    "open_positions": 1,
-   "unrealised_usd": -0.05,
+   "unrealised_usd": -0.04,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -43,9 +43,9 @@
    }
   },
   "men": {
-   "fills_6h": 48,
-   "open_positions": 7,
-   "unrealised_usd": -0.56,
+   "fills_6h": 50,
+   "open_positions": 15,
+   "unrealised_usd": -0.37,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -59,9 +59,9 @@
    }
   },
   "ang": {
-   "fills_6h": 82,
-   "open_positions": 5,
-   "unrealised_usd": -0.46,
+   "fills_6h": 87,
+   "open_positions": 15,
+   "unrealised_usd": -0.31,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -91,8 +91,8 @@
    }
   },
   "flz": {
-   "fills_6h": 16,
-   "open_positions": 3,
+   "fills_6h": 18,
+   "open_positions": 5,
    "unrealised_usd": -0.32,
    "pos_mismatch": 0,
    "vec_parity": {
@@ -134,57 +134,73 @@
     "84264"
    ],
    "starts_30m": 1,
-   "log_age_s": 20.0
+   "log_age_s": 5.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 32.0
   },
   "inf": {
    "pids": [
     "68362"
    ],
    "starts_30m": 1,
-   "log_age_s": 8.0
+   "log_age_s": 12.0
   },
   "flz": {
    "pids": [
     "88793"
    ],
    "starts_30m": 1,
-   "log_age_s": 1897.0
+   "log_age_s": 2208.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 12699.0
+   "log_age_s": 13011.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 13015.0
+   "log_age_s": 13327.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T08:13:58Z",
+   "ts": "2026-10-31T08:19:09Z",
+   "severity": "CRITICAL",
+   "kind": "CAP_BYPASS",
+   "key": "fin:RIFUSDT_SHORT",
+   "evidence": "31 08:15:58 - WARNING - [fin] [REENTRY_GRANDFATHERED] fin:RIFUSDT_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $2763 on bounce (prior max 345.0000)"
+  },
+  {
+   "ts": "2026-10-31T08:19:09Z",
+   "severity": "CRITICAL",
+   "kind": "SIZE_ANOMALY",
+   "key": "fin:RIFUSDT_SHORT",
+   "evidence": "order notional $2763.03 > MAX_ORDER_VALUE $300: 31 08:15:58 - INFO - [fin] [execute_trade_action][fin] \u2705 \u2705 \u2705 \u2705 OPEN fin:RIFUSDT_SHORT @ 0.064390 qty=42910.817150 ($2763.03) side=SELL | QUICK_OPEN_STRONG_SELL_k1:78/d174/k3:21.41/d3:15.56_@0.0645_REE"
+  },
+  {
+   "ts": "2026-10-31T08:19:10Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:HYPEUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T06:26:14Z bar=2026-10-31T04:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T08:13:59Z",
+   "ts": "2026-10-31T08:19:10Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 1897s"
+   "evidence": "ez_manage_flz.log not written for 2208s"
   }
  ],
  "alert_counts": {
+  "CAP_BYPASS": 1,
+  "SIZE_ANOMALY": 1,
   "VEC_DECISION_NOT_FILLED": 1,
   "STALE_LOG": 1
  },
@@ -238,6 +254,13 @@
    "undo": "alert-only (never-halt policy 2026-10-10)",
    "dry_run": false
   },
+  "key:fin:RIFUSDT_SHORT": {
+   "ts": 1793434570.7319732,
+   "until": 1793441770.731976,
+   "why": "SIZE_ANOMALY order $2763.03 > 1.5x MAX_ORDER_VALUE",
+   "undo": "redis-cli -p 6379 DEL open_blocked:fin:RIFUSDT_SHORT",
+   "dry_run": false
+  },
   "key:ang:RSRUSDT_SHORT": {
    "ts": 1793428795.423557,
    "until": 1793435995.423576,
@@ -253,5 +276,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.28
+ "sweep_s": 1.86
 }

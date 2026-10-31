@@ -36,13 +36,14 @@ def build_lifecycle_arrays(events, trades, timestamps, prices, is_long, initial_
         raise ValueError(f"initial_state missing {missing}")
     held = bool(state["position_exists"])
     if held:
-        for key in ("position_amt", "avg_entry_price", "entry_ts", "opened_ts"):
+        for key in ("position_amt", "avg_entry_price", "entry_ts", "opened_ts", "entry_bar"):
             if key not in state:
                 raise ValueError(f"held initial_state missing {key}")
     qty = _finite_number(state.get("position_amt", 0.0), "initial position_amt")
     avg = _finite_number(state.get("avg_entry_price", 0.0), "initial avg_entry_price")
     entry_ts = _finite_number(state.get("entry_ts", 0.0), "initial entry_ts")
     opened_ts = _finite_number(state.get("opened_ts", entry_ts), "initial opened_ts")
+    entry_bar = int(state.get("entry_bar", 0))
     last_aug_ts = _finite_number(state.get("last_augmentation_ts", 0.0), "initial last_augmentation_ts")
     last_aug_px = _finite_number(state.get("last_augmentation_price", 0.0), "initial last_augmentation_price")
     last_reduce_ts = _finite_number(state.get("last_reduction_ts", 0.0), "initial last_reduction_ts")
@@ -79,13 +80,15 @@ def build_lifecycle_arrays(events, trades, timestamps, prices, is_long, initial_
     rows.sort(key=lambda row: (row[0], row[1], row[2]))
     cursor = 0
     out = {key: np.zeros(n, dtype=dtype) for key, dtype in (
-        ("position_exists", bool), ("position_amt", float), ("avg_entry_price", float),
-        ("entry_ts", float), ("opened_ts", float), ("last_augmentation_ts", float),
+        ("position_exists", bool), ("position_amt", float), ("position_qty", float), ("avg_entry_price", float),
+        ("entry_ts", float), ("opened_ts", float), ("entry_bar", np.int64), ("last_augmentation_ts", float),
         ("last_augmentation_price", float), ("last_reduction_ts", float),
         ("last_reduction_price", float), ("last_exit_ts", float), ("last_exit_price", float),
         ("realized_pnl", float), ("augment_count", np.int64), ("reduce_count", np.int64),
         ("bars_held", np.int64), ("minutes_since_augmentation", float),
-        ("gain_pct", float), ("prev_gain_pct", float), ("recent_exit", bool),
+        ("minutes_since_reduction", float), ("minutes_since_exit", float),
+        ("last_augmentation_present", bool), ("last_reduction_present", bool),
+        ("gross_realized_price_pnl", float), ("gain_pct", float), ("gain", float), ("prev_gain_pct", float),
     )}
     prior_gain = 0.0
     prior_gain_valid = False
@@ -98,6 +101,7 @@ def build_lifecycle_arrays(events, trades, timestamps, prices, is_long, initial_
                     raise ValueError(f"invalid {typ} lifecycle transition at bar {rows[cursor][0]}")
                 held, qty, avg = True, fill_qty, fill_px
                 entry_ts = opened_ts = fill_ts
+                entry_bar = int(record["bar"])
                 realized_pnl = 0.0
                 augment_count = reduce_count = 0
             elif typ == "AUGMENT":
@@ -129,28 +133,34 @@ def build_lifecycle_arrays(events, trades, timestamps, prices, is_long, initial_
                 held, qty = False, 0.0
             cursor += 1
         out["position_exists"][i] = held
-        out["position_amt"][i] = qty
+        out["position_amt"][i] = qty if is_long else -qty
+        out["position_qty"][i] = qty
         out["avg_entry_price"][i] = avg if held else 0.0
         out["entry_ts"][i] = entry_ts if held else 0.0
         out["opened_ts"][i] = opened_ts if held else 0.0
+        out["entry_bar"][i] = entry_bar if held else -1
         out["last_augmentation_ts"][i] = last_aug_ts
         out["last_augmentation_price"][i] = last_aug_px
         out["last_reduction_ts"][i] = last_reduce_ts
         out["last_reduction_price"][i] = last_reduce_px
         out["last_exit_ts"][i] = last_exit_ts
         out["last_exit_price"][i] = last_exit_px
-        out["realized_pnl"][i] = realized_pnl
+        out["gross_realized_price_pnl"][i] = realized_pnl
         out["augment_count"][i] = augment_count
         out["reduce_count"][i] = reduce_count
-        out["bars_held"][i] = max(0, int(np.searchsorted(ts, entry_ts, side="left") and i - np.searchsorted(ts, entry_ts, side="left"))) if held else 0
-        out["minutes_since_augmentation"][i] = (ts[i] - last_aug_ts) / 60.0 if last_aug_ts > 0 else np.inf
+        out["bars_held"][i] = max(0, i - entry_bar) if held else 0
+        out["minutes_since_augmentation"][i] = (ts[i] - last_aug_ts) / 60.0 if last_aug_ts > 0 and ts[i] >= last_aug_ts else np.inf
+        out["minutes_since_reduction"][i] = (ts[i] - last_reduce_ts) / 60.0 if last_reduce_ts > 0 and ts[i] >= last_reduce_ts else np.inf
+        out["minutes_since_exit"][i] = (ts[i] - last_exit_ts) / 60.0 if last_exit_ts > 0 and ts[i] >= last_exit_ts else np.inf
+        out["last_augmentation_present"][i] = last_aug_ts > 0.0
+        out["last_reduction_present"][i] = last_reduce_ts > 0.0
         if held and avg > 0 and np.isfinite(px[i]):
             gain = ((px[i] - avg) / avg * 100.0) if is_long else ((avg - px[i]) / avg * 100.0)
             out["gain_pct"][i] = gain
         else:
             gain = 0.0
             out["gain_pct"][i] = 0.0
+        out["gain"][i] = gain
         out["prev_gain_pct"][i] = prior_gain if prior_gain_valid else 0.0
-        out["recent_exit"][i] = bool(last_exit_ts > 0 and ts[i] >= last_exit_ts and ts[i] - last_exit_ts < 900.0)
         prior_gain, prior_gain_valid = gain, held
     return out

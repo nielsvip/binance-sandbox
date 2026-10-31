@@ -150,3 +150,61 @@ def test_stock_force_open_simulate_one_open_matches_selected_bar():
     opens = [row for row in result["ledger"] if row.get("type") == "OPEN"]
     assert opens and opens[0]["bar"] == 2
     assert "WT_3M_FORCE_OPEN" in opens[0]["reason"]
+
+
+def test_stock_force_open_simulate_one_builds_position_with_paced_augment():
+    import v12_quick_engine as engine
+    from tests.test_quick_srs_paired_15m import _cfg as quick_cfg, _npz
+    from vec_decisions.generic_filter_tf import FILTER_TF_MAP
+
+    data = _npz()
+    n = len(data["timestamps"])
+    data["timestamps"] = 1699972200.0 + np.arange(n) * 900.0
+    cfg = quick_cfg()
+    cfg.MODE = "tradier"
+    cfg.LTF_SUB15M_TRADING_ENABLED = True
+    cfg.WT_3M_FORCE_OPEN_ENABLED = True
+    cfg.WT_3M_FORCE_OPEN_GR_GATE_ENABLED = False
+    cfg.WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS = False
+    cfg.WT_3M_FORCE_OPEN_BUILD_TO_TARGET = True
+    cfg.WT_3M_FORCE_OPEN_BYPASS_GATES = True
+    cfg.WT_3M_FORCE_OPEN_SIZE_USD = 100.0
+    cfg.WT_3M_FORCE_OPEN_TARGET_USD = 1000.0
+    cfg.DG_MAX_FORCE_OPEN_NOTIONAL_USD = 2000.0
+    cfg.GR_FILTER_ALL_ENTRIES = False
+    cfg.GOLDEN_RULE_HTF_MIN_TFS = 0
+    cfg.STOCKS_LIVE_ENTRY_STACK_ENABLED = False
+    cfg.ABLATION_DISABLE_QUICK_ENTRY = True
+    cfg.STRUCTURAL_RANGE_SHIFT_EXIT = False
+    cfg.OPTIMAL_HOLD_BARS_EXIT_ENABLED = False
+    cfg.STDEV_REJECT_EXIT_ENABLED = False
+    cfg.RULE_B_5M_EXIT_ENABLED = False
+    cfg.EMA50_15M_ENTRY_FILTER_ENABLED = False
+    for name, (target, _) in FILTER_TF_MAP.items():
+        if target == "entry":
+            setattr(cfg, name, "OFF")
+    data["ema_200_15m"] = np.full(n, 200.0)
+    data["ema_200_15m"][2:] = 90.0
+    data["wt1_5m"] = np.full(n, 2.0)
+    data["wt2_5m"] = np.zeros(n)
+    result = engine.simulate_one(data, "WT_STOCK_FORCE_TEST", True, cfg)
+    actions = [
+        row for row in result["ledger"]
+        if row.get("type") in ("OPEN", "AUGMENT")
+        and "WT_3M_FORCE_OPEN" in str(row.get("reason", ""))
+    ]
+    assert [(row["type"], row["bar"]) for row in actions[:2]] == [
+        ("OPEN", 2),
+        ("AUGMENT", 3),
+    ]
+    cfg.WT_3M_FORCE_OPEN_MAX_TRADES_PER_DAY = 1
+    capped = engine.simulate_one(data, "WT_STOCK_FORCE_TEST", True, cfg)
+    capped_actions = [
+        row for row in capped["ledger"]
+        if row.get("type") in ("OPEN", "AUGMENT")
+        and "WT_3M_FORCE_OPEN" in str(row.get("reason", ""))
+    ]
+    assert [(row["type"], row["bar"]) for row in capped_actions] == [
+        ("OPEN", 2),
+        ("AUGMENT", 97),
+    ]

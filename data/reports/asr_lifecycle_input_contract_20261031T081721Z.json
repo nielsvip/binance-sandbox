@@ -1,0 +1,104 @@
+{
+  "generated_utc": "2026-10-31T08:17:21.655304+00:00",
+  "scope": "Causal ASR lifecycle provider and binding evidence. This is not a v12 consumer or action-parity result.",
+  "lifecycle_provider": {
+    "module": "vec_decisions/asr_lifecycle_state.py",
+    "input_contract": {
+      "accepted_vector_events": "events rows OPEN/AUGMENT/REDUCE with bar, ts, price, qty",
+      "accepted_full_closes": "trades rows type=CLOSE with bar_exit, ts, price, qty",
+      "timestamps_prices": "aligned, finite per-bar arrays",
+      "initial_state": "explicit position_exists; held positions also require position_amt, avg_entry_price, entry_ts, opened_ts, entry_bar; optional prior augmentation/reduction/exit fields",
+      "causality": "apply fills only when fill bar < current decision bar; same-bar CLOSE + another event fails closed because separate source lists lack a shared ordinal"
+    },
+    "outputs": [
+      "position_exists",
+      "position_amt (signed by side)",
+      "position_qty",
+      "avg_entry_price",
+      "entry_ts",
+      "opened_ts",
+      "entry_bar",
+      "bars_held",
+      "last_augmentation_ts/price/present",
+      "minutes_since_augmentation",
+      "last_reduction_ts/price/present",
+      "minutes_since_reduction",
+      "last_exit_ts/price",
+      "minutes_since_exit",
+      "gain/gain_pct",
+      "prev_gain_pct",
+      "augment_count",
+      "reduce_count",
+      "gross_realized_price_pnl"
+    ],
+    "consumer_proof": "feeds asr_no_double_augment_gate directly in tests; no v12 simulate_one call exists",
+    "limitations": [
+      "gross realized price pnl excludes fees and is not tracker total_realized_pnl",
+      "prev_gain_pct is bar-close mark-to-market; native tracker cadence not proven equal",
+      "does not reconstruct bounce_reentry_k_reset or DeltaTracker state",
+      "initial held position requires an authentic explicit account snapshot"
+    ]
+  },
+  "native_external_input_sources": [
+    {
+      "dependency": "account eligibility / tradeable sym_side",
+      "source": "ez_positions_quick.py:3627+ rate args is_allowed, account_key; position key constructed from account+symbol+side at 3660+",
+      "single_symbol_npz": "not available",
+      "required_context": "exact per-account tradeable/permission fact supplied to both sides of a comparison; no union/other-account inference"
+    },
+    {
+      "dependency": "position and tracker lifecycle",
+      "source": "ez_positions_quick.py:3665-3690 position lookup; 5435-5484 last augmentation/reduction/exit/gain; 18694-18714 event persistence",
+      "single_symbol_npz": "not available",
+      "required_context": "accepted events, account position/tracker snapshot; simulator events/trades can reconstruct only from known initial state"
+    },
+    {
+      "dependency": "previous WT cross price",
+      "source": "ez_positions_quick.py:19282 _get_prev_cross_price reads _last_events_cache[symbol][3m].wt_crossover/wt_crossunder.previous.price",
+      "single_symbol_npz": "not available unless a frozen cache snapshot is passed",
+      "required_context": "per-symbol event-cache snapshot at decision time"
+    },
+    {
+      "dependency": "DeltaTracker",
+      "source": "ez_positions_quick.py:14715 constructs tracker and rate consumes its outputs near 7480-7550",
+      "single_symbol_npz": "not available",
+      "required_context": "causal tracker outputs/history (signal presence, entry state, active TF, z/markers), not raw NPZ approximation"
+    },
+    {
+      "dependency": "MTS analysis",
+      "source": "ez_positions_quick.py:1113 analyze_multi_tf_state reads per-bar indicator and metrics dictionaries; invoked near 4820",
+      "single_symbol_npz": "mostly same-symbol indicators, but metrics are hydrated upstream at 4035-4695",
+      "required_context": "exact paired TF indicators plus exact metrics producer/cadence"
+    },
+    {
+      "dependency": "HTF trend used by mandatory reentry",
+      "source": "ez_positions_quick.py:4541 calls trading_policy.check_htf_trend; ez_trading_policy.py:92-136 uses HTF stoch K/D, HA 1h/4h/D, DC bases, SMA200 1h, high/low current and previous 1h/4h",
+      "single_symbol_npz": "candidate columns may supply most values; exact live mapping and paired current/previous bar selection require validation",
+      "required_context": "same native selected timeframe mapping and missing/default behavior"
+    },
+    {
+      "dependency": "cross-symbol rank/sentiment",
+      "source": "ez_positions_quick.py:3807-3808 and 7503+ rank/sentiment scorer consumes 0ranking_points, top/bottom, local/global sentiment, classification; universe/normalization produced outside rate",
+      "single_symbol_npz": "not reconstructable from a single symbol NPZ",
+      "required_context": "frozen same-input symbol universe and per-symbol sentiment/rank snapshot passed identically; this is retrospective software comparison, not point-in-time proof"
+    },
+    {
+      "dependency": "portfolio ratio",
+      "source": "ez_positions_quick.py:4797+ portfolio ratio scoring uses account-wide exposure/ratio availability",
+      "single_symbol_npz": "not reconstructable from one symbol",
+      "required_context": "causal account portfolio snapshot for each bar, applied identically to native/vector"
+    }
+  ],
+  "replay_status": {
+    "historical_replay": "UNPROVEN",
+    "reason": "No verified per-bar account eligibility, portfolio, sentiment-universe, cross-event-cache, DeltaTracker, or initial-position snapshot has been bound to the lifecycle provider in this work."
+  },
+  "tests": {
+    "path": "tests/test_asr_lifecycle_state.py",
+    "result": "5 passed",
+    "sha256": "8c8397c182bc5ff7f40e214231c35235ecb439f72f84fce4e7c465c7cf831330"
+  },
+  "sha256": {
+    "vec_decisions/asr_lifecycle_state.py": "7fdafc187b68bd1726e2e17edb924fee78638673dc18f0fc5b56952fd99e277f"
+  }
+}

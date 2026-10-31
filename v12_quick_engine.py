@@ -19400,6 +19400,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _ssh_closes = []
         _ssh_idx = 0
     _wirem_dd_state = None
+    _wt_force_state = {"last_ts": None, "day": None, "count": 0}
     if (
         is_tradier
         and bool(getattr(cfg, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
@@ -19419,6 +19420,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             _pending_exit_control_restore = None
         _bar_pos_snapshot = copy.deepcopy(pos) if pos is not None else None
         _bar_control_snapshot = (cd, has_closed_before, bars_in_pos)
+        _wf_open_decision = None
         if _qs_on and pos is not None:
             _qs_avg_by_entry[int(pos["entry_bar"])] = float(pos["avg_price"])  # live streak scores vs the AVERAGE entry
         if _ws_on and len(events) > _ws_ne:  # STOCK WHOLE-SHARE twin (2026-10-14): live tradier execute_now sends max(1, int(round(q))) shares
@@ -19721,6 +19723,27 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _vig_scan_start = len(trades)
                 else:
                     continue
+            if is_tradier and bool(_mandatory_wt_force[i]):
+                try:
+                    from vec_decisions.wt_force_open_stock import stateful_fire as _wf_stateful_fire
+                    _wf_open_decision = _wf_stateful_fire(
+                        npz, i, is_long, cfg, float(px), 0.0, _wt_force_state, float(ts[i])
+                    )
+                    if _wf_open_decision is None:
+                        _wf_other_entry = any(
+                            bool(_mask[i])
+                            for _name, _mask in _entry_or_srcs
+                            if _name != "WT_3M_FORCE_OPEN" and _mask is not None and i < len(_mask)
+                        )
+                        if not _wf_other_entry:
+                            _wf_other_entry = any(
+                                bool(_mask[i]) for _mask in _entry_blocks_cache.values()
+                                if _mask is not None and i < len(_mask)
+                            )
+                        if not _wf_other_entry:
+                            entry_sig[i] = False
+                except Exception:
+                    _wf_open_decision = None
             if _hsc is not None and entry_sig[i] and not vec_decisions.htf_signal_consume.gate(_hsc, cfg, i, trades):
                 entry_sig[i] = False
             fire = entry_sig[i]
@@ -20689,20 +20712,28 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                                 # so entry_sig[i] + no B-block ⟹ one of the captured non-B OR-masks fired. Loop-state fires carry _fire_src.
                                 _res = None
                                 if bool(entry_sig[i]):
-                                    try:
-                                        for _rn, _ra in _entry_or_srcs:
-                                            try:
-                                                if (
-                                                    _ra is not None
-                                                    and i < len(_ra)
-                                                    and bool(_ra[i])
-                                                ):
-                                                    _res = _rn
-                                                    break
-                                            except Exception:
-                                                pass
-                                    except Exception:
-                                        pass
+                                    if (
+                                        is_tradier
+                                        and _wf_open_decision is not None
+                                        and i < len(_mandatory_wt_force)
+                                        and bool(_mandatory_wt_force[i])
+                                    ):
+                                        _res = _wf_open_decision["reason"]
+                                    else:
+                                        try:
+                                            for _rn, _ra in _entry_or_srcs:
+                                                try:
+                                                    if (
+                                                        _ra is not None
+                                                        and i < len(_ra)
+                                                        and bool(_ra[i])
+                                                    ):
+                                                        _res = _rn
+                                                        break
+                                                except Exception:
+                                                    pass
+                                        except Exception:
+                                            pass
                                     if _res is None:
                                         try:
                                             if i == _force_bar0:
@@ -20818,6 +20849,13 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     if _lp_on and _lpm.fn_family(entry_reason) in _lp_flags and not _belm.entry_filters_pass(cfg, is_long, float(px), float(_lp_w11[i]), float(_lp_w21[i]), float(_lp_w14[i]), float(_lp_w24[i]), float(_lp_e50[i])):
                         continue  # 2026-10-17 LOSS_PRONE_ENTRY_FILTER: a loss-prone function needs the extra filters
                     pos = _open(qty0, px, i, entry_reason)
+                    if (
+                        is_tradier
+                        and _wf_open_decision is not None
+                        and "WT_3M_FORCE_OPEN" in str(entry_reason).upper()
+                    ):
+                        from vec_decisions.wt_force_open_stock import commit_state as _wf_commit_state
+                        _wf_commit_state(_wt_force_state, _wf_open_decision, float(ts[i]))
                     vec_decisions.htf_signal_consume.commit(_hsc, i, bool(entry_sig[i]))
                     if _gm_rebuy:
                         _gap_pending = None  # WIRING LANE E: rebuy executed, pending resolved (live 9992-9993)
@@ -22628,10 +22666,32 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     _hw_reason = ""
             except Exception as exc:
                 raise RuntimeError("WT winner/pullback augment evaluation failed") from exc
+        _wf_aug_decision = None
+        if (
+            is_tradier
+            and pos is not None
+            and i < len(_mandatory_wt_force)
+            and bool(_mandatory_wt_force[i])
+        ):
+            try:
+                from vec_decisions.wt_force_open_stock import stateful_fire as _wf_stateful_fire
+                _wf_aug_decision = _wf_stateful_fire(
+                    npz,
+                    i,
+                    is_long,
+                    cfg,
+                    float(px),
+                    float(pos["qty"]) * float(px),
+                    _wt_force_state,
+                    float(ts[i]),
+                )
+            except Exception:
+                _wf_aug_decision = None
         _uag_src_ok = (
             _hq_fire
             or _dd_fire
             or _n4_fire
+            or _wf_aug_decision is not None
             or _aal_fire
             or _qos_fire
             or _hw_fire
@@ -22703,6 +22763,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _fx_qta_pre is not None
                 and bool(_fx_qta_pre[i])
                 and not (
+                    _wf_aug_decision is not None
+                    and bool(getattr(cfg, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
+                )
+                and not (
                     _fx_src
                     and _fxm.aug_exempt(_fx_aug, _fx_src, "COUNTER_TREND_ADD_BLOCK_ENABLED")
                 )
@@ -22719,6 +22783,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 or _n4_bypass_profit
                 or _dd_fire
                 or _hq_fire
+                or (
+                    _wf_aug_decision is not None
+                    and bool(getattr(cfg, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
+                )
                 or _aal_fire
                 or _qos_fire
                 or _hw_fire
@@ -22727,7 +22795,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         ):
             _aug_cd_bars = vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
             _aug_last_bar = int(pos.get("last_aug_bar", -(10**9)))
-            if _dd_fire or _hq_fire or _qos_fire or _hw_fire or (i - _aug_last_bar) >= _aug_cd_bars:  # native hard WT source is paced by the 120s execute guard, not the generic ladder cooldown
+            if _dd_fire or _hq_fire or _qos_fire or _hw_fire or _wf_aug_decision is not None or (i - _aug_last_bar) >= _aug_cd_bars:  # native hard WT source is paced by its own cooldown, not the generic ladder cooldown
                 # STDEV_SLOPE_SIZING ladder applies to augment as well (user mandate: entry AND augment sizing)
                 _aug_regime = float(regime_mult[i]) if i < len(regime_mult) else 1.0
                 _aug_add_mult = float(augment_mult[i]) * _aug_regime
@@ -22755,13 +22823,18 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     if is_tradier
                     else pos["qty"] * _aug_add_mult
                 )
-                if _n4_fire:
+                if _wf_aug_decision is not None:
+                    add_qty = min(
+                        float(_wf_aug_decision["qty"]),
+                        max(0.0, float(_wf_aug_decision["size_usd"]) / max(float(px), 1e-9)),
+                    )
+                if _n4_fire and _wf_aug_decision is None:
                     add_qty = _size_qty(
                         cfg, _n4_val, px
                     )  # [N4] DC_TIER/TRAILING add value = live target - current value
                     if pos.get("n4_wtd_pending") is not None and _n4_fire:
                         pos["n4_wtd"] = pos.pop("n4_wtd_pending")
-                if _dd_fire:
+                if _dd_fire and _wf_aug_decision is None:
                     add_qty = pos[
                         "qty"
                     ]  # MOP-UP M C41: live dd_qty = pos_amt (1x add, no regime/size mults)
@@ -22775,14 +22848,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         )
                 _hq_drove = False
                 _aal_reason = ""
-                if _hq_fire and not _dd_fire:
+                if _hq_fire and not _dd_fire and _wf_aug_decision is None:
                     add_qty = float(
                         _hq_qty
                     )  # [w2-haiku] live exact qty (min(amt*0.10, amt*0.4)); no regime/size mults
                     _hq_drove = True
-                elif _hq_fire:
+                elif _hq_fire and _wf_aug_decision is None:
                     _hq_reason = ""  # DD won the tie; haiku state NOT committed (refires next bar)
-                if _aal_fire and not (_dd_fire or _hq_fire or _n4_fire):
+                if _aal_fire and not (_dd_fire or _hq_fire or _n4_fire or _wf_aug_decision is not None):
                     add_qty = pos[
                         "qty"
                     ]  # WIRING LANE L2: one START_POSITION_SIZE step (1x add, MOP-UP M C41 idiom); lowest size priority
@@ -22870,7 +22943,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             "qty": float(add_qty),
                             "pos_deployed": float(pos["deployed"]),
                             "bar": int(i),
-                            "reason": (_qos_reason if _qos_fire else "")
+                            "reason": (_wf_aug_decision["reason"] if _wf_aug_decision is not None else "")
+                            or (_qos_reason if _qos_fire else "")
                             or _aal_reason
                             or _hq_reason
                             or (
@@ -22885,6 +22959,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             or "VEC_AUGMENT_SIG",
                         }
                     )
+                    if _wf_aug_decision is not None:
+                        from vec_decisions.wt_force_open_stock import commit_state as _wf_commit_state
+                        _wf_commit_state(_wt_force_state, _wf_aug_decision, float(ts[i]))
                     _bar_pos_snapshot = copy.deepcopy(pos)
                     _bar_control_snapshot = (cd, has_closed_before, bars_in_pos)
                     if _pending_exit_restore is not None:
