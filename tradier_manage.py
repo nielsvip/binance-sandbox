@@ -18895,10 +18895,11 @@ async def process_position(
                     _ra_w2_15m = safe_fetch_float(i.get("wt2_15m"), 0)
                     _ra_w1_1h = safe_fetch_float(i.get("wt1_1h"), 0)
                     _ra_w2_1h = safe_fetch_float(i.get("wt2_1h"), 0)
-                    _ra_k_3m = safe_fetch_float(i.get("k_3m") or i.get("k_3m"), 50)
-                    _ra_d_3m = safe_fetch_float(i.get("d_3m") or i.get("d_3m"), 50)
+                    _ra_tf = "3m" if bool(_cfg("USE_1M_3M_SIGNALS_ENABLED", False, account_key, symbol, position_side)) else "15m"
+                    _ra_k_3m = safe_fetch_float(i.get(f"k_{_ra_tf}"), 50)
+                    _ra_d_3m = safe_fetch_float(i.get(f"d_{_ra_tf}"), 50)
                     _ra_k_3m_prev = safe_fetch_float(
-                        i.get("k_3m_prev") or i.get("k_3m_prev"), _ra_k_3m
+                        i.get(f"k_{_ra_tf}_prev"), _ra_k_3m
                     )
                     _ra_data_ok = (
                         abs(_ra_w1_D) > 1e-9
@@ -18960,6 +18961,12 @@ async def process_position(
                             and _ra_15m_bear
                             and _ra_1h_bear
                         )
+                        if _ra_tf == "15m":
+                            from types import SimpleNamespace as _RuleAConfig
+                            from vec_decisions.tradier_missing_rule_a_retest import rule_a_retest_live
+                            _ra_shared_fire, _ = rule_a_retest_live(_RuleAConfig(BREAKOUT_RETEST_ARMED_ENABLED=True, BREAKOUT_RETEST_ARMED_RETEST_ATR_MULT=_ra_retest_mult), i, current_price, is_long)
+                            _ra_fire_long = is_long and _ra_shared_fire
+                            _ra_fire_short = not is_long and _ra_shared_fire
                         if _ra_fire_long or _ra_fire_short:
                             _ra_size_usd = float(
                                 _cfg_auto("WT_3M_FORCE_OPEN_SIZE_USD", 100.0)

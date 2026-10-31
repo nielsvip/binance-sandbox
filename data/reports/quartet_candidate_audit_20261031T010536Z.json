@@ -1,0 +1,61 @@
+{
+  "audit_type": "read_only_prospective_quartet_candidates",
+  "created_at_utc": "2026-10-31T01:05:36Z",
+  "symbol_side": "1INCHUSDT_SHORT",
+  "template": {
+    "path": "SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx",
+    "sha256": "ec3384e042f6e22114e79c8586de634931de5f0c7b84f7df596b2ad93862c7b1",
+    "row_classifier": "tools.v18_binding_map.read_template; row-level yellow cells only"
+  },
+  "proposal_artifact": {
+    "path": "data/reports/nextgen_inference_activation_20261030/context/data/learn/linknet_proposals_v2_CRYPTO_SHORT.json",
+    "sha256": "b89ca7b0f1c81c8fd1c68ef81a13b158c31505e1e578c0111f515405495f2e1b",
+    "built_at": "2026-10-30T22:32:02Z",
+    "label": "predictions; not measured outcomes"
+  },
+  "accepted_baseline": {
+    "path": "data/reports/accepted_baseline_provenance_20261030T235242Z/starts/1INCHUSDT_SHORT_autopsy_base.json",
+    "sha256": "6da197e310f62ceaa212f62b98c83f8469e19100fa8555bedb9f4161563b5b4d",
+    "same_sha_as_s2_source_provenance": true
+  },
+  "runtime_type_check": "tools.switch_types.field_spec/coerce with venue=CRYPTO, strict_unknown=true; all listed candidate values accepted as kind=tf",
+  "role_note": "switch/filter describe the proposal or quartet role in this experiment, not exclusive semantic classes; MOMENTUM_BREAKOUT_FILTER_TF is a filter field when used as a yellow and a switch when used as a row switch.",
+  "candidates": [
+    {
+      "id": "SF_proposal_rank1",
+      "role": "X switch + Y filter",
+      "proposal_rank": 1,
+      "tab": "ENTRY_REVERSAL_BOUNCE",
+      "row": 234,
+      "row_switch": {"field": "MOMENTUM_BREAKOUT_FILTER_TF", "template_candidate": "15m", "baseline": "OFF"},
+      "x": {"field": "MOMENTUM_BREAKOUT_FILTER_TF", "baseline": "OFF", "value": "15m", "type": "tf"},
+      "y": {"field": "BREAKOUT_RETEST_FILTER_TF", "baseline": "OFF", "value": "1h", "type": "tf", "exact_row_yellow_header": "BREAKOUT_RETEST_FILTER_TF=1h"},
+      "proposal_status": "HAS_TEMPLATE_ROW",
+      "evidence_class": "proposal prediction plus exact template row yellow; not a measurement"
+    },
+    {
+      "id": "SS_proposal_pair",
+      "role": "X switch + Y switch",
+      "x": {"field": "MOMENTUM_BREAKOUT_FILTER_TF", "baseline": "OFF", "value": "15m", "proposal_rank": 1, "tab": "ENTRY_REVERSAL_BOUNCE", "row": 234, "type": "tf"},
+      "y": {"field": "DC_BREAK_FILTER_TF", "baseline": "15m", "value": "1h", "proposal_rank": 82, "tab": "ENTRY_REVERSAL_BOUNCE", "row": 81, "type": "tf", "actual_row_yellow_header": "DC_BREAK_FILTER_TF=1h"},
+      "row_yellow_evidence": [
+        {"tab": "ENTRY_REVERSAL_BOUNCE", "row": 234, "header": "BREAKOUT_RETEST_FILTER_TF=1h"},
+        {"tab": "ENTRY_REVERSAL_BOUNCE", "row": 81, "header": "BREAKOUT_RETEST_FILTER_TF=OFF"}
+      ],
+      "proposal_statuses": ["HAS_TEMPLATE_ROW", "PREDICTED_NOT_MEASURED"],
+      "evidence_class": "two independently proposed switch changes, each has exact-row yellow-domain evidence; combined quartet is prospective and unmeasured"
+    },
+    {
+      "id": "FF_template_only",
+      "role": "X filter + Y filter",
+      "tab": "ENTRY_REVERSAL_BOUNCE",
+      "row": 22,
+      "row_switch": {"field": "BB_SQUEEZE_ENTRY_TF", "template_candidate": "1h", "baseline": "1h"},
+      "x": {"field": "BREAKOUT_RETEST_FILTER_TF", "baseline": "OFF", "value": "15m", "type": "tf", "exact_row_yellow_header": "BREAKOUT_RETEST_FILTER_TF=15m"},
+      "y": {"field": "CIRCUIT_SHARPE_GATES_FILTER_TF", "baseline": "15m", "value": "1h", "type": "tf", "exact_row_yellow_header": "CIRCUIT_SHARPE_GATES_FILTER_TF=1h"},
+      "proposal_artifact_support": false,
+      "evidence_class": "actual row-yellow and runtime-type eligibility only; explicitly template-only research candidate, not represented by proposal entries or measured"
+    }
+  ],
+  "execution_constraints": ["No engine was run during candidate selection.", "Executor must use the exact accepted baseline and independently validate oracle config/cutoff/ledger/result hashes before evaluating B/X/Y/Z.", "No candidate is an adopted setting or a measured result."]
+}

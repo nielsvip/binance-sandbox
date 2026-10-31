@@ -32563,9 +32563,11 @@ async def evaluate_reentry_epq(ctx: dict):
             )
     # B04: DC HIGH BREAK RETEST
     if getattr(cfg, "REENTRY_B04_DC_RETEST_ENABLED", True):
-        _dcbr_ok, _dcbr_reason, _dcbr_mult = _ez_check_dc_high_break_retest(
-            i, current_price, is_long
-        )
+        if bool(_sw_get(symbol, ctx.get("position_side", "LONG"), "USE_1M_3M_SIGNALS_ENABLED", False)):
+            _dcbr_ok, _dcbr_reason, _dcbr_mult = _ez_check_dc_high_break_retest(i, current_price, is_long)
+        else:
+            from vec_decisions.ez_missing_b04_retest import dc_high_break_retest_live_adapter
+            _dcbr_ok, _dcbr_reason, _dcbr_mult = dc_high_break_retest_live_adapter(i, current_price, is_long)
         if _dcbr_ok:
             _dcbr_qty = _q_sps_usd(symbol, ctx.get("position_side", "LONG"), 45.0) * _dcbr_mult / current_price
             _b04_conv = 88.0

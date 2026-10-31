@@ -10668,18 +10668,8 @@ def compute_reentry_blocks(npz, n, is_long, cfg):
                 & (wt_bear_cnt >= 2)
             )
     if cfg.REENTRY_B04_DC_RETEST_ENABLED:
-        dc_high_4h_prev = np.roll(dc_high_4h, 5)
-        dc_high_4h_prev[:5] = dc_high_4h[:5]
-        dc_low_4h_prev = np.roll(dc_low_4h, 5)
-        dc_low_4h_prev[:5] = dc_low_4h[:5]
-        if is_long:
-            exp = (dc_high_4h > dc_high_4h_prev * 1.015) & (dc_high_4h_prev > 0)
-            pb = (close < dc_high_4h_prev * 1.005) & (close > dc_high_4h_prev * 0.99)
-            blocks["B04"] = exp & pb & (k_3m > d_3m) & (k_3m < 50)
-        else:
-            exp = (dc_low_4h < dc_low_4h_prev * 0.985) & (dc_low_4h_prev > 0)
-            pb = (close > dc_low_4h_prev * 0.995) & (close < dc_low_4h_prev * 1.01)
-            blocks["B04"] = exp & pb & (k_3m < d_3m) & (k_3m > 50)
+        from vec_decisions.ez_missing_b04_retest import dc_high_break_retest_mask
+        blocks["B04"] = dc_high_break_retest_mask(npz, n, is_long, cfg, _safe)[0]
     if cfg.REENTRY_B10_STOCH_REV_ENABLED:
         if is_long:
             blocks["B10"] = (
@@ -18169,6 +18159,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         _rt_on = False
     _rt_fired = (-1, "")
+    _rule_a_retest_mask = np.zeros(n, dtype=bool)
+    if str(getattr(cfg, "MODE", "crypto")) == "tradier" and bool(getattr(cfg, "BREAKOUT_RETEST_ARMED_ENABLED", False)):
+        from vec_decisions.tradier_missing_rule_a_retest import rule_a_retest_mask
+        _rule_a_retest_mask = rule_a_retest_mask(npz, n, is_long, cfg, _safe)
     # 2026-10-17 STOP_RECLAIM_REENTRY inputs (vec_decisions/stop_reclaim.py) — only built when the switch is on
     _sr_on = _srm.enabled(cfg)
     _sr_xst, _rt_xst = [-1, -1, 0.0], [-1, -1, 0.0]  # 2026-10-17 speed: running-extreme state (_running_ext)
@@ -19431,6 +19425,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if _hsc is not None and entry_sig[i] and not vec_decisions.htf_signal_consume.gate(_hsc, cfg, i, trades):
                 entry_sig[i] = False
             fire = entry_sig[i]
+            if not fire and _rule_a_retest_mask[i]:
+                fire = True
             _lr_flat_open_target = None
             if (
                 not fire
@@ -19457,6 +19453,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 else _fx_A
             )  # V17 FILTER_EXEMPTIONS 'REENTRY': reentry fires read the filters-off open-gate state; default = main-pass gates (identical objects)
             _fire_src = None  # 2026-10-06 ENTRY_SOURCE_LABEL: provenance of the in-loop fire below (first-writer-wins; label-only)
+            if _rule_a_retest_mask[i] and not entry_sig[i]:
+                _fire_src = f"RULE_A_RETEST_{'LONG' if is_long else 'SHORT'}"
             if _lr_flat_open_target is not None and _lr_flat_open_target.add_notional_usd > 0:
                 _fire_src = "LR_BAND_LADDER_PARITY_TARGET"
             # TWIN_VEC_SPECIAL H2a: HTF_WT_CHURN_REENTRY. Flat here (pos None); notional 0 < cap passes; age from last close bar. CRYPTO_REENTRY_PATHWAYS honors the live parity-flat COOLDOWN_BARS check above.

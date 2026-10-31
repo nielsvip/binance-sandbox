@@ -38,6 +38,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -51,7 +52,7 @@ STATE_REPAIR_AT = (90.0, 110.0)
 NO_VERDICT_S = float(os.environ.get("BAR_GUARANTEE_NO_VERDICT_S", "300"))
 MASS_FAIL_PCT = float(os.environ.get("VD_MASS_FAIL_PCT", "25"))
 EXEC_AFTER_STATE_S = 10.0
-LATE_S = float(os.environ.get("BAR_GUARANTEE_LATE_S", "90"))
+LATE_S = 60.0
 FINAL_S = 600.0
 FALLBACK_PRODUCERS = ("s1_closed_bar_fallback", "bar_guarantee_fallback")
 
@@ -143,6 +144,18 @@ def expected_size_ok(act, row, cons, st, start_size):
     if want <= 0:
         return True, "engine act without size"
     return 0.5 * want <= qty <= 1.6 * want or abs(qty - want) * price < 6.0, f"qty {qty} vs {want:.6g}"
+
+
+def order_filled(row):
+    response = row.get("resp") or {}
+    if not isinstance(response, dict) or str(response.get("status") or "").upper() != "FILLED":
+        return False
+    try:
+        qty = float(row.get("qty") or 0)
+        executed = float(response.get("executedQty") or 0)
+    except (TypeError, ValueError):
+        return False
+    return qty > 0 and abs(executed - qty) <= max(1e-9, qty * 1e-8)
 
 
 # ───────────── LIVE PRIORITY (no freeze) ─────────────
@@ -861,23 +874,30 @@ class Guarantee:
                 sent = [r for r in rows if r.get("status") == "SENT"]
                 failed = [r for r in rows if r.get("status") not in ("SENT",)]
                 sent_acts = [r.get("act") for r in sent]
+                action_match = Counter(sent_acts) == Counter(want)
+                sent_fills = [{"act": r.get("act"), "key": r.get("key"), "ts": r.get("ts"), "qty": r.get("qty"),
+                               "status": (r.get("resp") or {}).get("status") if isinstance(r.get("resp"), dict) else None,
+                               "executedQty": (r.get("resp") or {}).get("executedQty") if isinstance(r.get("resp"), dict) else None,
+                               "fully_filled": order_filled(r)} for r in sent]
                 if want == ["?held_unknown"]:
                     verdict = "unverifiable_old_trader"
                 elif want == ["?stale"]:
-                    verdict = "stale_state" if not sent else "extra"
+                    verdict = "stale_state" if not sent else "decision_generation_unresolved"
                 elif want == ["NOT_IN_BOOKS"]:
-                    verdict = "not_in_books" if not sent else "extra"
+                    verdict = "not_in_books" if not sent else "decision_generation_unresolved"
                 elif not want and not rows:
                     verdict = "noop"
-                elif not want:
-                    verdict = "extra" if sent else "noop"
-                elif any(w in sent_acts for w in want):
+                elif not want and not sent:
+                    verdict = "noop"
+                elif sent and not action_match:
+                    verdict = "decision_generation_unresolved"
+                elif action_match and sent and not all(order_filled(r) for r in sent):
+                    verdict = "unfilled"
+                elif action_match and sent:
                     r = next(r for r in sent if r.get("act") in want)
                     ok, detail = expected_size_ok(r.get("act"), r, dict(cons, held=held), st, self.start_size)
-                    lag = float(r.get("ts") or 0) - b["close"]
+                    lag = max(float(order.get("ts") or 0) - b["close"] for order in sent)
                     verdict = ("match" if lag <= LATE_S else "match_late") if ok else "wrong_size"
-                elif sent:
-                    verdict = "wrong_direction"
                 elif failed:
                     verdict = "blocked:" + str(failed[-1].get("detail") or failed[-1].get("status"))[:90]
                 elif prior.get((acct, ss)):
@@ -894,7 +914,12 @@ class Guarantee:
                     fill = {"order_ts": r.get("ts"), "status": resp.get("status"), "executedQty": resp.get("executedQty"), "qty": r.get("qty"), "price": r.get("price")}
                 out.append({"acct": acct, "ss": ss, "want": want, "board_acts": board_acts, "held_at_plan": held, "sent": sent_acts,
                             "failed": [f"{r.get('act')}:{r.get('status')}:{str(r.get('detail') or '')[:60]}" for r in failed], "verdict": verdict,
-                            "order_sent_s": round(float(sent[0]["ts"]) - b["close"], 2) if sent else None, "fill": fill,
+                            "action_multiset_match": action_match, "sent_fill_evidence": sent_fills,
+                            "observed_plan_actions": [x.split(":", 1)[1] for x in side["orders"] if x.startswith(f"{acct}:")],
+                            "state_ts": st.get("ts"), "state_settings_sha256": st.get("settings_sha256"),
+                            "consumed_at": cons.get("at"), "consumed_sig": cons.get("sig"),
+                            "decision_generation_history": "not_retained_by_current_consumed_schema",
+                            "order_sent_s": round(max(float(order.get("ts") or 0) for order in sent) - b["close"], 2) if sent else None, "fill": fill,
                             "planned_s": round(float(cons["at"]) - b["close"], 2) if cons.get("at") else None})
         return out
 

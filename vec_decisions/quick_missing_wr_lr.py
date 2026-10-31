@@ -2,6 +2,18 @@
 import numpy as np
 
 
+def historical_wr_membership_mask(symbol, timestamps, is_long):
+    """Return archived list membership per bar; unknown history stays False."""
+    from vec_decisions.check_entry_candidates_crypto__wr_lr_pullback import wr_in_list_at
+    ts = np.asarray(timestamps, dtype=float)
+    result = np.zeros(ts.shape, dtype=bool)
+    if ts.ndim != 1:
+        raise ValueError("timestamps must be a 1D array")
+    for i, value in enumerate(ts):
+        result[i] = wr_in_list_at(symbol, bool(is_long), float(value)) is True
+    return result
+
+
 def wr_lr_pullback_15m_mask(ha_4h, k_1h, k_15m, k_15m_prev, wt_cross_15m, in_list, is_long):
     """Mirror the live WR/LR branch when USE_1M_3M_SIGNALS_ENABLED is False.
 

@@ -1,7 +1,7 @@
 import numpy as np
 
 from vec_decisions.check_entry_candidates_crypto__wr_lr_pullback import check_wr_lr_pullback
-from vec_decisions.quick_missing_wr_lr import wr_lr_good_score, wr_lr_pullback_15m_mask
+from vec_decisions.quick_missing_wr_lr import historical_wr_membership_mask, wr_lr_good_score, wr_lr_pullback_15m_mask
 
 
 class Config:
@@ -55,3 +55,11 @@ def test_score_floor_is_conditional_and_shape_checked():
     score = np.array([5.0, 22.0, 31.0])
     mask = np.array([True, False, True])
     np.testing.assert_array_equal(wr_lr_good_score(score, mask), [22.0, 22.0, 31.0])
+
+
+def test_historical_membership_is_per_bar_and_unknown_fails_closed(monkeypatch):
+    import vec_decisions.check_entry_candidates_crypto__wr_lr_pullback as live_twin
+    membership = {100.0: True, 200.0: False}
+    monkeypatch.setattr(live_twin, "wr_in_list_at", lambda symbol, is_long, ts: membership.get(ts))
+    mask = historical_wr_membership_mask("1000PEPEUSDC", np.array([100.0, 200.0, 300.0]), True)
+    np.testing.assert_array_equal(mask, [True, False, False])

@@ -419,7 +419,7 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict], equity: dict |
             continue
         event_time = float(row.get("ts") or 0)
         display_index = bisect.bisect_right(bar_times, event_time) - 1
-        if not 0 <= display_index < len(bar_times) or event_time >= bar_times[-1] + 900:
+        if event_time >= bar_times[-1] + 900:
             continue
         if row.get("event") == "STOP":
             stop_status = row.get("status") or row.get("act")
@@ -430,10 +430,15 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict], equity: dict |
                     fill_index = bisect.bisect_right(bar_times, fill_time) - 1
                     if 0 <= fill_index < len(bar_times) and fill_time < bar_times[-1] + 900:
                         broker_events.append({"i": fill_index, "action": "CLOSE (protective stop)", "qty": float(stop_fill["exec_qty"]), "price": float(stop_fill["avg_price"]), "acct": row.get("acct"), "time": iso(datetime.datetime.fromtimestamp(fill_time, datetime.timezone.utc)), "reason": f"PROTECTIVE_DC15_STOP level={row.get('level')}", "order_id": str(stop_fill.get("order_id") or ""), "before_board": fill_time < first})
+                        if bar_times[fill_index] >= first:
+                            stop_key = (bar_times[fill_index], "CLOSE")
+                            live.add(stop_key)
+                            accounts.setdefault(stop_key, set()).add(str(row.get("acct") or "?"))
                     stop_status = "FILLED"
-                stop_events.append({"i": display_index, "level": float(row.get("level") or 0), "status": stop_status, "acct": row.get("acct"), "time": _html.escape(str(row.get("iso") or "")), "order_id": str(stop_fill.get("order_id") or (row.get("resp") or {}).get("id") or "")})
+                if 0 <= display_index < len(bar_times):
+                    stop_events.append({"i": display_index, "level": float(row.get("level") or 0), "status": stop_status, "acct": row.get("acct"), "time": _html.escape(str(row.get("iso") or "")), "order_id": str(stop_fill.get("order_id") or (row.get("resp") or {}).get("id") or "")})
             continue
-        if row.get("event") != "ORDER" or row.get("status") != "SENT":
+        if row.get("event") != "ORDER" or row.get("status") not in ("SENT", "PROTECTED_OTO_SUBMITTED"):
             continue
         parts = str(row.get("key") or "").split("|")
         if len(parts) < 4 or not parts[2].isdigit():
@@ -446,14 +451,16 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict], equity: dict |
         filled = (broker_fill.get("found") and float(broker_fill.get("exec_qty") or 0) > 0
                   and str(broker_fill.get("status") or "").lower() in ("filled", "partially_filled")) or (crypto and (status in ("FILLED", "PARTIALLY_FILLED") or float(response.get("executedQty") or 0) > 0))
         terminal_unfilled = str(broker_fill.get("status") or "").lower() in ("rejected", "canceled", "expired") and float(broker_fill.get("exec_qty") or 0) <= 0
-        order_outcomes.append({"time": iso(datetime.datetime.fromtimestamp(event_time, datetime.timezone.utc)), "acct": str(row.get("acct") or ""), "action": key[1], "qty": float(row.get("qty") or 0), "status": str(broker_fill.get("status") or response.get("status") or "UNVERIFIED"), "order_id": str(broker_fill.get("order_id") or response.get("orderId") or response.get("id") or ""), "reason": str(row.get("why") or "")[:160]})
+        if 0 <= display_index < len(bar_times):
+            order_outcomes.append({"time": iso(datetime.datetime.fromtimestamp(event_time, datetime.timezone.utc)), "acct": str(row.get("acct") or ""), "action": key[1], "qty": float(row.get("qty") or 0), "status": str(broker_fill.get("status") or response.get("status") or "UNVERIFIED"), "order_id": str(broker_fill.get("order_id") or response.get("orderId") or response.get("id") or ""), "reason": str(row.get("why") or "")[:160]})
         if filled:
             if key[0] >= first and key[0] in bar_times:
                 live.add(key)
             fill_price = float(broker_fill.get("avg_price") or response.get("avgPrice") or 0)
             fill_time = float(broker_fill.get("fill_ms") or 0) / 1000 or event_time
-            if fill_price > 0:
-                broker_events.append({"i": display_index, "action": key[1], "qty": float(broker_fill.get("exec_qty") or response.get("executedQty") or row.get("qty") or 0), "price": fill_price, "acct": row.get("acct"), "time": iso(datetime.datetime.fromtimestamp(fill_time, datetime.timezone.utc)), "reason": str(row.get("why") or "")[:160], "order_id": str(broker_fill.get("order_id") or response.get("orderId") or response.get("id") or ""), "before_board": event_time < first})
+            fill_index = bisect.bisect_right(bar_times, fill_time) - 1
+            if fill_price > 0 and 0 <= fill_index < len(bar_times) and fill_time < bar_times[-1] + 900:
+                broker_events.append({"i": fill_index, "action": key[1], "qty": float(broker_fill.get("exec_qty") or response.get("executedQty") or row.get("qty") or 0), "price": fill_price, "acct": row.get("acct"), "time": iso(datetime.datetime.fromtimestamp(fill_time, datetime.timezone.utc)), "reason": str(row.get("why") or "")[:160], "order_id": str(broker_fill.get("order_id") or response.get("orderId") or response.get("id") or ""), "before_board": fill_time < first})
         elif not terminal_unfilled:
             if key[0] >= first and key[0] in bar_times:
                 accepted.add(key)
@@ -474,10 +481,10 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict], equity: dict |
     rows_html = "".join(f"<tr><td>{_html.escape(r['time'])}</td><td>{_html.escape(str(r['acct']))}</td><td>{_html.escape(r['action'])}</td><td>{r['qty']:g}</td><td>${r['price']:.4f}</td><td>{_html.escape(r['reason'])}</td><td>{_html.escape(r['order_id'])}</td></tr>" for r in sorted(broker_events, key=lambda r: r["time"]))
     stop_html = "".join(f"<tr><td>{r['time']}</td><td>{_html.escape(str(r['acct']))}</td><td>{_html.escape(r['status'])}</td><td>{'$' + format(r['level'], '.4f') if r['level'] else '—'}</td><td>{_html.escape(r['order_id'])}</td></tr>" for r in sorted(stop_events, key=lambda r: r["time"]))
     order_html = "".join(f"<tr><td>{_html.escape(r['time'])}</td><td>{_html.escape(r['acct'])}</td><td>{_html.escape(r['action'])}</td><td>{r['qty']:g}</td><td>{_html.escape(r['status'])}</td><td>{_html.escape(r['order_id'])}</td><td>{_html.escape(r['reason'])}</td></tr>" for r in sorted(order_outcomes, key=lambda r: r["time"]))
-    summary = (f"<div class='metrics'><b>AFTER ORIGINAL BOARD PUBLICATION — VECTOR VS CONFIRMED BROKER FILLS</b> "
+    summary = (f"<div class='metrics'><b>AFTER ORIGINAL BOARD PUBLICATION — VECTOR VS CONFIRMED BROKER FILLS (ACTION-BAR DIAGNOSTIC)</b> "
                f"<span style='color:#60a5fa'>blue live only {len(blue)}</span> · "
                f"<span style='color:#fb923c'>orange vector only {len(orange)}</span> · "
-               f"""accepted, fill unverified {len(pending)}. Exact 15 minute bar and action; quantities ignored. """
+               f"""accepted, fill unverified {len(pending)}. Diagnostic matches action and 15 minute bar only; it ignores account allocation and quantity, so it does NOT certify exact live parity. Confirmed fill markers use broker fill time; regular-order action matching uses the submitted decision bar, protective-stop matching uses its fill bar. """
                f"Journal coverage starts {_html.escape(iso(datetime.datetime.fromtimestamp(coverage, datetime.timezone.utc)) if coverage else 'UNAVAILABLE')}; earlier vector events are unassessed. "
                f"Stock 'ok' responses are order acceptance, not actual fills. No broker fill history means orange marks require investigation.</div>"
                f"<details open><summary>{len(broker_events)} confirmed broker fills (blue stars) · {len(stop_events)} protective stop records (purple diamonds at placed level) within this chart window</summary><table><tr><th>UTC fill</th><th>account</th><th>action</th><th>qty</th><th>fill price</th><th>trader reason</th><th>broker order</th></tr>{rows_html}</table><table><tr><th>UTC</th><th>account</th><th>stop status</th><th>level</th><th>order ID</th></tr>{stop_html}</table><table><tr><th>UTC order</th><th>account</th><th>action</th><th>qty</th><th>broker status</th><th>order ID</th><th>trader reason</th></tr>{order_html}</table></details>")
@@ -487,7 +494,7 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict], equity: dict |
         figures = " · ".join(f"{_html.escape(acct)} equity ${float(row['equity_usd']):,.2f} (wallet ${float(row.get('wallet_usd') or 0):,.2f}; available ${float(row.get('available_usd') or 0):,.2f})" if row and row.get("equity_usd") is not None and not stock else f"{_html.escape(acct)} equity ${float(row['equity_usd']):,.2f} (cash ${float(row.get('cash_usd') or 0):,.2f}; open P/L ${float(row.get('open_pl_usd') or 0):+,.2f}; closed today ${float(row.get('closed_today_pl_usd') or 0):+,.2f})" if row and row.get("equity_usd") is not None else f"{_html.escape(acct)} UNAVAILABLE: {_html.escape(str((row or {}).get('error') or 'missing broker value'))}" for acct, row in selected.items())
         summary += f"<div class='metrics'><b>BROKER ACCOUNT EQUITY</b> · as of {_html.escape(str(equity.get('asof_utc') or '?'))} · {figures} · direct authenticated venue API; current snapshot, not historical chart P/L.</div>"
     page = page.replace("<div id='wrap'>", summary + "<div id='wrap'>", 1)
-    return page, {"live_only": len(blue), "vector_only": len(orange), "accepted_unverified": len(pending), "confirmed_broker_fills": len(broker_events), "protective_stop_records": len(stop_events)}
+    return page, {"comparison_scope": "ACTION_BAR_DIAGNOSTIC_ACCOUNT_AND_QUANTITY_IGNORED", "live_only": len(blue), "vector_only": len(orange), "accepted_unverified": len(pending), "confirmed_broker_fills": len(broker_events), "protective_stop_records": len(stop_events)}
 
 
 def fail_page(symside: str, board: dict, error: str, now: str) -> str:

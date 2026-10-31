@@ -1,6 +1,9 @@
 import numpy as np
 
-from vec_decisions.ez_missing_b04_retest import dc_high_break_retest_mask
+from vec_decisions.ez_missing_b04_retest import (
+    dc_high_break_retest_live_adapter,
+    dc_high_break_retest_mask,
+)
 
 
 class Config:
@@ -93,8 +96,12 @@ def test_b04_matches_live_helper_when_ltf_stochastic_is_mapped_to_15m():
         }
         live_fires, _, live_mult = check_dc_high_break_retest(indicators, price, is_long)
         vec_mask, vec_mult, _ = dc_high_break_retest_mask(npz, 1, is_long, cfg, _safe)
+        ltf_off_indicators = {**indicators, "k_15m": k, "d_15m": d, "k_15m_prev": k_prev}
+        adapter_fires, _, adapter_mult = dc_high_break_retest_live_adapter(ltf_off_indicators, price, is_long)
         assert bool(vec_mask[0]) == live_fires
         assert float(vec_mult[0]) == live_mult
+        assert adapter_fires == live_fires
+        assert adapter_mult == live_mult
 
 
 def test_b04_uses_only_prior_bar_when_explicit_stochastic_previous_is_absent():
