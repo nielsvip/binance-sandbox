@@ -289,6 +289,17 @@ def _restore_state_context(forward_state, evaluate_v12, pilot_v12, quick_engine,
     npz_cutoffs.last_closed_bar = original["last_closed_bar"]
 
 
+def _planner_state(result):
+    """Persist the exact account-planner inputs returned by the causal state path."""
+    return {
+        key: result.get(key) for key in (
+            "ok", "reason", "open", "npz_tail", "engine_qty", "engine_open_qty",
+            "engine_open_px", "engine_open_bar_ts", "entry_bar", "entry_px",
+            "acts_bar_ts", "acts_last_bar", "src", "settings_fallback",
+        )
+    }
+
+
 def _parallel_state_chunk(task):
     """Evaluate independent causal prefixes in one isolated process context."""
     (npz_path, symside, indexes, runtime_code, canonical_npz_path,
@@ -565,8 +576,12 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 if result.get("ok") is not True:
                     _why = str(result.get("reason") or "unspecified_state_for_failure")
                     invalid_counts[_why] = invalid_counts.get(_why, 0) + 1
+                planner_state = _planner_state(result)
+                market_price = float(prefix["close"][-1])
                 state_record = {
                     "record": "state",
+                    "planner_state": planner_state,
+                    "market_price": market_price,
                     "row": row_number,
                     "npz_open_ts": bar_ts,
                     "npz_open_utc": _iso(bar_ts),
@@ -605,13 +620,6 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                         "qty_is_diagnostic_only": True,
                     }, sort_keys=True, default=str) + "\n")
                 if planner_account:
-                    planner_state = {
-                        key: result.get(key) for key in (
-                            "ok", "reason", "open", "npz_tail", "engine_qty", "engine_open_qty",
-                            "engine_open_px", "engine_open_bar_ts", "entry_bar", "entry_px",
-                            "acts_bar_ts", "acts_last_bar", "src", "settings_fallback",
-                        )
-                    }
                     states = {symside.upper(): planner_state}
                     allowed_keys = {str(x).upper() for x in active_set.get("account_admission_keys", [])}
                     allowed = lambda account, side: f"{account}:{side}".upper() in allowed_keys
@@ -625,8 +633,7 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                             "record": "planner_notes", "npz_open_ts": bar_ts,
                             "account": planner_account, "notes": notes,
                         }, sort_keys=True, default=str) + "\n")
-                    market_price = float(prefix["close"][-1])
-                    current_model_types = {str(x.get("type") or "").upper() for x in (result.get("acts_last_bar") or [])}
+                    current_model_types = {str(x.get("type") or "").upper() for x in (planner_state.get("acts_last_bar") or [])}
                     for order in orders:
                         order_type = str(order["act"]).upper()
                         held = float((broker_position or {}).get("qty") or 0.0)

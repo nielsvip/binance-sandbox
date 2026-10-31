@@ -16,6 +16,29 @@ def run(arguments):
 def unit(command, description, memory="6G", memory_high="4G", cpu_quota="200%"):
     return f"[Unit]\nDescription={description}\nAfter=network.target\n\n[Service]\nType=simple\nExecStart={command}\nWorkingDirectory=/home/niels/binance-sandbox\nEnvironment=OPENBLAS_NUM_THREADS=1\nEnvironment=OMP_NUM_THREADS=1\nEnvironment=PYTHONDONTWRITEBYTECODE=1\nNice=19\nCPUSchedulingPolicy=idle\nCPUWeight=1\nCPUQuota={cpu_quota}\nIOWeight=1\nMemoryHigh={memory_high}\nMemoryMax={memory}\nOOMScoreAdjust=500\nRestart=on-failure\nRestartSec=60\nTimeoutStopSec=45\n\n[Install]\nWantedBy=default.target\n"
 
+def deploy_coordinator(release, remote_root, host):
+    release = Path(release).resolve()
+    alias = HOSTS[host]
+    remote = Path(remote_root) / "data/paper_forward_lab/coordinator_runtime" / release.name
+    ssh = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=15", alias]
+    run(ssh + ["mkdir -p " + shlex.quote(str(remote))])
+    run(["rsync", "-az", str(release) + "/", f"{alias}:{remote}/"])
+    verifier = "import hashlib,json,pathlib; p=pathlib.Path(" + repr(str(remote)) + "); m=json.loads((p/'manifest.json').read_text()); assert all(hashlib.sha256((p/k).read_bytes()).hexdigest()==v for k,v in m.items())"
+    run(ssh + ["python3 -c " + shlex.quote(verifier)])
+    existing = run(ssh + ["systemctl --user cat paper-independent-forward.service"])
+    updated, count = re.subn(r"(?m)^(ExecStart=\S+ )\S*/paper_forward_fleet\.py ", lambda match: match[1] + str(remote / "paper_forward_fleet.py") + " ", existing)
+    if count != 1:
+        raise RuntimeError("coordinator unit must contain exactly one known entrypoint")
+    if updated != existing:
+        run(ssh + ["cp ~/.config/systemd/user/paper-independent-forward.service ~/.config/systemd/user/paper-independent-forward.service.before.$(date -u +%Y%m%d%H%M%S)"])
+        with tempfile.TemporaryDirectory(prefix="paper-controller-unit-") as directory:
+            path = Path(directory) / "paper-independent-forward.service"
+            path.write_text(updated)
+            run(["rsync", "-az", str(path), f"{alias}:.config/systemd/user/"])
+        run(ssh + ["systemctl --user daemon-reload"])
+        run(ssh + ["systemctl --user restart paper-independent-forward.service"])
+    return {"host": host, "coordinator_release": str(remote), "active": run(ssh + ["systemctl --user is-active paper-independent-forward.service"]).strip()}
+
 def deploy(batch, runtime, remote_root, host, activate=False):
     batch, runtime, remote_root = Path(batch).resolve(), Path(runtime).resolve(), Path(remote_root)
     alias = HOSTS[host]
@@ -68,8 +91,18 @@ def main():
     parser.add_argument("--remote-root", default="/home/niels/binance-sandbox")
     parser.add_argument("--host", choices=HOSTS, required=True)
     parser.add_argument("--activate", action="store_true")
+    parser.add_argument("--coordinator-release", type=Path)
+    parser.add_argument("--coordinator-only", action="store_true")
     args = parser.parse_args()
-    print(json.dumps(deploy(args.batch, args.runtime, args.remote_root, args.host, args.activate)))
+    if args.coordinator_only:
+        if not args.coordinator_release:
+            parser.error("--coordinator-only requires --coordinator-release")
+        print(json.dumps(deploy_coordinator(args.coordinator_release, args.remote_root, args.host)))
+    else:
+        result = deploy(args.batch, args.runtime, args.remote_root, args.host, args.activate)
+        if args.coordinator_release and args.activate:
+            result["coordinator"] = deploy_coordinator(args.coordinator_release, args.remote_root, args.host)
+        print(json.dumps(result))
 
 if __name__ == "__main__":
     main()

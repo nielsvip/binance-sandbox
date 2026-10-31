@@ -181,6 +181,34 @@ def test_history_retention_and_dynamic_switches():
             pss.CRYPTO_JSON, pss.STOCKS_JSON = old_cj, old_sj
 
 
+def test_upsert_compare_and_swap_refuses_stale_full_config():
+    import hashlib
+    with tempfile.TemporaryDirectory() as td:
+        old_db = pss.DB_PATH
+        old_cj, old_sj = pss.CRYPTO_JSON, pss.STOCKS_JSON
+        pss.DB_PATH = Path(td) / "cas.db"
+        pss.CRYPTO_JSON = Path(td) / "crypto.json"
+        pss.STOCKS_JSON = Path(td) / "stocks.json"
+        try:
+            initial = {"A": 1, "B": "old"}
+            pss.upsert("CASUSDT_LONG", {}, initial, initial, {"winning_tag": "initial"})
+            expected = hashlib.sha256(json.dumps(initial, sort_keys=True, separators=(",", ":"), default=str).encode()).hexdigest()
+            replacement = {"A": 2, "B": "new"}
+            stale = hashlib.sha256(b"stale config").hexdigest()
+            try:
+                pss.upsert("CASUSDT_LONG", {}, replacement, replacement, {"winning_tag": "stale"}, expected_full_config_sha256=stale)
+            except RuntimeError as exc:
+                assert "compare-and-swap refused CASUSDT_LONG" in str(exc)
+            else:
+                raise AssertionError("stale full-config CAS unexpectedly wrote")
+            assert pss.get_full_config("CASUSDT_LONG") == initial
+            pss.upsert("CASUSDT_LONG", {}, replacement, replacement, {"winning_tag": "accepted"}, expected_full_config_sha256=expected)
+            assert pss.get_full_config("CASUSDT_LONG") == replacement
+        finally:
+            pss.DB_PATH = old_db
+            pss.CRYPTO_JSON, pss.STOCKS_JSON = old_cj, old_sj
+
+
 def test_kv_survives_json_vanish():
     """Writers dual-write JSON→SQL; loaders SQL-primary so vanishing JSONs don't silently lose 172 promotions."""
     import tempfile

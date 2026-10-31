@@ -141,9 +141,10 @@ def discover_specs(specs_dir):
     else:
         manifest_error = "manifest.json is missing"
 
+    listed_set = set(listed)
     found = {p.relative_to(specs_dir) for p in specs_dir.rglob("*.json") if p != manifest_path and p.is_file()}
     result = []
-    for relpath in sorted(set(listed) | found, key=lambda item: item.as_posix()):
+    for relpath in sorted(listed_set | found, key=lambda item: item.as_posix()):
         path = specs_dir / relpath
         spec_id = _digest(relpath.as_posix().encode())
         if manifest_error:
@@ -162,7 +163,7 @@ def discover_specs(specs_dir):
             spec = json.loads(raw)
             if not isinstance(spec, dict):
                 raise ValueError("spec must be a JSON object")
-            if relpath not in listed:
+            if relpath not in listed_set:
                 raise ValueError("spec is not listed in manifest.json")
             _validate_spec(spec)
             if relpath in expected and any(spec.get(key) != value for key, value in expected[relpath].items()):
@@ -171,7 +172,7 @@ def discover_specs(specs_dir):
             result.append({"spec_id": _identity_id(spec), "spec_path": str(path), "status": "PENDING_PARAMETERS" if pending_reason else "REGISTERED", "error": pending_reason, "spec": spec, "spec_sha256": _digest(raw)})
         except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
             expected_spec = expected.get(relpath)
-            result.append({"spec_id": _identity_id(expected_spec) if expected_spec else spec_id, "spec_path": str(path), "status": "UNMANIFESTED_SPEC" if relpath not in listed else "INVALID_SPEC", "error": str(exc), "spec": expected_spec, "spec_sha256": None})
+            result.append({"spec_id": _identity_id(expected_spec) if expected_spec else spec_id, "spec_path": str(path), "status": "UNMANIFESTED_SPEC" if relpath not in listed_set else "INVALID_SPEC", "error": str(exc), "spec": expected_spec, "spec_sha256": None})
     return result
 
 

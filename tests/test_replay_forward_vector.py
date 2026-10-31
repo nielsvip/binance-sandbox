@@ -87,6 +87,17 @@ def test_replay_calls_state_for_on_strictly_causal_prefixes(tmp_path, monkeypatc
             "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "npz_tail": prefix_ts,
             "ok": True,
+            "open": True,
+            "engine_qty": float(prefix_ts),
+            "engine_open_qty": float(prefix_ts),
+            "engine_open_px": float(prefix_close[-1]),
+            "engine_open_bar_ts": prefix_ts,
+            "entry_bar": prefix_ts,
+            "entry_px": float(prefix_close[-1]),
+            "acts_bar_ts": prefix_ts,
+            "acts_last_bar": [{"type": "OPEN", "ts": prefix_ts}],
+            "src": "test",
+            "settings_fallback": False,
             "ledger": [{"type": "OPEN", "ts": prefix_ts, "qty": 1.0}],
         }
 
@@ -104,6 +115,10 @@ def test_replay_calls_state_for_on_strictly_causal_prefixes(tmp_path, monkeypatc
     assert next(row for row in rows if row["record"] == "initial_lifecycle")["cutoff_npz_open_ts"] == 900
     action_rows = [row for row in rows if row["record"] == "action"]
     assert [row["npz_open_ts"] for row in action_rows] == [1800, 2700]
+    state_rows = [row for row in rows if row["record"] == "state"]
+    assert [row["market_price"] for row in state_rows] == [101.0, 102.0]
+    assert state_rows[0]["planner_state"]["engine_qty"] == 1800.0
+    assert state_rows[0]["planner_state"]["acts_last_bar"] == [{"type": "OPEN", "ts": 1800}]
 
 
 def test_actual_vector_planner_emits_convergence_open_and_honors_done_key(tmp_path):

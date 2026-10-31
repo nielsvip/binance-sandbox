@@ -23089,6 +23089,21 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             if _reaug_qty > 0 and _ang_timing_failed is not None and bool(_ang_timing_failed[i]):
                 _reaug_qty = 0.0
             if _reaug_qty > 0:
+                import vec_decisions.ppl_reaugment_gate as _ppl_gate
+                _ppl_raw_gain = float(live_pnl_pct)
+                _ppl_effective_gain = _ppl_gate.effective_gain(
+                    cfg, _ppl_raw_gain, bool(pos.get("_ppl_armed", 0))
+                )
+                _ppl_gate_ok, _ppl_gate_reason = _ppl_gate.allows_reaugment(
+                    cfg,
+                    _ppl_raw_gain,
+                    _ppl_effective_gain,
+                    float(pos.get("max_gain", 0.0)),
+                    float(pos.get("qty", 0.0)),
+                )
+                if not _ppl_gate_ok:
+                    _reaug_qty = 0.0
+            if _reaug_qty > 0:
                 _reaug_new = pos["qty"] + _reaug_qty
                 pos["avg_price"] = (
                     pos["avg_price"] * pos["qty"] + px * _reaug_qty
