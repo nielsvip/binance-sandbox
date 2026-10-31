@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-31T07:30:07.676598+00:00",
+  "ts": "2026-10-31T07:35:08.159016+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 7,
-  "pending_sym_sides": 60,
+  "pending_sym_sides": 59,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -12,40 +12,41 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 6304,
-      "disk_free_gb": 6,
-      "load1": 22.1,
-      "dispatch_idle_why": "mem 6427MB < 8500",
+      "mem_avail_mb": 5070,
+      "disk_free_gb": 8,
+      "load1": 18.8,
+      "dispatch_idle_why": "mem 4834MB < 8500",
       "published_ss": []
     },
     "s2": {
       "published_last_60m": 0,
       "published_last_3h": 0,
       "boards": {
+        "1000PEPEUSDC_LONG": 1,
         "PARTIUSDT_LONG": 7
       },
-      "boards_running": 1,
-      "workers": 7,
-      "workers_vs_law_28": "7/28",
-      "mem_avail_mb": 14571,
-      "disk_free_gb": 22,
-      "load1": 4.8,
+      "boards_running": 2,
+      "workers": 8,
+      "workers_vs_law_28": "8/28",
+      "mem_avail_mb": 14117,
+      "disk_free_gb": 20,
+      "load1": 5.8,
       "dispatch_idle_why": "HOLD until 2026-10-31T09:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": []
     },
     "s5": {
       "published_last_60m": 3,
-      "published_last_3h": 4,
+      "published_last_3h": 3,
       "boards": {
         "ENJUSDT_SHORT": 6
       },
       "boards_running": 1,
       "workers": 6,
       "workers_vs_law_28": "6/28",
-      "mem_avail_mb": 25988,
+      "mem_avail_mb": 26201,
       "disk_free_gb": 16,
-      "load1": 2.3,
-      "dispatch_idle_why": "quarantine: 3 boards died unfinished <2h ['AXON_SHORT', 'MU_SHORT', 'PBF_SHORT']",
+      "load1": 1.9,
+      "dispatch_idle_why": "HOLD until 2026-10-31T09:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": [
         "HMSTRUSDT_SHORT",
         "MNTS_SHORT",
@@ -61,9 +62,9 @@
       "boards_running": 1,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 24058,
+      "mem_avail_mb": 23508,
       "disk_free_gb": 12,
-      "load1": 3.0,
+      "load1": 2.2,
       "dispatch_idle_why": "HOLD until 2026-10-31T09:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)",
       "published_ss": [
         "CHILLGUYUSDT_SHORT",
@@ -74,17 +75,17 @@
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=mem 6427MB < 8500)",
-    "DISK_FLOOR:s1:6GB<40",
+    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=mem 4834MB < 8500)",
+    "DISK_FLOOR:s1:8GB<40",
     "LOW_THROUGHPUT:s2:0/h<12 (idle_why=HOLD until 2026-10-31T09:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))",
-    "DISK_FLOOR:s2:22GB<40",
-    "STUCK_BOARD:s2:PARTIUSDT_LONG:138min",
-    "LOW_THROUGHPUT:s5:3/h<12 (idle_why=quarantine: 3 boards died unfinished <2h ['AXON_SHORT', 'MU_SHORT', 'PBF_SHORT'])",
+    "DISK_FLOOR:s2:20GB<40",
+    "STUCK_BOARD:s2:PARTIUSDT_LONG:143min",
+    "LOW_THROUGHPUT:s5:3/h<12 (idle_why=HOLD until 2026-10-31T09:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))",
     "DISK_FLOOR:s5:16GB<40",
-    "STUCK_BOARD:s5:ENJUSDT_SHORT:311min",
+    "STUCK_BOARD:s5:ENJUSDT_SHORT:316min",
     "LOW_THROUGHPUT:s6:4/h<12 (idle_why=HOLD until 2026-10-31T09:16Z: FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides))",
     "DISK_FLOOR:s6:12GB<40",
-    "STUCK_BOARD:s6:KAVAUSDT_LONG:187min"
+    "STUCK_BOARD:s6:KAVAUSDT_LONG:192min"
   ],
-  "repair": "DISK_REPAIR:s1:6GB->7G (eval_cache_v1.db + rebuild_scratch_* deleted); DISK_REPAIR:s6:12GB->23G (eval_cache_v1.db + rebuild_scratch_* deleted)"
+  "repair": "DISK_REPAIR:s1:8GB->9G (eval_cache_v1.db + rebuild_scratch_* deleted); DISK_REPAIR:s6:12GB->21G (eval_cache_v1.db + rebuild_scratch_* deleted)"
 }

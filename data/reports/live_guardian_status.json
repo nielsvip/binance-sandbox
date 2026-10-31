@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T07:32:49Z",
+ "ts": "2026-10-31T07:38:01Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,8 +29,8 @@
   "fin": {
    "fills_6h": 2,
    "open_positions": 1,
-   "unrealised_usd": -0.03,
-   "pos_mismatch": 0,
+   "unrealised_usd": -0.08,
+   "pos_mismatch": 1,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -43,10 +43,10 @@
    }
   },
   "men": {
-   "fills_6h": 51,
-   "open_positions": 8,
-   "unrealised_usd": -0.67,
-   "pos_mismatch": 0,
+   "fills_6h": 52,
+   "open_positions": 7,
+   "unrealised_usd": -0.63,
+   "pos_mismatch": 1,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -59,10 +59,10 @@
    }
   },
   "ang": {
-   "fills_6h": 89,
-   "open_positions": 7,
-   "unrealised_usd": -0.62,
-   "pos_mismatch": 0,
+   "fills_6h": 90,
+   "open_positions": 6,
+   "unrealised_usd": -0.71,
+   "pos_mismatch": 2,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 16,
-   "open_positions": 4,
-   "unrealised_usd": -0.35,
+   "fills_6h": 17,
+   "open_positions": 3,
+   "unrealised_usd": -0.3,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,78 +127,107 @@
     "87988"
    ],
    "starts_30m": 1,
-   "log_age_s": 370.0
+   "log_age_s": 683.0
   },
   "men": {
    "pids": [
     "84264"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": -0.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 28.0
+   "log_age_s": 9.0
   },
   "inf": {
    "pids": [
     "68362"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 0.0
   },
   "flz": {
    "pids": [
     "88793"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 7.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 10231.0
+   "log_age_s": 10544.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 10547.0
+   "log_age_s": 10860.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T07:32:50Z",
+   "ts": "2026-10-31T07:38:01Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "fin:FLUXUSDT_LONG",
+   "evidence": "positions file amt 249 vs fill-ledger amt 435"
+  },
+  {
+   "ts": "2026-10-31T07:38:01Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:1000XECUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 2361"
+  },
+  {
+   "ts": "2026-10-31T07:38:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:RSRUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 10893"
+  },
+  {
+   "ts": "2026-10-31T07:38:02Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:SKYUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 224"
+  },
+  {
+   "ts": "2026-10-31T07:38:03Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:HYPEUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T06:26:14Z bar=2026-10-31T04:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T07:32:50Z",
+   "ts": "2026-10-31T07:38:04Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "flz:DOGEUSDC_SHORT",
    "evidence": "31 07:29:09 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:DOGEUSDC_SHORT: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $509 on bounce (prior max 1554.0000)"
   },
   {
-   "ts": "2026-10-31T07:32:50Z",
+   "ts": "2026-10-31T07:38:04Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "flz:DOGEUSDC_SHORT",
    "evidence": "order notional $509.06 > MAX_ORDER_VALUE $300: 31 07:29:09 - INFO - [flz] [execute_trade_action][flz] \u2705 \u2705 \u2705 \u2705 OPEN flz:DOGEUSDC_SHORT @ 0.075240 qty=6765.841807 ($509.06) side=SELL | QUICK_OPEN_STRONG_SELL_k1:8/d119/k3:27.51/d3:27.96_@0.0752_TIER1"
   },
   {
-   "ts": "2026-10-31T07:32:50Z",
+   "ts": "2026-10-31T07:38:04Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 370s"
+   "evidence": "ez_manage_fin.log not written for 683s"
   }
  ],
  "alert_counts": {
+  "POSITION_STATE_MISMATCH": 4,
   "VEC_DECISION_NOT_FILLED": 1,
   "CAP_BYPASS": 1,
   "SIZE_ANOMALY": 1,
@@ -262,5 +291,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.32
+ "sweep_s": 3.11
 }

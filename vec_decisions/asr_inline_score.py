@@ -387,10 +387,10 @@ def stoch_kx_score_array(values, state, is_long, is_exit=False, score=None):
     if not is_exit:
         if is_long:
             pb_d = (red_price > 0) & (dc["low_D"] > 0) & (dc["width_D"] > 4.0) & (price > dc["low_D"]) & (price < dc["basis_D"])
-            pb_4h = ~pb_d & (red_price > 0) & (dc["width_4h"] > 3.0) & (dc["low_4h"] > 0) & (price > dc["low_4h"]) & (price < dc["basis_4h"])
+            pb_4h = ~pb_d & (red_price > 0) & (dc["low_D"] > 0) & (dc["width_4h"] > 3.0) & (dc["low_4h"] > 0) & (price > dc["low_4h"]) & (price < dc["basis_4h"])
         else:
             pb_d = (red_price > 0) & (dc["width_D"] > 4.0) & (price < dc["high_D"]) & (price > dc["basis_D"])
-            pb_4h = ~pb_d & (red_price > 0) & (dc["width_4h"] > 3.0) & (dc["high_4h"] > 0) & (price < dc["high_4h"]) & (price > dc["basis_4h"])
+            pb_4h = ~pb_d & (red_price > 0) & (dc["low_D"] > 0) & (dc["width_4h"] > 3.0) & (dc["high_4h"] > 0) & (price < dc["high_4h"]) & (price > dc["basis_4h"])
         delta += pb_d * 20.0 + pb_4h * 15.0
         masks["DC_REENTRY_PB_D"] = pb_d
         masks["DC_REENTRY_PB_4H"] = pb_4h
@@ -443,3 +443,83 @@ def stoch_kx_score_array(values, state, is_long, is_exit=False, score=None):
     masks["K15_CROSS_AGAINST"] = fire
     result += delta
     return result, masks
+
+
+def all_tf_wt_entry_array(values, is_long, score=None):
+    """Port native all-timeframe WaveTrend entry votes, vetoes, and penalties."""
+    n = _size(values, "close")
+    result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).reshape(-1).copy()
+    if result.size != n:
+        raise ValueError("score and WT entry inputs have different lengths")
+    tfs = ("3m", "15m", "1h", "4h", "D")
+    struct = {}
+    for tf in tfs:
+        pk = _float_column(values, f"wt_peak_{tf}", n, 0.0)
+        pkp = _float_column(values, f"wt_peak_prev_{tf}", n, 0.0)
+        tr = _float_column(values, f"wt_trough_{tf}", n, 0.0)
+        trp = _float_column(values, f"wt_trough_prev_{tf}", n, 0.0)
+        cv = _float_column(values, f"wt_cross_value_{tf}", n, 0.0)
+        cvp = _float_column(values, f"wt_cross_prev_value_{tf}", n, 0.0)
+        struct[tf] = {
+            "ht": (tr > trp) & (tr != 0) & (trp != 0),
+            "lp": (pk < pkp) & (pk != 0) & (pkp != 0),
+            "cv_rising": (cv > cvp) & (cv != 0) & (cvp != 0),
+            "cv_falling": (cv <= cvp) & (cv != 0) & (cvp != 0),
+            "score": _float_column(values, f"wt_score_{tf}", n, 0.0),
+            "vel": _float_column(values, f"wt_velocity_{tf}", n, 0.0),
+            "div": _text_column(values, f"wt_divergence_{tf}", n, None),
+            "sig": _text_column(values, f"wt_signal_{tf}", n, "NEUTRAL"),
+        }
+    if is_long:
+        struct_votes = sum((struct[tf]["ht"] for tf in tfs), np.zeros(n, dtype=int))
+        dir_votes = sum((struct[tf]["score"] > 0 for tf in tfs), np.zeros(n, dtype=int))
+        cv_votes = sum((struct[tf]["cv_rising"] for tf in tfs), np.zeros(n, dtype=int))
+        vel_ok = (struct["15m"]["vel"] > 0) | (struct["1h"]["vel"] > 0)
+        div_bad = np.zeros(n, dtype=bool)
+        for tf in ("15m", "1h", "4h"):
+            div_bad |= struct[tf]["div"] == "bearish"
+        sig_bad = np.zeros(n, dtype=bool)
+        for tf in ("1h", "4h", "D"):
+            sig_bad |= struct[tf]["sig"] == "SELL"
+        anti = sum((struct[tf]["lp"] for tf in tfs), np.zeros(n, dtype=int))
+    else:
+        struct_votes = sum((struct[tf]["lp"] for tf in tfs), np.zeros(n, dtype=int))
+        dir_votes = sum((struct[tf]["score"] < 0 for tf in tfs), np.zeros(n, dtype=int))
+        cv_votes = sum((struct[tf]["cv_falling"] for tf in tfs), np.zeros(n, dtype=int))
+        vel_ok = (struct["15m"]["vel"] < 0) | (struct["1h"]["vel"] < 0)
+        div_bad = np.zeros(n, dtype=bool)
+        for tf in ("15m", "1h", "4h"):
+            div_bad |= struct[tf]["div"] == "bullish"
+        sig_bad = np.zeros(n, dtype=bool)
+        for tf in ("1h", "4h", "D"):
+            sig_bad |= struct[tf]["sig"] == "BUY"
+        anti = sum((struct[tf]["ht"] for tf in tfs), np.zeros(n, dtype=int))
+    ltf = ("3m", "15m", "1h")
+    htf = ("4h", "D")
+    if is_long:
+        dir_ltf = sum((struct[tf]["score"] > 0 for tf in ltf), np.zeros(n, dtype=int))
+        dir_htf = sum((struct[tf]["score"] > 0 for tf in htf), np.zeros(n, dtype=int))
+    else:
+        dir_ltf = sum((struct[tf]["score"] < 0 for tf in ltf), np.zeros(n, dtype=int))
+        dir_htf = sum((struct[tf]["score"] < 0 for tf in htf), np.zeros(n, dtype=int))
+    veto_ltf = dir_ltf < 2
+    veto_struct = ~veto_ltf & (struct_votes < 2)
+    veto_div = ~veto_ltf & ~veto_struct & div_bad
+    veto_vel = ~veto_ltf & ~veto_struct & ~veto_div & ~vel_ok
+    penalty = np.where(dir_htf == 0, 10, np.where(dir_htf == 1, 4, 0))
+    penalty = penalty + (anti >= 3) * 5 + sig_bad * 3
+    passed = ~(veto_ltf | veto_struct | veto_div | veto_vel)
+    result += passed * (struct_votes * 2 + cv_votes - penalty)
+    return result, {
+        "WT_DIR_LTF": veto_ltf,
+        "WT_STRUCT": veto_struct,
+        "WT_DIV": veto_div,
+        "WT_VEL": veto_vel,
+        "WT_PASSED": passed,
+        "WT_STRUCT_VOTES": struct_votes,
+        "WT_DIR_LTF_VOTES": dir_ltf,
+        "WT_DIR_HTF_VOTES": dir_htf,
+        "WT_CV_VOTES": cv_votes,
+        "WT_ANTI_VOTES": anti,
+        "WT_SIG_BAD": sig_bad,
+    }

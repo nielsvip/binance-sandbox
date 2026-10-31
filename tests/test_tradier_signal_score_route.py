@@ -27,6 +27,8 @@ def test_paired_lower_tf_inputs_hydrate_absent_5m_aliases_from_15m():
         "k_15m_prev": 17.0,
         "dc_low_15m": 98.0,
         "dc_high_15m": 102.0,
+        "dc_low_15m_ant": 97.0,
+        "dc_high_15m_ant": 101.0,
         "relative_volume_15m": 1.4,
         "rel_vol_15m": 1.3,
         "k_1m": 25.0,
@@ -36,6 +38,8 @@ def test_paired_lower_tf_inputs_hydrate_absent_5m_aliases_from_15m():
         ("k_15m", "k_5m"), ("d_15m", "d_5m"),
         ("k_15m_prev", "k_5m_prev"), ("dc_low_15m", "dc_low_5m"),
         ("dc_high_15m", "dc_high_5m"),
+        ("dc_low_15m_ant", "dc_low_5m_ant"),
+        ("dc_high_15m_ant", "dc_high_5m_ant"),
         ("relative_volume_15m", "relative_volume_5m"),
         ("rel_vol_15m", "rel_vol_5m"),
     ):
@@ -742,6 +746,91 @@ def test_vector_entry_eod_block_reaches_native_entry_score_context():
         tm._TR_SCORE_TS_CTX.reset(token_ts)
         tm._TR_SCORE_CFG_CTX.reset(token_cfg)
     assert injected == (0.0, "WAIT", blocked[bar])
+
+
+def test_full_numpy_stock_score_matches_scalar_reference_matrix(monkeypatch):
+    import tradier_manage as tm
+
+    monkeypatch.setattr(tm, "is_regular_trading_hours", lambda: True)
+    source = _base_npz()
+    n = 96
+    npz = {key: np.asarray(value)[:n].copy() for key, value in source.items() if np.asarray(value).ndim == 1 and len(np.asarray(value)) >= n}
+    rng = np.random.default_rng(482)
+    for tf in ("1m", "5m", "15m", "1h", "4h", "D"):
+        npz[f"k_{tf}"] = rng.uniform(0.0, 100.0, n)
+        npz[f"d_{tf}"] = rng.uniform(0.0, 100.0, n)
+    for tf in ("1h", "4h", "15m"):
+        npz[f"mfi_{tf}"] = rng.uniform(5.0, 95.0, n)
+        npz[f"rsi_{tf}"] = rng.uniform(5.0, 95.0, n)
+        npz[f"wt1_{tf}"] = rng.uniform(-70.0, 70.0, n)
+        npz[f"wt2_{tf}"] = rng.uniform(-70.0, 70.0, n)
+    npz["timestamp_1m"] = np.asarray(npz["timestamps"], dtype=float) - rng.uniform(0.0, 90.0, n)
+    for tf in ("5m", "15m", "1h", "4h", "D"):
+        npz[f"dc_position_{tf}"] = rng.uniform(0.0, 1.0, n)
+        npz[f"dc_width_{tf}"] = rng.uniform(2.0, 12.0, n)
+        npz[f"wt_velocity_{tf}"] = rng.uniform(-8.0, 8.0, n)
+        npz[f"wt_cross_{tf}"] = rng.choice(["BULL", "BEAR", ""], n)
+        npz[f"wt_cross_value_{tf}"] = rng.uniform(-60.0, 60.0, n)
+        npz[f"wt_cross_prev_value_{tf}"] = rng.uniform(-60.0, 60.0, n)
+        npz[f"wt_cross_rising_{tf}"] = rng.choice([True, False], n)
+        npz[f"wt_cross_bars_ago_{tf}"] = rng.integers(0, 20, n)
+        npz[f"wt_divergence_{tf}"] = rng.choice(["BULL", "HIDDEN_BULL", "BEAR", "HIDDEN_BEAR", ""], n)
+        npz[f"wt_momentum_state_{tf}"] = rng.choice(["EXHAUST_UP", "EXHAUST_DOWN", ""], n)
+    npz["wt_composite_long"] = rng.uniform(-30.0, 60.0, n)
+    npz["wt_composite_short"] = rng.uniform(-30.0, 60.0, n)
+    npz["wt_bull_alignment"] = rng.integers(0, 6, n)
+    npz["wt_bear_alignment"] = rng.integers(0, 6, n)
+    npz["wt_oversold_tf_count"] = rng.integers(0, 5, n)
+    npz["wt_overbought_tf_count"] = rng.integers(0, 5, n)
+    for tf in ("5m", "15m", "1h", "4h"):
+        npz[f"wt_divergence_{tf}"] = rng.choice(["BULL", "HIDDEN_BULL", "BEAR", "HIDDEN_BEAR", "NONE"], n)
+    npz["adx_4h"] = rng.uniform(5.0, 40.0, n)
+    npz["atr_1h"] = rng.uniform(0.2, 2.5, n)
+    npz["atr_4h"] = rng.uniform(0.2, 2.5, n)
+    npz["dc_width_1h"] = rng.uniform(1.0, 8.0, n)
+    npz["dc_width_4h"] = rng.uniform(1.5, 12.0, n)
+    npz["dc_high_4h"] = np.full(n, 104.0)
+    npz["dc_low_4h"] = np.full(n, 96.0)
+    npz["bb_upper_4h"] = np.full(n, 106.0)
+    npz["bb_lower_4h"] = np.full(n, 94.0)
+    npz["choppiness_4h"] = rng.uniform(20.0, 70.0, n)
+    npz["bar_direction_1h"] = rng.choice([-1.0, 0.0, 1.0], n)
+    npz["bar_strength_1h"] = rng.uniform(0.0, 1.0, n)
+    npz["bar_vol_confirm_1h"] = rng.choice([False, True], n)
+    npz["bar_pattern_1h"] = rng.choice(["none", "BullishPattern", "BearishPattern"], n)
+    npz["bar_swing_bull_1h"] = rng.choice([False, True], n)
+    npz["bar_swing_bear_1h"] = rng.choice([False, True], n)
+    npz["bar_streak_1h"] = rng.integers(-4, 5, n)
+    npz["bar_compression_1h"] = rng.choice([False, True], n)
+    npz["bar_vol_spike_1h"] = rng.choice([False, True], n)
+    npz["relative_volume_15m"] = rng.uniform(0.2, 2.5, n)
+    npz["relative_volume_5m"] = rng.uniform(0.2, 2.5, n)
+    npz["bb_pct_b_15m"] = rng.uniform(0.0, 1.0, n)
+    npz["bb_upper_15m"] = np.full(n, 102.0)
+    npz["bb_lower_15m"] = np.full(n, 98.0)
+    for ltf, mq, wt, eod, bb_tf in ((False, False, True, False, "OFF"), (True, True, False, True, "15m"), (False, True, True, True, "OFF")):
+        for is_long in (True, False):
+            cfg = _cfg()
+            cfg.MODE = "tradier"
+            cfg.LTF_SUB15M_TRADING_ENABLED = ltf
+            cfg.MARKET_QUALITY_SCORE_ENABLED_TRADIER = mq
+            cfg.WT_COMPOSITE_SCORING_ENABLED_TRADIER = wt
+            cfg.WT_COMPOSITE_SCORING_ENABLED = False
+            cfg.BACKTEST_VALIDATED_GATES_TRADIER = True
+            cfg.MTS_GATE_ENABLED_TRADIER = True
+            cfg.MTS_BOTTOM_MIN_TRADIER = 10.0
+            cfg.MTS_ENTRY_QUALITY_MIN_TRADIER = 5.0
+            cfg.ENTRY_SCORE_THRESHOLD = 8.0
+            cfg.ENTRY_DC_TF = "OFF"
+            cfg.BB_BREAKOUT_ENTRY_TF = bb_tf
+            cfg.HTF_SIGNAL_CONSUME_ENABLED = False
+            cfg.EOD_RATIO_ENFORCE_TRADIER = eod
+            cfg.BEAR_MARKET_MODE_TRADIER = True
+            vector = entry_score_arrays(npz, n, "SYNTH", is_long, cfg)
+            scalar = entry_score_arrays(npz, n, "SYNTH", is_long, cfg, scalar_reference=True)
+            assert np.array_equal(vector[0], scalar[0]), (ltf, mq, wt, eod, bb_tf, is_long, np.flatnonzero(vector[0] != scalar[0])[:5])
+            assert np.array_equal(vector[1], scalar[1]), (ltf, mq, wt, eod, bb_tf, is_long, np.flatnonzero(vector[1] != scalar[1])[:5])
+            assert vector[2] == scalar[2], (ltf, mq, wt, eod, bb_tf, is_long)
 
 def test_native_score_fallback_changes_simulate_one_open_bar_with_market_quality(monkeypatch):
     monkeypatch.setenv("V8_RATE_GUARD_DISABLED", "1")

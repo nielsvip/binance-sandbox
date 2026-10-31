@@ -19,3 +19,13 @@ def test_history_window_keeps_only_same_bar(tmp_path):
     p.write_text('\n'.join(json.dumps({'ts':ts,'type':'OPEN'}) for ts in (bar-1,bar,bar+899,bar+900))+'\n')
     rows=native_trades_on_bar(p,bar,900)
     assert [r['ts'] for r in rows]==[bar,bar+899]
+
+def test_same_bar_action_sequence_is_compared_in_order():
+    from live_twins.vec_driven import shadow_expected_sequence
+    intent={'account':'ang','ss':'TEST_LONG','bar_ts':1700000100,'type':'REDUCE'}
+    rows=[intent,dict(intent,type='CLOSE'),dict(intent,account='inf',type='OPEN'),dict(intent,bar_ts=1700001000,type='OPEN'),dict(intent,type='REDUCE')]
+    expected=shadow_expected_sequence('ang',intent,rows)
+    assert expected==['REDUCE','CLOSE']
+    correct=[{'type':'REDUCE','qty':1.},{'type':'CLOSE','qty':999.}]
+    assert shadow_record('ang',intent,correct,1.,'REDUCE','',expected)['native_matches'] is True
+    assert shadow_record('ang',intent,correct[::-1],1.,'REDUCE','',expected)['native_matches'] is False

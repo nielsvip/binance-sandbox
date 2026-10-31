@@ -1,8 +1,8 @@
-"""Ordered NumPy port of the AdvancedSignalRater entry score prefix.
+"""Ordered NumPy port of selected AdvancedSignalRater entry gates and scores.
 
-This covers the source-ordered span from the HTF gate through channel/K/DC
-cross scoring. Earlier lifecycle checks and later inline score families are
-outside this function, so callers must not treat it as a complete rate().
+This currently covers portions of the HTF-to-WT path. Earlier lifecycle,
+mandatory-reentry, later score families, and execution thresholds remain open,
+so callers must not treat it as a complete rate().
 """
 
 from __future__ import annotations
@@ -13,8 +13,9 @@ import numpy as np
 
 from vec_decisions.asr_mts_entry_gate import mts_entry_gate_array
 from vec_decisions.asr_inline_score import (
-    bc155_score_array, hlr_rally_score_array, k_zone_score_array, momentum_fade_score_array, mover_score_array,
-    satoshit_score_array, stochastic_alignment_score_array,
+    all_tf_wt_entry_array, bc155_score_array, data_blind_gate_array, hlr_rally_score_array, k_zone_score_array,
+    momentum_fade_score_array, mover_score_array, satoshit_score_array, stoch_kx_score_array,
+    stochastic_alignment_score_array,
 )
 from vec_decisions.asr_mts_mi_score import mts_mi_score_array
 from vec_decisions.asr_portfolio_ratio_score import portfolio_ratio_array
@@ -209,6 +210,23 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
         rsi1h = _col(arrays, "rsi_1h", n, 50.0)
         veto("SHORT_RSI_MIN", (rsi_min > 0) & (rsi1h < rsi_min))
 
+    chase_enabled = bool(context.get("long_stoch_chase_block", _cfg(cfg, "LONG_STOCH_CHASE_BLOCK", False)))
+    ha1h = np.asarray(arrays.get("ha_1h", np.full(n, "neutral", dtype=object)), dtype=object).reshape(-1)
+    if ha1h.size != n:
+        raise ValueError("ha_1h length does not match n")
+    streak_fallback = np.where(ha1h == "green", 1.0, 0.0)
+    streak = _col(arrays, "ha_streak_1h", n, 0.0)
+    if "ha_streak_1h" not in arrays:
+        streak = streak_fallback
+    k1h = _col(arrays, "k_1h", n, 50.0)
+    veto("LONG_CHASE_BLOCK", is_long & chase_enabled & (k1h > 70.0) & (streak > 2.0))
+
+    atr_min = float(context.get("entry_atr_pct_min", _cfg(cfg, "ENTRY_ATR_PCT_MIN", 0.0)))
+    atr1h = _col(arrays, "atr_1h", n, 0.0)
+    atr_pct = np.zeros(n, dtype=float)
+    np.divide(atr1h * 100.0, current_price, out=atr_pct, where=current_price > 0)
+    veto("ATR_TOO_LOW", (atr_min > 0.0) & (atr1h > 0.0) & (current_price > 0.0) & (atr_pct < atr_min))
+
     proposed, channel_masks = apply_channel_k_cross_score_vec(
         score_arrays, n, is_long, result, bool(_cfg(cfg, "USE_1M_3M_SIGNALS_ENABLED", False))
     )
@@ -267,6 +285,28 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
     masks["candle_alignment:c3_bonus"] = ~blocked & (c3 & ~aligned_both)
     unreliable = (k3 == 50.0) & (d3 == 50.0) & (k15 == 50.0) & (d15 == 50.0) & (_col(arrays, "k_1h", n, 50.0) == 50.0) & (_col(arrays, "d_1h", n, 50.0) == 50.0)
     veto("UNRELIABLE_INDICATORS", unreliable)
+
+    # Native 5485 DATA_BLIND veto, then KX score, then all-timeframe WT gate.
+    blind, blind_masks = data_blind_gate_array(arrays, context)
+    veto("DATA_BLIND_5050", blind)
+    masks.update({f"data_blind:{key}": value for key, value in blind_masks.items()})
+
+    state_keys = ("last_reduction_price", "minutes_since_reduction", "gain", "true_lag")
+    missing_state = [key for key in state_keys if key not in context]
+    if missing_state:
+        raise ValueError(f"KX score requires explicit context state: {','.join(missing_state)}")
+    kx_state = {key: _required_col(context, key, n) for key in state_keys}
+    kx_state["current_price"] = current_price
+    proposed, kx_masks = stoch_kx_score_array(score_arrays, kx_state, is_long, score=result)
+    add("stoch_kx", proposed, kx_masks)
+
+    wt_active = ~blocked
+    proposed, wt_masks = all_tf_wt_entry_array(arrays, is_long, score=result)
+    wt_block = wt_masks["WT_DIR_LTF"] | wt_masks["WT_STRUCT"] | wt_masks["WT_DIV"] | wt_masks["WT_VEL"]
+    veto("WT_ALL_TF", wt_block)
+    result = np.where(wt_active & ~wt_block, proposed, result)
+    for key, value in wt_masks.items():
+        masks[f"all_tf_wt:{key}"] = wt_active & value
     return {
         "score": result,
         "entry_allowed": ~blocked,
@@ -274,11 +314,11 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
         "hlr_bypass": hlr_bypass,
         "masks": masks,
         "complete_rate": False,
-        "covered_native_spans": ("ez_positions_quick.py:4696-4924 selected gate/score blocks", "ez_positions_quick.py:4955-5071 channel/K/DC-cross and directional scores", "ez_positions_quick.py:5072-5434 BC155 through HLR/candle-alignment and unreliable-indicator gates"),
+        "covered_native_spans": ("ez_positions_quick.py:4696-4954 selected gate/score blocks including chase/ATR vetoes", "ez_positions_quick.py:4955-5071 channel/K/DC-cross and directional scores", "ez_positions_quick.py:5072-5434 BC155 through HLR/candle-alignment and unreliable-indicator gates",
+            "ez_positions_quick.py:5485-5672 data-blind veto, KX score, and all-TF WT veto/penalties"),
         "remaining": (
-            "pre_score_lifecycle_gates", "regime_input_producer", "entry_chase_and_atr_gates:ez_positions_quick.py:4925-4954",
-            "tracker_position_and_market_state:ez_positions_quick.py:5435-5502", "candle_and_all_tf_wt_gates:ez_positions_quick.py:5503-5674",
-            "tracker_state_mandatory_reentry:ez_positions_quick.py:5675-6052", "RSI_MFI_DC_BOTA_scores:ez_positions_quick.py:6053-6264",
+            "pre_score_lifecycle_gates", "regime_input_producer",
+            "tracker_position_and_market_state:ez_positions_quick.py:5435-5484", "tracker_state_mandatory_reentry:ez_positions_quick.py:5675-6052", "RSI_MFI_DC_BOTA_scores:ez_positions_quick.py:6053-6264",
             "scalp_and_lifecycle_paths:ez_positions_quick.py:6265-7158",
             "action_threshold_and_execution",
         ),

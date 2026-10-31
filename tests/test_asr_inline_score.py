@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import numpy as np
 
 from utils import safe_fetch_float
-from vec_decisions.asr_inline_score import bc155_score_array, hlr_rally_score_array, k_zone_score_array, momentum_fade_score_array, satoshit_score_array
+from vec_decisions.asr_inline_score import all_tf_wt_entry_array, bc155_score_array, hlr_rally_score_array, k_zone_score_array, momentum_fade_score_array, satoshit_score_array, stoch_kx_score_array
 
 
 ORACLE_SHA256 = "d45e0765b6bddc221cd2bbad5c14f6895729dab925340c7857d3a02adfabad3b"
@@ -205,3 +205,88 @@ def test_hlr_rally_matches_extracted_native_ast_score_size_and_bypass():
             assert bypass[i] == env["_hlr_bypass"]
         for tf in ("3m", "15m", "1h", "4h", "D", "W"):
             assert tf_masks[tf].shape == (n,)
+
+
+def test_all_tf_wt_entry_matches_frozen_native_ast_both_sides():
+    reference, rate = _native_rate()
+    node = next(item for item in rate.body if isinstance(item, ast.If) and item.lineno == 5556)
+    rng = np.random.default_rng(4315548)
+    n = 400
+    values = {"close": np.full(n, 100.0)}
+    for tf in ("3m", "15m", "1h", "4h", "D"):
+        values[f"wt_peak_{tf}"] = rng.choice([-2.0, 0.0, 1.0, 3.0], n)
+        values[f"wt_peak_prev_{tf}"] = rng.choice([-2.0, 0.0, 1.0, 3.0], n)
+        values[f"wt_trough_{tf}"] = rng.choice([-2.0, 0.0, 1.0, 3.0], n)
+        values[f"wt_trough_prev_{tf}"] = rng.choice([-2.0, 0.0, 1.0, 3.0], n)
+        values[f"wt_cross_value_{tf}"] = rng.choice([-2.0, 0.0, 1.0, 3.0], n)
+        values[f"wt_cross_prev_value_{tf}"] = rng.choice([-2.0, 0.0, 1.0, 3.0], n)
+        values[f"wt_score_{tf}"] = rng.choice([-5.0, 0.0, 5.0], n)
+        values[f"wt_velocity_{tf}"] = rng.choice([-2.0, 0.0, 2.0], n)
+        values[f"wt_divergence_{tf}"] = rng.choice([None, "bearish", "bullish", "BEARISH", "neutral"], n)
+        values[f"wt_signal_{tf}"] = rng.choice(["NEUTRAL", "BUY", "SELL"], n)
+    for is_long in (True, False):
+        actual, masks = all_tf_wt_entry_array(values, is_long)
+        class ReturnToAssignment(ast.NodeTransformer):
+            def visit_Return(self, item):
+                return ast.Assign(targets=[ast.Name(id="native_return", ctx=ast.Store())], value=item.value)
+        oracle_node = ast.fix_missing_locations(ReturnToAssignment().visit(ast.parse(ast.unparse(node)).body[0]))
+        code = compile(ast.Module(body=[oracle_node], type_ignores=[]), str(reference), "exec")
+        for i in range(n):
+            ind = {key: col[i] for key, col in values.items()}
+            env = {"is_exit": False, "is_long": is_long, "i": ind, "sf": lambda value: float(value or 0),
+                   "score": 0.0, "reasons": [], "logger": SimpleNamespace(error=lambda *a, **k: None)}
+            exec(code, env)
+            blocked = any(masks[key][i] for key in ("WT_DIR_LTF", "WT_STRUCT", "WT_DIV", "WT_VEL"))
+            if blocked:
+                assert env.get("native_return", (None,))[1] == "WAIT"
+            else:
+                assert env.get("score") == actual[i], (i, is_long, env.get("score"), actual[i])
+
+
+def test_stoch_kx_score_matches_shared_native_scalar_for_both_sides_and_modes():
+    from vec_paths.stoch_kx_scorer import score_stoch_kx
+    rng = np.random.default_rng(4315517)
+    n = 500
+    values = {"close": np.full(n, 100.0)}
+    for tf in ("1m", "3m", "15m"):
+        values[f"k_{tf}"] = rng.choice([10.0, 20.0, 30.0, 50.0, 70.0, 80.0, 90.0], n)
+        values[f"d_{tf}"] = rng.choice([10.0, 20.0, 30.0, 50.0, 70.0, 80.0, 90.0], n)
+        values[f"k_{tf}_prev"] = rng.choice([10.0, 20.0, 30.0, 50.0, 70.0, 80.0, 90.0], n)
+    for tf in ("D", "4h"):
+        values[f"dc_basis_{tf}"] = rng.choice([90.0, 100.0, 110.0], n)
+        values[f"dc_low_{tf}"] = rng.choice([0.0, 90.0, 95.0], n)
+        values[f"dc_high_{tf}"] = rng.choice([100.0, 110.0, 120.0], n)
+    for tf in ("3m", "15m"):
+        for name in ("crossover_price", "crossunder_price"):
+            values[f"{name}_{tf}"] = rng.choice([90.0, 100.0, 110.0], n)
+            values[f"{name}_previous_{tf}"] = rng.choice([90.0, 100.0, 110.0], n)
+    state = {"current_price": rng.choice([90.0, 100.0, 110.0], n),
+             "last_reduction_price": rng.choice([0.0, 95.0, 100.0, 105.0], n),
+             "minutes_since_reduction": rng.choice([0.0, 24.999, 25.0, 34.999, 35.0], n),
+             "gain": rng.choice([-1.0, 0.0, 0.099, 0.1, 2.0], n),
+             "true_lag": rng.choice([0.0, 9.999, 10.0, 15.0], n)}
+    for is_long in (True, False):
+        for is_exit in (True, False):
+            actual, _ = stoch_kx_score_array(values, state, is_long, is_exit=is_exit)
+            for i in range(n):
+                row = {key: col[i].item() if hasattr(col[i], "item") else col[i] for key, col in values.items()}
+                lag = state["true_lag"][i]
+                cross = {}
+                for tf in ("1m", "3m", "15m"):
+                    cross[f"k_{tf}co"] = row[f"k_{tf}"] > row[f"d_{tf}"] and row[f"k_{tf}_prev"] <= row[f"d_{tf}"] and row[f"k_{tf}"] < 30 and (tf != "1m" or lag < 10.0)
+                    cross[f"k_{tf}cu"] = row[f"k_{tf}"] < row[f"d_{tf}"] and row[f"k_{tf}_prev"] >= row[f"d_{tf}"] and row[f"k_{tf}"] > 70 and (tf != "1m" or lag < 10.0)
+                dc = {}
+                for tf in ("D", "4h"):
+                    low = row[f"dc_low_{tf}"]
+                    dc[f"dc_w{tf}"] = ((row[f"dc_high_{tf}"] - low) / low * 100.0) if low > 0 else 0.0
+                    dc[f"dc_basis_{tf}"] = row[f"dc_basis_{tf}"]
+                    dc[f"dc_low_{tf}"] = low
+                    dc[f"dc_high_{tf}"] = row[f"dc_high_{tf}"]
+                kx, _ = score_stoch_kx(is_long, is_exit, state["current_price"][i], state["last_reduction_price"][i],
+                    state["minutes_since_reduction"][i], state["gain"][i], lag,
+                    dc["dc_basis_D"], dc["dc_low_D"], dc["dc_high_D"], dc["dc_wD"],
+                    dc["dc_basis_4h"], dc["dc_low_4h"], dc["dc_high_4h"], dc["dc_w4h"],
+                    cross["k_1mco"], cross["k_1mcu"], cross["k_3mco"], cross["k_3mcu"], cross["k_15mco"], cross["k_15mcu"],
+                    row["crossover_price_3m"], row["crossover_price_previous_3m"], row["crossunder_price_3m"], row["crossunder_price_previous_3m"],
+                    row["crossover_price_15m"], row["crossover_price_previous_15m"], row["crossunder_price_15m"], row["crossunder_price_previous_15m"])
+                assert actual[i] == kx, (i, is_long, is_exit, actual[i], kx)

@@ -27179,7 +27179,7 @@ class MultiAccountTradeManager:
                             would, why = _vdm.translate(it["type"], amt, min_qty)
                             hist = Path(getattr(self.config, "BASE_PATH", ".")) / "data" / "history" / account_key / f"{ss}.jsonl"
                             native = _vdm.native_trades_on_bar(hist, bar, _vdm.BAR_SECONDS)
-                            rec = _vdm.shadow_record(account_key, it, native, amt, would, why)
+                            rec = _vdm.shadow_record(account_key, it, native, amt, would, why, expected_sequence=_vdm.shadow_expected_sequence(account_key, it, intents))
                             _vdm.append_jsonl(base / f"shadow_compare_{account_key}.jsonl", rec)
                             logger.info(f"🧭 [VEC_DRIVEN_SHADOW] {position_key} intent={it['intent_id']} {it['type']} bar={it.get('bar_ts')} would={would or why} native={rec['native_types']} match={rec['native_matches']}")
                             store.mark(it["intent_id"])

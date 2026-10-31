@@ -42,6 +42,8 @@ def paired_lower_tf_indicators(indicators, ltf_enabled):
         ("k_15m", "k_5m"), ("d_15m", "d_5m"),
         ("k_15m_prev", "k_5m_prev"), ("dc_high_15m", "dc_high_5m"),
         ("dc_low_15m", "dc_low_5m"),
+        ("dc_high_15m_ant", "dc_high_5m_ant"),
+        ("dc_low_15m_ant", "dc_low_5m_ant"),
         ("dc_high_crossover_15m", "dc_high_crossover_5m"),
         ("dc_low_crossunder_15m", "dc_low_crossunder_5m"),
         ("relative_volume_15m", "relative_volume_5m"),
@@ -966,9 +968,9 @@ def entry_score_arrays_numpy(npz, n, symbol, is_long, cfg, candidate_mask=None):
             continue
         reasons[index].extend(pre_reasons[index])
         reasons[index].extend(mts_reasons[index])
-        if dc_points[index] != 0.0: reasons[index].extend(dc_reasons[index])
-        if dcrt_points[index] != 0.0: reasons[index].extend(dcrt_reasons[index])
-        if kz_points[index] != 0.0: reasons[index].extend(kz_reasons[index])
+        if dc_points[index] != 0.0: reasons[index].append(dc_reasons[index]) if isinstance(dc_reasons[index], str) else reasons[index].extend(dc_reasons[index])
+        if dcrt_points[index] != 0.0: reasons[index].append(dcrt_reasons[index]) if isinstance(dcrt_reasons[index], str) else reasons[index].extend(dcrt_reasons[index])
+        if kz_points[index] != 0.0: reasons[index].append(kz_reasons[index]) if isinstance(kz_reasons[index], str) else reasons[index].extend(kz_reasons[index])
         if flow[index]: reasons[index].append(f"MFI_{mfi_values[index]:.0f}")
         reasons[index].extend(wt_reasons[index])
         reasons[index].extend(ga_reasons[index])
@@ -981,9 +983,13 @@ def entry_score_arrays_numpy(npz, n, symbol, is_long, cfg, candidate_mask=None):
         reasons[index].extend([item for item in tail_reasons[index] if item.startswith("EOD_")])
     active = candidates & np.asarray([item is None for item in pre_blocked], dtype=bool) & np.asarray([item is None for item in mts_blocked], dtype=bool) & np.asarray([item is None for item in wt_blocked], dtype=bool) & np.asarray([item is None for item in tail_blocked], dtype=bool)
     raw_score = np.trunc(score)
-    final_score = np.clip(raw_score, 0.0, 30.0).astype(float)
+    final_score = np.where(active, np.clip(raw_score, 0.0, 30.0), 0.0).astype(float)
     side = "LONG" if is_long else "SHORT"
-    threshold = float(tm._cfg("ENTRY_SCORE_THRESHOLD", 12.0, "v12", symbol, side) or 0.0)
+    cfg_token = tm._TR_SCORE_CFG_CTX.set(cfg)
+    try:
+        threshold = float(tm._cfg("ENTRY_SCORE_THRESHOLD", 12.0, "v12", symbol, side) or 0.0)
+    finally:
+        tm._TR_SCORE_CFG_CTX.reset(cfg_token)
     sniper = np.asarray([any("Sniper" in reason for reason in row) for row in reasons], dtype=bool)
     fires = active & ((final_score >= threshold) | ((final_score >= 6.0) & sniper))
     reason_out = [""] * n
