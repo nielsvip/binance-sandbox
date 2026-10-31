@@ -9,8 +9,8 @@ an entry on every recorded read. Nothing is approximated: a hit is the same comp
 Exactness rules:
 - key = engine NPZ fingerprint (_npz_memo_fp) + sym + side + seed + value of every attribute read (same type and ==, the
   engine's own _memo_same semantics; the hash index only admits plain immutable scalars, tuples/lists/dicts of them, MISSING);
-- writes the run makes on the caller's cfg are side-channel outputs (BB_RECOVERY_EXIT_INFO, WT_FINAL_EXIT_INFO,
-  GR_HTF_DIRECT_DOUBLE_BARS): written through during the run, never recorded as inputs, replayed (deep-copied) on a hit;
+- template resolution happens before proxying, matching ensure_template_layer's exact-QuickConfig check. Side-channel writes
+  target the resolved config object (which may be a copy), are never inputs, and are replayed (deep-copied) on a hit;
 - NPZ keys the run adds or replaces are replayed on a hit; results are deep-copied on store and on hit;
 - a copy of the cfg made inside the run (crypto lane copy) keeps its own writes local, its reads still record.
 

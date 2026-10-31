@@ -178,11 +178,19 @@ print(json.dumps(out))
 
 
 def cmd_closeout(a):
+    initial = {name: pointers(name) for name in HOSTS}
+    wrong_round = {name: {"progress_dir": value[1], "defaults_round": value[2]} for name, value in initial.items() if value[0] != 0 or not pathlib.Path(value[1]).parent.name.startswith(f"v15_{a.round}_") or not value[2].startswith(a.round + "-")}
+    if wrong_round:
+        print("ABORT: requested closeout round does not match active host pointers", json.dumps(wrong_round, sort_keys=True))
+        return 2
     rc, out, _ = sh("s1", "cat ~/binance-sandbox/data/v15_best_first.json")
     try:
         universe = sorted({str(s).upper() for s in json.loads(out).get("allowed") or [] if str(s).upper().endswith(("_LONG", "_SHORT"))})
     except ValueError:
         universe = []
+    if rc != 0 or not universe:
+        print("ABORT: tradeable universe unavailable or empty")
+        return 2
     per_host = {}
     for n in HOSTS:
         rc, out, _ = sh(n, "python3 -", inp=CENSUS, timeout=300)
@@ -190,7 +198,11 @@ def cmd_closeout(a):
             per_host[n] = json.loads(out)
         except ValueError:
             per_host[n] = {}
+    if any(pointers(name) != initial[name] for name in HOSTS):
+        print("ABORT: round pointers changed during closeout collection")
+        return 2
     rec = {"round": a.round, "generated_at": datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+           "host_round_pointers": {name: {"progress_dir": value[1], "defaults_round": value[2]} for name, value in initial.items()},
            "criterion": "per tradeable sym_side (S1 data/v15_best_first.json allowed): the newest finished board of this round across s1/s2/s5/s6; "
                         "published = compliant final_path present on disk. Written by tools/fleet_round_roll.py closeout (the scheduler-built "
                         "full_course_round_<run>.json stopped updating when fleet_dispatch replaced the scheduler on 2026-10-27).",

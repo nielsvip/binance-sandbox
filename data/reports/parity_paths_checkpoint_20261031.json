@@ -117,11 +117,12 @@
     "evidence": "AST ensure_fixed_stop_backstop identical to pre-edit backup"
   },
   "remaining": [
-    "native exact-bar action and size parity",
-    "completed daily stock NPZ pipeline verification",
-    "all reachable path inventory classification",
-    "S1/S5 production log verification",
-    "ang/inf full common-sym_side and loss attribution"
+    "Exact action and bar parity across native and rolling vector (quantities may differ)",
+    "14-day complete same-data replay without unexplained errors",
+    "Full AdvancedSignalRater path coverage",
+    "Canonical source TEMPLATE queued rows installation with matching reviewed engine",
+    "S1/S5 production source and log verification",
+    "ang/inf common eligible sym_side action bars and loss attribution"
   ],
   "latest_crypto_replay": {
     "report": "/tmp/parity_1000pepe_8of8_20261031T025132.json",
@@ -155,6 +156,11 @@
     },
     "central_exit_suite_after_zero_reduce_test": {
       "passed": 7
+    },
+    "clock_quantity_WR_parabolic_20261031": {
+      "passed": 36,
+      "completed_at": "2026-10-31T03:46:18.004061+00:00",
+      "scope": "focused tests, not 14-day acceptance"
     }
   },
   "automatic_code_copy": {
@@ -176,7 +182,7 @@
   "ang_inf": {
     "compared_shared_order_bars": 25,
     "action_status_equal": 21,
-    "duplicate_reduction_observed": "HYPEUSDT_LONG same board key sent again by ang one bar later; TTL expiration reproduction pending",
+    "duplicate_reduction_observed": "HYPEUSDT_LONG repeated board key: successful REDUCE TTL expiration reproduced; local persistent-dedupe fix has 6 focused passing tests, reviewed production deployment pending",
     "profit_loss_cause": "UNRESOLVED"
   },
   "local_template_install_summary_round2": {
@@ -334,6 +340,18 @@
       "agent": "tradier_paths",
       "issue": "Missing separate backup before follow-up refactor of newly added B04 inline adapter into shared proposal helper",
       "status": "Original pre-B04 backup preserved; subsequent current snapshot does not retroactively satisfy missing backup; reported to user"
+    },
+    {
+      "agent": "quick_paths",
+      "issue": "Missing pre-edit backups for existing vec_decisions/parabolic_delta.py and tests/test_parabolic_delta.py",
+      "status": "Disclosed by agent; no retroactive backup claimed"
     }
-  ]
+  ],
+  "checkpoint_updated_at": "2026-10-31T03:46:18.004061+00:00",
+  "replay_clock": {
+    "signal_clock": "NPZ bar-open timestamp",
+    "decision_clock": "bar-open +900seconds when V12_COMPLETED_BAR_SECONDS=900",
+    "event_capture": "append-time signal and decision clocks retained independently",
+    "status": "compiled and focused tests passed; full replay pending"
+  }
 }

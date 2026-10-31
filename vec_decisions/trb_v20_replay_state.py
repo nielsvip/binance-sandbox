@@ -7,6 +7,47 @@ import hashlib
 from pathlib import Path
 
 
+def rolling_anchor_for_completed_prefix(raw, end_ts, mode="tradier"):
+    """Return the production 30-session anchor using only rows available by end_ts."""
+    import numpy as np
+
+    ts = np.asarray(raw["timestamps"], dtype="float64")
+    if ts.size == 0:
+        raise ValueError("raw NPZ timestamps are empty")
+    scale = 1000.0 if float(ts[-1]) > 1e11 else 1.0
+    end_scaled = float(end_ts) * scale
+    right = int(np.searchsorted(ts, end_scaled, side="right"))
+    prefix = ts[:right]
+    finite = prefix[np.isfinite(prefix) & (prefix > 0)]
+    if finite.size == 0:
+        raise ValueError("no timestamp rows available at completed bar")
+    seconds = finite / scale
+    end_s = float(seconds[-1])
+    load_s = end_s - (30 if mode == "crypto" else 90) * 86400.0
+    load_start = dt.datetime.fromtimestamp(load_s, tz=dt.timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    ).timestamp()
+    if mode == "crypto":
+        anchor_s = end_s - 30 * 86400.0
+        policy = "30_calendar_days"
+    else:
+        days = seconds.astype("datetime64[s]").astype("datetime64[D]")
+        unique_days = np.unique(days)
+        anchor_s = (
+            float(unique_days[-30].astype("datetime64[s]").astype("int64"))
+            if len(unique_days) >= 30
+            else float(seconds[0])
+        )
+        policy = "30_trading_sessions"
+    return {
+        "anchor_ts": float(anchor_s),
+        "load_start_ts": float(min(load_start, anchor_s)),
+        "mode": mode,
+        "npz_end_ts": end_s,
+        "window_policy": policy,
+    }
+
+
 def completed_bar_state(ss, overrides, raw, anchor, bar_ts, decision_ts, engine_root=None):
     """Return the canonical V20 state for one completed, open-labeled bar.
 

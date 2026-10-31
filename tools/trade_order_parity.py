@@ -53,9 +53,9 @@ def validate_ledger(rows, initial_positions=None):
             errors.append({"row": index, "error": str(error), "event": row})
     return indexed, positions, errors
 
-def compare_orders(vector, native, initial_positions=None, quantity_tolerances=None, require_quantity_parity=False):
-    vector_index, vector_final, vector_errors = validate_ledger(vector, initial_positions)
-    native_index, native_final, native_errors = validate_ledger(native, initial_positions)
+def compare_orders(vector, native, initial_positions=None, quantity_tolerances=None, require_quantity_parity=False, *, vector_initial_positions=None, native_initial_positions=None):
+    vector_index, vector_final, vector_errors = validate_ledger(vector, initial_positions if vector_initial_positions is None else vector_initial_positions)
+    native_index, native_final, native_errors = validate_ledger(native, initial_positions if native_initial_positions is None else native_initial_positions)
     tolerances = quantity_tolerances or {}
     differences = []
     quantity_differences = []

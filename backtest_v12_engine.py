@@ -1436,7 +1436,10 @@ from backtest_v8_harness import (
 # ═══════════════════════════════════════════════════════════════
 # STEP 2: Simulation time controller
 # ═══════════════════════════════════════════════════════════════
-_sim_ts = [0.0]  # Mutable ref — updated per bar
+from tools.replay_clock import ReplayEventLedger, set_completed_bar_clock
+
+_sim_ts = [0.0]  # Decision clock; completed-bar replay adds the candle duration.
+_sim_bar_ts = [0.0]
 
 
 _F1_LIFECYCLE_ZERO = {
@@ -1833,7 +1836,7 @@ def _isolate_frozen_data_feeds(service_module, quick_module):
 def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
     """Apply ONLY I/O patches. No trade logic changes."""
     global _executed_trades, _v8_orig_create_task
-    _executed_trades = []
+    _executed_trades = ReplayEventLedger(_sim_bar_ts, _sim_ts)
     _isolate_frozen_data_feeds(ez_positions_service, ez_positions_quick)
     # Reset pending-coro list — apply_patches is called once per run.
     _pending_v8_coros.clear()
@@ -5348,7 +5351,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             print(f"V8_WALL_TIMEOUT: {__import__('time').time()-_v8_wall_t0:.0f}s > {_v8_wall_deadline:.0f}s at step {step}/{len(sorted_ts)} — emitting V8_RESULT", flush=True)
             _v8_deadline_hit = True
             break
-        _sim_ts[0] = float(ts)
+        set_completed_bar_clock(_sim_bar_ts, _sim_ts, ts, os.environ.get("V12_COMPLETED_BAR_SECONDS", "0"))
         # Do not submit, manage, or reenter Binance stock-proxy positions outside
         # the underlying US regular session.  We still let the final MTM section
         # value any position that remains open at the last available bar.
@@ -8639,6 +8642,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     if forward_session is not None:
         forward_session.assert_ready("tradier", stores)
     import tradier_manage as tm_mod
+    _v20_replay_root_t = None
+    _v20_config_inner_t = None
+    _v20_config_base_t = None
+    _v20_states_t = {}
     # CRITICAL: V8 backtest must NEVER call Redis. The live config_tradier.Config
     # has _get_regime_from_redis which connects to Redis on every get_symbol_setting()
     # call. On servers without real Redis (S2 dummy/timeout), the GET command blocks
@@ -9013,7 +9020,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             pass
     _utils_mod.record_decision_context = _v8_record
     tm_mod.record_decision_context = _v8_record
-    indicator_cache, price_cache, executed_trades = {}, {}, []
+    indicator_cache, price_cache, executed_trades = {}, {}, ReplayEventLedger(_sim_bar_ts, _sim_ts)
     # NEW 2026-04-26 sweep switch: DD_KELLY peak/dd tracker (no-op when disabled).
     _v8ns_dd_state = {"peak": 0.0, "dd_pct": 0.0}
     # NEW 2026-04-26 sweep switch: counters (tradier path).
@@ -11859,6 +11866,79 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         v8_logger.info(
             f"[V8_MAX_BARS_TRADIER] capped sim to {_v8_max_bars_tradier} bars"
         )
+    _v20_completed_seconds_t = int(float(os.environ.get("V12_COMPLETED_BAR_SECONDS", "0") or 0))
+    if (
+        os.environ.get("V12_REAL_EXECUTE") == "1"
+        and str(account_key).lower() == "trb"
+        and _v20_completed_seconds_t == 900
+        and all_ts
+    ):
+        import tempfile as _v20_tempfile_t
+        from vec_decisions.trb_v20_replay_state import (
+            completed_bar_state as _v20_completed_state_t,
+            rolling_anchor_for_completed_prefix as _v20_anchor_t,
+        )
+        from tools import vec_live_executor as _v20_executor_t
+        _v20_replay_root_t = Path(_v20_tempfile_t.mkdtemp(prefix="trb_v20_replay_"))
+        try:
+            _v20_config_inner_t = object.__getattribute__(tm_mod.config, "_inner")
+        except Exception:
+            _v20_config_inner_t = tm_mod.config
+        _v20_config_base_t = getattr(_v20_config_inner_t, "BASE_PATH", None)
+        setattr(_v20_config_inner_t, "BASE_PATH", _v20_replay_root_t)
+        _v20_state_dir_t = _v20_replay_root_t / "data" / "vec_live" / "state"
+        _v20_state_dir_t.mkdir(parents=True, exist_ok=True)
+        _v20_sets_t = _v20_executor_t.load_sets()
+        _v20_sides_t = [os.environ.get("V8_LADDER_ONLY_SIDE", "").upper()]
+        if _v20_sides_t[0] not in ("LONG", "SHORT"):
+            _v20_sides_t = ["LONG", "SHORT"]
+        _v20_hydrated_t = 0
+        _v20_unavailable_t = []
+        for _v20_symbol_t, _v20_store_t in stores.items():
+            _v20_path_t = Path(str(getattr(_v20_store_t, "source_npz_path", "") or ""))
+            if not _v20_path_t.is_file():
+                _v20_unavailable_t.append(f"{_v20_symbol_t}: source NPZ path unavailable")
+                continue
+            try:
+                with np.load(str(_v20_path_t), allow_pickle=True) as _v20_npz_t:
+                    _v20_raw_t = {key: np.asarray(_v20_npz_t[key]) for key in _v20_npz_t.files}
+                _v20_ts_t = np.asarray(_v20_raw_t.get("timestamps", []), dtype="float64")
+                _v20_scale_t = 1000.0 if _v20_ts_t.size and float(_v20_ts_t[-1]) > 1e11 else 1.0
+                _v20_seconds_t = _v20_ts_t / _v20_scale_t
+                for _v20_side_t in _v20_sides_t:
+                    _v20_ss_t = f"{_v20_symbol_t}_{_v20_side_t}"
+                    _v20_set_row_t = _v20_sets_t.get(_v20_ss_t)
+                    if not _v20_set_row_t or _v20_set_row_t[0].get("set_source") != "per_sym_store.active":
+                        _v20_unavailable_t.append(f"{_v20_ss_t}: no active per_sym set")
+                        continue
+                    _v20_entry_t, _v20_overrides_t = _v20_set_row_t
+                    for _v20_bar_t in all_ts:
+                        _v20_bar_t = float(_v20_bar_t)
+                        if _v20_bar_t > _v20_seconds_t[-1]:
+                            continue
+                        _v20_anchor_doc_t = _v20_anchor_t(_v20_raw_t, _v20_bar_t, "tradier")
+                        _v20_state_t = _v20_completed_state_t(
+                            _v20_ss_t,
+                            _v20_overrides_t,
+                            _v20_raw_t,
+                            _v20_anchor_doc_t,
+                            _v20_bar_t,
+                            _v20_bar_t + _v20_completed_seconds_t,
+                            engine_root=Path(tm_mod.__file__).resolve().parent,
+                        )
+                        _v20_state_t["account"] = _v20_entry_t.get("account") or "trb"
+                        _v20_state_t["written_at"] = _v20_bar_t + _v20_completed_seconds_t
+                        _v20_state_t["written_iso"] = datetime.fromtimestamp(
+                            _v20_bar_t + _v20_completed_seconds_t, tz=timezone.utc
+                        ).strftime("%Y-%m-%dT%H:%M:%SZ")
+                        _v20_states_t[(_v20_ss_t, int(round(_v20_bar_t)))] = _v20_state_t
+                        _v20_hydrated_t += 1
+            except Exception as _v20_feed_error_t:
+                _v20_unavailable_t.append(f"{_v20_symbol_t}: {type(_v20_feed_error_t).__name__}: {_v20_feed_error_t}")
+        v8_logger.info(
+            f"[TRB_V20_REPLAY_STATE] hydrated={_v20_hydrated_t} root={_v20_replay_root_t} "
+            f"unavailable={_v20_unavailable_t[:8]}"
+        )
     _v8_wall_deadline_t = float(__import__('os').environ.get("V8_MAX_WALL_SECS", "0") or 0)
     _v8_wall_t0_t = __import__('time').time()
     if forward_session is not None:
@@ -11891,11 +11971,17 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _active_sides_t.add("SHORT")
             for _eside_t in _active_sides_t:
                 _exposure_seconds_t[_eside_t] += _dt_t
-        _sim_ts[0] = float(ts)
+        set_completed_bar_clock(_sim_bar_ts, _sim_ts, ts, os.environ.get("V12_COMPLETED_BAR_SECONDS", "0"))
+        if _v20_replay_root_t is not None:
+            for (_v20_ss_t, _v20_state_bar_t), _v20_state_doc_t in _v20_states_t.items():
+                if _v20_state_bar_t == int(round(float(ts))):
+                    (_v20_replay_root_t / "data" / "vec_live" / "state" / f"{_v20_ss_t}.json").write_text(
+                        json.dumps(_v20_state_doc_t, sort_keys=True, default=str)
+                    )
         # USER 2026-10-24 backtest fidelity: evaluate market sessions in SIM time
         # (tradier is_regular_trading_hours prefers V8_SIM_TS; live never sets it).
         try:
-            os.environ["V8_SIM_TS"] = str(float(ts))
+            os.environ["V8_SIM_TS"] = str(_sim_ts[0])
         except Exception:
             pass
         if _SWEEP_MODE:
@@ -13773,6 +13859,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             print("V8_PROCESS_STATUS_HISTOGRAM: " + json.dumps(_extra_result_t.get("ordinary_process_status_hist", {}), sort_keys=True, default=str), flush=True)
         except Exception:
             pass
+    if _v20_replay_root_t is not None and _v20_config_inner_t is not None:
+        setattr(_v20_config_inner_t, "BASE_PATH", _v20_config_base_t)
     _v8_result_from_trades(executed_trades, capital, _extra_result_t)
     _write_chart_trades(executed_trades)
     log_dir = BASE_PATH / "backtest_v8" / "logs"
@@ -18682,7 +18770,8 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
         try:
             if mode == "crypto":
                 # run_simulation is async; it returns executed_trades list
-                executed = _asyncio.run(run_simulation(mode, "ang", start_date, 10000.0, stores, resolution))
+                _sim_acct = str(_run_one_sim_account or os.environ.get("V12_SIM_ACCOUNT") or "ang").lower()
+                executed = _asyncio.run(run_simulation(mode, _sim_acct, start_date, 10000.0, stores, resolution))
             else:
                 # 2026-10-14 cash-settlement parity: the replay account = the board account (SIM_ACCOUNT override / V12_SIM_ACCOUNT;
                 # default trb). tra -> live entry ban (0 trades); a cash account -> live GFV rule on the sim clock.
@@ -18839,9 +18928,9 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
         _native_execution_rows = []
         _canonical_native_orders = []
         for e, ev in zip(events, executed or []):
-            _ts_fill = float(getattr(e, "ts", 0))
+            _ts_fill = float(ev.get("bar_ts", getattr(e, "ts", 0)))
             _raw_action = str(ev.get("action", "") or "").upper()
-            _fill_row = {"ts": _ts_fill, "bar_ts": _ts_fill, "type": getattr(e, "type", ""), "action": _raw_action,
+            _fill_row = {"ts": _ts_fill, "bar_ts": _ts_fill, "decision_ts": ev.get("decision_ts", getattr(e, "ts", 0)), "type": getattr(e, "type", ""), "action": _raw_action,
                          "reason": str(ev.get("reason", "") or "")[:160], "qty": float(getattr(e, "qty", 0)),
                          "price": float(ev.get("price", 0) or 0), "pnl_pct": float(getattr(e, "pnl_pct", 0)),
                          "raw_type": str(ev.get("type", "") or ""), "position_key": str(ev.get("position_key", "") or ""),
@@ -18865,13 +18954,13 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
                 else:
                     _canonical_action = "UNKNOWN"
                 _canonical_native_orders.append({"account": _fill_row["account"], "sym_side": _fill_row["sym_side"],
-                                                 "bar_ts": _ts_fill, "action": _canonical_action,
+                                                 "bar_ts": _ts_fill, "decision_ts": _fill_row["decision_ts"], "action": _canonical_action,
                                                  "qty": _fill_row["qty"], "position_after": _fill_row["position_after"],
                                                  "reason": _fill_row["reason"], "raw_action": _raw_action,
                                                  "status": _fill_row["status"]})
         m["execution_ledger"] = _native_execution_rows
         m["canonical_order_ledger"] = _canonical_native_orders
-        m["sim_account"] = str(_run_one_sim_account or os.environ.get("V12_SIM_ACCOUNT") or "trb").lower() if mode == "tradier" else None
+        m["sim_account"] = str(_run_one_sim_account or os.environ.get("V12_SIM_ACCOUNT") or ("trb" if mode == "tradier" else "ang")).lower()
         m["exit_guarantee_replay"] = _xg_rp.replay_stats() if _xg_rp is not None else None  # 2026-10-14: would-escalate / would-retry counts (pass-through)
         return m
     except Exception as _e2:
