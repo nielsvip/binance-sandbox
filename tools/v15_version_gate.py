@@ -302,27 +302,7 @@ def validate_model_training_windows(spec, reference_root, candidate_root, snapsh
 def validate_model_authority_eligibility(spec, candidate_root, snapshot_pin):
     if not spec.get("promotion_eligible"):
         return False
-    proof_spec = spec.get("authority_eligibility") or {}
-    path = Path(proof_spec.get("path") or "")
-    if path.is_symlink() or not path.is_file():
-        raise ValueError("promotion eligibility requires a separate 101-unique-evidence proof receipt")
-    raw = path.read_bytes()
-    if hashlib.sha256(raw).hexdigest() != proof_spec.get("sha256"):
-        raise ValueError("promotion eligibility proof receipt SHA256 differs from the pinned declaration")
-    proof = json.loads(raw)
-    if proof.get("schema") != "v18_brain_authority_eligibility/1" or proof.get("snapshot_manifest_sha256") != snapshot_pin.get("manifest_sha256"):
-        raise ValueError("promotion eligibility proof does not identify the exact frozen snapshot")
-    sides = set(snapshot_pin.get("sides") or [])
-    if set(proof.get("sides") or []) != sides:
-        raise ValueError("promotion eligibility proof does not cover all eight pinned sides")
-    counts = proof.get("min_unique_evidence_by_side") or {}
-    if set(counts) != sides or any(not isinstance(counts[side], int) or counts[side] < 101 for side in sides):
-        raise ValueError("promotion eligibility proof lacks at least 101 unique evidence points on every pinned side")
-    candidate = model_bundle_pin(candidate_root)
-    brain_hashes = {category: candidate["artifact_sha256"].get(f"data/brain/v18_brain_{category}.json") for category in MODEL_CATEGORIES}
-    if proof.get("candidate_brain_sha256_by_category") != brain_hashes:
-        raise ValueError("promotion eligibility proof is not bound to the candidate brain artifacts")
-    return True
+    raise ValueError("model promotion remains ineligible: no supported validator verifies 101 qualifying unique raw results per cell; a declaration or hashed count receipt is insufficient")
 
 
 def model_runtime_pin(runtime_spec):
@@ -1197,8 +1177,8 @@ def validate_model_run_evidence(run_dir, label, run_root, expected_sides, overla
                 reasons.append(f"{arm} {side} LinkNet telemetry is incomplete or invalid")
         if str(expected_flags.get("V20_SELECTOR", "0")).strip().lower() in ("1", "true", "on"):
             selector = v18.get("v20") if isinstance(v18.get("v20"), dict) else {}
-            if not selector or not str(selector.get("why") or "").strip():
-                reasons.append(f"{arm} {side} enabled V20 selector has no loader telemetry")
+            if str(selector.get("why") or "").strip() != "binding_map ok":
+                reasons.append(f"{arm} {side} enabled V20 selector has no successful binding-map loader telemetry")
     return reasons
 
 

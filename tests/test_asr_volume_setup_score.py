@@ -82,7 +82,7 @@ def test_rate_hook_applies_score_then_valid_setup_before_rate3_log():
     assert len(calls) == 1
     lines = source.splitlines()
     window = lines[calls[0].lineno - 1:calls[0].lineno + 11]
-    assert "score += _asr_volume_delta" in window
-    assert "reasons.extend(_asr_volume_reasons)" in window
-    assert "valid_setup = True" in window
+    assert any("score += _asr_volume_delta" in line for line in window)
+    assert any("reasons.extend(_asr_volume_reasons)" in line for line in window)
+    assert any("valid_setup = True" in line for line in window)
     assert any('logger.info(f" in rate3 {position_key}' in line for line in lines[calls[0].lineno:calls[0].lineno + 10])

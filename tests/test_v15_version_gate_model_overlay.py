@@ -13,7 +13,7 @@ TRAINED_AT = "2026-10-16T16:45:00Z"
 BASE_FLAGS = {"V18_BRAIN": "1", "V20_SELECTOR": "1"}
 
 
-def test_snapshot():
+def snapshot_fixture():
     sides = [f"S{i}_LONG" for i in range(4)] + [f"T{i}_SHORT" for i in range(4)]
     symbols = [side.rsplit("_", 1)[0] for side in sides]
     return {"snapshot_id": "current8", "manifest_sha256": "a" * 64, "sides": sides, "holdout_days": 7, "npz_sha256_by_symbol": {symbol: "b" * 64 for symbol in symbols}, "oos_start_by_side": {side: "2026-10-23T21:00:00Z" for side in sides}, "start_sha256_by_side": {side: hashlib.sha256(side.encode()).hexdigest() for side in sides}, "template_sha256_by_name": {f"TEMPLATE_{market}_{side}.xlsx": hashlib.sha256(f"{market}_{side}".encode()).hexdigest() for market in ("CRYPTO", "STOCKS") for side in ("LONG", "SHORT")}}
@@ -70,7 +70,7 @@ def learn_file(name, root=None, sub="learn"):
     return root
 
 
-def make_runtime_spec(base, reference, candidate, champion_tree, snapshot, runtime_bytes=b"same-runtime", candidate_trained_at=TRAINED_AT, promotion_eligible=True):
+def make_runtime_spec(base, reference, candidate, champion_tree, snapshot, runtime_bytes=b"same-runtime", candidate_trained_at=TRAINED_AT, promotion_eligible=False):
     runtime_manifest = base / "runtime_manifest.json"
     runtime_files = {path.relative_to(champion_tree).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest() for path in champion_tree.rglob("*") if path.is_file() and not path.is_symlink()}
     runtime_manifest.write_text(json.dumps({"schema": "v15_nn_runtime/1", "scope": "exact test tree inventory", "code_root": str(champion_tree), "files": runtime_files, "symlinks": {}}))
@@ -82,13 +82,6 @@ def make_runtime_spec(base, reference, candidate, champion_tree, snapshot, runti
     spec_path = base / "spec.json"
     ref_train = gate.model_training_market_max_by_category(reference)
     can_train = gate.model_training_market_max_by_category(candidate)
-    eligibility = None
-    if promotion_eligible:
-        candidate_pin = gate.model_bundle_pin(candidate)
-        proof = {"schema": "v18_brain_authority_eligibility/1", "snapshot_manifest_sha256": snapshot["manifest_sha256"], "sides": snapshot["sides"], "min_unique_evidence_by_side": {side: 101 for side in snapshot["sides"]}, "candidate_brain_sha256_by_category": {category: candidate_pin["artifact_sha256"][f"data/brain/v18_brain_{category}.json"] for category in gate.MODEL_CATEGORIES}}
-        proof_path = base / "authority_eligibility.json"
-        proof_path.write_text(json.dumps(proof))
-        eligibility = {"path": str(proof_path), "sha256": gate.sha256(proof_path)}
     if candidate_trained_at != TRAINED_AT:
         can_train = {key: candidate_trained_at for key in can_train}
     spec_path.write_text(json.dumps({
@@ -105,7 +98,6 @@ def make_runtime_spec(base, reference, candidate, champion_tree, snapshot, runti
         "training_market_max_by_category": {"reference": ref_train, "candidate": can_train},
         "snapshot": {key: snapshot[key] for key in ("snapshot_id", "manifest_sha256", "npz_sha256_by_symbol", "oos_start_by_side", "start_sha256_by_side", "template_sha256_by_name")},
         "promotion_eligible": promotion_eligible,
-        "authority_eligibility": eligibility,
     }))
     return spec_path, runtime_manifest, champion_meta
 
@@ -123,7 +115,7 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
             write_bundle(reference, "reference")
             write_bundle(candidate, "candidate")
             champion = make_champion_tree(base / "champion/tree", reference)
-            snapshot = test_snapshot()
+            snapshot = snapshot_fixture()
             spec_path, _, champion_meta = make_runtime_spec(base, reference, candidate, champion, snapshot)
             gate_champ = base / "gate/champion"
             gate_champ.mkdir(parents=True)
@@ -157,16 +149,28 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
             write_bundle(reference, "reference")
             write_bundle(candidate, "candidate")
             champion = make_champion_tree(base / "champion/tree", reference)
-            snapshot = test_snapshot()
+            snapshot = snapshot_fixture()
             spec_path, _, champion_meta = make_runtime_spec(base, reference, candidate, champion, snapshot)
             spec = json.loads(spec_path.read_text())
+            spec["promotion_eligible"] = True
             spec["authority_eligibility"] = None
             spec_path.write_text(json.dumps(spec))
             gate_champ = base / "gate/champion"
             gate_champ.mkdir(parents=True)
             shutil.copyfile(champion_meta, gate_champ / "meta.json")
-            with patch.object(gate, "CHAMP", gate_champ), self.assertRaisesRegex(ValueError, "101-unique-evidence proof receipt"):
+            with patch.object(gate, "CHAMP", gate_champ), self.assertRaisesRegex(ValueError, "101 qualifying unique raw results per cell"):
                 gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, BASE_FLAGS)
+
+    def test_hashed_self_reported_per_side_counts_do_not_prove_per_cell_authority(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            snapshot = snapshot_fixture()
+            proof = {"schema": "v18_brain_authority_eligibility/1", "snapshot_manifest_sha256": snapshot["manifest_sha256"], "sides": snapshot["sides"], "min_unique_evidence_by_side": {side: 101 for side in snapshot["sides"]}}
+            path = base / "counts.json"
+            path.write_text(json.dumps(proof))
+            spec = {"promotion_eligible": True, "authority_eligibility": {"path": str(path), "sha256": gate.sha256(path)}}
+            with self.assertRaisesRegex(ValueError, "hashed count receipt is insufficient"):
+                gate.validate_model_authority_eligibility(spec, base, snapshot)
 
     def test_fresh_model_training_cutoff_is_rejected_against_exact_holdout(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -175,7 +179,7 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
             write_bundle(reference, "reference")
             write_bundle(candidate, "fresh", "2026-10-30T01:00:00Z")
             champion = make_champion_tree(base / "champion/tree", reference)
-            snapshot = test_snapshot()
+            snapshot = snapshot_fixture()
             spec_path, _, champion_meta = make_runtime_spec(base, reference, candidate, champion, snapshot, candidate_trained_at="2026-10-30T01:00:00Z")
             gate_champ = base / "gate/champion"
             gate_champ.mkdir(parents=True)
@@ -183,8 +187,8 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
             with patch.object(gate, "CHAMP", gate_champ), self.assertRaisesRegex(ValueError, "training market cutoff overlaps exact OOS holdout"):
                 gate.model_comparison_spec_pin(spec_path, reference, candidate, gate.model_bundle_pin(reference), gate.model_bundle_pin(candidate), snapshot, champion, BASE_FLAGS)
 
-    def _finalize_with_real_model_roots(self, candidate_oos, candidate_wall, initial_pass, promotion_eligible=True, corrupt_evidence=None, complete_deploy=False):
-        snapshot = test_snapshot()
+    def _finalize_with_real_model_roots(self, candidate_oos, candidate_wall, initial_pass, promotion_eligible=False, corrupt_evidence=None):
+        snapshot = snapshot_fixture()
         sides = snapshot["sides"]
         snapshot["npz_sha256_by_symbol"] = {symbol: hashlib.sha256(symbol.encode()).hexdigest() for symbol in snapshot["npz_sha256_by_symbol"]}
         snapshot["template_sha256_by_name"] = {name: hashlib.sha256(name.encode()).hexdigest() for name in snapshot["template_sha256_by_name"]}
@@ -234,6 +238,8 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
                     category = f"{'CRYPTO' if venue == 'crypto' else 'STOCKS'}_{side.rsplit('_', 1)[-1]}"
                     brain = json.loads((run_dir / "root" / "data" / "brain" / f"v18_brain_{category}.json").read_text())
                     v18 = {"brain": {"model_at": brain["_meta"]["at"]}, "v20": {"why": "binding_map ok"}}
+                    if arm == "candidate" and corrupt_evidence == "selector_absent":
+                        v18["v20"]["why"] = "binding_map ABSENT (verdicts UNKNOWN = evaluate)"
                     if arm == "candidate":
                         v18["linknet_first"] = {"proposals": 0, "booked_cells": 0, "cells_forced": 0, "why": "ok linknet proposals=0"}
                     side_dir = run_dir / side / "progress"
@@ -244,6 +250,8 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
                 result_payload = {"snap": "current8", "label": label, "code": str(code_root), "pilot_md5": gate.md5(run_dir / "root" / "v15_pilot.py"), "set": ["V15_HOLDOUT_DAYS=7", *(f"{k}={v}" for k, v in flags.items())], "window_days_fit": 30, "holdout_days": 7, "nn_env_sha256": hashlib.sha256(json.dumps(nn_env, sort_keys=True, separators=(",", ":")).encode()).hexdigest(), "board_wall_s": 1000.0 if arm == "baseline" else candidate_wall, "retry_count": 0, "results": rows}
                 if corrupt_evidence == label:
                     result_payload["code"] = "/wrong/tree"
+                if arm == "candidate" and corrupt_evidence == "retry":
+                    result_payload["retry_count"] = 1
                 (run_dir / "results.json").write_text(json.dumps(result_payload))
             overlay = {
                 "snapshot": snapshot,
@@ -269,11 +277,9 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
                 patch.object(gate, "snap_manifest", return_value={"admission": {"admission": {side: {"venue": "crypto" if side.startswith("S") else "stocks"} for side in sides}}}), \
                  patch.object(gate, "write_status"), \
                  patch.object(gate, "deploy", return_value=[{"ok": True}]) as deploy, \
-                 patch.object(gate, "deploy_complete", return_value=complete_deploy), \
+                 patch.object(gate, "deploy_complete", return_value=False), \
                  patch.object(gate, "rsync_tree"):
                 gate.finalize(candidate_dir, meta, full_decision(sides, candidate_oos, candidate_wall, initial_pass))
-                if complete_deploy:
-                    self.assertEqual(gate.model_bundle_pin(champ_tree), meta["model_overlay"]["candidate"])
             return meta, deploy
 
     def test_finalize_real_run_roots_reject_quality_just_below_20_percent(self):
@@ -294,13 +300,15 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
         self.assertFalse(meta["decision"]["PASS"])
         deploy.assert_not_called()
 
-    def test_finalize_real_run_roots_allow_threshold_pass_to_canonical_gate_decision(self):
+    def test_numerical_thresholds_do_not_authorize_unproven_model_promotion(self):
         meta, deploy = self._finalize_with_real_model_roots(120.0, 80.0, True)
-        self.assertEqual(meta["state"], "PASS_DEPLOY_INCOMPLETE")
-        self.assertTrue(meta["decision"]["PASS"])
+        self.assertEqual(meta["state"], "FAIL")
+        self.assertFalse(meta["decision"]["PASS"])
+        self.assertTrue(meta["decision"]["model_overlay_acceptance"]["quality_pass"])
+        self.assertTrue(meta["decision"]["model_overlay_acceptance"]["speed_pass"])
         self.assertTrue(meta["decision"]["model_overlay_acceptance"]["training_windows_verified"])
         self.assertTrue(meta["decision"]["model_overlay_acceptance"]["run_root_model_hashes_verified"])
-        deploy.assert_called_once()
+        deploy.assert_not_called()
 
     def test_finalize_refuses_results_bound_to_other_code(self):
         meta, deploy = self._finalize_with_real_model_roots(120.0, 80.0, True, corrupt_evidence="gate_test_cand")
@@ -313,10 +321,24 @@ class V15VersionGateModelOverlayTests(unittest.TestCase):
         self.assertEqual(meta["state"], "FAIL")
         deploy.assert_not_called()
 
-    def test_finalize_installs_and_verifies_model_bundle_in_champion_before_metadata(self):
-        meta, deploy = self._finalize_with_real_model_roots(120.0, 80.0, True, complete_deploy=True)
-        self.assertEqual(meta["state"], "PASS")
-        deploy.assert_called_once()
+    def test_install_model_bundle_preserves_exact_candidate_artifacts(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            source, destination = base / "candidate", base / "champion"
+            expected = write_bundle(source, "candidate")
+            write_bundle(destination, "champion")
+            self.assertEqual(gate.install_model_bundle(source, destination, expected), expected)
+            self.assertEqual(gate.model_bundle_pin(destination), expected)
+
+    def test_retried_runs_cannot_prove_processing_speed(self):
+        meta, deploy = self._finalize_with_real_model_roots(120.0, 80.0, True, corrupt_evidence="retry")
+        self.assertIn("per-side processing-time comparison is invalid", json.dumps(meta["decision"]["reasons"]))
+        deploy.assert_not_called()
+
+    def test_missing_binding_map_cannot_prove_selector_activation(self):
+        meta, deploy = self._finalize_with_real_model_roots(120.0, 80.0, True, corrupt_evidence="selector_absent")
+        self.assertIn("no successful binding-map loader telemetry", json.dumps(meta["decision"]["reasons"]))
+        deploy.assert_not_called()
 
 
 if __name__ == "__main__":

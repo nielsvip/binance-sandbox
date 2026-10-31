@@ -1,11 +1,8 @@
-"""mtf_gr_filter — vector twin of mtf_live_evaluator.gr_filter_pass (crypto) used by the MOMENTUM_WATCHDOG LONG force-open gate (FORCE_OPEN_REQUIRE_MTF_GR).
-Live (_tf_score, mtf_live_evaluator.py:251-293): per TF count of bullish(LONG)/bearish(SHORT) indicators among wt1/wt2, rsi, mfi, dc_pct (from dc_high/dc_low/close),
-bb_pct_b, relative_volume>1, k, adx>20, macd_hist, ha_color, k vs d; TF 'confirmed' when score >= MTF_GR_MIN_IND; gate passes when confirmed TFs >= MTF_GR_MIN_TFS.
-Crypto TF set live = 3m,15m,1h,4h,D,W. NO 3m data in the vector system (user order): the 3m term is 'not evaluable -> passes' (counted as a confirmed TF).
-KNOWN PARITY GAP: live may block opens that the vector allows when the 3m TF would NOT have been confirmed (needs >= MIN_TFS-1 of the 5 HTF TFs here instead of MIN_TFS)."""
+"""NumPy twin of native MTF/GR indicator votes over policy-selected inputs."""
 from __future__ import annotations
 
 import numpy as np
+from vec_decisions.asr_input_adapter import paired_npz_view
 
 _TFS = ("15m", "1h", "4h", "D", "W")
 
@@ -20,7 +17,7 @@ def _a(npz, key, n):
         m = min(n, v.shape[0])
         out[:m] = v[:m]
         v = out
-    return np.nan_to_num(v, nan=0.0)
+    return v
 
 
 def tf_score(npz, n, tf, is_long, invert, close):
@@ -34,7 +31,9 @@ def tf_score(npz, n, tf, is_long, invert, close):
     s += ((mfi > 0) & ((mfi > 50) if is_long else (mfi < 50))).astype(np.int16)
     dch, dcl = _a(npz, f"dc_high_{tf}", n), _a(npz, f"dc_low_{tf}", n)
     rng = dch - dcl
-    dcp = np.where((rng > 0) & (close > 0), (close - dcl) / np.where(rng > 0, rng, 1.0), 0.0)
+    supplied_dcp = _a(npz, f"dc_pct_{tf}", n)
+    fallback_dcp = np.where((rng > 0) & (close > 0), (close - dcl) / np.where(rng > 0, rng, 1.0), 0.0)
+    dcp = np.where(supplied_dcp <= 0, fallback_dcp, supplied_dcp)
     if invert:
         c = (dcp >= 0.65) if is_long else (dcp <= 0.35)
     else:
@@ -62,13 +61,15 @@ def tf_score(npz, n, tf, is_long, invert, close):
 
 
 def gr_filter_pass_vec(npz, n, is_long, cfg, close):
-    """bool[n]: live gr_filter_pass with the 3m TF treated as passing."""
     if not bool(getattr(cfg, "MTF_GR_FILTER_ENABLED", True)):
         return np.ones(n, dtype=bool)
-    min_tfs = int(float(getattr(cfg, "MTF_GR_MIN_TFS", 3) or 3))
-    min_ind = int(float(getattr(cfg, "MTF_GR_MIN_IND", 7) or 7))
-    invert = bool(getattr(cfg, "MTF_GR_INVERT_DC_BB", True))
-    conf = np.ones(n, dtype=np.int16)  # 3m: not evaluable -> passes
-    for tf in _TFS:
+    min_tfs = int(getattr(cfg, "MTF_GR_MIN_TFS", getattr(cfg, "GOLDEN_RULE_HTF_MIN_TFS", 3)))
+    min_ind = int(getattr(cfg, "MTF_GR_MIN_IND", getattr(cfg, "GOLDEN_RULE_MIN_IND", 5)))
+    invert = bool(getattr(cfg, "MTF_GR_INVERT_DC_BB", False))
+    stock = str(getattr(cfg, "MODE", "crypto")) == "tradier"
+    use_ltf = bool(getattr(cfg, "LTF_SUB15M_TRADING_ENABLED" if stock else "USE_1M_3M_SIGNALS_ENABLED", False))
+    npz = paired_npz_view(npz, use_ltf)
+    conf = np.zeros(n, dtype=np.int16)
+    for tf in (("5m" if stock else "3m"), *_TFS):
         conf += (tf_score(npz, n, tf, is_long, invert, close) >= min_ind).astype(np.int16)
     return conf >= min_tfs

@@ -4794,20 +4794,15 @@ class AdvancedSignalRater:
                 account_key
             )
             _rs_ratio = _rs_data.get("ratio", 1.0)
-            _rs_min = getattr(config, "LS_RATIO_MIN", 0.40)
-            _rs_max = getattr(config, "LS_RATIO_MAX", 2.50)
-            if is_long and _rs_ratio < _rs_min:
-                score += 15
-                reasons.append(f"RATIO_FORTIFY_LONG(R={_rs_ratio:.2f}<{_rs_min},+15)")
-            elif not is_long and _rs_ratio > _rs_max:
-                score += 15
-                reasons.append(f"RATIO_FORTIFY_SHORT(R={_rs_ratio:.2f}>{_rs_max},+15)")
-            elif is_long and _rs_ratio > _rs_max:
-                score -= 10
-                reasons.append(f"RATIO_OVERWEIGHT_LONG(R={_rs_ratio:.2f},-10)")
-            elif not is_long and _rs_ratio < _rs_min:
-                score -= 10
-                reasons.append(f"RATIO_OVERWEIGHT_SHORT(R={_rs_ratio:.2f},-10)")
+            from vec_decisions.asr_portfolio_ratio_score import portfolio_ratio_scalar as _asr_portfolio_ratio_scalar
+            _rs_delta, _rs_reasons = _asr_portfolio_ratio_scalar(
+                _rs_ratio,
+                getattr(config, "LS_RATIO_MIN", 0.40),
+                getattr(config, "LS_RATIO_MAX", 2.50),
+                is_long,
+            )
+            score += _rs_delta
+            reasons.extend(_rs_reasons)
         # Shared rank-conviction score adapter keeps native reason output unchanged.
         if not is_exit:
             from vec_decisions.asr_score_core import apply_rank_conviction_scalar
@@ -7640,28 +7635,12 @@ class AdvancedSignalRater:
             if _asr_setup_valid:
                 valid_setup = True
             logger.info(f" in rate3 {position_key} {score} ")
-            history_score_mod = 0.0
-            if tracker_data and not is_exit:
-                win_rate = safe_fetch_float(tracker_data.get("win_rate_%", 0), 0)
-                total_trades = int(
-                    safe_fetch_float(tracker_data.get("total_trades", 0), 0) or 0.0
-                )
-                if total_trades >= 3:
-                    if win_rate >= 70:
-                        history_score_mod += 2.0
-                        reasons.append(f"HighWinRate_{win_rate:.0f}%")
-                    elif win_rate <= 30:
-                        history_score_mod -= 3.0
-                        reasons.append(f"LowWinRate_{win_rate:.0f}%")
-                total_pnl = safe_fetch_float(
-                    tracker_data.get("total_realized_pnl_$", 0), 0
-                )
-                if total_pnl < -50.0:
-                    history_score_mod -= 2.0
-                    reasons.append("Historical_Loser")
-                elif total_pnl > 50.0:
-                    history_score_mod += 1.0
-                    reasons.append("Historical_Winner")
+            from vec_decisions.asr_history_score import history_score_scalar as _asr_history_score_scalar
+            _asr_history_score_mod, _asr_history_reasons = _asr_history_score_scalar(
+                tracker_data, is_exit, safe_fetch_float
+            )
+            history_score_mod = _asr_history_score_mod
+            reasons.extend(_asr_history_reasons)
             from vec_decisions.asr_channel_confluence_score import apply_channel_confluence_scalar
             _asr_channel_values = {
                 "current_price": current_price,

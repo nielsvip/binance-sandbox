@@ -305,6 +305,9 @@ def gr_filter_pass(indicators: dict, side: str, mode: str, config: Any,
         min_ind = int(getattr(config, "MTF_GR_MIN_IND", getattr(config, "GOLDEN_RULE_MIN_IND", 5)))
     if invert_dc_bb is None:
         invert_dc_bb = bool(getattr(config, "MTF_GR_INVERT_DC_BB", False))
+    from vec_decisions.asr_input_adapter import paired_indicator_view
+    use_ltf = bool(getattr(config, "USE_1M_3M_SIGNALS_ENABLED" if mode == "crypto" else "LTF_SUB15M_TRADING_ENABLED", False))
+    indicators, _, _ = paired_indicator_view(indicators, {}, use_ltf)
     is_long = (side == "LONG")
     tfs = ["3m", "15m", "1h", "4h", "D", "W"] if mode == "crypto" else ["5m", "15m", "1h", "4h", "D", "W"]
     confirmed = 0

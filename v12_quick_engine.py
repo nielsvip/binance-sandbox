@@ -17063,9 +17063,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     # 2026-10-01 C/003 LG-20 live-entry-source parity (data/wiring/crypto_live_entry_sources.md): (a) live config ABLATION_DISABLE_QUICK_ENTRY=True kills the candidate loop
     # (ez_positions_quick.py:15276) => the candidate-loop families (all entry_sig blocks) must not open (crypto only; stocks live False); (b) the dominant live crypto open source
     # is the flat-key MOMENTUM_WATCHDOG DC-breakout force-open (ez_manage.py:36253-36300): px >= dc_high_{tf} on 15m/1h/4h/D (largest TF wins, NO wt filter); LONG additionally needs
-    # the MTF+GR gate (FORCE_OPEN_REQUIRE_MTF_GR) whose 3m term is NOT evaluable here (passes) and whose armed-state term is not modelled (passes) — documented parity gap.
+    # the MTF+GR gate (FORCE_OPEN_REQUIRE_MTF_GR), evaluated on attempted watchdog entries with native arming transitions and NumPy GR votes.
     _wd_open = None
     _wd_tag = None
+    _wd_mtf = None
     try:
         _wd_crypto = str(getattr(cfg, "MODE", "crypto")) != "tradier"
         # laneF 2026-10-04: suppress the candidate loop ONLY when the watchdog
@@ -17099,13 +17100,8 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 and is_long
                 and bool(getattr(cfg, "FORCE_OPEN_REQUIRE_MTF_GR", True))
             ):
-                _wd_open = _wd_open & np.asarray(
-                    vec_decisions.mtf_gr_filter.gr_filter_pass_vec(
-                        npz, n, is_long, cfg, close
-                    ),
-                    dtype=bool,
-                )
-                _wd_tag = np.where(_wd_open, _wd_tag, "")
+                from vec_decisions.watchdog_mtf_gate import prepare as _prepare_wd_mtf
+                _wd_mtf = _prepare_wd_mtf(npz, n, is_long, cfg, close)
     except Exception:
         _wd_open = None
         _wd_tag = None
@@ -20162,7 +20158,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 except Exception:
                     pass
             if not fire and _wd_open is not None and bool(_wd_open[i]):
-                fire = True
+                if _wd_mtf is None:
+                    fire = True
+                else:
+                    from vec_decisions.watchdog_mtf_gate import step as _step_wd_mtf
+                    fire, _wd_mtf_reason = _step_wd_mtf(_wd_mtf, i)
             # The native Tradier retest veto guards every OPEN path, including late reentry fires.
             if fire and is_tradier and _breakout_retest_gate is not None and not bool(_breakout_retest_gate[i]):
                 fire = False

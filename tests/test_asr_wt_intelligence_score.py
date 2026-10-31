@@ -88,5 +88,7 @@ def test_rate_hook_preserves_order_before_volume_bonus():
     tree = ast.parse(source)
     calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_wt_intelligence_score_scalar"]
     assert len(calls) == 1
-    lines = source.splitlines()
-    assert lines[calls[0].lineno + 2] == "            if rel_vol > 1.5:"
+    volume_calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_asr_volume_setup_scalar"]
+    rate3_lines = [index for index, line in enumerate(source.splitlines(), start=1) if 'logger.info(f" in rate3 {position_key}' in line]
+    assert len(volume_calls) == 1 and len(rate3_lines) == 1
+    assert calls[0].lineno < volume_calls[0].lineno < rate3_lines[0]

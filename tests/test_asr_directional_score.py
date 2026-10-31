@@ -65,5 +65,6 @@ def test_rate_calls_directional_core_before_wt_divergence():
     tree = ast.parse(source)
     calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_asr_directional_score_scalar"]
     assert len(calls) == 1
-    lines = source.splitlines()
-    assert lines[calls[0].lineno] == "            # === WAVETREND INTELLIGENCE SCORING ==="
+    wt_calls = [node for node in ast.walk(tree) if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "_wt_intelligence_score_scalar"]
+    assert len(wt_calls) == 1
+    assert calls[0].lineno < wt_calls[0].lineno

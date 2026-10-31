@@ -41,3 +41,12 @@ def test_rule_b_ltf_on_uses_aligned_5m_inputs_in_real_ledger():
     assert len(fires) == 1
     assert fires[0]["bar_exit"] == fire_bar
     assert fires[0]["reason"] == "RULE_B_5M_LL_LH_gain:4.00%"
+
+
+def test_rule_b_stock_rows_are_exposed_to_actual_v15_adaptive_picker():
+    import v15_pilot
+
+    for template in (v15_pilot.TEMPLATE_STOCKS_LONG, v15_pilot.TEMPLATE_STOCKS_SHORT):
+        rows = v15_pilot._adapt_template_rows(template, ["EXIT_VELOCITY"])
+        candidates = [candidate for tab, switch, candidate in rows if switch == "RULE_B_5M_EXIT_ENABLED"]
+        assert candidates == [False, True]
