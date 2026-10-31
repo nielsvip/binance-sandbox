@@ -8,7 +8,7 @@ except ModuleNotFoundError:
     from tools import v15_nextgen_interaction_executor as evidence
 
 
-def allocate(experiments, state, context, evaluation_budget, current_domain, safety_unchanged, measured=(), quotas=None, baseline_guard_cost=1):
+def allocate(experiments, state, context, evaluation_budget, current_domain, selection_contract, measured=(), quotas=None, baseline_guard_cost=1):
     quotas = dict(quotas or {'protection': 1, 'recovery': 1, 'unknown': 1})
     if set(quotas) != {'protection', 'recovery', 'unknown'} or any(type(value) is not int or value < 1 for value in quotas.values()):
         raise ValueError('explicit positive protection, recovery and unknown quotas required')
@@ -26,8 +26,8 @@ def allocate(experiments, state, context, evaluation_budget, current_domain, saf
         if not isinstance(domain, dict) or domain.get('eligible') is not True:
             rejected.append({'experiment': proposal, 'reason': 'not_actual_current_domain'})
             continue
-        if safety_unchanged(proposal) is not True:
-            rejected.append({'experiment': proposal, 'reason': 'fixed_stop_or_actual_fee_policy_changed'})
+        if selection_contract(proposal) is not True:
+            rejected.append({'experiment': proposal, 'reason': 'per_side_selection_or_declared_experiment_contract_violation'})
             continue
         for source in domain.get('evidence_refs', []):
             if evidence.sha(Path(source['path'])) != source['sha256']:
@@ -62,6 +62,7 @@ def allocate(experiments, state, context, evaluation_budget, current_domain, saf
             row = min((row for row in remaining.values() if band in row['bands']), key=lambda row: score(row, band))
             reason = 'reserved_' + band + '_quota'
         else:
+            band = None
             row = min(remaining.values(), key=lambda row: (int(last.get(row['identity'], 0)), row['identity']))
             reason = 'remaining_existing_budget_fair_queue'
         remaining.pop(row['identity'])
@@ -69,6 +70,8 @@ def allocate(experiments, state, context, evaluation_budget, current_domain, saf
         selected.append(row)
         last[row['identity']] = turn
         for band in row['bands']:
+            if band == 'unknown' and reason != 'reserved_unknown_quota':
+                continue
             fulfilled[band] += 1
             debts[band] = max(0, debts[band] - 1)
     next_state['round'] = turn

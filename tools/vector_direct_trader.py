@@ -305,7 +305,7 @@ def verified_fixed_stop_trigger(symbol_side, position):
         crossed = mark <= level if split_ss(symbol_side)[1] == "LONG" else mark >= level
         if not crossed:
             return None
-        return {"kind": "LIFECYCLE_BOUND_FIXED_STOP_CROSSED", "anchor": anchor, "level": level, "broker_mark": mark, "broker_entry": entry, "mac_source_file": source.get("source_file"), "source_file_epoch": source.get("source_file_epoch")}
+        return {"kind": "LIFECYCLE_BOUND_FIXED_STOP_CROSSED", "anchor": anchor, "level": level, "broker_mark": mark, "broker_entry": entry, "mac_source_file": source.get("source_file"), "source_file_epoch": source.get("source_file_epoch"), "fixed_stop_source": source.get("fixed_stop_source", "mac_position")}
     except (KeyError, TypeError, ValueError, OverflowError):
         return None
 
@@ -359,7 +359,7 @@ def deterioration_halts(root: Path) -> dict:
 
 
 def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: int, alert=None) -> dict:
-    """Latch a fresh, same-settings 30D loss of at least five percentage points; never auto-release.
+    """Latch a fresh, same-settings 30D loss of at least 15 percentage points.
 
     MASS BRAKE (2026-10-30). This latch is permanent and forbids reentry, and its second arm fires on a mere SIGN FLIP
     (`published > 0 >= current`), not only on the 5 pp drop — so a broad down day can latch the whole book at once with
@@ -380,7 +380,7 @@ def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: 
         con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=5)
         try:
             for ss, state in states.items():
-                if ss in latched or not state_fresh(state, bar) or state.get("gain_pct") is None:
+                if not state_fresh(state, bar) or state.get("gain_pct") is None:
                     continue
                 row = con.execute("SELECT updated_at, gain_30d, acc_gain_pct FROM per_sym_active WHERE sym_side=?", (ss,)).fetchone()
                 if not row or row[0] != state.get("settings_updated_at"):
@@ -392,13 +392,17 @@ def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: 
                 if not (math.isfinite(published) and math.isfinite(current)):
                     continue
                 evaluated += 1
-                if published - current < 5.0 and not (published > 0 >= current):
+                if published - current < 15.0:
+                    if ss in latched:
+                        latched.pop(ss)
+                    continue
+                if ss in latched:
                     continue
                 added[ss] = {"published_gain_pct": published, "rolling_gain_pct": current,
                              "drop_pp": published - current, "published_settings_at": row[0],
                              "state_ts": state.get("ts"), "npz_tail": state.get("npz_tail"),
                              "latched_utc": dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                             "reason": "fresh 30D replay deteriorated by at least 5 pp or turned nonpositive"}
+                             "reason": "fresh 30D replay deteriorated by at least 15 pp"}
         finally:
             con.close()
     except Exception as exc:
@@ -417,7 +421,9 @@ def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: 
         return latched
     if added:
         latched.update(added)
+    if added or latched != (read_json(path, {}) or {}):
         atomic_write_json(path, latched)
+    if added:
         log(f"ROLLING DETERIORATION LATCH {len(added)} new crypto sides; CLOSE held and forbid reentry: {','.join(sorted(added))}")
     return latched
 
@@ -964,7 +970,8 @@ class Tradier:
         for r in rows:
             q = float(r.get("quantity") or 0.0)
             if q:
-                out[f"{str(r['symbol']).upper()}_{'LONG' if q > 0 else 'SHORT'}"] = {"qty": abs(q), "price": 0.0, "cost": abs(float(r.get("cost_basis") or 0.0))}
+                cost = abs(float(r.get("cost_basis") or 0.0))
+                out[f"{str(r['symbol']).upper()}_{'LONG' if q > 0 else 'SHORT'}"] = {"qty": abs(q), "price": 0.0, "cost": cost, "entry": cost / abs(q)}
         return out
 
     def price(self, symbol):
@@ -2005,6 +2012,8 @@ class Trader:
                     continue
             try:
                 price = self.broker.price(symbol) if o["act"] in ("REDUCE", "CLOSE") else (float((pos.get(o["ss"]) or {}).get("price") or 0.0) or self.broker.price(symbol))
+                if self.venue == "stocks" and o["ss"] in pos and o["act"] in ("REDUCE", "CLOSE"):
+                    pos[o["ss"]]["price"] = price
                 qty, why = self.broker.size(o, held, price)
             except RestBlocked as exc:
                 log(f"{acct} {o['ss']}: {exc}")

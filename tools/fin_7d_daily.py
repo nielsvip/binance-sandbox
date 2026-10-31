@@ -132,7 +132,8 @@ def classify(result):
     if verdict.get("valid"):
         return "validated", "validate_one passed"
     why = str(verdict.get("why") or "")
-    if int(verdict.get("rc") or 1) != 0:
+    rc = verdict.get("rc")
+    if rc is None or int(rc) != 0:   # `or 1` would turn rc=0 (success) into a failure
         return None, f"board failed rc={verdict.get('rc')}: {why[:120]}"
     if progress.get("window_days") != 7:
         return None, f"not a 7D board: {why[:120]}"

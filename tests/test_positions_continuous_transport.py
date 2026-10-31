@@ -56,3 +56,11 @@ def test_record_and_source_timestamp_use_same_open_file(monkeypatch, tmp_path):
     doc, error, epoch = transport.read_book(path)
     assert doc == {"old": 1} and error is None and epoch == 100
     assert path.stat().st_mtime == 200
+
+
+def test_stock_fixed_stop_is_bound_to_exact_position_lifecycle():
+    position = {"opened_at": "2026-10-31T00:00:00Z"}
+    registry = {"levels": {"trb:X_LONG": {"sig": "oa1793404800000000", "level": 95}}}
+    assert transport.stock_fixed_stop_context(position, "trb:X_LONG", registry)["fixed_stop_price"] == 95
+    registry["levels"]["trb:X_LONG"]["sig"] = "2026-10-30T00:00:00Z"
+    assert transport.stock_fixed_stop_context(position, "trb:X_LONG", registry) == {}

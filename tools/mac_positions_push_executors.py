@@ -71,9 +71,24 @@ def quantity(record):
     return 0.0
 
 
+def stock_fixed_stop_context(record, key, registry):
+    level = (registry.get("levels") or {}).get(key) or {}
+    try:
+        opened = dt.datetime.fromisoformat(str(record["opened_at"]).replace("Z", "+00:00")).timestamp()
+        signature = str(level["sig"])
+        anchor = float(signature[2:]) / 1e6 if signature.startswith("oa") else dt.datetime.fromisoformat(signature.replace("Z", "+00:00")).timestamp()
+        price = float(level["level"])
+        if opened <= 0 or abs(opened - anchor) > 0.001 or not (0 < price < float("inf")):
+            return {}
+        return {"fixed_stop_price": price, "fixed_stop_anchor": anchor, "fixed_stop_armed": True, "fixed_stop_source": "tradier_registry_lifecycle_level"}
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return {}
+
+
 def collect(accounts):
     """{acct: {SYM_SIDE: {qty, lifecycle fields...}}} for every account book that could be read."""
     out, meta = {}, {"books": [], "unreadable": []}
+    registry, _, _ = read_book(ROOT / "data" / "fixed_stop_registry_tradier.json") if any(account in STOCK_ACCOUNTS for account in accounts) else ({}, None, None)
     for acct in accounts:
         held = {}
         for side in ("long", "short"):
@@ -100,6 +115,8 @@ def collect(accounts):
                 for field in LIFECYCLE:
                     if record.get(field) is not None:
                         row[field] = record[field]
+                if acct in STOCK_ACCOUNTS:
+                    row.update(stock_fixed_stop_context(record, f"{acct}:{symbol}_{position_side}", registry or {}))
                 held[f"{symbol}_{position_side}"] = row
         out[acct] = held
     return out, meta

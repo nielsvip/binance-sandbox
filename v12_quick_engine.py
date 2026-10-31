@@ -18719,10 +18719,14 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     if str(getattr(cfg, "MODE", "crypto")) != "tradier" and bool(
         getattr(cfg, "LIVE_EXIT_CHAIN_ENABLED", False)
     ):
+        if not _lec_quick_ablated:
+            import vec_decisions.live_exit_chain as _lec_support
+
+            _lec_support.validate_supported_inputs(npz, n, cfg, is_long)
         try:
             import vec_decisions.live_exit_chain as _lec
 
-            _lec_P = _lec.prepare(npz, n, is_long, cfg, close, _safe)
+            _lec_P = _lec.prepare(npz, n, is_long, cfg, close, _safe, symbol=sym)
             _lec_P = _lec.prepare_pp(npz, n, is_long, cfg, close, _safe, _lec_P)
             if (
                 _lec_P is not None
@@ -20910,6 +20914,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         "peak": pos.get("peak_pnl_pct", 0.0),
                         "age_min": held_bars * bmin,
                         "entry_price": pos.get("entry_price", pos["avg_price"]),
+                        "position_qty": pos["qty"],
                         "reentered": "REENTRY"
                         in str(pos.get("entry_reason", "")).upper(),
                         "was_augmented": int(pos.get("n_augments", 0)) > 0,
@@ -20955,18 +20960,37 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 _lec_hit = None
             if _lec_hit:
                 _lec_reason, _lec_full = _lec_hit
-                _lec_frac = (
-                    None if _lec_full else _lec.reduce_fraction(cfg, live_pnl_pct)
-                )
-                _lec_qty = (
-                    pos["qty"]
-                    if (_lec_full or _lec_frac is None)
-                    else pos["qty"] * _lec_frac
-                )
-                if pos["qty"] - _lec_qty < 0.10 * float(
-                    pos.get("entry_qty", pos["qty"])
-                ):
-                    _lec_qty = pos["qty"]
+                if str(_lec_reason).startswith("AUGMENTED_DC_BREAK_REDUCE_TO_MIN_"):
+                    from vec_decisions.quick_missing_augmented_dc_break import (
+                        augmented_dc_break_pos_min_qty,
+                        augmented_dc_break_reduce_qty,
+                    )
+
+                    _aug_min_qty = augmented_dc_break_pos_min_qty(
+                        sym, px, getattr(cfg, "MIN_POSITION_SIZE", 1.0)
+                    )
+                    _lec_qty = augmented_dc_break_reduce_qty(
+                        pos["qty"],
+                        _aug_min_qty,
+                        live_pnl_pct,
+                        getattr(cfg, "NOLOSS_MIN_PROFIT_PCT", 0.5),
+                        getattr(cfg, "WT_REDUCE_FRAC_LOW", 0.15),
+                        getattr(cfg, "WT_REDUCE_FRAC_MED", 0.25),
+                        getattr(cfg, "WT_REDUCE_FRAC_HIGH", 0.50),
+                    )
+                else:
+                    _lec_frac = (
+                        None if _lec_full else _lec.reduce_fraction(cfg, live_pnl_pct)
+                    )
+                    _lec_qty = (
+                        pos["qty"]
+                        if (_lec_full or _lec_frac is None)
+                        else pos["qty"] * _lec_frac
+                    )
+                    if pos["qty"] - _lec_qty < 0.10 * float(
+                        pos.get("entry_qty", pos["qty"])
+                    ):
+                        _lec_qty = pos["qty"]
                 _lec_ts = (
                     float(ts[i]) if i < len(ts) else float(ts[-1]) if len(ts) else 0.0
                 )

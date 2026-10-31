@@ -48,6 +48,27 @@ HOLD_FILE = ROOT / "data" / "fleet_hold_hosts.json"
 # Priority with a mandatory expiry: data/fleet_priority.json {"sym_sides": [...], "until": <epoch>, "why": "..."} puts those
 # sym_sides first in their cat_side queue (stable order otherwise). 2026-10-28: the 47 crypto boards refused by the D window bug
 PRIORITY_FILE = ROOT / "data" / "fleet_priority.json"
+CATCHUP_FILE = ROOT / "data" / "fleet_catchup.json"
+
+
+def catchup_queue(now):
+    try:
+        doc = json.loads(CATCHUP_FILE.read_text()) or {}
+        if doc.get("schema") != "daily-chart-catchup-v1" or float(doc.get("until") or 0) <= now:
+            return {}
+        rows = [r for r in doc.get("rows") or [] if isinstance(r, dict) and r.get("symside") and float(r.get("drop_pp") or 0) > 0]
+        doc["rows"] = sorted(rows, key=lambda r: (-float(r["drop_pp"]), str(r["symside"])))
+        return doc
+    except (OSError, ValueError, TypeError, AttributeError):
+        return {}
+
+
+def unlaunched_catchup(doc, fleet_data, holds=()):
+    run_id = doc.get("run_id")
+    running = {ss for data in fleet_data.values() for ss in (data.get("running") or {})}
+    launched = {ss for data in fleet_data.values() for ss, rec in (data.get("launches") or {}).items() if rec.get("mode") == "catchup" and rec.get("catchup_run_id") == run_id}
+    blocked = running | launched | set(holds)
+    return [str(r["symside"]).upper() for r in doc.get("rows") or [] if str(r["symside"]).upper() not in blocked]
 
 
 def priority_sides(now):
@@ -523,7 +544,7 @@ def admission(d, now, name=""):
     return 1, "ok"
 
 
-def plan(pend, partial, fleet_data, now, orphan_since, prio=frozenset(), refresh=None):
+def plan(pend, partial, fleet_data, now, orphan_since, prio=frozenset(), refresh=None, catchup=()):
     """-> ([(host, ss, why)], {host: reason}, orphans). Pure.
     Per host (USER 2026-10-28 venue rule): data/fleet_priority.json sides; then own-venue pending (home side first); then own-venue
     re-runs; then, when its own venue is out of work, the other venue's backlog (pending, then re-runs). A venue with no admitting
@@ -568,10 +589,19 @@ def plan(pend, partial, fleet_data, now, orphan_since, prio=frozenset(), refresh
         running = list((fleet_data[name].get("running") or {}).keys())
         foreign = sum(1 for s in running if cat_of(s) not in own) if own else 0
         pick, why = None, ""
+        # One catch-up board per host is the reserved slice; regular boards fill its other slots.
+        catchup_running = any((fleet_data[name].get("launches") or {}).get(ss, {}).get("mode") == "catchup" for ss in running)
+        if not catchup_running:
+            own_catchup = [ss for ss in catchup if ss not in claimed and (not own or cat_of(ss) in own) and mem_fits(fleet_data[name], now, cat_of(ss))]
+            other_catchup = [ss for ss in catchup if ss not in claimed and ss not in own_catchup and mem_fits(fleet_data[name], now, cat_of(ss))]
+            if own_catchup or other_catchup:
+                pick = (own_catchup or other_catchup)[0]
+                claimed.add(pick)
+                why = f"catchup {cat_of(pick)}"
         # priority sides go first WITHIN the host's own venue (USER 2026-10-28 venue rule supersedes the cross-venue priority ruling);
         # another venue's priority sides are reached in pass 2 like any other backlog (sorted first there)
         live_prio = [c for c in CAT_PRIORITY if (not own or c in own) and mem_fits(fleet_data[name], now, c) and any(s in prio and s not in claimed and partial.get(s) in (None, name) for s in pend.get(c, []))]
-        if live_prio:
+        if not pick and live_prio:
             pick, why = take(name, live_prio[0], pend), f"priority {live_prio[0]}"
         live_orphans = [c for c in CAT_PRIORITY if c in orphans and c not in own and avail(pend, c, name)]
         if not pick and own and live_orphans and foreign < ORPHAN_SLOTS:
@@ -675,14 +705,14 @@ def npz_ship(fleet, target, ss):
             "install": "TARGET_NEWER_KEPT" if "REFUSED-3" in out else out.strip()[-60:]}
 
 
-def launch(fleet, target, ss, tail, me):
+def launch(fleet, target, ss, tail, me, mode="slow", catchup_run_id=""):
     t0 = time.time()
     npz = npz_ship(fleet, target, ss)
     if not npz.get("fresh") and cat_of(ss).startswith("CRYPTO"):
         # the pilot refuses a crypto NPZ >20 min behind (STALE_NPZ_SKIPPED) and would burn an attempt; hold instead
         return {"host": target, "ss": ss, "npz": npz, "result": "NPZ_STALE_HOLD", "s": round(time.time() - t0, 1)}
     tail = max(int(tail or 0), int(npz.get("tail") or 0))
-    args = " ".join(shlex.quote(str(a)) for a in (ss, WORKERS, SLOTS, tail, me))
+    args = " ".join(shlex.quote(str(a)) for a in (ss, WORKERS, SLOTS, tail, me, mode, catchup_run_id))
     rc, out, err = fleet[target][0].feed(f"bash -s -- {args}", TOOLS / "fleet_launch.sh", 60)
     result = (out.strip().splitlines() or [f"ERROR-rc{rc}-{err[-120:]}"])[-1]
     return {"host": target, "ss": ss, "npz": npz, "result": result, "s": round(time.time() - t0, 1)}
@@ -800,7 +830,9 @@ def tick(args):
                 orphan_since.setdefault(cat, now)
         refresh = refresh_by_cat(universe, view, now, pend)
         promote_priority_reruns(pend, refresh, prio)
-        picks, why_not, orphans = plan(pend, partial, data, now, orphan_since, frozenset(prio), refresh)
+        catchup_doc = catchup_queue(now)
+        catchup = unlaunched_catchup(catchup_doc, view, holds)
+        picks, why_not, orphans = plan(pend, partial, data, now, orphan_since, frozenset(prio), refresh, catchup)
         rec["pending"] = {c: len(v) for c, v in pend.items()}
         rec["rerun"] = {c: len(v) for c, v in refresh.items()}
         rec["universe"] = {c: len(v) for c, v in universe.items()}
@@ -808,14 +840,16 @@ def tick(args):
         rec["orphans"] = sorted(orphans)
         rec["idle_why"] = why_not
         rec["skipped_n"] = len(skipped)
-        rec["plan"] = [{"host": h, "ss": s, "why": w} for h, s, w in picks]
+        rec["catchup_pending"] = len(catchup)
+        rec["catchup_run_id"] = catchup_doc.get("run_id")
+        rec["plan"] = [{"host": h, "ss": s, "why": w, "mode": "catchup" if w.startswith("catchup ") else "slow"} for h, s, w in picks]
         tails = {}
         for d in data.values():
             for sym, t in (d.get("tails") or {}).items():
                 tails[sym] = max(tails.get(sym, 0), int(t or 0))
         if picks and not args.dry_run:
             with cf.ThreadPoolExecutor(max_workers=len(picks)) as pool:
-                futs = [pool.submit(launch, fleet, h, s, tails.get(s.rsplit("_", 1)[0], 0), me) for h, s, _ in picks]
+                futs = [pool.submit(launch, fleet, h, s, tails.get(s.rsplit("_", 1)[0], 0), me, "catchup" if w.startswith("catchup ") else "slow", catchup_doc.get("run_id") or "") for h, s, w in picks]
                 rec["launches"] = [f.result() for f in futs]
             for x in rec["launches"]:
                 if x["result"] == "NPZ_STALE_HOLD":
@@ -825,7 +859,7 @@ def tick(args):
         if not args.dry_run:
             rec["settings_history"] = settings_history(fleet, state)[:12]
         free_cap = sum(1 for n in data if admission(data[n], now, n)[0])
-        work = sum(rec["pending"].values()) + sum(rec["rerun"].values())
+        work = sum(rec["pending"].values()) + sum(rec["rerun"].values()) + rec["catchup_pending"]
         idle_s = now - float(state.get("last_launch") or now)
         if free_cap and work and idle_s > 900:
             rec["ALARM"] = f"{free_cap} host(s) admit and {work} sym_sides pending but no launch for {int(idle_s)}s"

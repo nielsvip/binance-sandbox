@@ -30462,6 +30462,10 @@ class MultiAccountTradeManager:
                 _vxf_q0 = quantity
                 quantity = max(6 * config.MIN_POSITION_SIZE / current_price, 1.2 * exchange_min_qty)
                 logger.warning(f"[VEC_EXACT_SIZE_FLOOR] {position_key}: live sizing left ${_vxf_q0 * current_price:.2f} -> floored to ${quantity * current_price:.2f} (vec decision kept)")
+            if quantity <= 3 * config.MIN_POSITION_SIZE / current_price and _original_action_was_reentry:
+                _reentry_q0 = quantity
+                quantity = max(6 * config.MIN_POSITION_SIZE / current_price, 1.2 * exchange_min_qty)
+                logger.warning(f"[REENTRY_SIZE_FLOOR] {position_key}: live sizing left ${_reentry_q0 * current_price:.2f} -> floored to ${quantity * current_price:.2f} (flat reentry kept)")
             if quantity <= 3 * config.MIN_POSITION_SIZE / current_price:
                 logger.warning(
                     f"{position_key} order not_allowed no quantity left ${quantity * current_price} should have been killed before this point"
@@ -54653,7 +54657,9 @@ async def process_position(
                 _fx_exchange = safe_fetch_float(_fx_saved.get("stopPrice", 0) or 0, 0.0)
                 if _fx_exchange > 0:
                     _fx_entry_soft = _fx_exchange * ((1.0 - 0.25 / 100.0) / (1.0 - 0.40 / 100.0) if _fx_is_long else (1.0 + 0.25 / 100.0) / (1.0 + 0.40 / 100.0))
-                    if _fx_entry_soft > 0 and abs(_fx_entry_soft - _fx_lvl) > 1e-10:
+                    _fx_tick = await trade_manager._fixed_stop_tick(account_key, symbol)
+                    _fx_roundtrip_matches = _fixed_stop_core.exchange_matches_software(_fx_is_long, _fx_lvl, _fx_exchange, _fx_tick)
+                    if _fx_entry_soft > 0 and abs(_fx_entry_soft - _fx_lvl) > 1e-10 and not _fx_roundtrip_matches:
                         logger.critical(f"[FIXED_STOP_ENTRY_RESTORE] {position_key}: original exchange stop {_fx_exchange:.8f} recovers software {_fx_entry_soft:.8f} from {_fx_lvl:.8f}; exchange order kept")
                         position.fixed_stop_price = _fx_entry_soft
                         _fx_lvl = _fx_entry_soft

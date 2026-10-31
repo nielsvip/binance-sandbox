@@ -5,7 +5,8 @@
 # shared /tmp/v15_fleet_launch_v2.lock (same lock as worker_lanes/*/overload_run.sh), the slot count and memory,
 # then spawns the pilot with the SAME env recipe as worker_lanes/s5/overload_run.sh (FORCE_DC_RERUN=1 for stocks
 # only, as s2 crypto never carried it). Prints exactly one of LAUNCHED-/ALREADY-/FULL-/MEM_WAIT-/BUSY-/ERROR-.
-SS=${1:?symside}; W=${2:-7}; MAX=${3:-4}; TAIL=${4:-0}; BY=${5:-?}
+SS=${1:?symside}; W=${2:-7}; MAX=${3:-4}; TAIL=${4:-0}; BY=${5:-?}; MODE=${6:-slow}; CATCHUP_RUN_ID=${7:-}
+[[ "$MODE" == slow || "$MODE" == catchup ]] || { echo "ERROR-$SS-bad-mode"; exit 0; }
 MEM_FULL=${FLEET_MEM_FULL_MB:-9000}; MEM_MIN=${FLEET_MEM_MIN_MB:-6500}
 PY=/home/niels/.conda/envs/binance_env_mac/bin/python
 SB=$HOME/binance-sandbox
@@ -45,12 +46,13 @@ export MALLOC_ARENA_MAX=2 V15_BOARD_BUDGET=0 V15_EVAL_CACHE=1 V15_EVAL_CACHE_DB=
 eval "$("$PY" -c 'import json,shlex,sys
 e=(json.load(open(sys.argv[1])).get("env") or {})
 print("\n".join("export %s=%s" % (k, shlex.quote(str(v))) for k, v in e.items() if k.replace("_", "").isalnum() and not k.startswith("V15_EVAL_CACHE")))' "$SB/data/v15_gate_env.json" 2>/dev/null)"
+if [ "$MODE" = catchup ]; then export V18_CATCHUP=1; else export V18_CATCHUP=0; fi
 mkdir -p "$HOME/fleet_dispatch/launches"
 REC=$HOME/fleet_dispatch/launches/$SS.json
 PREV_N=$($PY -c "import json,sys;d=json.load(open(sys.argv[1]));print(int(d.get('n',0)) if int(d.get('tail',0))==int(sys.argv[2]) else 0)" "$REC" "$TAIL" 2>/dev/null || echo 0)
 # Spawned in its own session with every fd >2 closed: the pilot must never inherit the launch lock (fd 9).
 setsid nohup "$PY" -u v15_pilot.py --sym-side "$SS" --template "$T" --seq-mode worst2best --window-days 30 --vector-only --workers "$W" >> "/tmp/sweep_${SS}_30D.log" 2>&1 < /dev/null 9>&- &
 PID=$!
-printf '{"ss":"%s","ts":%d,"tail":%d,"n":%d,"workers":%d,"pid":%d,"by":"%s","avail_mb":%d}\n' "$SS" "$(date +%s)" "$TAIL" "$((PREV_N + 1))" "$W" "$PID" "$BY" "$AVAIL" > "$REC.tmp" && mv -f "$REC.tmp" "$REC"
+printf '{"ss":"%s","ts":%d,"tail":%d,"n":%d,"workers":%d,"pid":%d,"by":"%s","avail_mb":%d,"mode":"%s","catchup_run_id":"%s"}\n' "$SS" "$(date +%s)" "$TAIL" "$((PREV_N + 1))" "$W" "$PID" "$BY" "$AVAIL" "$MODE" "$CATCHUP_RUN_ID" > "$REC.tmp" && mv -f "$REC.tmp" "$REC"
 sleep 2
 if kill -0 "$PID" 2>/dev/null; then echo "LAUNCHED-$SS-w$W-pid$PID"; else echo "ERROR-$SS-died-at-start: $(tail -c 300 /tmp/sweep_${SS}_30D.log | tr '\n' ' ')"; fi

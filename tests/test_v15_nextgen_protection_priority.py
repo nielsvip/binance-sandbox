@@ -32,7 +32,7 @@ def test_finite_unknown_catalog_is_allocated_without_probability_draws():
     assert seen == {row['id'] for row in proposals}
 
 
-def test_mirror_dedup_and_safety_rejection_do_not_create_training_negatives():
+def test_mirror_dedup_and_selection_contract_rejection_do_not_create_training_negatives():
     proposals = catalog()[:2]
     mirror = dict(proposals[0], id='mirror', x=proposals[0]['y'], y=proposals[0]['x'])
     result = P.allocate(proposals + [mirror], {}, {'fixture_context': 1}, 13, domain, lambda row: row['id'] != 'recovery')

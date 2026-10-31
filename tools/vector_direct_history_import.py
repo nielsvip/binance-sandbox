@@ -248,6 +248,10 @@ def build_row(rec: dict, src: str) -> dict | None:
     }
     if isinstance(rec.get("decision_provenance"), dict):
         row["decision_provenance"] = rec["decision_provenance"]
+    if isinstance(rec.get("actual_profit_check"), dict):
+        row["actual_profit_check"] = rec["actual_profit_check"]
+    if isinstance(rec.get("stop_trigger_authorization"), dict):
+        row["stop_trigger_authorization"] = rec["stop_trigger_authorization"]
     return row
 
 

@@ -26,6 +26,10 @@ def any_enabled(cfg) -> bool:
     return any(_on(cfg, s) for s in SWITCHES)
 
 
+def should_apply_fresh_open_ftf(curr_amt, explicit_reentry) -> bool:
+    return float(curr_amt or 0.0) == 0.0 and not bool(explicit_reentry)
+
+
 def fire(cfg, is_long: bool, close: float, prev_close: float, exit_px: float, dc4_prev: float, dc4_prev2: float,
          bar_low: float, bar_high: float, ext_since_exit: float, wt1: float, wt2: float, wt_vel: float):
     """Return the trigger name that fires on this closed 15m bar, or "".

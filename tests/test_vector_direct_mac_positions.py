@@ -160,6 +160,7 @@ def test_trc_plans_trb_keys_and_never_its_own(tmp_path):
 
 
 def seven(tmp_path, sides=None, keys=("AAAUSDT_LONG",), epoch=None):
+    Path(tmp_path).mkdir(parents=True, exist_ok=True)
     obj = module.Trader.__new__(module.Trader)
     obj.venue = "crypto"
     obj.out = tmp_path
@@ -182,11 +183,14 @@ def test_fin_opens_only_a_fresh_seven_day_men_side(tmp_path):
     assert obj.sevenday_ok("fin", "AAAUSDT_LONG", now)[0] is True
 
 
-def test_a_seven_day_result_over_a_day_old_is_refused(tmp_path):
+def test_a_seven_day_result_past_the_thirty_hour_window_is_refused(tmp_path):
+    """USER 2026-10-31 raised 24h -> ~30h: the run starts 20:15 daily, so 30 h leaves a cushion for consistency."""
     now = time.time()
-    obj = seven(tmp_path, sides={"AAAUSDT_LONG": now - 25 * 3600})
+    obj = seven(tmp_path, sides={"AAAUSDT_LONG": now - 31 * 3600})
     ok, why = obj.sevenday_ok("fin", "AAAUSDT_LONG", now)
-    assert ok is False and "25.0 h old" in why
+    assert ok is False and "31.0 h old" in why and "limit 30 h" in why
+    obj2 = seven(tmp_path / "in", sides={"AAAUSDT_LONG": now - 25 * 3600})
+    assert obj2.sevenday_ok("fin", "AAAUSDT_LONG", now)[0] is True, "25 h is inside the 30 h window"
 
 
 def test_a_side_outside_mens_book_is_refused_even_when_fresh(tmp_path):
@@ -222,7 +226,7 @@ def _latch_env(tmp_path, n_sides, drop=9.0):
 
 
 def test_a_mass_latch_is_refused_and_nothing_is_closed(tmp_path):
-    state_dir, states, bar = _latch_env(tmp_path, 40)
+    state_dir, states, bar = _latch_env(tmp_path, 40, drop=18.0)
     rung = []
     out = module.rolling_deterioration_halts(tmp_path, state_dir, states, bar, alert=lambda k, **f: rung.append((k, f)))
     assert out == {}, "a whole-book latch must latch nothing"
@@ -232,7 +236,7 @@ def test_a_mass_latch_is_refused_and_nothing_is_closed(tmp_path):
 
 
 def test_an_ordinary_single_deterioration_still_latches(tmp_path):
-    state_dir, states, bar = _latch_env(tmp_path, 40)
+    state_dir, states, bar = _latch_env(tmp_path, 40, drop=18.0)
     for i, ss in enumerate(sorted(states)):
         if i >= 2:
             states[ss]["gain_pct"] = 20.0  # unchanged: not a deterioration
@@ -240,6 +244,18 @@ def test_an_ordinary_single_deterioration_still_latches(tmp_path):
     out = module.rolling_deterioration_halts(tmp_path, state_dir, states, bar, alert=lambda k, **f: rung.append((k, f)))
     assert len(out) == 2 and rung == []
     assert json.loads((tmp_path / "data" / "vector_direct" / "deteriorated_crypto.json").read_text()).keys() == out.keys()
+
+
+def test_drop_below_15_pp_keeps_trading_and_releases_prior_latch(tmp_path):
+    state_dir, states, bar = _latch_env(tmp_path, 40, drop=18.0)
+    for ss in list(states)[1:]:
+        states[ss]["gain_pct"] = 20.0
+    out = module.rolling_deterioration_halts(tmp_path, state_dir, states, bar)
+    assert len(out) == 1
+    first = next(iter(out))
+    states[first]["gain_pct"] = 6.0
+    assert module.rolling_deterioration_halts(tmp_path, state_dir, states, bar) == {}
+    assert json.loads((tmp_path / "data" / "vector_direct" / "deteriorated_crypto.json").read_text()) == {}
 
 
 # ── the 7D rule is the TWO-ARM COMPARISON ONLY: fin vs men, trc vs trb (USER 2026-10-31) ──

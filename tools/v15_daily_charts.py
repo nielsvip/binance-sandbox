@@ -642,6 +642,8 @@ def publish(boards: dict, results: list, run_id: str, started: str, partial: boo
 
 def index_page(manifest: dict) -> str:
     rows = []
+    catchup_n = sum(e.get("status") == "OK" and (e.get("deltas") or {}).get("gain_pct") is not None and float(e["deltas"]["gain_pct"]) < -1e-9 for e in manifest["entries"])
+    severe_n = sum(e.get("status") == "OK" and (e.get("deltas") or {}).get("gain_pct") is not None and float(e["deltas"]["gain_pct"]) <= -15.0 for e in manifest["entries"])
     for e in sorted(manifest["entries"], key=lambda e: (e["status"] != "OK", -(e.get("metrics") or {}).get("gain_pct", -1e9) if e["status"] == "OK" else 0, e["symside"])):
         m, d, o = e.get("metrics") or {}, e.get("deltas") or {}, e.get("orig_metrics") or {}
         chart_path = CHARTS / e["chart"]
@@ -659,14 +661,15 @@ def index_page(manifest: dict) -> str:
             direction, title_color = "= unchanged since board", "#d1d5db"
         link = f"<a href='{_html.escape(e['chart'])}' title='{_html.escape(chart_title + ' · ' + direction, quote=True)}' style='color:{title_color}'>{_html.escape(chart_title)}</a> <span style='color:{title_color}'>{_html.escape(direction)}</span>"
         if e["status"] == "OK":
-            halt = e.get("deterioration")
-            rows.append(f"<tr><td>{link}</td><td{' style=color:#ef4444 title=' + chr(34) + _html.escape('; '.join(halt)) + chr(34) if halt else ''}>{'HALTED' if halt else 'OK'}</td><td>{_fmt(m.get('gain_pct'))}</td><td>{_fmt(o.get('gain_pct'))}</td><td>{_fmt(d.get('gain_pct'), 2, True)}</td><td>{_fmt(m.get('bh_pct'))}</td><td>{m.get('trades')}</td><td>{_fmt(m.get('max_dd_pct'))}</td><td>{_fmt(m.get('tim_pct'))}</td><td>{e.get('board_cells_vintage') or 'UNAVAILABLE'}</td><td>{e.get('board_age_at_calc')}</td><td>{e.get('calculated_utc')}</td></tr>")
+            drop = d.get("gain_pct")
+            queue_status = "HALTED · CATCH-UP" if drop is not None and float(drop) <= -15.0 else "CATCH-UP · TRADING" if drop is not None and float(drop) < -1e-9 else "OK"
+            rows.append(f"<tr><td>{link}</td><td>{queue_status}</td><td>{_fmt(m.get('gain_pct'))}</td><td>{_fmt(o.get('gain_pct'))}</td><td>{_fmt(d.get('gain_pct'), 2, True)}</td><td>{_fmt(m.get('bh_pct'))}</td><td>{m.get('trades')}</td><td>{_fmt(m.get('max_dd_pct'))}</td><td>{_fmt(m.get('tim_pct'))}</td><td>{e.get('board_cells_vintage') or 'UNAVAILABLE'}</td><td>{e.get('board_age_at_calc')}</td><td>{e.get('calculated_utc')}</td></tr>")
         else:
             rows.append(f"<tr style='color:#ef4444'><td>{link}</td><td>FAIL</td><td colspan=10>{_html.escape(e.get('error', '')[:200])}</td></tr>")
     return (
         "<!doctype html><html><head><meta charset=utf-8><title>V15 daily 30D charts</title>"
         "<style>body{font-family:system-ui,monospace;margin:12px;background:#0a0a0a;color:#e5e5e5}a{color:#93c5fd}table{border-collapse:collapse;font-size:11px}th{background:#1f2937;padding:4px}td{border:1px solid #333;padding:3px}</style></head><body>"
-        f"<h2>V15 daily 30D charts — run {manifest['run_id']}</h2><p>started {manifest['started_utc']} · finished {manifest['finished_utc']} · {manifest['ok']}/{manifest['sym_sides']} OK · {manifest['fail']} FAIL{' · COMPLETE' if manifest['complete'] else ' · INCOMPLETE'} · {len((manifest.get('enforcement') or {}).get('halted') or [])} sym_sides HALTED (no open/augment; exits follow the board) — rules: " + _html.escape(", ".join(f"{k} {w} >= {v}" for k, w, v in DETERIORATION_RULES)) + ", gain turning non-positive</p>"
+        f"<h2>V15 daily 30D charts — run {manifest['run_id']}</h2><p>started {manifest['started_utc']} · finished {manifest['finished_utc']} · {manifest['ok']}/{manifest['sym_sides']} OK · {manifest['fail']} FAIL{' · COMPLETE' if manifest['complete'] else ' · INCOMPLETE'} · {catchup_n} negative gain changes queued for catch-up, {severe_n} at least 15 pp lower and halted. Smaller drops keep trading.</p>"
         "<p><span style='color:#4ade80'>↑ higher gain</span> · <span style='color:#fb7185'>↓ lower gain</span> · <span style='color:#d1d5db'>= unchanged</span> · <span style='color:#a3a3a3'>uncompared</span>. Percentage-point change from the original published board using the same settings on the latest rolling 30-day window.</p>"
         "<table><thead><tr><th>sym_side</th><th>status</th><th>gain % today</th><th>gain % board</th><th>Δ gain</th><th>B&H %</th><th>trades</th><th>max DD %</th><th>TIM %</th><th>board cells calculated</th><th>board age at recalc</th><th>recalculated</th></tr></thead><tbody>"
         + "".join(rows)
@@ -684,6 +687,8 @@ HALT_TARGETS = (("s1", "~/binance/data"), ("s5", "~/binance/data"), ("s5", "~/tr
 PRIORITY_HOSTS = ("s1", "s2")
 PRIORITY_REMOTE = "~/binance-sandbox/data/fleet_priority.json"
 PRIORITY_MINE = ROOT / "data" / "reports" / "daily_charts_priority_added.json"
+CATCHUP_FILE = ROOT / "data" / "fleet_catchup.json"
+CATCHUP_REMOTE = "~/binance-sandbox/data/fleet_catchup.json"
 
 
 def deterioration(entry: dict) -> list:
@@ -798,11 +803,46 @@ def sync_priority(halted: set) -> dict:
     return status
 
 
-def enforce(manifest=None) -> dict:
-    """USER 2026-10-30 "KEEP OUT OF THE TRADERS": deterioration is REPORTED only (manifest, index, events log); nothing is
-    pushed to any trader root and nothing is written to the fleet priority file."""
-    doc = update_halts(manifest)
-    return {"deteriorated": sorted(doc["halts"]), "halt_push": "DISABLED (user: keep out of the traders)", "priority": "DISABLED"}
+def catchup_rows(manifest: dict) -> list[dict]:
+    rows = []
+    for entry in manifest.get("entries") or []:
+        drop = (entry.get("deltas") or {}).get("gain_pct")
+        if entry.get("status") != "OK" or drop is None or not math.isfinite(float(drop)) or float(drop) >= -1e-9:
+            continue
+        rows.append({"symside": entry["symside"], "drop_pp": round(-float(drop), 6), "calculated_utc": entry["calculated_utc"], "set_md5": entry["set_md5"], "board_published_utc": entry["board_published_utc"]})
+    return sorted(rows, key=lambda row: (-row["drop_pp"], row["symside"]))
+
+
+def sync_catchup_queue(doc: dict) -> dict:
+    body = json.dumps(doc, indent=1, sort_keys=True)
+    want = hashlib.sha256(body.encode()).hexdigest()
+    stamp = utcnow().strftime("%Y%m%dT%H%M%SZ")
+    status = {}
+    for host in PRIORITY_HOSTS:
+        try:
+            remote = CATCHUP_REMOTE
+            cmd = f"mkdir -p ~/binance-sandbox/backups; if [ -f {remote} ]; then cp {remote} ~/binance-sandbox/backups/before_fleet_catchup_{stamp}.json; fi; cat > {remote}.tmp && mv {remote}.tmp {remote} && sha256sum {remote}"
+            result = ssh(host, cmd, 300, body)
+            status[host] = "OK" if result.returncode == 0 and result.stdout[:64] == want else f"MISMATCH rc={result.returncode} {result.stderr.strip()[-120:]}"
+        except Exception as exc:
+            status[host] = f"FAIL {exc}"
+    return status
+
+
+def enforce(manifest=None, partial=False) -> dict:
+    """Queue negative gain deltas; halt only drops of at least 15 pp."""
+    if partial or not manifest:
+        return {"catchup": "partial chart run: fleet queue unchanged", "halt_push": "DISABLED"}
+    rows = catchup_rows(manifest)
+    doc = {"schema": "daily-chart-catchup-v1", "run_id": manifest["run_id"], "generated_utc": iso(utcnow()), "until": time.time() + 36 * 3600, "rows": rows, "threshold_halt_pp": 15.0, "mode": "V18_CATCHUP=1"}
+    atomic_write(CATCHUP_FILE, json.dumps(doc, indent=1, sort_keys=True))
+    halts = {r["symside"]: {"halted_utc": iso(utcnow()), "rechecked_utc": r["calculated_utc"], "drop_pp": r["drop_pp"], "board_published_utc": r["board_published_utc"], "set_md5": r["set_md5"], "reason": "same-settings 30D gain fell by at least 15 pp"} for r in rows if r["drop_pp"] >= 15.0}
+    halt_doc = {"updated_utc": iso(utcnow()), "semantics": "no OPEN or AUGMENT for drops >=15 pp; CLOSE and REDUCE allowed", "halts": halts}
+    atomic_write(HALT_FILE, json.dumps(halt_doc, indent=1, sort_keys=True))
+    status = sync_catchup_queue(doc)
+    halt_status = push_halts(halt_doc)
+    print(f"[daily-charts] catch-up queue {len(rows)} negative sides, {sum(r['drop_pp'] >= 15 for r in rows)} at least 15 pp; S1/S2 {status}", flush=True)
+    return {"catchup": len(rows), "severe_drop_15pp": len(halts), "queue_sync": status, "halt_push": halt_status}
 
 
 def slot_due(now: datetime.datetime) -> str:
@@ -846,7 +886,7 @@ def main() -> int:
         print("[daily-charts] no verified worker host — every sym_side reported FAIL", flush=True)
     results = dispatch(boards, run_id, a.procs)
     manifest = publish(boards, results, run_id, started, partial=bool(only))
-    manifest["enforcement"] = enforce(manifest)
+    manifest["enforcement"] = enforce(manifest, partial=bool(only))
     atomic_write(CHARTS / ("daily_charts_manifest_partial.json" if only else "daily_charts_manifest.json"), json.dumps(manifest, indent=1, default=str))
     if not only:
         atomic_write(CHARTS / "index.html", index_page(manifest))

@@ -31479,7 +31479,7 @@ async def check_entry_candidates_for_account(
                     # generic_filter_tf (boards promote these switches; unenforced live = over-trade vs
                     # the board's own measurement + 932 QUICK LIVE_ONLY legs). OPEN-only: vec GFTF entry
                     # mask constrains fresh entries; augments ride the augment gates. Fail-open on error.
-                    if curr_amt == 0:
+                    if _reentry_triggers.should_apply_fresh_open_ftf(curr_amt, _vec_reentry_fire):
                         try:
                             _wftf_get = lambda n, d: _psym_get(symbol, position_side, n, getattr(config, n, d))
                             _wftf_fam = _family_lane_tags(indicators, current_price, is_long, _wftf_get)

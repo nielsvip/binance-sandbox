@@ -40,3 +40,22 @@ def test_send_rechecks_broker_position_and_does_not_finalize_refusal(tmp_path):
     assert rows[-1]["status"] == "REFUSED_NONPROFIT_REDUCE"
     assert rows[-1]["final"] is False
     assert order["key"] not in runner.done
+
+
+@pytest.mark.parametrize("side,mark,level", [("LONG", 94, 95), ("SHORT", 106, 105)])
+def test_only_bound_crossed_fixed_stop_authorizes_loss_close(side, mark, level):
+    position = {"qty": 2, "entry": 100, "price": mark, "position_source": "mac_snapshot_broker_verified", "mac": {"entry_price": 100, "opened_at": "2026-10-31T00:00:00Z", "fixed_stop_anchor": 1793404800, "fixed_stop_price": level, "fixed_stop_armed": True}}
+    assert module.verified_fixed_stop_trigger("X_" + side, position)["kind"] == "LIFECYCLE_BOUND_FIXED_STOP_CROSSED"
+    position["mac"]["fixed_stop_anchor"] -= 900
+    assert module.verified_fixed_stop_trigger("X_" + side, position) is None
+    position["mac"]["fixed_stop_anchor"] += 900
+    position["mac"]["entry_price"] = 99
+    assert module.verified_fixed_stop_trigger("X_" + side, position) is None
+
+
+def test_stop_reason_or_uncrossed_level_cannot_authorize_loss():
+    position = {"qty": 2, "entry": 100, "price": 97, "position_source": "mac_snapshot_broker_verified", "mac": {"entry_price": 100, "opened_at": "2026-10-31T00:00:00Z", "fixed_stop_anchor": 1793404800, "fixed_stop_price": 95, "fixed_stop_armed": True}, "reason": "FIXED_STOP"}
+    assert module.verified_fixed_stop_trigger("X_LONG", position) is None
+    position["price"] = 94
+    position["position_source"] = "broker_verified_mac_quantity_mismatch"
+    assert module.verified_fixed_stop_trigger("X_LONG", position) is None

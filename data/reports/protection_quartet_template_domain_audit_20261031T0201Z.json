@@ -317,13 +317,69 @@
       ],
       "id": "PG_DROP_TRIGGER_x_REENTRY_CROSSBACK",
       "kind": "cross-row switch-switch"
+    },
+    {
+      "effective_window_under_current_code": "With REQUIRE_PROFIT true, this changes the gain window from [50,50.5)% to [25,25.5)%; still nowhere near zero. No row candidate below 25 exists.",
+      "fields": [
+        {
+          "baseline": false,
+          "baseline_type": "bool",
+          "candidate": true,
+          "candidate_type": "bool",
+          "field": "BREAKEVEN_GAIN_EROSION_ENABLED",
+          "template_rows": [
+            {
+              "bold": true,
+              "row": 41,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": false
+            },
+            {
+              "bold": false,
+              "row": 42,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": true
+            }
+          ]
+        },
+        {
+          "baseline": 50.0,
+          "baseline_type": "float",
+          "candidate": 25,
+          "field": "BREAKEVEN_GAIN_EROSION_MIN_GAIN",
+          "template_candidate_type": "int (strict runtime coercion returns float)",
+          "template_rows": [
+            {
+              "bold": true,
+              "row": 106,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": 50
+            },
+            {
+              "bold": false,
+              "row": 103,
+              "tab": "REDUCE_PROFIT_LOCK",
+              "value": 25
+            }
+          ]
+        }
+      ],
+      "fixed_baseline_guard": {
+        "baseline": true,
+        "field": "BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT",
+        "retained": true,
+        "template_row": 110
+      },
+      "id": "BGE_ENABLE_x_MIN_GAIN_25",
+      "kind": "cross-row switch-switch; legal but not near-breakeven"
     }
   ],
   "constraints": [
     "Research candidates only; no baseline/default/engine/template changes and no engine run.",
     "The fixed stop is unchanged; no stop weakening candidate included.",
     "Do not label these predicted or measured gain improvements.",
-    "BGE-specific yellow is absent; do not substitute the separate peak-giveback BE-erosion yellow."
+    "BGE-specific yellow is absent; do not substitute the separate peak-giveback BE-erosion yellow.",
+    "BGE MIN_GAIN row domain has no near-zero value; 25 is the smallest actual row and is explicitly labeled non-near-breakeven."
   ],
   "created_at_utc": "2026-10-31T02:01:03Z",
   "proposal_provenance": {
@@ -414,6 +470,8 @@
     "candidate_values_checked": {
       "BREAKEVEN_GAIN_EROSION_ENABLED": true,
       "BREAKEVEN_GAIN_EROSION_FILTER_TF": "15m",
+      "BREAKEVEN_GAIN_EROSION_MIN_GAIN": 25,
+      "BREAKEVEN_GAIN_EROSION_REQUIRE_PROFIT": true,
       "COMMISSION_BUFFER_PCT": 0.04,
       "HARD_BREAKEVEN_FLOOR_ENABLED": true,
       "HARD_BREAKEVEN_MIN_PEAK_PCT": 0.25,
@@ -442,7 +500,69 @@
   },
   "yellow_domain_facts": {
     "BREAKEVEN_GAIN_EROSION_ENABLED_row42_yellows": [],
+    "BREAKEVEN_GAIN_EROSION_FILTER_TF_rows": [
+      {
+        "row": 68,
+        "tab": "REDUCE_PROFIT_LOCK",
+        "value": "1h"
+      },
+      {
+        "row": 69,
+        "tab": "REDUCE_PROFIT_LOCK",
+        "value": "15m"
+      },
+      {
+        "row": 70,
+        "tab": "REDUCE_PROFIT_LOCK",
+        "value": "4h"
+      },
+      {
+        "bold": true,
+        "row": 71,
+        "tab": "REDUCE_PROFIT_LOCK",
+        "value": "15m"
+      },
+      {
+        "row": 72,
+        "tab": "REDUCE_PROFIT_LOCK",
+        "value": "D"
+      }
+    ],
     "BREAKEVEN_GAIN_EROSION_FILTER_TF_yellow_cells_in_workbook": 0,
+    "BREAKEVEN_GAIN_EROSION_MIN_GAIN_rows": [
+      {
+        "row": 103,
+        "runtime_kind": "float",
+        "strict_result": "accepts as 25.0",
+        "tab": "REDUCE_PROFIT_LOCK",
+        "value": 25
+      },
+      {
+        "row": 104,
+        "runtime_kind": "float",
+        "tab": "REDUCE_PROFIT_LOCK",
+        "value": 75
+      },
+      {
+        "row": 105,
+        "runtime_kind": "float",
+        "tab": "REDUCE_PROFIT_LOCK",
+        "value": 50
+      },
+      {
+        "bold": true,
+        "row": 106,
+        "runtime_kind": "float",
+        "tab": "REDUCE_PROFIT_LOCK",
+        "value": 50
+      },
+      {
+        "row": 102,
+        "runtime_kind": "float",
+        "tab": "REDUCE_PROFIT_LOCK",
+        "value": 62.5
+      }
+    ],
     "HARD_BREAKEVEN_MIN_PEAK_PCT_yellow_cells_in_workbook": 0,
     "REDUCE_PROFIT_LOCK_row5": [
       "PEAK_GIVEBACK_BE_EROSION_FILTER_TF=OFF",

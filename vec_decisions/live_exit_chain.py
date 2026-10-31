@@ -44,6 +44,31 @@ def _b(cfg, k, d):
     return bool(d) if v is None else bool(v)
 
 
+def validate_supported_inputs(npz, n, cfg, is_long):
+    """Raise on active LEC cases whose source predecessor/portfolio state is absent."""
+    if str(getattr(cfg, "MODE", "crypto")) == "tradier":
+        return
+    if (
+        _b(cfg, "K1M_EXTREME_REVERSE_ENABLED", False)
+        and _b(cfg, "BB_RECOVERY_EXIT_ENABLED_TRADIER", False)
+    ):
+        raise ValueError(
+            "K1M_EXTREME_REVERSE plus BB_RECOVERY precedence is unsupported: v12 has no native k_1m predecessor state"
+        )
+    if not _b(cfg, "AUGMENTED_DC_BREAK_ENABLED", True):
+        return
+    if _b(cfg, "HEDGE_MODE", False):
+        raise ValueError(
+            "AUGMENTED_DC_BREAK is unsupported in HEDGE_MODE without active_hedges tracker state"
+        )
+    key = "dc_low_15m" if is_long else "dc_high_15m"
+    value = npz.get(key)
+    if value is None or getattr(value, "__len__", None) is None or len(value) != n:
+        raise ValueError(
+            f"AUGMENTED_DC_BREAK needs paired 15m NPZ channel {key} of length {n}"
+        )
+
+
 def _shift(a):
     out = np.empty_like(a)
     out[0] = a[0]
@@ -51,13 +76,19 @@ def _shift(a):
     return out
 
 
-def prepare(npz, n, is_long, cfg, close, safe):
+def prepare(npz, n, is_long, cfg, close, safe, symbol=None):
     P = {"n": n, "is_long": is_long, "floors": []}
+    P["symbol"] = str(symbol or "")
     has = lambda k: (k in npz) and getattr(npz.get(k), "__len__", None) is not None and len(npz.get(k)) == n
     # --- 3m channels: use frozen NPZ values when present; live age-veto remains a state gate. ---
     z = np.zeros(n)
     P["dc4_lvl"] = z
     P["dc20_lvl"] = z
+    P["augmented_dc_lvl"] = np.zeros(n)
+    if bool(getattr(cfg, "AUGMENTED_DC_BREAK_ENABLED", True)):
+        P["augmented_dc_lvl"] = safe(
+            npz, "dc_low_15m" if is_long else "dc_high_15m", n, 0.0
+        )
     P["crack"] = np.zeros(n, dtype=bool)
     # Master 1 is the existing 1m/3m/5m vector-forward lane. Keep sub-15m
     # inputs inert unless that lane is explicitly enabled; live WT veto stays live-owned.
@@ -184,10 +215,23 @@ def step(P, cfg, i, px, st):
                 reason = "PEAK_GIVEBACK_GAIN_EROSION_STOP"
             elif _b(cfg, "PEAK_GIVEBACK_DROP_TRIGGER_ENABLED", False) and gain < peak - _f(cfg, "PEAK_GIVEBACK_DROP_PCT", 1.0):
                 reason = "PEAK_GIVEBACK_GAIN_EROSION_STOP"
-    # 9. AUGMENTED_DC_BREAK_REDUCE_TO_MIN: live 'is_augmented' = positionAmt > 1.2 * (2*MIN_POSITION_SIZE/price) is true for any real position
+    # 9. AUGMENTED_DC_BREAK_REDUCE_TO_MIN; its source's 3m channel is paired
+    # to 15m by SWITCH_WIRING_GUIDE §4. HEDGE_MODE lacks tracker state here, so
+    # that configuration is explicitly fail-closed.
     if reason is None and not in_grace and _b(cfg, "AUGMENTED_DC_BREAK_ENABLED", True):
-        lvl = P["dc20_lvl"][i]
-        if lvl > 0 and ((is_long and px < lvl) or ((not is_long) and px > lvl)) and gain > 0.1:
+        from vec_decisions.quick_missing_augmented_dc_break import (
+            augmented_dc_break_fires,
+            augmented_dc_break_pos_min_qty,
+        )
+
+        lvl = P["augmented_dc_lvl"][i]
+        min_qty = augmented_dc_break_pos_min_qty(
+            P["symbol"], px, _f(cfg, "MIN_POSITION_SIZE", 1.0)
+        )
+        if augmented_dc_break_fires(
+            st.get("position_qty", 0.0), min_qty, px, lvl, gain, is_long, in_grace,
+            _b(cfg, "AUGMENTED_DC_BREAK_ENABLED", True), _b(cfg, "HEDGE_MODE", False),
+        ):
             reason = f"AUGMENTED_DC_BREAK_REDUCE_TO_MIN_{gain:.2f}%"
     if reason is None:
         return None

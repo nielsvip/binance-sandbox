@@ -437,6 +437,10 @@ def export(
         }
         if isinstance(r.get("decision_provenance"), dict):
             emitted["decision_provenance"] = r["decision_provenance"]
+        if isinstance(r.get("actual_profit_check"), dict):
+            emitted["actual_profit_check"] = r["actual_profit_check"]
+        if isinstance(r.get("stop_trigger_authorization"), dict):
+            emitted["stop_trigger_authorization"] = r["stop_trigger_authorization"]
         emit(json.dumps(emitted, default=str))
     if changed:
         atomic_write_json(cache_p, cache)

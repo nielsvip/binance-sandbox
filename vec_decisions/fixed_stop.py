@@ -361,3 +361,14 @@ def tightened(is_long: bool, current_level: float, candidate: float) -> float:
     if c <= 0:
         return cand
     return max(c, cand) if is_long else min(c, cand)
+
+
+def exchange_matches_software(is_long, soft_level, exchange_stop, tick):
+    try:
+        soft, exchange, step = float(soft_level), float(exchange_stop), float(tick)
+        if not all(math.isfinite(value) and value > 0 for value in (soft, exchange, step)):
+            return False
+        expected = float(build_stop_params(is_long, soft, step)["stopPrice"])
+        return math.isclose(expected, exchange, rel_tol=1e-12, abs_tol=step * 1e-6)
+    except (TypeError, ValueError, KeyError, OverflowError):
+        return False

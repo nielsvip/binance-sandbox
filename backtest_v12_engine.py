@@ -51,6 +51,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import numpy as np
+from tools.paper_frame_stream import historical_or_forward_steps
 
 from test_rate_guard import RateGuard
 
@@ -2846,12 +2847,14 @@ def _refresh_sim_position_marks(trade_manager, price_cache, sim_dt):
         _pos.last_updated = sim_dt
 
 
-async def run_simulation(mode, account_key, start_date, capital, stores, resolution):
+async def run_simulation(mode, account_key, start_date, capital, stores, resolution, *, forward_session=None):
     """Run the REAL trading engine on historical data.
 
     This follows the EXACT same init sequence as ez_manage.main()
     (lines 22551-22849) with only I/O patches applied.
     """
+    if forward_session is not None:
+        forward_session.assert_ready(mode, stores)
     # CRITICAL: V8 backtest must NEVER call Redis. The live config.Config has
     # _get_regime_from_redis() which is called from get_symbol_setting() on every
     # signal evaluation. On servers without real Redis (or with a dummy Redis that
@@ -5284,7 +5287,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
     _v8_wall_t0 = __import__('time').time()
     _v8_deadline_hit = False
 
-    for step, ts in enumerate(sorted_ts):
+    if forward_session is not None:
+        forward_session.bind(executed_trades, trade_manager.positions)
+    _paper_stream_exhausted = False
+    async for step, ts in historical_or_forward_steps(sorted_ts, forward_session):
         if _v8_wall_deadline > 0 and (__import__('time').time() - _v8_wall_t0) > _v8_wall_deadline:
             __import__('sys').stderr.write(f"V8_WALL_TIMEOUT: {__import__('time').time()-_v8_wall_t0:.0f}s > {_v8_wall_deadline:.0f}s at step {step}/{len(sorted_ts)} — breaking to emit V8_RESULT\\n")
             print(f"V8_WALL_TIMEOUT: {__import__('time').time()-_v8_wall_t0:.0f}s > {_v8_wall_deadline:.0f}s at step {step}/{len(sorted_ts)} — emitting V8_RESULT", flush=True)
@@ -5366,6 +5372,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             if p <= 0:
                 continue
             indicators = store.build_indicator_dict(idx)
+            _paper_source_indicators = dict(indicators) if forward_session is not None else None
             _ha_map_c = {-1: 'red', 0: 'neutral', 1: 'green'}
             for _ha_tf_c in ['3m', '5m', '15m', '1h', '4h', 'D']:
                 _ha_k_c = f'ha_{_ha_tf_c}'
@@ -5407,6 +5414,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                     _vk_prev = f'wt_velocity_{_vtf}_prev'
                     if _vk_prev not in indicators and _vk in store.arrays:
                         indicators[_vk_prev] = float(store.get(_vk, _vp_pidx))
+            if forward_session is not None:
+                forward_session.preserve_source_times(indicators, _paper_source_indicators)
             indicator_cache[sym] = indicators
             price_cache[sym] = p
             # Update ALL data sources so every code path sees fresh data
@@ -7964,7 +7973,7 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         if "_last_wallclock_progress" not in dir():
             _last_wallclock_progress = t0
         _wallclock_progress_due = (_wallclock_now - _last_wallclock_progress) >= 60.0
-        if step > 0 and (step % report_every == 0 or _wallclock_progress_due):
+        if forward_session is None and step > 0 and (step % report_every == 0 or _wallclock_progress_due):
             _last_wallclock_progress = _wallclock_now
             n_trades = len(executed_trades)
             n_active = sum(1 for p in trade_manager.positions.values() if abs(getattr(p, 'positionAmt', 0)) > 0.0001)
@@ -7991,6 +8000,18 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             for _r, _d in sorted(_live_pnl["by_reason"].items(), key=lambda x: x[1]["pnl_pct_sum"]):
                 v8_logger.info(f"[V8_PNL_BREAKDOWN] {_r:<25} n={_d['n']:>4} sum={_d['pnl_pct_sum']:+8.2f}% W={_d['n_wins']} L={_d['n_losses']} worst={_d['worst_loss']:.2f}% best={_d['best_win']:.2f}%")
 
+    else:
+        _paper_stream_exhausted = True
+    if forward_session is not None:
+        queue_task.cancel()
+        try:
+            await queue_task
+        except asyncio.CancelledError:
+            pass
+        if not _paper_stream_exhausted:
+            raise RuntimeError("paper forward stream interrupted before completion; last frame remains uncommitted")
+        await forward_session.finish()
+        return executed_trades
     # Results — compute and print BEFORE queue cleanup so cancellation errors cannot block result
     elapsed = _real_time_module.time() - t0
     v8_logger.info(f"Done in {elapsed:.1f}s | {len(executed_trades)} trades")
@@ -8555,7 +8576,7 @@ def main():
 # ═══════════════════════════════════════════════════════════════
 # TRADIER SIMULATION — uses tradier_manage.py REAL code
 # ═══════════════════════════════════════════════════════════════
-async def run_simulation_tradier(account_key, start_date, capital, stores, resolution):
+async def run_simulation_tradier(account_key, start_date, capital, stores, resolution, *, forward_session=None):
     # RECONNECT 2026-04-14 — sweep override route covers ALL TRADIER_* canonical switches.
     # The generic V8_OVERRIDE_FILE loader below sets any key from data/sweep_alerts/canonical_switches.json
     # onto tm_mod.config (both stripped and full-prefix forms). Explicit ack of switches:
@@ -8563,6 +8584,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     #   TRADIER_K_ZONE_ENTRY_BONUS_TRADIER, TRADIER_RSI2_ENABLED, TRADIER_STOCH_ENTRY_LONG_TRADIER,
     #   TRADIER_WT_EXIT_TFS_TRADIER, TRADIER_ENTRY_SCORE_THRESHOLD, TRADIER_RSI_ENTRY_SHORT_TRADIER,
     #   TRADIER_MFI_ENTRY_LONG_TRADIER (and 18 others) all flow through this loader.
+    if forward_session is not None:
+        forward_session.assert_ready("tradier", stores)
     import tradier_manage as tm_mod
     # CRITICAL: V8 backtest must NEVER call Redis. The live config_tradier.Config
     # has _get_regime_from_redis which connects to Redis on every get_symbol_setting()
@@ -11733,7 +11756,10 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
         )
     _v8_wall_deadline_t = float(__import__('os').environ.get("V8_MAX_WALL_SECS", "0") or 0)
     _v8_wall_t0_t = __import__('time').time()
-    for step, ts in enumerate(all_ts):
+    if forward_session is not None:
+        forward_session.bind(executed_trades, manager.position_manager.positions)
+    _paper_stream_exhausted_t = False
+    async for step, ts in historical_or_forward_steps(all_ts, forward_session):
         if _v8_wall_deadline_t > 0 and (__import__('time').time() - _v8_wall_t0_t) > _v8_wall_deadline_t:
             __import__('sys').stderr.write(f"V8_WALL_TIMEOUT_TRADIER: {__import__('time').time()-_v8_wall_t0_t:.0f}s > {_v8_wall_deadline_t:.0f}s at step {step}/{len(all_ts)} — breaking to emit V8_RESULT\n")
             print(f"V8_WALL_TIMEOUT_TRADIER: {__import__('time').time()-_v8_wall_t0_t:.0f}s > {_v8_wall_deadline_t:.0f}s at step {step}/{len(all_ts)} — emitting V8_RESULT", flush=True)
@@ -11791,6 +11817,7 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             # causal formation fields to the unchanged real process_position /
             # evaluate_stop decision path.
             ind = store.build_indicator_dict(idx)
+            _paper_source_indicators_t = dict(ind) if forward_session is not None else None
             # Build the direct-route namespace from immutable NPZ arrays before
             # generic timestamps/mark fields are rewritten below.  The shared
             # live contracts consume only this all-or-nothing namespace.
@@ -11852,6 +11879,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
                     _bb_pidx = max(0, idx - 1)
                     _bb_src = f'bb_pct_b_{_bb_ptf}'
                     ind[_bb_pk] = float(store.get(_bb_src, _bb_pidx)) if _bb_pidx != idx and _bb_src in store.arrays else ind.get(_bb_src, 0.5)
+            if forward_session is not None:
+                forward_session.preserve_source_times(ind, _paper_source_indicators_t)
             indicator_cache[sym.upper()] = ind
             # stocks loop 2026-10-06: exact mode ingests EVERY bar (non-RTH included) into the vec-exact oracle
             if os.environ.get("V8_VEC_EXACT_INGEST") == "1":
@@ -13219,6 +13248,13 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
             if _SWEEP_MODE:
                 _r_closes = len([t for t in executed_trades if t.get('action', '').upper() in ('CLOSE', 'FULL_CLOSE', 'REDUCE')])
                 print(f"V8_RESULT_LIVE: step={step}/{len(all_ts)} closes={_r_closes} elapsed={elapsed:.0f}s", flush=True)
+    else:
+        _paper_stream_exhausted_t = True
+    if forward_session is not None:
+        if not _paper_stream_exhausted_t:
+            raise RuntimeError("paper forward stream interrupted before completion; last frame remains uncommitted")
+        await forward_session.finish()
+        return executed_trades
     elapsed = _real_time_module.time() - t0
     # NEW 2026-04-26 sweep switches: per-run counter dump (tradier path).
     v8_logger.info(f"[V8_NEW_SWITCHES] dd_peak={_v8ns_dd_state.get('peak', 0.0):+.2f}%  dd_min={_v8ns_dd_state.get('dd_pct', 0.0):+.2f}%  equity_pct={_v8ns_equity_pct[0]:+.2f}%  counters={_v8ns_counters}")
