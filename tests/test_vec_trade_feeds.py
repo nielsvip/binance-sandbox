@@ -28,9 +28,10 @@ def test_draw_vec_mismatch_marks_only_unmatched():
     nv, nl = vtf.draw_vec_mismatch(ax, lo, hi, ve, vx, fe, fx, lambda t: t.timestamp())
     assert (nv, nl) == (1, 1)
     orange = [l for l in ax.get_children() if isinstance(l, Line2D) and l.get_color() == "#f97316"]
-    blue = [l for l in ax.get_children() if isinstance(l, Line2D) and l.get_color() == "#2563eb"]
+    blue = [l for l in ax.get_children() if isinstance(l, Line2D) and l.get_color() == "#06b6d4"]
     assert len(orange) == 1 and len(blue) == 1
     assert all(list(line.get_ydata()) == [0, 1] and line.get_linewidth() == 2.0 for line in orange + blue)
+    assert all(line.get_alpha() == 0.10 for line in orange + blue)
     plt.close(fig)
 
 

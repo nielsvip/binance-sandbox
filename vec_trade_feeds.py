@@ -212,8 +212,8 @@ def draw_vec_mismatch(ax_plot, x_left_ts, x_right_ts, vec_entries, vec_exits,
     tol_s = tol_min * 60.0
     me_v, me_l = lth.greedy_match(ve, fe, tol_s)
     mx_v, mx_l = lth.greedy_match(vx, fx, tol_s)
-    vc, va = "#f97316", 0.95
-    lc, la = "#2563eb", 0.95
+    vc, va = "#f97316", 0.10
+    lc, la = "#06b6d4", 0.10
     n_vec = n_live = 0
     for i, t in enumerate(ve):
         if i not in me_v and x_left_ts <= t <= x_right_ts:

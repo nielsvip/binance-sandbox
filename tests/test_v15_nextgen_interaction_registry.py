@@ -32,6 +32,7 @@ def test_real_sqlite_components_and_future_queue_preserve_baseline(tmp_path):
     assert proof['status'] == 'verified_measurement'
     assert proof['interaction_delta'] == 4
     assert proof['kind'] == 'SWITCH_FILTER'
+    assert R.verify_quartet(dict(components), x, y)['status'] == 'unverified'
     baseline = {'A': False, 'B': 0, 'CURRENT': 7}
     before = copy.deepcopy(baseline)
     result = R.postbaseline_queue([proof], baseline, lambda a, b, c: True, 1)
@@ -41,6 +42,9 @@ def test_real_sqlite_components_and_future_queue_preserve_baseline(tmp_path):
     assert result['queue'][0]['current_interaction_verified'] is False
     assert len(result['queue'][0]['measurements_required']) == 4
     assert not R.postbaseline_queue([proof], baseline, lambda *args: False, 1)['queue']
+    tampered = copy.deepcopy(proof)
+    tampered['components']['Z']['gain'] = 999
+    assert not R.postbaseline_queue([tampered], baseline, lambda *args: True, 1)['queue']
 
 
 def test_engine_context_hash_and_missing_components_fail_closed(tmp_path):

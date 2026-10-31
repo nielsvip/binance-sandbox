@@ -10,6 +10,10 @@ import sqlite3
 from tools import v18_experience as experience
 
 
+class LoadedNativeComponents(dict):
+    pass
+
+
 def file_sha(path):
     digest = hashlib.sha256()
     with Path(path).open('rb') as stream:
@@ -22,7 +26,7 @@ def read_native_components(path, expected_sha256, eval_ids):
     path = Path(path).resolve()
     if file_sha(path) != expected_sha256:
         raise ValueError('source snapshot hash mismatch')
-    result = {}
+    result = LoadedNativeComponents()
     with sqlite3.connect(path.as_uri() + '?mode=ro&immutable=1', uri=True) as connection:
         connection.row_factory = sqlite3.Row
         for name, eval_id in eval_ids.items():
@@ -46,6 +50,7 @@ def read_native_components(path, expected_sha256, eval_ids):
             result[name] = dict(row, config=config, config_sha256=config_sha, source_file=str(path), source_sha256=expected_sha256, engine_sha256=extra.get('engine_sha256'), market_data_end=extra.get('market_data_end'))
     if file_sha(path) != expected_sha256:
         raise ValueError('source changed during component extraction')
+    result.loaded_sha256 = hashlib.sha256(json.dumps(result, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
     return result
 
 
@@ -53,6 +58,9 @@ def verify_quartet(components, x, y):
     reasons = []
     if set(components) != {'B', 'X', 'Y', 'Z'}:
         return {'status': 'unverified', 'reasons': ['four_exact_components_required']}
+    loaded_digest = hashlib.sha256(json.dumps(components, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    if not isinstance(components, LoadedNativeComponents) or loaded_digest != getattr(components, 'loaded_sha256', None):
+        reasons.append('components_not_exact_source_loaded_or_changed')
     if x.get('kind') not in ('switch', 'filter') or y.get('kind') not in ('switch', 'filter') or not x.get('field') or not y.get('field') or x['field'] == y['field']:
         return {'status': 'unverified', 'reasons': ['distinct_typed_fields_required']}
     rows = list(components.values())
@@ -92,6 +100,23 @@ def postbaseline_queue(proofs, accepted_baseline, eligible, limit):
     for proof in proofs:
         if proof.get('status') != 'verified_measurement':
             diagnostics.append({'reason': 'unverified_source', 'proof': proof})
+            continue
+        components = proof.get('components') or {}
+        sources = {(row.get('source_file'), row.get('source_sha256')) for row in components.values()}
+        if len(sources) != 1 or set(components) != {'B', 'X', 'Y', 'Z'}:
+            diagnostics.append({'reason': 'exact_native_source_required', 'proof': proof})
+            continue
+        path, digest = next(iter(sources))
+        try:
+            loaded = read_native_components(path, digest, {name: row['eval_id'] for name, row in components.items()})
+            checked = verify_quartet(loaded, proof.get('x') or {}, proof.get('y') or {})
+        except (ValueError, OSError, sqlite3.Error) as error:
+            diagnostics.append({'reason': 'source_revalidation_failed', 'error': str(error)})
+            continue
+        content = {key: value for key, value in proof.items() if key != 'proof_sha256'}
+        observed = hashlib.sha256(json.dumps(content, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+        if observed != proof.get('proof_sha256') or checked.get('proof_sha256') != proof.get('proof_sha256'):
+            diagnostics.append({'reason': 'proof_digest_or_measurement_mismatch', 'proof': proof})
             continue
         x, y = proof['x'], proof['y']
         if eligible(x, y, accepted_baseline) is not True:

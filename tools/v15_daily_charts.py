@@ -22,6 +22,7 @@ import glob
 import hashlib
 import html as _html
 import json
+import math
 import os
 import re
 import shutil
@@ -467,7 +468,7 @@ def discrepancy_overlay(page: str, board: dict, rows: list[dict], equity: dict |
     plugin = ("const DISCREPANCIES = " + data + ";\nconst BROKER_FILLS = " + fills_json + ";\nconst BROKER_STOPS = " + stops_json + ";\n"
               "DATASETS.push({label:'CONFIRMED broker fill',data:BROKER_FILLS.map(r=>({x:LABELS[r.i],y:r.price,qty:r.qty,price:r.price,reason:r.action+' '+r.acct+' '+r.reason+' order '+r.order_id})),type:'scatter',backgroundColor:'#38bdf8',borderColor:'#ffffff',borderWidth:2.5,pointStyle:'star',pointRadius:11,pointHoverRadius:15,order:30});\n"
               "DATASETS.push({label:'broker protective stop placed',data:BROKER_STOPS.map(r=>({x:LABELS[r.i],y:r.level,qty:'stop',price:r.level,reason:r.status+' '+r.acct+' order '+r.order_id})),type:'scatter',backgroundColor:'#e879f9',borderColor:'#ffffff',borderWidth:2,pointStyle:'rectRot',pointRadius:8,pointHoverRadius:12,order:29});\n"
-              "Chart.register({id:'forwardDiscrepancyLines',afterDatasetsDraw(chart){const x=chart.scales.x,a=chart.chartArea,ctx=chart.ctx;for(const [name,color] of [['blue','#2563eb'],['orange','#f97316']]){for(const row of DISCREPANCIES[name]){const px=x.getPixelForValue(row.i);if(px<a.left||px>a.right)continue;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,a.top);ctx.lineTo(px,a.bottom);ctx.stroke();ctx.restore();}}}});\n")
+              "Chart.register({id:'forwardDiscrepancyLines',afterDatasetsDraw(chart){const x=chart.scales.x,a=chart.chartArea,ctx=chart.ctx;for(const [name,color] of [['blue','rgba(6,182,212,0.10)'],['orange','rgba(249,115,22,0.10)']]){for(const row of DISCREPANCIES[name]){const px=x.getPixelForValue(row.i);if(px<a.left||px>a.right)continue;ctx.save();ctx.strokeStyle=color;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(px,a.top);ctx.lineTo(px,a.bottom);ctx.stroke();ctx.restore();}}}});\n")
     page = page.replace("pointRadius:5.5", "pointRadius:8")
     page = page.replace("new Chart(c,{", plugin + "new Chart(c,{", 1)
     rows_html = "".join(f"<tr><td>{_html.escape(r['time'])}</td><td>{_html.escape(str(r['acct']))}</td><td>{_html.escape(r['action'])}</td><td>{r['qty']:g}</td><td>${r['price']:.4f}</td><td>{_html.escape(r['reason'])}</td><td>{_html.escape(r['order_id'])}</td></tr>" for r in sorted(broker_events, key=lambda r: r["time"]))
@@ -512,6 +513,37 @@ def atomic_write(path: Path, text: str) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(text, encoding="utf-8")
     os.replace(tmp, path)
+
+
+def metric_chart_name(symside: str, metrics: dict, historical: bool = False) -> str | None:
+    try:
+        bh = float(metrics["bh_pct"])
+        gain = float(metrics["gain_pct"])
+        trades = int(metrics["trades"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not math.isfinite(bh) or not math.isfinite(gain) or trades < 0:
+        return None
+    def token(value):
+        return ("m" if value < 0 else "") + f"{abs(value):.2f}".replace(".", "p")
+    vintage = "_historical" if historical else ""
+    return f"{symside}_bh{token(bh)}_gain{token(gain)}_trades{trades}{vintage}_30d_daily.html"
+
+
+def metric_chart_alias(canonical: Path, symside: str, metrics: dict, historical: bool = False) -> str:
+    name = metric_chart_name(symside, metrics, historical)
+    if name is None:
+        return canonical.name
+    alias = CHARTS / name
+    temp = alias.with_suffix(".html.tmp")
+    if temp.exists() or temp.is_symlink():
+        temp.unlink()
+    temp.symlink_to(canonical.name)
+    os.replace(temp, alias)
+    for old in CHARTS.glob(f"{symside}_bh*_gain*_trades*_30d_daily.html"):
+        if old != alias and old.is_symlink() and old.resolve() == canonical.resolve():
+            old.unlink()
+    return name
 
 
 def publish(boards: dict, results: list, run_id: str, started: str, partial: bool = False) -> dict:
@@ -568,13 +600,18 @@ def publish(boards: dict, results: list, run_id: str, started: str, partial: boo
                 if parse_chart_metrics(text).get("gain_pct") != res["metrics"]["gain_pct"]:
                     raise AssertionError("final file gain differs from worker result")
                 atomic_write(out, text)
+                entry["chart"] = metric_chart_alias(out, symside, res["metrics"])
                 o = board.get("orig_metrics") or {}
                 deltas = {k: (float(res["metrics"][k]) - float(o[k])) if res["metrics"].get(k) is not None and o.get(k) is not None else None for k in ("gain_pct", "bh_pct", "delta_vs_bh", "trades", "tim_pct", "max_dd_pct", "wr_pct")}
                 entry.update({"status": "OK", "host": res["host"], "calculated_utc": res["calculated_utc"], "board_age_at_calc": age_text(parse_iso(board.get("cells_vintage")), parse_iso(res["calculated_utc"])), "metrics": res["metrics"], "deltas": deltas, "npz": res["npz"], "window": res.get("window"), "engine_md5": res.get("engine_md5")})
             except Exception as exc:
                 error = f"publish check failed: {type(exc).__name__}: {str(exc)[:300]}"
         if error is not None:
-            atomic_write(out, fail_page(symside, board, error, now))
+            failure_text = fail_page(symside, board, error, now)
+            atomic_write(out, failure_text)
+            original_path = Path(board.get("board_html") or "")
+            original_metrics = board.get("orig_metrics") or (parse_chart_metrics(original_path.read_text(encoding="utf-8", errors="replace")) if original_path.is_file() else {})
+            entry["chart"] = metric_chart_alias(out, symside, original_metrics, historical=True)
             entry.update({"status": "FAIL", "error": error})
         entries.append(entry)
     ok = sum(1 for e in entries if e["status"] == "OK")

@@ -28,8 +28,9 @@ def test_account_colors():
 
 
 def test_mismatch_constants_faint():
-    assert lth.MISMATCH_VEC_MPL == ("#bdbdbd", 0.90)
-    assert lth.MISMATCH_LIVE_MPL == ("#757575", 0.90)
+    assert lth.MISMATCH_VEC_MPL == ("#f97316", 0.10)
+    assert lth.MISMATCH_LIVE_MPL == ("#06b6d4", 0.10)
+    assert lth.ENTRY_ALPHA == 0.20 and lth.EXIT_ALPHA == 0.15
 
 
 def test_strips_draw_on_datetime_axis():
@@ -103,7 +104,7 @@ def test_draw_mismatch_lines_both_colors():
     assert len(vecs) == 1
     assert abs(vecs[0].get_alpha() - lth.MISMATCH_VEC_MPL[1]) < 1e-9
     assert vecs[0].get_ydata()[0] < lo0
-    assert lth.MISMATCH_VEC_MPL[0] == "#bdbdbd" and lth.MISMATCH_LIVE_MPL[0] == "#757575"
+    assert lth.MISMATCH_VEC_MPL[0] == "#f97316" and lth.MISMATCH_LIVE_MPL[0] == "#06b6d4"
     plt.close(fig)
 
 

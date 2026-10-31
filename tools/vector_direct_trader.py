@@ -199,6 +199,16 @@ MIN_PASS_GAP_S = float(os.environ.get("VD_MIN_PASS_GAP_S", "2.0"))
 # USER 2026-10-31: "they can ONLY trade 7D results that are <24h old (older ones can be exited not entered)" — every
 # account on both venues now, not just fin. "*" means all accounts; a comma list narrows it.
 SEVENDAY_ONLY_ACCOUNTS = tuple(x.strip() for x in os.environ.get("VD_SEVENDAY_ONLY_ACCOUNTS", "*").split(",") if x.strip())
+# Accounts for which the 7D rule is UNCONDITIONAL: no fresh 7D set means no entry, full stop, even if the whole 7D lane
+# is down. fin exists only to trade 7D, so an empty lane must leave it flat rather than quietly trading 30D sets.
+SEVENDAY_STRICT_ACCOUNTS = tuple(x.strip() for x in os.environ.get("VD_SEVENDAY_STRICT_ACCOUNTS", "fin").split(",") if x.strip())
+# LANE-DOWN BRAKE. "Only trade 7D results under 24 h old" and "guarantee trading 24/7" cannot both hold while the 7D
+# lane publishes NOTHING — and measured 2026-10-31 it publishes nothing on either venue: a board computes its
+# cumulative_overrides but exhausts the 90-min herd cap before live-verify, so `v15_preopen_7d_stage.validate_one`
+# never sees result_done_utc/final_path. That is why trc has shown 0 QUALIFIED on every run. A venue with zero fresh
+# sides is therefore a PIPELINE FAULT, not a signal to stop trading: it rings CRITICAL and entries continue on the
+# published 30D sets. The moment the lane publishes even one side the gate binds strictly, per side, everywhere.
+SEVENDAY_LANE_DOWN_BRAKE = os.environ.get("VD_SEVENDAY_LANE_DOWN_BRAKE", "1") == "1"
 SEVENDAY_MAX_AGE_S = float(os.environ.get("VD_SEVENDAY_MAX_AGE_S", str(24 * 3600)))
 SEVENDAY_BOOK = {"fin": "men"}
 MAC_POSITIONS = os.environ.get("VD_MAC_POSITIONS", "1") == "1"
@@ -1235,9 +1245,20 @@ class Trader:
                 return False, f"{acct} is 7D-only on {book}'s book and {book}'s key list is unreadable"
             if ss.upper() not in keys:
                 return False, f"{ss} is not in {book}'s book"
-        staged = self.sevenday_sides().get(ss.upper())
+        published = self.sevenday_sides()
+        strict = acct in SEVENDAY_STRICT_ACCOUNTS
+        if not published and SEVENDAY_LANE_DOWN_BRAKE and not strict:
+            if not self.__dict__.get("sevenday_lane_rung"):
+                self.sevenday_lane_rung = True
+                self.alert("SEVENDAY_LANE_DOWN", venue=self.venue, severity="CRITICAL",
+                           detail="the 7D lane has published no side at all; entries continue on the 30D sets")
+                log(f"CRITICAL SEVENDAY_LANE_DOWN {self.venue}: nothing published, so the 7D-only rule cannot be met by any side — "
+                    f"entries continue on the published 30D sets and every side is reported unverified. Fix the 7D lane.")
+            return True, "7D lane down (no side published anywhere) — 30D set used, CRITICAL rung"
+        self.sevenday_lane_rung = False
+        staged = published.get(ss.upper())
         if not staged:
-            return False, f"no 7D result for {ss} (the 7D lane has published nothing)"
+            return False, f"no 7D result for {ss} (the 7D lane has published nothing for it)"
         age = now - float(staged)
         if age > SEVENDAY_MAX_AGE_S:
             return False, f"7D result for {ss} is {age / 3600:.1f} h old (limit {SEVENDAY_MAX_AGE_S / 3600:.0f} h)"

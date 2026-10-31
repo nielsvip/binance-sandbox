@@ -31506,7 +31506,7 @@ async def check_entry_candidates_for_account(
                         await tracker_manager.clear_processing(position_key)
                         return
                     full_reason = f"{'OPEN' if curr_amt == 0 else 'AUGMENT'}_{rec}_{k_str}_@{current_price:.4f}_{reason}"
-                    action_type = "OPEN" if curr_amt == 0 else "AUGMENT"
+                    action_type = ("REENTRY" if _vec_reentry_fire else "OPEN") if curr_amt == 0 else "AUGMENT"
                     success, msg = await execute_trade_wrapper(
                         trade_manager,
                         tracker_manager,
@@ -31572,7 +31572,7 @@ async def check_entry_candidates_for_account(
                             tracker_manager.registry.release_hedge_slot(
                                 account_key, symbol
                             )
-                        if action_type == "OPEN":
+                        if action_type in ("OPEN", "REENTRY"):
                             await tracker_manager.revert_optimistic_exit(
                                 account_key, position_key
                             )
