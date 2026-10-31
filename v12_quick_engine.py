@@ -20553,6 +20553,12 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                             _qq.streak_update(_qs_state, _qq.trade_move_pct(is_long, _qs_avg, _qs_t.get("exit_price")), cfg)
                     _qs_seen = len(trades)
                     _dollar = _dollar * _qq.streak_mult(_qs_state, cfg)
+                if (
+                    is_tradier
+                    and _wf_open_decision is not None
+                    and "WT_3M_FORCE_OPEN" in str(_wf_open_decision.get("reason", ""))
+                ):
+                    _dollar = float(_wf_open_decision["size_usd"])
                 try:
                     _cap = float(getattr(cfg, "MAX_ORDER_VALUE", 2500.0) or 2500.0)
                     if _cap > 0:
@@ -20614,6 +20620,9 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                     try:
                         # 2026-09-18 HARDCODED tag before generic
                         _hardcoded_fired = False
+                        if is_tradier and _wf_open_decision is not None:
+                            entry_reason = _wf_open_decision["reason"]
+                            _hardcoded_fired = True
                         if _rt_fired[0] == i and not entry_sig[i]:
                             entry_reason = _rt_fired[1]  # 2026-10-14 USER re-entry trigger that fired
                             _hardcoded_fired = True
@@ -20801,6 +20810,10 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                         _fx_G["_qta_ct_block"] is not None
                         and bool(_fx_G["_qta_ct_block"][i])
                         and "RECLAIM" not in str(entry_reason).upper()
+                        and not (
+                            "WT_3M_FORCE_OPEN" in str(entry_reason).upper()
+                            and bool(getattr(cfg, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
+                        )
                     ):
                         continue  # [C2 b7] live queue_trade_action COUNTER_TREND_ADD_BLOCK (fresh + reentry opens)
                     if (

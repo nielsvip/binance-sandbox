@@ -111,3 +111,37 @@ def test_candidate_route_applies_native_no_double_augment_before_late_score(monk
     assert result["entry_allowed"].tolist() == [False, True]
     assert result["recommendation"].tolist() == ["WAIT", "GOOD_BUY"]
     assert result["masks"]["no_double_augment_veto"].tolist() == [True, False]
+
+
+def test_raw_candidate_api_binds_explicit_lifecycle_reentry_inputs(monkeypatch):
+    seen = {}
+    def fake_prefix(npz, n, is_long, cfg, context, score=None):
+        seen["context"] = context
+        return {"score": np.zeros(n), "entry_allowed": np.ones(n, dtype=bool), "masks": {}}
+    def fake_assemble(npz, cfg, state, n, is_long):
+        return {"n": n, "cfg": cfg, "score_before_dc": np.zeros(n), "stages": {}}
+    def fake_compose(prefix_result, late_inputs, is_long, upstream, **kwargs):
+        assert "lifecycle_state" in kwargs
+        return {"final_score": np.zeros(2), "recommendation": np.array(["WAIT", "WAIT"], dtype=object), "masks": {}, "complete_rate": False}
+    monkeypatch.setattr("vec_decisions.asr_entry_prefix.score_asr_entry_prefix_array", fake_prefix)
+    monkeypatch.setattr(composer, "assemble_asr_composer_inputs", fake_assemble)
+    monkeypatch.setattr(composer, "compose_asr_entry_candidate_array", fake_compose)
+    n = 2
+    ts = np.array([1000.0, 1900.0])
+    lifecycle = {
+        "position_amt": np.array([0.0, 2.0]), "gain": np.array([0.0, 1.0]),
+        "last_reduction_price": np.zeros(n), "minutes_since_reduction": np.full(n, np.inf),
+    }
+    prices = np.array([10.0, 10.1])
+    cfg = SimpleNamespace(USE_1M_3M_SIGNALS_ENABLED=False, ENTRY_VOL_MIN_RATIO=1.0)
+    state = {"current_price": prices, "lifecycle_state": lifecycle, "true_lag": np.array([2.0, 2.0]),
+             "prev_cross_price": np.array([9.9, 9.9]), "bounce_reentry_k_reset": False}
+    result = composer.evaluate_asr_entry_candidate_array(
+        {"k_15m": np.full(n, 50.0), "d_15m": np.full(n, 50.0), "close": prices}, n, True, cfg,
+        {"current_price": prices, "is_hedge": False}, state, {"membership": True},
+    )
+    assert seen["context"]["position_amt"].tolist() == [0.0, 2.0]
+    assert seen["context"]["last_reduction_price"].tolist() == [0.0, 0.0]
+    assert seen["context"]["trend_is_bullish"].tolist() == [False, False]
+    assert result["reentry_inputs_bound"] is True
+    assert result["complete_rate"] is False

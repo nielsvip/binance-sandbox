@@ -36,10 +36,12 @@ def build_lifecycle_arrays(events, trades, timestamps, prices, is_long, initial_
         raise ValueError(f"initial_state missing {missing}")
     held = bool(state["position_exists"])
     if held:
-        for key in ("position_amt", "avg_entry_price", "entry_ts", "opened_ts", "entry_bar"):
+        for key in ("position_qty", "avg_entry_price", "entry_ts", "opened_ts", "entry_bar"):
             if key not in state:
                 raise ValueError(f"held initial_state missing {key}")
-    qty = _finite_number(state.get("position_amt", 0.0), "initial position_amt")
+    qty = _finite_number(state.get("position_qty", 0.0), "initial position_qty")
+    if qty < 0.0 or (held and qty <= 0.0) or (not held and qty != 0.0):
+        raise ValueError("initial position_qty must be a positive held magnitude or zero when flat")
     avg = _finite_number(state.get("avg_entry_price", 0.0), "initial avg_entry_price")
     entry_ts = _finite_number(state.get("entry_ts", 0.0), "initial entry_ts")
     opened_ts = _finite_number(state.get("opened_ts", entry_ts), "initial opened_ts")

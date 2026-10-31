@@ -392,7 +392,23 @@ def evaluate_asr_entry_candidate_array(npz,n,is_long,cfg,prefix_context,late_cau
     late_price=_column(late_causal_state["current_price"],"late current_price",n)
     if not np.array_equal(prefix_price,late_price,equal_nan=True):
         raise ValueError("prefix and late-stage current_price must match bar-for-bar")
-    prefix=score_asr_entry_prefix_array(npz,n,is_long,cfg,prefix_context,score=score)
+    candidate_prefix_context = dict(prefix_context)
+    reentry_keys = ("true_lag", "prev_cross_price", "bounce_reentry_k_reset")
+    reentry_present = any(key in late_causal_state for key in reentry_keys)
+    if reentry_present:
+        missing = [key for key in reentry_keys if key not in late_causal_state]
+        if missing or "lifecycle_state" not in late_causal_state:
+            raise ValueError(f"incomplete causal reentry binding inputs: {','.join(missing + ([] if 'lifecycle_state' in late_causal_state else ['lifecycle_state']))}")
+        from vec_decisions.asr_reentry_inputs import bind_asr_reentry_inputs
+        reentry = bind_asr_reentry_inputs(
+            npz, cfg, late_causal_state["lifecycle_state"], n, is_long,
+            late_causal_state["current_price"], late_causal_state["true_lag"],
+            late_causal_state["prev_cross_price"], late_causal_state["bounce_reentry_k_reset"],
+        )
+        candidate_prefix_context.update(reentry["context"])
+        candidate_prefix_context["htf_trend"] = reentry["htf_trend"]
+        candidate_prefix_context["htf_trend_score"] = reentry["htf_trend_score"]
+    prefix=score_asr_entry_prefix_array(npz,n,is_long,cfg,candidate_prefix_context,score=score)
     late_inputs=assemble_asr_composer_inputs(npz,cfg,late_causal_state,n,is_long)
     post_late_state = late_causal_state.get("post_late_entry_state")
     lifecycle_state = late_causal_state.get("lifecycle_state")
@@ -408,4 +424,10 @@ def evaluate_asr_entry_candidate_array(npz,n,is_long,cfg,prefix_context,late_cau
     result["reentry_state_out"]=prefix.get("reentry_state_out")
     result["masks"].update({f"prefix:{key}":value for key,value in prefix.get("masks",{}).items()})
     result["complete_rate"]=False
+    if reentry_present:
+        result["htf_trend"] = reentry["htf_trend"]
+        result["htf_trend_score"] = reentry["htf_trend_score"]
+        result["reentry_inputs_bound"] = True
+    else:
+        result["reentry_inputs_bound"] = False
     return result

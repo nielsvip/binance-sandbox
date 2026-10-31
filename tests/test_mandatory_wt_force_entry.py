@@ -40,7 +40,7 @@ def test_force_switch_changes_actual_engine_ledger():
     data=_npz();n=len(data['timestamps']);cfg=_cfg()
     data['sma_200_15m']=np.full(n,200.);data['sma_200_15m'][2]=90.
     data['wt1_15m']=np.full(n,2.);data['wt2_15m']=np.zeros(n);data['wt1_1h']=np.full(n,2.);data['wt2_1h']=np.zeros(n)
-    for key,value in {'TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED':True,'WT_3M_FORCE_OPEN_ENABLED':True,'WT_3M_FORCE_OPEN_GR_GATE_ENABLED':False,'WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS':False,'ABLATION_DISABLE_QUICK_ENTRY':True,'STRUCTURAL_RANGE_SHIFT_EXIT':False,'OPTIMAL_HOLD_BARS_EXIT_ENABLED':False}.items():setattr(cfg,key,value)
+    for key,value in {'TRADEABLE_KEYS_MANDATORY_POSITION_ENABLED':True,'WT_3M_FORCE_OPEN_ENABLED':True,'WT_3M_FORCE_OPEN_GR_GATE_ENABLED':False,'WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS':False,'ABLATION_DISABLE_QUICK_ENTRY':True,'DC_BREAKOUT_ENTRY_ENABLED':False,'STRUCTURAL_RANGE_SHIFT_EXIT':False,'OPTIMAL_HOLD_BARS_EXIT_ENABLED':False}.items():setattr(cfg,key,value)
     for name,(target,_) in FILTER_TF_MAP.items():
         if target=='entry':setattr(cfg,name,'OFF')
     result=engine.simulate_one(data,'WT_FORCE_TEST',True,cfg)

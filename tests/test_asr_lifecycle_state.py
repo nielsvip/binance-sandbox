@@ -51,7 +51,7 @@ def test_ambiguous_same_bar_trade_close_and_event_fails_closed():
 
 
 def test_held_initial_state_requires_explicit_lifecycle_fields():
-    with pytest.raises(ValueError, match="held initial_state missing position_amt"):
+    with pytest.raises(ValueError, match="held initial_state missing position_qty"):
         build_lifecycle_arrays([], [], np.array([1000.0]), np.array([10.0]), True, {"position_exists": True})
 
 
@@ -66,3 +66,12 @@ def test_lifecycle_arrays_feed_native_no_double_augment_gate():
     gate = asr_no_double_augment_gate(state, {"MIN_GAIN": 3.0}, len(ts))
     assert state["last_augmentation_present"].tolist() == [False, False, True, True, True]
     assert gate["blocked"].tolist() == [False, False, True, False, False]
+
+
+def test_short_position_amt_is_signed_from_unsigned_fill_quantity():
+    ts = np.array([1000.0, 1900.0])
+    events = [{"type": "OPEN", "bar": 0, "ts": ts[0], "price": 10.0, "qty": 2.0}]
+    state = build_lifecycle_arrays(events, [], ts, np.array([10.0, 9.0]), False, {"position_exists": False})
+    assert state["position_qty"].tolist() == [0.0, 2.0]
+    assert state["position_amt"].tolist() == [0.0, -2.0]
+    assert state["gain"].tolist() == [0.0, 10.0]

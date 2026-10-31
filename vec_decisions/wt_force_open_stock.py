@@ -34,7 +34,7 @@ def _fresh_rising(npz, key, n):
     raw = np.asarray(npz.get(key, np.full(n, None, dtype=object)), dtype=object)
     if raw.shape != (n,):
         raise ValueError(f"{key}: expected {n} aligned stock bars")
-    return np.fromiter((item is True or isinstance(item, np.bool_) and bool(item) for item in raw), dtype=bool, count=n)
+    return np.fromiter((item is True for item in raw), dtype=bool, count=n)
 
 
 def _gr_pass(npz, close, n, is_long, vote_min, min_tfs, min_ind):
@@ -122,11 +122,11 @@ def stateful_fire(npz, index, is_long, cfg, price, position_value, state, bar_ts
     hard_cap = float(getattr(cfg, "HARD_MAX_SYMBOL_VALUE_TRADIER", 2500.0) or 2500.0)
     trb_cap = float(getattr(cfg, "TRB_MAX_SYMBOL_VALUE", 2500.0) or 2500.0)
     target = min(
-        float(getattr(cfg, "WT_3M_FORCE_OPEN_TARGET_USD", 2500.0) or 2500.0),
+        float(getattr(cfg, "WT_3M_FORCE_OPEN_TARGET_USD", 2500.0)),
         hard_cap,
         trb_cap,
     )
-    if target <= position_value or target <= 0 or price <= 0:
+    if (build and target <= position_value) or price <= 0:
         return None
     timestamp = float(bar_ts)
     day = int(timestamp // 86400)
@@ -141,14 +141,14 @@ def stateful_fire(npz, index, is_long, cfg, price, position_value, state, bar_ts
         return None
     ladder = 1.0
     if bool(getattr(cfg, "WT_3M_FORCE_OPEN_TF_LADDER", True)):
-        ladder_mult = float(getattr(cfg, "WT_3M_FORCE_OPEN_TF_LADDER_MULT", 1.0) or 1.0)
+        ladder_mult = float(getattr(cfg, "WT_3M_FORCE_OPEN_TF_LADDER_MULT", 1.0))
         n = len(npz.get("timestamps", ()))
         for tf in ("15m", "1h", "4h", "D"):
             w1 = _array(npz, f"wt1_{tf}", n)[index]
             w2 = _array(npz, f"wt2_{tf}", n)[index]
             if (is_long and w1 > w2) or (not is_long and w1 < w2):
                 ladder += ladder_mult
-    size = float(getattr(cfg, "WT_3M_FORCE_OPEN_SIZE_USD", 1200.0) or 1200.0) * ladder
+    size = float(getattr(cfg, "WT_3M_FORCE_OPEN_SIZE_USD", 1200.0)) * ladder
     if build:
         size = min(size, max(0.0, target - float(position_value)))
     size = min(size, float(getattr(cfg, "DG_MAX_FORCE_OPEN_NOTIONAL_USD", 2000.0) or 2000.0))

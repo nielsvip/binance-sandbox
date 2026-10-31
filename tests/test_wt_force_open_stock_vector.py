@@ -144,6 +144,7 @@ def test_stock_force_open_simulate_one_open_matches_selected_bar():
             setattr(cfg, name, "OFF")
     data["ema_200_15m"] = np.full(n, 200.0)
     data["ema_200_15m"][2] = 90.0
+    data["dc_high_15m"][2] = 99.0
     data["wt1_5m"] = np.full(n, 2.0)
     data["wt2_5m"] = np.zeros(n)
     result = engine.simulate_one(data, "WT_STOCK_FORCE_TEST", True, cfg)

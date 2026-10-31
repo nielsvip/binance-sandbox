@@ -1841,6 +1841,17 @@ def _isolate_frozen_data_feeds(service_module, quick_module):
                 if hasattr(owner, method):
                     setattr(owner, method, _frozen_feed)
 
+class _FrozenIndicatorReceiptProxy:
+    def __init__(self):
+        self._rows = {}
+    def set_symbol(self, symbol, indicators):
+        clean = str(symbol).upper().replace("_LONG", "").replace("_SHORT", "")
+        self._rows[clean] = dict(indicators)
+    def get_symbol(self, symbol):
+        clean = str(symbol).upper().replace("_LONG", "").replace("_SHORT", "")
+        row = self._rows.get(clean)
+        return dict(row) if row is not None else None
+
 def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
     """Apply ONLY I/O patches. No trade logic changes."""
     global _executed_trades, _v8_orig_create_task
@@ -4635,14 +4646,10 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
 
     data_path = Path(config.DATA_DIR) if hasattr(config, 'DATA_DIR') else BASE_PATH / "data"
     data_manager = ez_positions_quick.FastDataManager(redis_manager, data_path, trade_manager=trade_manager)
-    # ═══ 2026-04-26 IPC BYPASS — backtest reads NPZ only, no shared-mem RPC ═══
-    # In live, shared_proxy is the IPC handle to the ez_share_ind server (port 50005).
-    # In backtest, all indicator data is loaded into store.arrays + injected into
-    # data_manager._cold_data per bar (line ~1524). Shared_proxy is NEVER needed.
-    # Without this stub, fallback paths in ez_positions_quick (lines 4742, 5126, 5891, 7189)
-    # call shared_proxy.get_symbol() which spins on connection retries when the server
-    # isn't running — caused 0.7%-sim-completion-in-30-min slowdown observed 2026-04-26.
-    data_manager.shared_proxy = None
+    # Frozen NPZ rows also expose a local receipt timestamp through the ordinary
+    # get_hot_state bridge contract. The proxy performs no IPC and never mutates
+    # source timeframe timestamps; its _tick_ts is the completed-bar decision time.
+    data_manager.shared_proxy = _FrozenIndicatorReceiptProxy()
     # Disable the reconnect watchdog so it doesn't keep trying every 2-5s.
     if hasattr(data_manager, '_shared_mem_last_attempt'):
         data_manager._shared_mem_last_attempt = float('inf')  # never retry
@@ -5523,24 +5530,21 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
                 _ha_v_c = indicators.get(_ha_k_c)
                 if isinstance(_ha_v_c, (int, float, np.integer, np.floating)):
                     indicators[_ha_k_c] = _ha_map_c.get(int(_ha_v_c), 'neutral')
-            # Inject timestamp fields so staleness checks pass
+            # The NPZ row is available only at the completed-bar decision clock.
+            # Keep the feature's source timestamp separate from its receipt time.
             sim_dt = datetime.utcfromtimestamp(ts)
             sim_iso = sim_dt.strftime("%Y-%m-%dT%H:%M:%S.000000Z")
-            indicators['timestamp'] = sim_iso
-            indicators['ts'] = float(ts)
-            indicators['_tick_ts'] = float(ts)
+            _available_ts = float(_sim_ts[0])
+            indicators.setdefault('timestamp', sim_iso)
+            indicators['ts'] = _available_ts
+            indicators['_tick_ts'] = _available_ts
+            indicators['_availability_ts'] = _available_ts
             indicators['current_price'] = p
             indicators['mark_price'] = p
             for tf in ['3m', '5m', '15m', '1h', '4h', 'D']:
-                # Preserve the NPZ's completed-parent identity before replacing
-                # timestamp_* with simulation time for legacy freshness gates.
-                # The ordinary ladder/E02 adapter uses this source timestamp to
-                # reject future HTF values and deduplicate forward broadcasts.
                 _parent_source_t = indicators.get(f'timestamp_{tf}')
                 if _parent_source_t is not None:
                     indicators[f'_completed_source_ts_{tf}'] = _parent_source_t
-                indicators[f'timestamp_{tf}'] = sim_iso
-                indicators[f'age_{tf}'] = 0.0
             for _ptf in ['15m', '1h', '4h', 'D']:
                 _pk = f'stoch_k_{_ptf}_prev'
                 if _pk not in indicators:
@@ -5567,6 +5571,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
             # FastDataManager._cold_data (used by get_hot_state)
             if hasattr(data_manager, '_cold_data'):
                 data_manager._cold_data[sym] = indicators
+            if isinstance(getattr(data_manager, 'shared_proxy', None), _FrozenIndicatorReceiptProxy):
+                data_manager.shared_proxy.set_symbol(sym, indicators)
             # PositionService.indicators_snapshot
             if trade_manager.positions_service:
                 if not isinstance(getattr(trade_manager.positions_service, 'indicators_snapshot', None), dict):

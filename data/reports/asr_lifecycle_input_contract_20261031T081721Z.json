@@ -1,5 +1,5 @@
 {
-  "generated_utc": "2026-10-31T08:17:21.655304+00:00",
+  "generated_utc": "2026-10-31T08:20:14.530020+00:00",
   "scope": "Causal ASR lifecycle provider and binding evidence. This is not a v12 consumer or action-parity result.",
   "lifecycle_provider": {
     "module": "vec_decisions/asr_lifecycle_state.py",
@@ -7,12 +7,12 @@
       "accepted_vector_events": "events rows OPEN/AUGMENT/REDUCE with bar, ts, price, qty",
       "accepted_full_closes": "trades rows type=CLOSE with bar_exit, ts, price, qty",
       "timestamps_prices": "aligned, finite per-bar arrays",
-      "initial_state": "explicit position_exists; held positions also require position_amt, avg_entry_price, entry_ts, opened_ts, entry_bar; optional prior augmentation/reduction/exit fields",
+      "initial_state": "explicit position_exists; held positions require unsigned positive position_qty, avg_entry_price, entry_ts, opened_ts and entry_bar; optional prior augmentation/reduction/exit fields",
       "causality": "apply fills only when fill bar < current decision bar; same-bar CLOSE + another event fails closed because separate source lists lack a shared ordinal"
     },
     "outputs": [
       "position_exists",
-      "position_amt (signed by side)",
+      "position_amt (signed by side; quantity input remains unsigned)",
       "position_qty",
       "avg_entry_price",
       "entry_ts",
@@ -37,7 +37,9 @@
       "prev_gain_pct is bar-close mark-to-market; native tracker cadence not proven equal",
       "does not reconstruct bounce_reentry_k_reset or DeltaTracker state",
       "initial held position requires an authentic explicit account snapshot"
-    ]
+    ],
+    "reentry_binding": "vec_decisions/asr_reentry_inputs.py binds selected paired NPZ oscillator/RV fields plus explicit lifecycle, true_lag, prior WT cross price, and bounce-reset state; evaluate_asr_entry_candidate_array invokes it when all required explicit fields are present.",
+    "consumer_limit": "evaluate_asr_entry_candidate_array receives the binder output before ASR prefix scoring; this candidate function is not currently imported/called by v12 simulate_one and stays complete_rate=False."
   },
   "native_external_input_sources": [
     {
@@ -91,14 +93,61 @@
   ],
   "replay_status": {
     "historical_replay": "UNPROVEN",
-    "reason": "No verified per-bar account eligibility, portfolio, sentiment-universe, cross-event-cache, DeltaTracker, or initial-position snapshot has been bound to the lifecycle provider in this work."
+    "reason": "No verified per-bar account eligibility, portfolio, sentiment-universe, cross-event-cache, DeltaTracker, or initial-position snapshot has been bound. A static frozen PEPE evaluation config/admission key set exists but is not historical per-bar data."
   },
   "tests": {
-    "path": "tests/test_asr_lifecycle_state.py",
-    "result": "5 passed",
-    "sha256": "8c8397c182bc5ff7f40e214231c35235ecb439f72f84fce4e7c465c7cf831330"
+    "paths": [
+      "tests/test_asr_lifecycle_state.py",
+      "tests/test_asr_no_double_augment_gate.py",
+      "tests/test_asr_reentry_inputs.py",
+      "tests/test_asr_htf_trend.py",
+      "tests/test_asr_entry_candidate_route.py",
+      "tests/test_asr_post_late_entry.py",
+      "tests/test_asr_family_lane_score.py",
+      "tests/test_asr_ordered_composer.py"
+    ],
+    "result": "32 passed; 3 third-party websocket deprecation warnings",
+    "scope": "focused module tests; not full rate or action parity"
   },
   "sha256": {
-    "vec_decisions/asr_lifecycle_state.py": "7fdafc187b68bd1726e2e17edb924fee78638673dc18f0fc5b56952fd99e277f"
+    "vec_decisions/asr_lifecycle_state.py": "1ce38841b1231bb362f2e6ba7d91e9e3d4ffee3cd6648878e0d12b6b509788c1",
+    "vec_decisions/asr_htf_trend.py": "85e30b0fe6218265e33308deac74d4bee0f6c7871f62fff2514cadf36e7bac0c",
+    "vec_decisions/asr_reentry_inputs.py": "f274f21e8ea95eda56168c5a5e006951ffc960fbc95ae472794a99d426f017cd",
+    "vec_decisions/asr_ordered_composer.py": "986ee509fb7314d9e52ddb0ed328835dc94e607e4f5d8d8e53e6fdc57cbebf6d"
+  },
+  "real_npz_verification": {
+    "path": "/tmp/parity_dep_repair_20261031T0807Z/inputs/1000PEPEUSDC.npz",
+    "sha256": "a9324ed1f07621a2b1f724166d654b9c137646742a503d62b924595109c934d8",
+    "bars": 43789,
+    "config": "adjacent 1000PEPEUSDC_LONG.json overrides, USE_1M_3M_SIGNALS_ENABLED=False",
+    "native_trend_differential": "0 direction mismatches and 0 score mismatches versus ez_trading_policy.check_htf_trend on all 43,789 bars",
+    "paired_inputs": "selected 3m k and relative volume equal corresponding 15m arrays, including NaN positions, after paired_npz_view; comparison uses equal_nan=True",
+    "scope_limit": "No lifecycle, account, tradeability, event-cache, DeltaTracker, or portfolio context was inferred from this NPZ; historical replay remains unproven.",
+    "missing_cross_symbol_fields": {
+      "absent": [
+        "0is_top_sentiment",
+        "0is_bottom_sentiment",
+        "0ranking_points",
+        "0market_sentiment_local",
+        "0market_sentiment_global",
+        "0sentiment_classification",
+        "DeltaTracker outputs",
+        "account portfolio state"
+      ],
+      "present_but_not_validated_as_native_equivalent": [
+        "market_sentiment_score"
+      ]
+    }
+  },
+  "updated_utc": "2026-10-31T08:22:17.751338+00:00",
+  "frozen_eval_context": {
+    "path": "/tmp/parity_dep_repair_20261031T0807Z/inputs/1000PEPEUSDC_LONG.json",
+    "sha256": "2bd068a810282906b7609da6f09d7769354f5bb440efa6464e0c11e458f2d120",
+    "account_admission_keys": [
+      "ang:1000PEPEUSDC_LONG",
+      "inf:1000PEPEUSDC_LONG"
+    ],
+    "config": "USE_1M_3M_SIGNALS_ENABLED=False",
+    "scope": "static frozen candidate evaluation snapshot only; it does not establish as-traded per-bar eligibility"
   }
 }
