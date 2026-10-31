@@ -2957,6 +2957,10 @@ class PilotBrainV18:
         if filter_key is None:
             x, cn = self._x("R", sheet, row_key, None)
             p = sig(sum(a * b for a, b in zip(self.w["R"], x)))
+            if getattr(self, "_probability_surface", None) is not None:
+                surface_value = self._probability_surface.lookup(sheet, row_key, None, self.ctx["regime"])
+                if surface_value is not None:
+                    p = surface_value[0]
             pe = p_eval(p, self.p_ref["R"], self.floor, cn)
             u = draw(self.sym_side, sheet, row_key, round_id)
             why = "V18_BRAIN row"
@@ -2983,6 +2987,7 @@ class PilotBrainV18:
         self.booked["keep" if keep else "skip"] += 1
         if surface_value is not None:
             self.booked["linknet_surface"] += 1
+            self.booked["linknet_surface_R" if filter_key is None else "linknet_surface_F"] += 1
             why += " LINKNET_SURFACE"
         decision = {"keep": keep, "p": pe, "p_pos": p, "n": cn, "u": u, "why": f"{why} p_pos={p:.4f} n={cn:g} p_eval={pe:.4f}", "p_marginal": pm, "p_binds": pb,
                     "bind_verdict": bv}

@@ -29,6 +29,7 @@ class ProbabilitySurface:
             self.regimes = tuple(archive["regimes"].tolist())
             row, yellow = archive["cell_row"], archive["cell_yellow"]
             self.probability, self.measured = archive["cell_p_pos"], archive["cell_n_measured"]
+            self.row_probability, self.row_measured = archive["row_p_pos"], archive["row_n_measured"]
         if metadata.get("schema") != "v18_linknet_symbol_surface/1" or metadata.get("cat_side") != category or metadata.get("label") != "PREDICTED_NOT_MEASURED":
             raise ValueError("surface schema/category/prediction label differs")
         if metadata.get("production_scorer") != entry["production_scorer"] or metadata.get("model_trained_at") != entry["model_trained_at"] or canonical_sha(metadata.get("platt")) != entry["calibration_sha256"]:
@@ -45,6 +46,8 @@ class ProbabilitySurface:
             raise ValueError("surface row/header key schema differs")
         if row.ndim != 1 or yellow.shape != row.shape or self.measured.shape != row.shape or self.measured.dtype.kind not in "iu" or self.probability.shape != (len(row), len(self.regimes)) or not np.isfinite(self.probability).all() or ((self.probability < 0) | (self.probability > 1)).any() or (self.measured < 0).any():
             raise ValueError("surface probabilities/counts have invalid shapes or values")
+        if self.row_probability.shape != (len(self.rows), 1) or self.row_measured.shape != (len(self.rows),) or self.row_measured.dtype.kind not in "iu" or not np.isfinite(self.row_probability).all() or ((self.row_probability < 0) | (self.row_probability > 1)).any() or (self.row_measured < 0).any():
+            raise ValueError("surface row probabilities/counts have invalid shapes or values")
         if row.dtype.kind not in "iu" or yellow.dtype.kind not in "iu" or ((row < 0) | (row >= len(self.rows))).any() or ((yellow < 0) | (yellow >= len(self.yellows))).any() or (row[1:] < row[:-1]).any():
             raise ValueError("surface indices are invalid or unordered")
         self.row_index, patterns = {}, {}
@@ -59,11 +62,21 @@ class ProbabilitySurface:
             self.row_index[self.rows[row_id]] = (start, offsets)
             start = stop
         self.yellow_index = {header: index for index, header in enumerate(self.yellows)}
+        self.all_row_index = {key: index for index, key in enumerate(self.rows)}
         self.regime_index = {regime: index for index, regime in enumerate(self.regimes)}
         self.probability.flags.writeable = False
         self.measured.flags.writeable = False
+        self.row_probability.flags.writeable = False
+        self.row_measured.flags.writeable = False
 
     def lookup(self, sheet, row_key, header, regime):
+        if regime not in ("ALL", "UNK", "FLAT", "UP", "DOWN", "STRONG_UP", "STRONG_DOWN"):
+            return None
+        if header is None:
+            index = self.all_row_index.get(str(sheet) + "|" + str(row_key))
+            if index is None:
+                return None
+            return float(self.row_probability[index, 0]), int(self.row_measured[index])
         item = self.row_index.get(str(sheet) + "|" + str(row_key))
         yellow = self.yellow_index.get(str(header))
         column = 0 if regime in ("ALL", "UNK", "FLAT", "UP", "DOWN", "STRONG_UP", "STRONG_DOWN") else None

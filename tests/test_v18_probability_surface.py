@@ -21,7 +21,7 @@ def make_inputs(tmp_path, monkeypatch, **changes):
     path = tmp_path / "surface.npz"
     calibration = {"R": [1.0, 0.0], "F": [1.0, 0.0]}
     metadata = {"schema": "v18_linknet_symbol_surface/1", "cat_side": "CRYPTO_LONG", "symbol_side": "BTCUSDT_LONG", "label": "PREDICTED_NOT_MEASURED", "production_scorer": "hybrid_v1", "model_trained_at": "2026-10-01T00:00:00Z", "platt": calibration, "feature_mode": "context_free", "model_context": {"symbol_side": "BTCUSDT_LONG", "regime": "UNK", "tier": "U", "phase": "", "provenance": "log", "chain_features": []}}
-    arrays = {"meta": np.frombuffer(json.dumps(metadata).encode(), np.uint8), "row_keys": np.array(["TAB1|SW=1", "TAB2|SW=1"]), "yellows": np.array(["F=0", "F=1"]), "regimes": np.array(["UNK"]), "cell_row": np.array([0, 0, 1], np.int32), "cell_yellow": np.array([0, 1, 1], np.int32), "cell_n_measured": np.array([900, 0, 7], np.int32), "cell_p_pos": np.array([[0.0002], [0.0008], [0.0009]], np.float32)}
+    arrays = {"meta": np.frombuffer(json.dumps(metadata).encode(), np.uint8), "row_keys": np.array(["TAB1|SW=1", "TAB2|SW=1"]), "yellows": np.array(["F=0", "F=1"]), "regimes": np.array(["UNK"]), "cell_row": np.array([0, 0, 1], np.int32), "cell_yellow": np.array([0, 1, 1], np.int32), "cell_n_measured": np.array([900, 0, 7], np.int32), "cell_p_pos": np.array([[0.0002], [0.0008], [0.0009]], np.float32), "row_p_pos": np.array([[0.0006], [0.0001]], np.float32), "row_n_measured": np.array([4, 700], np.int64)}
     arrays.update(changes)
     np.savez_compressed(path, **arrays)
     entry = {"surface_path": path.name, "surface_sha256": surface.sha(path), "graph_model_sha256": surface.sha(model), "template_sha256": surface.sha(template), "production_scorer": "hybrid_v1", "model_trained_at": metadata["model_trained_at"], "calibration_sha256": surface.canonical_sha(calibration), "feature_mode": "context_free", "symbol_side": "BTCUSDT_LONG"}
@@ -87,6 +87,19 @@ def test_existing_cost_aware_cap_and_positive_revival_remain_in_force(tmp_path, 
     assert value.decide("TAB1", "SW=1", "F=0", "r", naked_d=0.1)["p"] == 1.0
 
 
+def test_row_channel_uses_R_reference_true_graph_n_and_existing_draw(tmp_path, monkeypatch):
+    model, _, _, environment = make_inputs(tmp_path, monkeypatch)
+    value = runtime(model, monkeypatch, environment, n=10)
+    row = value.decide("TAB1", "SW=1", None, "r")
+    assert row["p_pos"] == pytest.approx(0.0006)
+    assert row["p"] == brain.p_eval(row["p_pos"], value.p_ref["R"], value.floor, 10)
+    assert row["n"] == 10 and row["linknet_n_measured"] == 4
+    assert row["u"] == brain.draw(value.sym_side, "TAB1", "SW=1", "r")
+    assert value.booked["linknet_surface_R"] == 1 and value.booked["linknet_surface_F"] == 0
+    untried = runtime(model, monkeypatch, environment, n=2).decide("TAB1", "SW=1", None, "r")
+    assert untried["n"] == 2 and untried["p"] == 1.0
+
+
 def test_foreign_symbol_and_unsupported_context_fall_back(tmp_path, monkeypatch):
     model, _, _, environment = make_inputs(tmp_path, monkeypatch)
     provider, why = surface.load_surface(environment, model, "CRYPTO_LONG", tmp_path, "ETHUSDT_LONG")
@@ -101,7 +114,7 @@ def test_absent_missing_and_positive_naked_paths_preserve_graph_decisions(tmp_pa
     model, _, _, environment = make_inputs(tmp_path, monkeypatch)
     baseline = runtime(model, monkeypatch)
     enabled = runtime(model, monkeypatch, environment)
-    for args in (("TAB1", "SW=2", "F=0", "r"), ("TAB1", "SW=1", None, "r"), ("TAB2", "SW=1", "F=0", "r")):
+    for args in (("TAB1", "SW=2", "F=0", "r"), ("TAB1", "SW=2", None, "r"), ("TAB2", "SW=1", "F=0", "r")):
         assert baseline.decide(*args) == enabled.decide(*args)
     assert baseline.decide("TAB1", "SW=1", "F=0", "r", naked_d=0.1) == enabled.decide("TAB1", "SW=1", "F=0", "r", naked_d=0.1)
     assert baseline.booked == enabled.booked
@@ -119,7 +132,7 @@ def test_foreign_model_template_or_calibration_identity_falls_back(tmp_path, mon
     assert runtime(model, monkeypatch).decide("TAB1", "SW=1", "F=0") == runtime(model, monkeypatch, environment).decide("TAB1", "SW=1", "F=0")
 
 
-@pytest.mark.parametrize("changes", [{"cell_p_pos": np.full((3, 1), np.nan)}, {"cell_p_pos": np.full((3, 1), 1.1)}, {"cell_n_measured": np.array([1.0, 2.0, 3.0])}, {"cell_yellow": np.array([0, 0, 1], np.int32)}, {"cell_row": np.array([1, 0, 0], np.int32)}])
+@pytest.mark.parametrize("changes", [{"cell_p_pos": np.full((3, 1), np.nan)}, {"cell_p_pos": np.full((3, 1), 1.1)}, {"cell_n_measured": np.array([1.0, 2.0, 3.0])}, {"cell_yellow": np.array([0, 0, 1], np.int32)}, {"cell_row": np.array([1, 0, 0], np.int32)}, {"row_p_pos": np.full((2, 1), np.nan)}, {"row_n_measured": np.array([4.0, 700.0])}])
 def test_invalid_surface_is_not_consumed(tmp_path, monkeypatch, changes):
     model, _, _, environment = make_inputs(tmp_path, monkeypatch, **changes)
     provider, why = surface.load_surface(environment, model, "CRYPTO_LONG", tmp_path, "BTCUSDT_LONG")
