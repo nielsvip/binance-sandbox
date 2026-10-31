@@ -1,9 +1,9 @@
 {
-  "ts": "2026-10-31T06:55:05.942502+00:00",
+  "ts": "2026-10-31T07:00:06.035603+00:00",
   "source": "publish manifests (window_days 30)",
   "target_per_host_h": 12,
   "fleet_published_last_60m": 3,
-  "pending_sym_sides": 59,
+  "pending_sym_sides": 58,
   "hosts": {
     "s1": {
       "published_last_60m": 0,
@@ -12,10 +12,10 @@
       "boards_running": 0,
       "workers": 0,
       "workers_vs_law_28": "0/28",
-      "mem_avail_mb": 7804,
-      "disk_free_gb": 1,
-      "load1": 11.6,
-      "dispatch_idle_why": "disk 1038MB < 3000",
+      "mem_avail_mb": 9110,
+      "disk_free_gb": 0,
+      "load1": 13.1,
+      "dispatch_idle_why": "disk 860MB < 3000",
       "published_ss": []
     },
     "s2": {
@@ -30,9 +30,9 @@
       "boards_running": 4,
       "workers": 28,
       "workers_vs_law_28": "28/28",
-      "mem_avail_mb": 4394,
-      "disk_free_gb": 18,
-      "load1": 12.5,
+      "mem_avail_mb": 3385,
+      "disk_free_gb": 17,
+      "load1": 19.4,
       "dispatch_idle_why": "full 4/3",
       "published_ss": []
     },
@@ -42,14 +42,15 @@
       "boards": {
         "ENJUSDT_SHORT": 6,
         "FIDAUSDT_SHORT": 7,
-        "HMSTRUSDT_SHORT": 7
+        "HMSTRUSDT_SHORT": 7,
+        "MNTS_SHORT": 7
       },
-      "boards_running": 3,
-      "workers": 20,
-      "workers_vs_law_28": "20/28",
-      "mem_avail_mb": 10205,
+      "boards_running": 4,
+      "workers": 27,
+      "workers_vs_law_28": "27/28",
+      "mem_avail_mb": 6393,
       "disk_free_gb": 16,
-      "load1": 10.9,
+      "load1": 12.6,
       "dispatch_idle_why": "full 4/4",
       "published_ss": [
         "PTBUSDT_SHORT"
@@ -66,10 +67,10 @@
       "boards_running": 3,
       "workers": 14,
       "workers_vs_law_28": "14/28",
-      "mem_avail_mb": 19727,
+      "mem_avail_mb": 19086,
       "disk_free_gb": 13,
-      "load1": 9.4,
-      "dispatch_idle_why": "full 4/4",
+      "load1": 8.9,
+      "dispatch_idle_why": "spacing 49s < 120",
       "published_ss": [
         "MOS_SHORT",
         "SANDUSDT_SHORT"
@@ -77,16 +78,16 @@
     }
   },
   "alerts": [
-    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=disk 1038MB < 3000)",
-    "DISK_FLOOR:s1:1GB<40",
+    "LOW_THROUGHPUT:s1:0/h<12 (idle_why=disk 860MB < 3000)",
+    "DISK_FLOOR:s1:0GB<40",
     "LOW_THROUGHPUT:s2:0/h<12 (idle_why=full 4/3)",
-    "DISK_FLOOR:s2:18GB<40",
+    "DISK_FLOOR:s2:17GB<40",
     "LOW_THROUGHPUT:s5:1/h<12 (idle_why=full 4/4)",
     "DISK_FLOOR:s5:16GB<40",
-    "STUCK_BOARD:s5:ENJUSDT_SHORT:276min",
-    "LOW_THROUGHPUT:s6:2/h<12 (idle_why=full 4/4)",
+    "STUCK_BOARD:s5:ENJUSDT_SHORT:281min",
+    "LOW_THROUGHPUT:s6:2/h<12 (idle_why=spacing 49s < 120)",
     "DISK_FLOOR:s6:13GB<40",
-    "STUCK_BOARD:s6:KAVAUSDT_LONG:152min"
+    "STUCK_BOARD:s6:KAVAUSDT_LONG:157min"
   ],
-  "repair": "DISK_REPAIR:s1:1GB->2G (eval_cache_v1.db + rebuild_scratch_* deleted); DISK_REPAIR:s6:13GB->18G (eval_cache_v1.db + rebuild_scratch_* deleted)"
+  "repair": "DISK_REPAIR:s1:0GB->1G (eval_cache_v1.db + rebuild_scratch_* deleted); DISK_REPAIR:s6:13GB->18G (eval_cache_v1.db + rebuild_scratch_* deleted)"
 }

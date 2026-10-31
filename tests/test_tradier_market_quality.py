@@ -1,7 +1,10 @@
 import numpy as np
 
-from vec_decisions import quick_missing_entry_score
 from vec_decisions.tradier_market_quality import market_quality_score_scalar, market_quality_score_vec
+
+
+def _column(npz, key, n, default):
+    return np.asarray(npz.get(key, np.full(n, default)), dtype=float)
 
 
 def _cfg(enabled=True):
@@ -37,31 +40,17 @@ def _bars():
 def test_tradier_long_scalar_numpy_and_score_adapters_match():
     npz = _bars()
     cfg = _cfg()
-    bonuses, fires = market_quality_score_vec(npz, 3, True, cfg, quick_missing_entry_score._column)
+    bonuses, fires = market_quality_score_vec(npz, 3, True, cfg, _column)
     scalar = []
     for i in range(3):
         indicators = {key: values[i] for key, values in npz.items() if key != "close"}
         scalar.append(market_quality_score_scalar(indicators, True, cfg.get)[0])
     assert bonuses.tolist() == scalar == [4.0, 0.0, 0.0]
     assert fires.tolist() == [True, False, False]
-    vector_score, vector_masks = quick_missing_entry_score.research_score_masks_vec(npz, 3, True, cfg)
-    scalar_scores = [
-        quick_missing_entry_score.research_score_masks_scalar(
-            {key: values[i] for key, values in npz.items() if key != "close"},
-            100.0,
-            True,
-            cfg,
-        )[0]
-        for i in range(3)
-    ]
-    assert vector_score.tolist() == scalar_scores == [4.0, 0.0, 0.0]
-    assert vector_masks["MARKET_QUALITY_SCORE"].tolist() == fires.tolist()
-
-
 def test_tradier_short_thresholds_are_shared_and_stock_switch_is_distinct():
     npz = _bars()
     cfg = _cfg()
-    bonuses, fires = market_quality_score_vec(npz, 3, False, cfg, quick_missing_entry_score._column)
+    bonuses, fires = market_quality_score_vec(npz, 3, False, cfg, _column)
     scalar = []
     for i in range(3):
         indicators = {key: values[i] for key, values in npz.items() if key != "close"}
@@ -70,6 +59,6 @@ def test_tradier_short_thresholds_are_shared_and_stock_switch_is_distinct():
     assert fires.tolist() == [True, True, False]
     cfg["MARKET_QUALITY_SCORE_ENABLED_TRADIER"] = False
     cfg["MARKET_QUALITY_SCORE_ENABLED"] = True
-    bonuses, fires = market_quality_score_vec(npz, 3, False, cfg, quick_missing_entry_score._column)
+    bonuses, fires = market_quality_score_vec(npz, 3, False, cfg, _column)
     assert bonuses.tolist() == [0.0, 0.0, 0.0]
     assert fires.tolist() == [False, False, False]

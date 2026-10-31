@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-31 06:54 UTC",
- "total_capital_usd": 15.07,
+ "generated_at": "2026-10-31 07:01 UTC",
+ "total_capital_usd": 14.99,
  "tier_capital": {
   "A": 0.0,
-  "B": 15.07,
+  "B": 14.99,
   "C": 0.0
  },
  "tier_count": {
@@ -13,18 +13,20 @@
  },
  "winners": [],
  "losers": [],
- "mediocre": [],
+ "mediocre": [
+  "fin:FLUXUSDT_LONG"
+ ],
  "positions": [
   {
-   "pk": "inf:1000PEPEUSDC_LONG",
-   "symbol": "1000PEPEUSDC",
-   "account": "inf",
-   "value_usd": 15.07,
-   "gain_pct": 0.503,
+   "pk": "fin:FLUXUSDT_LONG",
+   "symbol": "FLUXUSDT",
+   "account": "fin",
+   "value_usd": 14.99,
+   "gain_pct": 0.175,
    "tier": "B",
-   "perf_mult": 5.68,
-   "amt": 3016.0,
-   "mark": 0.0049979
+   "perf_mult": 0.5,
+   "amt": 249.0,
+   "mark": 0.06018536
   }
  ]
 }
