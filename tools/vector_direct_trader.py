@@ -196,7 +196,9 @@ MIN_PASS_GAP_S = float(os.environ.get("VD_MIN_PASS_GAP_S", "2.0"))
 # SEVENDAY_MAX_AGE_S. Everything else is refused. This FAILS CLOSED: no readable 7D artifact means no entries at all,
 # which is today's state because the crypto 7D lane has no driver. EXITS are never gated — closing a position is an
 # absolute law of this system, and a gate that strands a live position is worse than the entry it was meant to stop.
-SEVENDAY_ONLY_ACCOUNTS = tuple(x.strip() for x in os.environ.get("VD_SEVENDAY_ONLY_ACCOUNTS", "fin").split(",") if x.strip())
+# USER 2026-10-31: "they can ONLY trade 7D results that are <24h old (older ones can be exited not entered)" — every
+# account on both venues now, not just fin. "*" means all accounts; a comma list narrows it.
+SEVENDAY_ONLY_ACCOUNTS = tuple(x.strip() for x in os.environ.get("VD_SEVENDAY_ONLY_ACCOUNTS", "*").split(",") if x.strip())
 SEVENDAY_MAX_AGE_S = float(os.environ.get("VD_SEVENDAY_MAX_AGE_S", str(24 * 3600)))
 SEVENDAY_BOOK = {"fin": "men"}
 MAC_POSITIONS = os.environ.get("VD_MAC_POSITIONS", "1") == "1"
@@ -1224,7 +1226,7 @@ class Trader:
 
     def sevenday_ok(self, acct, ss, now):
         """(allowed, why) for an OPEN/AUGMENT on a 7D-only account. Entries only; exits never reach here."""
-        if acct not in SEVENDAY_ONLY_ACCOUNTS:
+        if "*" not in SEVENDAY_ONLY_ACCOUNTS and acct not in SEVENDAY_ONLY_ACCOUNTS:
             return True, ""
         book = SEVENDAY_BOOK.get(acct)
         if book:
@@ -1274,6 +1276,32 @@ class Trader:
         if bare:
             log(f"CRITICAL UNPROTECTED {acct}: {len(bare)} held position(s) with no resting stop: {','.join(sorted(bare))}")
         self._ledger({"event": "PROTECTION_AUDIT", "acct": acct, "held": len([1 for r in pos.values() if float(r.get("qty") or 0) > 0]), "unprotected": sorted(bare)})
+
+    def lease_ok(self, now):
+        """True when THIS process holds the venue's trading lease. Writes its own beat either way."""
+        if not hasattr(self, "lease"):
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            import vector_direct_lease
+            self.lease = vector_direct_lease
+            self.lease_state = {}
+        try:
+            may, why, self.lease_state = self.lease.decide(self.venue, self.a.role, self.out, now, self.lease_state)
+        except Exception as exc:
+            # A primary must never be stopped by a fault in the arbiter — that would leave the venue uncovered.
+            # A backup must never trade on a fault, because that is how two traders happen.
+            may = self.a.role == "primary"
+            why = f"lease decision failed ({type(exc).__name__}: {str(exc)[:120]}); {'primary keeps trading' if may else 'backup stands down'}"
+        try:
+            self.lease.write_beat(self.out, self.venue, self.a.role, may, why)
+        except OSError as exc:
+            log(f"lease beat write failed: {exc}")
+        if why != getattr(self, "lease_why", None):
+            self.lease_why = why
+            log(f"LEASE {self.venue} {self.a.role}: {'TRADING' if may else 'STOOD DOWN'} — {why}")
+            self._ledger({"event": "LEASE", "venue": self.venue, "role": self.a.role, "may_trade": bool(may), "why": why})
+            if not may:
+                self.alert("VD_LEASE_STOOD_DOWN", venue=self.venue, role=self.a.role, why=why[:200])
+        return bool(may)
 
     def mac_positions(self):
         """The Mac books as pushed by tools/mac_positions_push_executors.py, re-read only when the file changes."""
@@ -1568,6 +1596,11 @@ class Trader:
                 self.done.discard(k)
                 self.done_ts.pop(k, None)
         orders_n = 0
+        # USER 2026-10-31: exactly one trader per venue, and never zero for long. The lease decides; a trader without it
+        # places NO order of any kind, because two traders exiting the same position is double-trading just as much as
+        # two opening it. States, positions and the heartbeat keep refreshing so a handover is instant.
+        if not self.lease_ok(now):
+            return orders_n
         untradeable = (read_json(self.out / f"untradeable_{self.venue}.json", {}) or {}).get("sides") or {}
         untradeable_close = not (self.out / "UNTRADEABLE_CLOSE_DISABLED").exists()
         if self.__dict__.pop("plan_now", False):
@@ -1996,6 +2029,8 @@ def main(argv=None):
     ap.add_argument("--force-active", default="", help="testing: treat these accounts as taken over")
     ap.add_argument("--hb-extra", action="append", help="additional heartbeat file(s); the freshest wins")
     ap.add_argument("--hb-ssh", default="", help="also read the heartbeat from this ssh host (e.g. S1 for S5)")
+    ap.add_argument("--role", choices=("primary", "backup"), default="primary",
+                    help="primary (s1 crypto / s5 stocks) trades unless it SEES the backup active; backup trades only on a witnessed primary failure")
     ap.add_argument("--probe", action="store_true", help="read-only: broker positions per account, then exit")
     ap.add_argument("--assume-open", action="store_true", help="stocks + --dry-run only: plan as if the market were open")
     a = ap.parse_args(argv)

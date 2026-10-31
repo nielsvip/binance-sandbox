@@ -1,0 +1,64 @@
+{
+  "created_at_utc": "2026-10-31T00:31:24.814810+00:00",
+  "scope": "Selective S5 evidence preservation on WD25; no full tree claim or retirement clearance.",
+  "supersedes": [
+    "data/reports/learning_preservation_matrix_20261030T235900Z.json",
+    "data/reports/learning_preservation_increment_20261031T0024Z.json",
+    "data/reports/learning_preservation_matrix_20261031T0027Z.json",
+    "data/reports/learning_preservation_increment_20261031T0027Z.json"
+  ],
+  "wd25_identity": {
+    "device": "/dev/disk7s1",
+    "volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+    "disk_uuid": "24C21E6C-CB0F-4A51-A231-0B504069C45A",
+    "filesystem": "ExFAT",
+    "identity_basis": "diskutil plist VolumeUUID, checked before and after latest copy; disk identifier is separate"
+  },
+  "verified_copy_receipts": [
+    {
+      "receipt_path": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/learn_maps/verification_receipt.json",
+      "receipt_sha256": "182f245db06f773cbfd45b7c860efc511d878a4e0d9b2c8d5515d583310a62d6",
+      "bytes_total": 9319345,
+      "source_root": "/home/niels/v20_u4/learn",
+      "destination_root": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/learn_maps"
+    },
+    {
+      "receipt_path": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A/verification_receipt.json",
+      "receipt_sha256": "edabf09cc819d6b2302d5f49e68f2637fbbb13cc87aa5f53ef5e4527674c7885",
+      "bytes_total": 64032059,
+      "source_root": "/home/niels/v20_u4/must/union_A plus must/union_A.out",
+      "destination_root": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_A"
+    },
+    {
+      "receipt_path": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B/verification_receipt.json",
+      "receipt_sha256": "45c1ab651ea8f3e65262161a8d09ade5872c463a65e2ab1a44108187fe384b08",
+      "bytes_total": 53648190,
+      "source_root": "/home/niels/v20_u4/must/union_B and must/union_B.out",
+      "destination_root": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_union_B"
+    },
+    {
+      "receipt_path": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2/verification_receipt.json",
+      "receipt_sha256": "89d696eeb8608dea61c979b151b05cd4d50c23e51b8bd89ae2f838e7612d0b31",
+      "bytes_total": 51230881,
+      "source_root": "/home/niels/v20_u4/must/A2",
+      "destination_root": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_A2"
+    },
+    {
+      "receipt_path": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2/verification_receipt.json",
+      "receipt_sha256": "142f0c7b820d9e23bd8f121ea305a1c49f08eb4733c431233f8f94d494290233",
+      "bytes_total": 37547777,
+      "source_root": "/home/niels/v20_u4/must/B2",
+      "destination_root": "/Volumes/WD25/binance_archive/learning_preserve_20261031T0011Z/s5_v20_u4/must_B2"
+    }
+  ],
+  "overlap_checks": {
+    "B2_vs_A2_and_union_A_B": "No exact SHA256 duplicates among copied regular files in these WD25 sets.",
+    "B2_vs_S6_AB_bundle": "No exact SHA256 match by basename against files in existing S6 A/B model+receipt bundle."
+  },
+  "remaining_s5_sources": [
+    "must/A, B, seed_v3u3 and hosts; A2/B2 plus union_A/B now copied",
+    "code/, pcode/, other learning/evidence and A/B trees remain incomplete",
+    "B/tmp/events_sorted.tsv (15,993,543,228B metadata only; not copied or content-hash checked)"
+  ],
+  "coverage_limit": "A2/B2 and union state outputs are experiment snapshots; copied bytes do not establish accepted-model status. Whole S5/S6 preservation is incomplete."
+}

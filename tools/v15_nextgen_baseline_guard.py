@@ -1,5 +1,8 @@
 """Previous accepted baseline pins; actual engine capture, never expected metric invention."""
 import dataclasses
+import copy
+import pickle
+import datetime
 import hashlib
 import json
 import math
@@ -12,17 +15,68 @@ class PinnedBaselineError(SystemExit):
 
 
 def normalized(value):
+    tag = '__v15_baseline_type__'
+    if isinstance(value, Path):
+        scope, text = 'absolute' if value.is_absolute() else 'relative', str(value)
+        for name, environment in [('root', 'V15_BENCH_ROOT'), ('side', 'V15_BENCH_SIDE')]:
+            base = os.environ.get(environment)
+            if base and value.is_absolute():
+                try:
+                    text, scope = str(value.relative_to(Path(base))), name
+                    break
+                except ValueError:
+                    pass
+        result = {tag: 'path', 'scope': scope, 'value': text}
+        if value.is_file():
+            result['asset_sha256'] = hashlib.sha256(value.read_bytes()).hexdigest()
+        return result
+    if isinstance(value, dict):
+        if all(isinstance(key, str) for key in value):
+            return {key: normalized(item) for key, item in value.items()}
+        items = [[normalized(key), normalized(item)] for key, item in value.items()]
+        return {tag: 'dict', 'items': sorted(items, key=lambda item: json.dumps(item[0], sort_keys=True))}
+    if isinstance(value, tuple):
+        return {tag: 'tuple', 'items': [normalized(item) for item in value]}
+    if isinstance(value, (set, frozenset)):
+        return {tag: 'frozenset' if isinstance(value, frozenset) else 'set', 'items': sorted([normalized(item) for item in value], key=lambda item: json.dumps(item, sort_keys=True))}
+    if isinstance(value, list):
+        return [normalized(item) for item in value]
+    if type(value) in (datetime.datetime, datetime.date, datetime.time):
+        return {tag: type(value).__name__, 'value': value.isoformat()}
+    if hasattr(value, 'dtype') and hasattr(value, 'tolist'):
+        return {tag: 'numpy', 'dtype': str(value.dtype), 'shape': list(getattr(value, 'shape', ())), 'value': normalized(value.tolist())}
     if isinstance(value, float) and not math.isfinite(value):
         return {'nonfinite_float': 'nan' if math.isnan(value) else ('positive_infinity' if value > 0 else 'negative_infinity')}
-    if isinstance(value, dict):
-        return {str(key): normalized(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [normalized(item) for item in value]
-    if hasattr(value, 'tolist'):
-        return normalized(value.tolist())
-    if hasattr(value, 'item'):
-        return normalized(value.item())
-    return value
+    if value is None or isinstance(value, (str, bool, int, float)):
+        return value
+    raise PinnedBaselineError(f'unsupported explicit baseline value type: {type(value).__module__}.{type(value).__qualname__}')
+
+
+def decoded(value):
+    if isinstance(value, list):
+        return [decoded(item) for item in value]
+    if not isinstance(value, dict):
+        return value
+    kind = value.get('__v15_baseline_type__')
+    if kind == 'path':
+        scope = value['scope']
+        base = os.environ.get('V15_BENCH_ROOT' if scope == 'root' else 'V15_BENCH_SIDE') if scope in ('root', 'side') else None
+        if scope in ('root', 'side') and not base:
+            raise PinnedBaselineError('routing root required to decode previous path')
+        return Path(base) / value['value'] if base else Path(value['value'])
+    if kind in ('tuple', 'set', 'frozenset'):
+        return {'tuple': tuple, 'set': set, 'frozenset': frozenset}[kind](decoded(item) for item in value['items'])
+    if kind == 'dict':
+        return {decoded(key): decoded(item) for key, item in value['items']}
+    if kind in ('datetime', 'date', 'time'):
+        return getattr(datetime, kind).fromisoformat(value['value'])
+    if kind == 'numpy':
+        import numpy
+        array = numpy.asarray(decoded(value['value']), dtype=value['dtype']).reshape(value['shape'])
+        return array[()] if not value['shape'] else array
+    if set(value) == {'nonfinite_float'}:
+        return {'nan': float('nan'), 'positive_infinity': float('inf'), 'negative_infinity': float('-inf')}[value['nonfinite_float']]
+    return {key: decoded(item) for key, item in value.items()}
 
 
 def fingerprint(value):
@@ -67,9 +121,9 @@ def load_pin(path, sym_side, defaults, npz, window_days, supported_fields=None, 
     configs = proof.get('effective_config_values')
     if not accepted_settings or not isinstance(configs, list) or len(configs) != 1 or fingerprint(configs) != proof.get('effective_config_sha256'):
         raise PinnedBaselineError('independent previous actual effective config required; raw SQL/default key counts are not a configuration oracle')
-    previous_config = configs[0]
+    previous_config = decoded(configs[0])
     supported = set(supported_fields) if supported_fields is not None else set(defaults)
-    managed = set(global_fields) & supported
+    managed = (set(global_fields) & supported) | {key for key, value in previous_config.items() if isinstance(value, Path)}
     per_sym = supported - managed
     retired = set(previous_config) - supported
     if retired:
@@ -83,7 +137,7 @@ def load_pin(path, sym_side, defaults, npz, window_days, supported_fields=None, 
         if 'value' not in entry or not entry.get('previous_behavior') or not entry.get('evidence_sha256'):
             raise PinnedBaselineError('neutral new key lacks explicit previous-behavior evidence')
     settings = {key: value for key, value in previous_config.items() if key in per_sym}
-    settings.update({key: entry['value'] for key, entry in neutral.items() if key in per_sym})
+    settings.update({key: decoded(entry['value']) for key, entry in neutral.items() if key in per_sym})
     if set(settings) != per_sym:
         raise PinnedBaselineError('incomplete supported per-sym effective configuration')
     pin['global_context'] = {key: value for key, value in previous_config.items() if key in managed}
@@ -115,13 +169,25 @@ def capture_actual(prepared, settings, evaluate, window_days):
     configs = []
     def ensure(cfg, symbol, is_long):
         effective = original(cfg, symbol, is_long)
-        configs.append({field.name: getattr(effective, field.name) for field in dataclasses.fields(engine.QuickConfig)})
+        configs.append(copy.deepcopy({field.name: getattr(effective, field.name) for field in dataclasses.fields(engine.QuickConfig)}))
         return effective
     engine.ensure_template_layer = ensure
     try:
         result = evaluate(prepared, dict(settings), window_days=window_days, include_ledger=True)
     finally:
         engine.ensure_template_layer = original
+    raw_path = os.environ.get('V15_BASELINE_RAW_CAPTURE')
+    if raw_path:
+        path = Path(raw_path)
+        census = [{key: type(value).__module__ + '.' + type(value).__qualname__ for key, value in config.items()} for config in configs]
+        metadata = {'scope': 'trusted own-run diagnostic capture before codec; not a promotion artifact', 'request_sha256': os.environ.get('V15_BASELINE_REQUEST_SHA256'), 'at_utc': datetime.datetime.now(datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ'), 'config_type_census': census}
+        try:
+            with path.open('xb') as stream:
+                pickle.dump({'configs': configs, 'result': result}, stream, protocol=5)
+            metadata['pickle_sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
+        except Exception as error:
+            metadata['capture_error'] = repr(error)
+        path.with_suffix('.provenance.json').write_text(json.dumps(metadata, indent=2))
     ledger = result.get('execution_ledger')
     if not configs or not isinstance(ledger, list):
         raise PinnedBaselineError('real engine configuration and execution ledger required; cache-only proof forbidden')
@@ -145,11 +211,11 @@ def enforce_actual(pin, prepared, settings, evaluate, window_days):
     neutral = pin.get('neutral_new_keys', {})
     expected_configs = []
     for previous in previous_configs:
-        extended = dict(previous)
+        extended = dict(decoded(previous))
         for key, entry in neutral.items():
             if key in extended:
                 raise PinnedBaselineError('neutral-new-key declaration shadows previous effective config')
-            extended[key] = entry['value']
+            extended[key] = decoded(entry['value'])
         expected_configs.append(extended)
     if fingerprint(expected_configs) != actual['effective_config_sha256'] or any(proof.get(key) != actual[key] for key in ['input_cutoff_sha256', 'execution_ledger_sha256', 'result_sha256']):
         raise PinnedBaselineError('initial effective configuration, real execution ledger or result drifted; no optimizer permitted')

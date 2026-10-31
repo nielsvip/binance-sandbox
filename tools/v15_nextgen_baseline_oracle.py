@@ -106,6 +106,7 @@ def main():
                 raise PermissionError('oracle may not replace immutable input')
     sys.addaudithook(readonly_inputs)
     install_audit(root, side)
+    os.chdir(root)
     sys.path.insert(0, str(root))
     print(json.dumps({'phase': 'IMPORT_PREVIOUS_RUNTIME_NO_OPTIMIZER', 'pid': os.getpid(), 'at_utc': utc()}), flush=True)
     started = time.monotonic()
@@ -136,6 +137,8 @@ def main():
                     raise ValueError(f'first-party dependency escaped previous root: {name}={path}')
                 origins[name] = str(path.relative_to(root))
     print(json.dumps({'phase': 'ACTUAL_PREVIOUS_BASELINE_EVALUATION' , 'pid': os.getpid(), 'at_utc': utc()}), flush=True)
+    os.environ['V15_BASELINE_RAW_CAPTURE'] = str(side / ('previous_raw_capture_' + datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%dT%H%M%S%fZ') + '.pickle'))
+    os.environ['V15_BASELINE_REQUEST_SHA256'] = sha(args.request)
     result, proof = capture_actual(prepared, settings, evaluate_prepared_sanitized, request['window_days'])
     if sha(npz) != request['npz_sha256']:
         raise ValueError('frozen NPZ changed during previous baseline evaluation')
