@@ -18,7 +18,9 @@ def bb_recovery_qty_limits(symbol, price, cfg):
     except Exception:
         row = {}
     try:
-        exchange_min = float(row.get("minQty", 0.0) or 0.0)
+        raw_exchange_min = row.get("minQty")
+        exchange_min = float(raw_exchange_min or 0.0)
+        order_exchange_min = float(0.0001 if raw_exchange_min is None else raw_exchange_min)
         min_notional = float(row.get("minNotional", 5.0) or 5.0)
         min_position = float(getattr(cfg, "MIN_POSITION_SIZE", 1.0) or 1.0)
     except (TypeError, ValueError, OverflowError):
@@ -30,7 +32,7 @@ def bb_recovery_qty_limits(symbol, price, cfg):
     if not np.isfinite(min_position) or min_position < 0.0:
         return 0.0, float("inf")
     pos_min_qty = max(2.0 * min_position / px, exchange_min)
-    order_min_qty = max(exchange_min * 1.2, 6.0 / px, min_notional / px)
+    order_min_qty = max(order_exchange_min * 1.2, 6.0 / px, min_notional / px)
     return pos_min_qty, order_min_qty
 
 

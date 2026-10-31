@@ -3,7 +3,58 @@ import json
 
 import pytest
 
-from tradier_account_events import create_account_session, decode_account_events, group_managers_by_stream_identity, make_rest_reconciler, run_account_event_stream
+from tradier_account_events import DurableAccountEventJournal, create_account_session, decode_account_events, group_managers_by_stream_identity, make_rest_reconciler, run_account_event_stream
+
+
+class StreamAPI:
+    _current_url = "https://api.tradier.com/v1"
+    _current_key = "multiprocess-test-token"
+
+
+def _hold_stream_lease(root, result_queue, release_event, publish_before_wait=False):
+    journal = DurableAccountEventJournal(root, StreamAPI())
+    fd = journal.try_acquire_owner()
+    if fd is not None and publish_before_wait:
+        journal.publish({"event": "order", "account": "private-account-id", "id": "8", "executed_quantity": 1}, fd)
+        with open(journal.journal_path, "ab") as stream:
+            stream.write(b'{"seq":2,"event":')
+            stream.flush()
+            __import__("os").fsync(stream.fileno())
+    result_queue.put(fd is not None)
+    if fd is not None:
+        release_event.wait(20)
+        journal.release_owner(fd)
+
+
+def _takeover_and_publish(root, result_queue, stop_event):
+    journal = DurableAccountEventJournal(root, StreamAPI())
+    deadline = __import__("time").time() + 15
+    fd = None
+    while fd is None and __import__("time").time() < deadline:
+        fd = journal.try_acquire_owner()
+        if fd is None:
+            __import__("time").sleep(0.05)
+    if fd is None:
+        result_queue.put(False)
+        return
+    try:
+        result_queue.put(True)
+        journal.publish({"event": "order", "account": "private-account-id", "id": "9", "executed_quantity": 1}, fd)
+    finally:
+        journal.release_owner(fd)
+
+
+def _read_journal_fanout(root, account_id, result_queue):
+    journal = DurableAccountEventJournal(root, StreamAPI())
+    fd = journal.try_acquire_consumer(account_id)
+    if fd is None:
+        result_queue.put(None)
+        return
+    try:
+        rows = journal.read_after(0)
+        result_queue.put((rows[0][0]["event"], journal.cursor_path(account_id).name))
+    finally:
+        journal.release_consumer(fd)
 
 
 class FakeAPI:
@@ -148,4 +199,70 @@ async def test_failed_rest_confirmation_does_not_consume_websocket_fill(tmp_path
     assert await reconcile(event, 101.0) is True
     assert manager.position_reads == 2
     assert manager.processed == [[]]
+
+
+def test_multiprocess_stream_lease_allows_only_one_owner(tmp_path):
+    import multiprocessing
+
+    ctx = multiprocessing.get_context("spawn")
+    results = ctx.Queue()
+    release = ctx.Event()
+    first = ctx.Process(target=_hold_stream_lease, args=(str(tmp_path), results, release))
+    second = ctx.Process(target=_hold_stream_lease, args=(str(tmp_path), results, release))
+    first.start()
+    assert results.get(timeout=10) is True
+    second.start()
+    assert results.get(timeout=10) is False
+    release.set()
+    first.join(timeout=10)
+    second.join(timeout=10)
+    assert first.exitcode == 0
+    assert second.exitcode == 0
+    assert "multiprocess-test-token" not in str(list(tmp_path.rglob("*")))
+
+
+def test_owner_death_releases_lease_for_takeover_and_journal_replay(tmp_path):
+    import multiprocessing
+
+    ctx = multiprocessing.get_context("spawn")
+    results = ctx.Queue()
+    release = ctx.Event()
+    owner = ctx.Process(target=_hold_stream_lease, args=(str(tmp_path), results, release, True))
+    owner.start()
+    assert results.get(timeout=10) is True
+    takeover_results = ctx.Queue()
+    takeover = ctx.Process(target=_takeover_and_publish, args=(str(tmp_path), takeover_results, release))
+    takeover.start()
+    owner.terminate()
+    owner.join(timeout=10)
+    assert takeover_results.get(timeout=10) is True
+    takeover.join(timeout=10)
+    assert takeover.exitcode == 0
+    journal = DurableAccountEventJournal(tmp_path, StreamAPI())
+    records = journal.read_after(0)
+    assert len(records) == 2
+    assert [record[0]["seq"] for record in records] == [1, 2]
+    assert [record[0]["event"]["id"] for record in records] == ["8", "9"]
+
+
+def test_multiprocess_fanout_gives_each_account_its_own_durable_cursor(tmp_path):
+    import multiprocessing
+
+    ctx = multiprocessing.get_context("spawn")
+    journal = DurableAccountEventJournal(tmp_path, StreamAPI())
+    owner_fd = journal.try_acquire_owner()
+    assert owner_fd is not None
+    journal.publish({"event": "order", "account": "private-account-id", "id": "10", "executed_quantity": 2}, owner_fd)
+    journal.release_owner(owner_fd)
+    results = ctx.Queue()
+    readers = [ctx.Process(target=_read_journal_fanout, args=(str(tmp_path), account, results)) for account in ("account-a", "account-b")]
+    for reader in readers:
+        reader.start()
+    records = [results.get(timeout=10), results.get(timeout=10)]
+    for reader in readers:
+        reader.join(timeout=10)
+        assert reader.exitcode == 0
+    assert [row[0]["id"] for row in records] == ["10", "10"]
+    assert len({row[1] for row in records}) == 2
+    assert all(row[1].endswith(".json") for row in records)
 

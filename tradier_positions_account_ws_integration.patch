@@ -18,15 +18,16 @@
                  await asyncio.sleep(5)
              except asyncio.CancelledError:
                  break
-@@ -3839,11 +3841,20 @@
+@@ -3839,10 +3841,20 @@
              logger.error(f"Failed to initialize manager for {acc_key}: {e}")
      if managers:
          await asyncio.gather(*(m.start() for m in managers))
-+        from tradier_account_events import group_managers_by_stream_identity, make_rest_reconciler, run_account_event_stream
++        from tradier_account_events import group_managers_by_stream_identity, run_shared_account_event_transport
 +        account_stream_tasks = []
 +        for stream_api, stream_managers in group_managers_by_stream_identity(managers):
-+            reconciler = make_rest_reconciler(stream_managers)
-+            account_stream_tasks.append(asyncio.create_task(run_account_event_stream(stream_api, reconciler, status={})))
++            account_stream_tasks.append(asyncio.create_task(
++                run_shared_account_event_transport(stream_api, stream_managers, config.BASE_PATH, stop_event)
++            ))
          try:
              await stop_event.wait()
          except asyncio.CancelledError:

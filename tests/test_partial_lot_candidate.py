@@ -133,6 +133,16 @@ def test_research_trader_copy_routes_every_non_close_order_through_shared_partia
     assert "if held - q < mq:" not in size_method
 
 
+def test_research_engine_copy_gates_each_common_partial_mutator_before_state_commit():
+    root = Path(__file__).resolve().parents[1]
+    source = (root / "tools/research/v12_quick_engine_partial_candidate.py").read_text()
+    assert source.count("_account_partial_ok(") == 14  # definition + 13 REDUCE paths
+    assert "_ctp_fired.add(int(_ctp_idx))" in source
+    assert source.index("_account_partial_ok(pos, _ctp_qty, px)") < source.index("_ctp_fired.add(int(_ctp_idx))")
+    assert source.index("_account_partial_ok(pos, _ppl_qty, px)") < source.index("pos[\"realized\"] += _realized_ppl")
+    assert "pos[\"ppl\"] = _ppl_prev" in source
+
+
 def test_engine_runner_calls_real_evaluator_builder_and_real_simulate_one(monkeypatch):
     from tools.opt import evaluate_v12
     from tools.research import v12_quick_engine_partial_candidate as engine
@@ -160,7 +170,11 @@ def test_engine_runner_calls_real_evaluator_builder_and_real_simulate_one(monkey
         "trb",
     )
     assert calls["simulate"] == (npz, "QNTUSDT", True, cfg)
-    assert cfg._PARTIAL_LOT_CONTEXT == context
+    assert cfg._PARTIAL_LOT_CONTEXT["account"] == context["account"]
+    assert cfg._PARTIAL_LOT_CONTEXT["qty_scale"] == context["qty_scale"]
+    assert cfg._PARTIAL_LOT_CONTEXT["market_lots"] == context["market_lots"]
+    assert cfg._PARTIAL_LOT_CONTEXT["venue_market_mode_sizing"]["market_mode"] == "LIGHT_MODE"
+    assert cfg._PARTIAL_LOT_CONTEXT["engine_start_position_size"] == cfg.START_POSITION_SIZE
     assert out["result"]["execution_ledger"][0]["qty"] == 0.025
     assert out["engine_start_position_size"] == 15.0
 
@@ -308,32 +322,33 @@ def test_research_engine_refuses_unexecutable_cycle_partial_before_tier_or_pnl_m
     assert cfg._PARTIAL_LOT_CONTEXT["rejected_partial_count"] > 1
     assert final["qty"] == pytest.approx(0.1)
     assert cfg._PARTIAL_LOT_CONTEXT["last_rejected_partial"]["reason"] == "PARTIAL_BELOW_MIN_QTY"
-    # The same frozen engine trace is tradeable for an account four times larger.
-    larger_cfg = engine.QuickConfig()
-    larger_cfg.MODE = "crypto"
-    larger_cfg.BASE_TF = "3m"
-    larger_cfg.START_POSITION_SIZE = 10.0
-    larger_cfg.COOLDOWN_BARS = 0
-    larger_cfg.CYCLE_TP_TIERED_ENABLED = True
-    larger_cfg.CYCLE_TP_TIERED_LEVELS = [0.0015, 0.003]
-    larger_cfg.CYCLE_TP_TIERED_FRAC = 0.25
-    larger_cfg.NOLOSS_MIN_PROFIT_PCT = 0.05
-    larger_cfg.COMMISSION_BUFFER_PCT = 0.08
-    larger_cfg.CRYPTO_ROUND_TRIP_COMMISSION_PCT = 0.04
-    larger_cfg.PROFIT_TARGET_ENABLED = False
-    larger_cfg.STOP_LOSS_ENABLED = False
-    larger_cfg.ALL_TF_AGAINST_FORCE_CLOSE_ENABLED = False
-    larger_cfg._PARTIAL_LOT_CONTEXT = _account_context("QNTUSDT")
-    larger_cfg._PARTIAL_LOT_CONTEXT["qty_scale"] = 4.0
-    larger = engine.simulate_one(
-        _seeded_npz_for_account_gate(), "QNTUSDT", True, larger_cfg, force_initial_seed=True
-    )
-    larger_reductions = [
-        row
-        for row in larger["ledger"]
-        if str(row.get("reason") or "").startswith("CYCLE_TP_TIERED_")
-    ]
-    assert larger_reductions
+
+
+def test_research_engine_without_account_context_matches_canonical_cycle_ledger():
+    import v12_quick_engine as canonical
+    from tools.research import v12_quick_engine_partial_candidate as candidate_engine
+
+    def make_cfg(engine):
+        cfg = engine.QuickConfig()
+        cfg.MODE = "crypto"
+        cfg.BASE_TF = "3m"
+        cfg.START_POSITION_SIZE = 10.0
+        cfg.COOLDOWN_BARS = 0
+        cfg.CYCLE_TP_TIERED_ENABLED = True
+        cfg.CYCLE_TP_TIERED_LEVELS = [0.0015, 0.003]
+        cfg.CYCLE_TP_TIERED_FRAC = 0.25
+        cfg.NOLOSS_MIN_PROFIT_PCT = 0.05
+        cfg.COMMISSION_BUFFER_PCT = 0.08
+        cfg.CRYPTO_ROUND_TRIP_COMMISSION_PCT = 0.04
+        cfg.PROFIT_TARGET_ENABLED = False
+        cfg.STOP_LOSS_ENABLED = False
+        cfg.ALL_TF_AGAINST_FORCE_CLOSE_ENABLED = False
+        return cfg
+
+    fixture = _seeded_npz_for_account_gate()
+    base = canonical.simulate_one(fixture, "QNTUSDT", True, make_cfg(canonical), force_initial_seed=True)
+    research = candidate_engine.simulate_one(fixture, "QNTUSDT", True, make_cfg(candidate_engine), force_initial_seed=True)
+    assert base["ledger"] == research["ledger"]
 
 
 def test_research_engine_refuses_unexecutable_ppl_partial_without_state_or_pnl_mutation():

@@ -87,10 +87,40 @@ def test_c5_helper_is_not_active_in_c4_contract():
     assert '"tradier_exit_indicator_contract_c5.py"' not in campaign
 
 
-def test_current_reader_fault_and_c5_patch_are_explicit():
+def test_stdev_reject_parent_pair_is_scoped_to_existing_switch():
     manage = (ROOT / "tradier_manage.py").read_text()
-    assert 'V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5")' in manage
-    assert "_sre_pctb_now = float(_stdev_ind.get(" in manage
-    assert "_brz_pctb_now = float(_stdev_ind.get(" in manage
+    start = manage.index("# STDEV_REJECT_EXIT: exit when price approached band")
+    end = manage.index("# Scorer says HOLD", start)
+    branch = manage[start:end]
+    assert 'if _cfg_auto("STDEV_REJECT_EXIT_ENABLED", False):' in branch
+    assert "completed_parent_value_pair as _c5_parent_pair" in branch
+    assert "_c5_parent_pair(" in branch
+    assert 'V8_MATRIX_CONTRACT_VERSION", "").startswith("tradier-matrix-exec-c5")' not in branch
+    assert 'if os.environ.get("V8_MATRIX_CONTRACT_VERSION", "").startswith(' in manage
     assert "_exit_ind" in manage
-    assert "else i" in manage
+
+
+def test_parent_pair_restart_and_skipped_observation_are_explicit():
+    state = {}
+    first_after_start = completed_parent_value_pair(
+        {"bb_pct_b_D": 0.72, "timestamp_D": 300},
+        timeframe="D",
+        state=state,
+        state_key="AAPL:LONG:STDEV_REJECT:D",
+    )
+    after_skipped_parent = completed_parent_value_pair(
+        {"bb_pct_b_D": 0.41, "timestamp_D": 500},
+        timeframe="D",
+        state=state,
+        state_key="AAPL:LONG:STDEV_REJECT:D",
+    )
+    state = {}
+    after_restart = completed_parent_value_pair(
+        {"bb_pct_b_D": 0.41, "timestamp_D": 500},
+        timeframe="D",
+        state=state,
+        state_key="AAPL:LONG:STDEV_REJECT:D",
+    )
+    assert first_after_start == (0.72, 0.72)
+    assert after_skipped_parent == (0.41, 0.72)
+    assert after_restart == (0.41, 0.41)
