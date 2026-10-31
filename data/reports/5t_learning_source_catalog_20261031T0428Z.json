@@ -1,0 +1,59 @@
+{
+  "schema": "5t_learning_source_catalog/v1",
+  "recorded_at_utc": "2026-10-31T04:28:41Z",
+  "archive": {
+    "service": "Hetzner Storage Box 5T",
+    "access": "SFTP/rsync only on port 23; authenticated through local SSH alias `5t`; no remote shell commands",
+    "host_key_validation": "OpenSSH known_hosts accepted by paramiko RejectPolicy",
+    "observed_roots": [
+      {"path":"/home/s1/binance-sandbox","source_host":"s1","top_level_entries":2933,"observed_mtime_epoch":1793398347},
+      {"path":"/home/s2/binance-sandbox","source_host":"s2","top_level_entries":2915,"observed_mtime_epoch":1793407306},
+      {"path":"/home/s5/binance-sandbox","source_host":"s5","top_level_entries":2923,"observed_mtime_epoch":1793407278},
+      {"path":"/home/s6/binance-sandbox","source_host":"s6","top_level_entries":2782,"observed_mtime_epoch":1793407499},
+      {"path":"/home/mac","source_host":"mac","top_level_entries":1,"observed_content":"per_sym_store_full_20261031T013245Z.db.zst (80,163,840 bytes)"},
+      {"path":"/home/WD25","source_host":"external-drive mirror","top_level_entries":44,"observed_content":"external-drive copy tree exists; not recursively inventoried"},
+      {"path":"/home/TOSHIBA_EXT","source_host":"external-drive mirror","top_level_entries":16,"observed_content":"external-drive copy tree exists; not recursively inventoried"}
+    ],
+    "not_present_in_root_listing": ["/home/SSD2T","/home/E3T"],
+    "authoritative_sync_receipt_or_full_snapshot_manifest": "not located yet; root directories are per-host binance-sandbox trees, but their exact sync cutoffs/coverage are not yet proven"
+  },
+  "scope": {
+    "requested_window": "2026-09-01 through 2026-10-31 UTC (two calendar months; exact event-time attribution remains per-row/source timestamp)",
+    "server_sources": ["s1","s2","s5","s6"],
+    "external_sources": ["WD25","TOSHIBA_EXT","SSD2T","E3T"],
+    "inventory_status": "incomplete; resumable traversal not being run as primary while per-cell evidence extraction is prioritized"
+  },
+  "discovery_findings": [
+    {"family":"brain delta logs","registered_paths":{"s1":"/home/niels/v15_run*/progress/v15_delta_log/*.jsonl","s2":"/home/niels/v15_run*/progress/v15_delta_log/*.jsonl","s5":null,"s6":null},"source":"tools/data_locations.py --where brain_corpus_delta_logs --host <host>","retention":"SELF_LEARNING_DATA.md says active 14-day windows stay on source hosts","archive_status":"These ~/v15_run trees are outside each 5T /home/<host>/binance-sandbox root; need direct host inventory or separate archive receipt."},
+    {"family":"S2 eval cache","archive_path":"/home/s2/binance-sandbox/data/eval_cache_v1.db plus -wal/-shm","archive_observed":{"db_bytes":4435783680,"wal_bytes":5978152,"shm_bytes":32768,"mtime_epoch":1793406730},"qualification":"5T point-in-time file metadata only; copied DB/WAL/SHM have no transaction snapshot proof. Do not treat as a consistent SQLite source yet."},
+    {"family":"S1 causal learner DB and combo library","archive_path":"/home/s1/binance-sandbox/data/causal_learner.db and v17_combo_library.sqlite","archive_observed":{"causal_learner_db_bytes":2743435264,"combo_library_bytes":937172992},"qualification":"5T point-in-time file metadata only; no online SQLite backup proof or authoritative archive receipt yet."}
+  ],
+  "per_cell_evidence_record_schema": {
+    "source_host":"string",
+    "source_root":"string",
+    "source_path":"string",
+    "source_sha256":"sha256 of exact source snapshot, when available",
+    "source_line_or_primary_key":"stable origin locator",
+    "source_event_id":"unique identity; hash of source path+line/key+canonical event, not filename+date alone",
+    "event_time_utc":"original calculation timestamp, never file mtime substitute",
+    "sym_side":"string",
+    "template_sha256":"exact template context or null/unresolved",
+    "tab":"string",
+    "row":"integer or exact row key",
+    "switch_candidate":"string or exact candidate tuple",
+    "filter_header_option":"exact header and option value, if filtered cell",
+    "base_settings_id":"exact base/settings context or null/unresolved",
+    "engine_sha256":"exact engine identity or null/unresolved",
+    "source_era":"native/log_replay/board/cache/etc, explicitly attributed",
+    "result_status":"measured_result|skip|error|unwired|unknown",
+    "result_payload":"verbatim real-engine metric/eval reference, not summary approximation",
+    "eligibility":"only actual measured result with exact cell/context counts toward >100 threshold"
+  },
+  "next_steps": [
+    "Inventory current S1/S2 v15_run delta-log file lists directly on the hosts (metadata first; do not move active 14-day windows).",
+    "Search existing indexed experience/eval-cache/board/progress stores for per-cell evidence before any raw log pass.",
+    "Use exact event identities and source era, and tell learner which cell counts are eligible versus skips/errors/unwired/duplicates.",
+    "Continue 5T directory-tree receipt reconciliation after per-cell evidence path is available."
+  ],
+  "no_claims": ["no proof yet that the four 5T binance-sandbox trees are complete whole-server snapshots", "no proof all rows/filters have >100 eligible independent results", "no DB snapshot consistency proof", "no 5T all-source inventory completion"]
+}

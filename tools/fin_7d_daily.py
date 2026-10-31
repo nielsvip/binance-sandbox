@@ -38,7 +38,7 @@ sys.path.insert(0, str(ROOT))
 SCOPE = "fin_men_crypto"
 PY_REMOTE = "/home/niels/.conda/envs/binance_env_mac/bin/python"
 # crypto NPZ workers. S1 is left out: it trades the venue and runs the NPZ/state chain (same reason trc gives it 0 slots).
-WORKERS = {"s6": 3, "s5": 3, "s2": 1}
+WORKERS = {"s6": 4, "s5": 3, "s2": 3}
 MEM_FLOOR_MB = int(os.environ.get("FIN7D_MEM_FLOOR_MB", "4000"))
 BOARD_TIMEOUT_S = int(os.environ.get("FIN7D_BOARD_TIMEOUT_S", "3600"))
 POLL_S = int(os.environ.get("FIN7D_POLL_S", "60"))
@@ -54,6 +54,58 @@ REFRESH_AFTER_S = float(os.environ.get("FIN7D_REFRESH_AFTER_S", str(20 * 3600)))
 S1_BASE_DB = "/home/niels/binance/data/hourly_reconfig/per_sym_store.db"          # men's 30D store (S1 crypto producer)
 S1_STORE_DB = "/home/niels/binance-sandbox/data/hourly_reconfig/per_sym_store_7d.db"  # fin's 7D store
 S1_SIDES_FILE = "/home/niels/fwd_fin7d_syms.txt"                                   # sides the fin 7D state producer builds
+S1_PRIORITY_DIR = "/home/niels/binance-sandbox/data/forward_state_fin7d_priority"  # an empty <SS> file = compute its 7D state NOW
+# USER 2026-10-31: "the 7D backtest has to run in <1h for allt radeable sym_sides for men and start executing trades
+# immediateluy". When most of the book is due at once (the first pass, or ~20 h later), the 30D boards are paused for
+# the duration exactly the way the trc lane does it (operator 2026-10-29 "suspend the 30D boards to disk"): an expiring
+# fleet_dispatch hold on both leaders, the worker pause flag, and SIGTERM of each 30D board PARENT — it saves at its next
+# cell boundary and exits, booked "restarted" (no death, no quarantine) and prioritised to resume first. 7D boards are
+# never touched. Measured basis: the trc premarket pass did 69 boards in 87 min on 9 slots, so ~35 boards on 10 slots
+# fit inside the hour. A trickle (a few stale sides) runs beside the 30D boards and pauses nothing.
+FULL_PASS_MIN = int(os.environ.get("FIN7D_FULL_PASS_MIN", "10"))
+FULL_PASS_DEADLINE_S = int(os.environ.get("FIN7D_FULL_PASS_DEADLINE_S", str(70 * 60)))
+FULL_PASS_REDO_ATTEMPTS = int(os.environ.get("FIN7D_FULL_PASS_REDO_ATTEMPTS", "1"))
+PREEMPT_HOSTS = ("s2", "s5", "s6")
+LEADERS = ("s1-pub", "s2")
+FIN_HOLD_WHY = "FIN7D: 30D paused for the fin 7D full pass (USER 2026-10-31 <1h for all men sym_sides)"
+FIN_PAUSE_SCRIPT = r"""
+import json, os, signal, time
+ps = {}
+for pid in os.listdir('/proc'):
+    if not pid.isdigit():
+        continue
+    try:
+        args = open(f'/proc/{pid}/cmdline', 'rb').read().split(b'\0')
+        if not any(a.endswith(b'v15_pilot.py') for a in args[:3]) or b'--sym-side' not in args:
+            continue
+        if b'--window-days' in args and args[args.index(b'--window-days') + 1] == b'7':
+            continue
+        ppid = int(open(f'/proc/{pid}/stat').read().rsplit(')', 1)[1].split()[1])
+        ps[int(pid)] = (ppid, args[args.index(b'--sym-side') + 1].decode())
+    except (OSError, ValueError, IndexError):
+        continue
+tops = {pid: ss for pid, (ppid, ss) in ps.items() if ppid not in ps}
+for pid, ss in tops.items():
+    path = os.path.expanduser(f'~/fleet_dispatch/launches/{ss}.json')
+    try:
+        rec = json.load(open(path))
+        rec['restarted'] = int(time.time())
+        rec['restarted_by'] = 'fin7d_preempt'
+        json.dump(rec, open(path + '.fin7d_tmp', 'w'))
+        os.replace(path + '.fin7d_tmp', path)
+    except (OSError, ValueError):
+        pass
+    for sig in (signal.SIGTERM, signal.SIGCONT):
+        try:
+            os.kill(pid, sig)
+        except OSError:
+            pass
+open('/tmp/fin7d_preempted.txt', 'a').write(''.join(ss + '\n' for ss in tops.values()))
+if not os.path.exists('/tmp/v15_preopen_7d.pause'):
+    open('/tmp/v15_preopen_7d.pause', 'a').close()
+    open('/tmp/fin7d_owns_pause', 'a').close()
+print(json.dumps(sorted(tops.values())))
+"""
 SSH = ["ssh", "-S", "none", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", "-o", "StrictHostKeyChecking=accept-new"]
 S1 = ("s1-int", "s1-pub", "niels@10.0.0.3")
 PUBLISHED = ROOT / "data" / "vector_direct" / "sevenday_crypto.json"
@@ -169,6 +221,90 @@ def classify(result):
     return None, f"refused: {why[:160]}"
 
 
+def _py(host, code, timeout=60):
+    return sh(host, "python3 - <<'FIN7DEOF'\n" + code + "\nFIN7DEOF", timeout)
+
+
+def hold(on):
+    """fleet_dispatch's own expiring host hold on both leaders. Never overwrites another lane's live hold, and on
+    release removes only FIN7D entries, so the trc lane and the fin lane can never cancel each other."""
+    until = time.time() + 2 * 3600
+    code = ("import json,time,pathlib\n"
+            "p=pathlib.Path.home()/'binance-sandbox/data/fleet_hold_hosts.json'\n"
+            "try: d=json.loads(p.read_text()) or {}\n"
+            "except Exception: d={}\n"
+            f"on={on!r}\n"
+            f"for h in {list(PREEMPT_HOSTS)!r}:\n"
+            "    cur=d.get(h) or {}\n"
+            "    live=float(cur.get('until') or 0)>time.time()\n"
+            f"    if on and (not live or str(cur.get('why','')).startswith('FIN7D')): d[h]={{'until':{until},'why':{FIN_HOLD_WHY!r}}}\n"
+            "    elif not on and str(cur.get('why','')).startswith('FIN7D'): d.pop(h)\n"
+            "t=p.with_suffix('.fin7d.tmp'); t.write_text(json.dumps(d)); t.replace(p); print(sorted(d))\n")
+    return {h: _py(h, code, 30)[1].strip() for h in LEADERS}
+
+
+def preempt():
+    """Hold, then SIGTERM every 30D board parent on the worker hosts. Returns the sides preempted."""
+    hold(True)
+    sides = []
+    for host in PREEMPT_HOSTS:
+        rc, out, err = _py(host, FIN_PAUSE_SCRIPT, 60)
+        try:
+            got = json.loads(out.strip().splitlines()[-1]) if out.strip() else []
+        except ValueError:
+            got = []
+        sides += got
+        log(f"preempt {host}: {len(got)} 30D board(s) asked to save and stop{'' if not err else ' | ' + err[-80:]}")
+        # DEAD-MAN RELEASE: the worker pause flag has no expiry of its own, so if this driver is SIGKILLed or the Mac
+        # drops, the 30D fleet must not stay paused. A detached timer on the host clears what this lane set after 2 h.
+        sh(host, "setsid -f bash -c 'sleep 7200; if [ -e /tmp/fin7d_owns_pause ] && [ ! -e /tmp/v15_trc7d_preempted.txt ]; "
+                 "then rm -f /tmp/v15_preopen_7d.pause; fi; rm -f /tmp/fin7d_owns_pause' >/dev/null 2>&1 < /dev/null", 20)
+    if sides:
+        until = time.time() + 6 * 3600
+        code = ("import json,time,pathlib\n"
+                "p=pathlib.Path.home()/'binance-sandbox/data/fleet_priority.json'\n"
+                "try: d=json.loads(p.read_text()) or {}\n"
+                "except Exception: d={}\n"
+                "old=(d.get('sym_sides') or []) if float(d.get('until') or 0)>time.time() else []\n"
+                f"d={{'sym_sides':sorted(set(old)|set({sorted(set(sides))!r})),'until':max(float(d.get('until') or 0),{until}),"
+                "'why':'FIN7D: 30D boards preempted for the fin 7D pass resume first'}\n"
+                "t=p.with_suffix('.fin7d.tmp'); t.write_text(json.dumps(d)); t.replace(p); print(len(d['sym_sides']))\n")
+        for h in LEADERS:
+            _py(h, code, 30)
+    return sorted(set(sides))
+
+
+def release():
+    """Lift the FIN7D hold and the worker pause flag (only if this lane set it and trc is not mid-pause)."""
+    hold(False)
+    for host in PREEMPT_HOSTS:
+        sh(host, "if [ -e /tmp/fin7d_owns_pause ] && [ ! -e /tmp/v15_trc7d_preempted.txt ]; then rm -f /tmp/v15_preopen_7d.pause; fi; "
+                 "rm -f /tmp/fin7d_owns_pause /tmp/fin7d_preempted.txt", 30)
+    log("released: FIN7D hold lifted, worker pause flag cleared where this lane set it; preempted 30D boards resume first")
+
+
+def build_queue_on_s1(run_id):
+    """men's 35-ish tradeable sides from S1's live store (tools/fin_7d_queue.py), copied here for shipping to workers."""
+    local = ROOT / "data" / "preopen_7d" / f"queue_{run_id}.json"
+    local.parent.mkdir(parents=True, exist_ok=True)
+    errors = []
+    for host in S1:
+        rc, out, err = sh(host, f"cd ~/binance-sandbox && python3 -I tools/fin_7d_queue.py --out /tmp/fin7d_queue_{run_id}.json", 180)
+        if rc:
+            errors.append(f"{host}: {(err or out)[-120:]}")
+            continue
+        r = subprocess.run(["scp", "-q", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", f"{host}:/tmp/fin7d_queue_{run_id}.json", str(local)],
+                           capture_output=True, text=True, timeout=120)
+        if r.returncode == 0:
+            doc = json.loads(local.read_text())
+            meta = doc.get("_meta") or {}
+            log(f"queue from S1 ({host}): {meta.get('n')} of {meta.get('control_keys')} men tradeable sides have a 30D base; "
+                f"missing {[m['sym_side'] for m in meta.get('missing_baseline') or []]}")
+            return local, doc, list((doc.get("accounts") or {}).get("fin") or [])
+        errors.append(f"{host}: scp rc={r.returncode}")
+    raise RuntimeError("could not build the fin queue on S1: " + " | ".join(errors))
+
+
 def load_prior():
     """Every side the last publication recorded, with its staged_epoch. A run must ADD to these, never wipe them."""
     try:
@@ -215,7 +351,8 @@ def stage_on_s1(worker, ss, run_id, day):
                 continue
             rc2, out2, err2 = sh(host, f"cd ~/binance-sandbox && python3 -I tools/fin_7d_stage_one.py --sym-side {ss} "
                                        f"--overrides /tmp/ov.json --metrics /tmp/mt.json --base-db {S1_BASE_DB} --store-db {S1_STORE_DB} "
-                                       f"--day {day} && (grep -qx {ss} {S1_SIDES_FILE} 2>/dev/null || echo {ss} >> {S1_SIDES_FILE})", 120)
+                                       f"--day {day} && (grep -qx {ss} {S1_SIDES_FILE} 2>/dev/null || echo {ss} >> {S1_SIDES_FILE}) "
+                                       f"&& mkdir -p {S1_PRIORITY_DIR} && touch {S1_PRIORITY_DIR}/{ss}", 120)
             if rc2 == 0:
                 return True, f"staged into fin's 7D store via {host} ({len(overrides)} overrides)"
             errors.append(f"{host}: {(err2 or out2)[-160:]}")
@@ -271,7 +408,7 @@ def run(day=None, dry_run=False):
     # relaunch (`test ! -e`) and re-classify an OLD result under a NEW timestamp — an old test wearing a new date.
     run_id = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%MZ")
     started = time.time()
-    queue_path, queue, candidates = select_queue(run_id)
+    queue_path, queue, candidates = build_queue_on_s1(run_id)
     prior = load_prior()
     sides = [ss for ss in candidates if needs_refresh(ss, prior, started)]
     log(f"run {run_id}: {len(candidates)} fin sides with a 30D base; {len(sides)} older than {REFRESH_AFTER_S / 3600:.0f} h or never "
@@ -288,11 +425,27 @@ def run(day=None, dry_run=False):
             hosts = [x for x in hosts if x != h]
     log(f"workers {', '.join(f'{h}x{WORKERS[h]}' for h in hosts)} | boards {len(sides)} | deadline {DEADLINE_S / 3600:.1f}h"
         + (" | DRY RUN" if dry_run else ""))
+    full_pass = len(sides) >= FULL_PASS_MIN
+    deadline_s = FULL_PASS_DEADLINE_S if full_pass else DEADLINE_S
+    redo_attempts = FULL_PASS_REDO_ATTEMPTS if full_pass else REDO_ATTEMPTS
+    log(f"{'FULL PASS' if full_pass else 'trickle'}: {len(sides)} boards, deadline {deadline_s / 60:.0f} min, "
+        f"REDO relaunches {redo_attempts}" + (" — 30D boards will be paused for it" if full_pass else ""))
     if dry_run:
         return 0
+    preempted = []
+    try:
+        if full_pass:
+            preempted = preempt()   # inside the try: a pause that dies half-way must still be released
+        return _run_boards(run_id, day, started, sides, hosts, deadline_s, redo_attempts, preempted)
+    finally:
+        if full_pass:
+            release()
+
+
+def _run_boards(run_id, day, started, sides, hosts, deadline_s, redo_attempts, preempted):
     pending, inflight, done, attempts = list(sides), {}, {}, {}
-    meta = {"run_id": run_id, "started_utc": stamp(started), "boards": len(sides)}
-    while (pending or inflight) and time.time() - started < DEADLINE_S:
+    meta = {"run_id": run_id, "started_utc": stamp(started), "boards": len(sides), "preempted_30d": preempted}
+    while (pending or inflight) and time.time() - started < deadline_s:
         for host in hosts:
             free = WORKERS[host] - sum(1 for h in inflight.values() if h == host)
             while free > 0 and pending:
@@ -319,10 +472,10 @@ def run(day=None, dry_run=False):
                 # the board asked for a fresh fill; give it one, bounded, instead of losing the side for the day
                 n = attempts.get(ss, 0) + 1
                 attempts[ss] = n
-                if n <= REDO_ATTEMPTS:
+                if n <= redo_attempts:
                     sh(host, f"rm -f ~/binance-sandbox/data/preopen_7d/fin_run/{run_id}/results/{ss}/launcher.json", 30)
                     pending.append(ss)
-                    log(f"REDO {ss} on {host}: relaunching (attempt {n + 1} of {REDO_ATTEMPTS + 1})")
+                    log(f"REDO {ss} on {host}: relaunching (attempt {n + 1} of {redo_attempts + 1})")
                 else:
                     done[ss] = {"tier": "redo", "why": f"{why} (gave up after {n} relaunches)", "host": host, "run_id": run_id,
                                 "staged_epoch": time.time(), "staged_utc": stamp(), "staged": False}
@@ -340,14 +493,22 @@ def run(day=None, dry_run=False):
         if pending or inflight:
             time.sleep(POLL_S)
     doc, _ = publish(done, day, {**meta, "finished_utc": stamp(), "unfinished": sorted(pending + list(inflight))})
-    log(f"run {run_id} done in {(time.time() - started) / 60:.0f} min: {doc['counts']} | unfinished {len(pending) + len(inflight)}")
+    log(f"run {run_id} done in {(time.time() - started) / 60:.0f} min: {doc['counts']} | unfinished {len(pending) + len(inflight)}"
+        + (f" (left for the next hourly run: {sorted(pending + list(inflight))})" if pending or inflight else ""))
     if doc["counts"]["tradeable"] == 0 and doc["counts"]["vector_only"] and not ALLOW_VECTOR_ONLY:
         log(f"NOTE {doc['counts']['vector_only']} sets are vector-verified and ONE check short of tradeable "
             f"(the pilot never records live/vector parity). fin stays flat. Set FIN7D_ALLOW_VECTOR_ONLY=1 to trade them.")
     return 0
 
 
+def _terminate(signum, frame):
+    # SIGTERM would otherwise kill the process without running `finally: release()`, leaving the 30D fleet paused
+    raise SystemExit(f"signal {signum}")
+
+
 def main(argv=None):
+    import signal as _signal
+    _signal.signal(_signal.SIGTERM, _terminate)
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--day", default=None, help="UTC day stamp, default today")
     ap.add_argument("--dry-run", action="store_true", help="select and show the plan, launch nothing")

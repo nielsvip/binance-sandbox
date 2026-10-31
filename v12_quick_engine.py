@@ -86,6 +86,7 @@ import vec_decisions.uncond_dc_stop as _udcs  # 2026-10-22 USER UNCOND_DC_HARD_S
 import vec_decisions.reentry_overdue as _rovd  # 2026-10-21 TRADIER OVERDUE reentry bypass (2h+ wait bypasses stoch+WT on dc_15m break or GR HL/HH; stocks only, default off)
 import vec_decisions.reentry_mask_arm as _rmarm  # USER 2026-10-23 v15_pending sweep pv3 C3 (default OFF = today's behaviour)
 import vec_decisions.reentry_entry_filter as _reentry_min_pass  # shared count core for named active entry masks
+import vec_decisions.tradier_reentry_final_filter as _tradier_reentry_final
 import vec_decisions.breakeven_gain_erosion as _bgem  # 2026-10-17 BREAKEVEN_GAIN_EROSION + HTF_EXIT_VETO + HARD_BREAKEVEN_FLOOR (shared core with ez_positions_quick)
 import vec_decisions.breakeven_lock as _belm  # 2026-10-17 PEAK_GIVEBACK scope + LOSS_PRONE_ENTRY_FILTER (loss-prone entries need filters)
 import vec_decisions.scale_direction  # 2026-10-22 SCALE_DIRECTION law: a partial scale points the way price moves (augment up, reduce down)
@@ -4451,6 +4452,7 @@ class QuickConfig:
     HAIKU_WINNER_AUGMENT_ENABLED: bool = (
         False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # crypto HaikuOverseer AUGMENT is refused live by STRICT_VEC_PARITY (reason has no allowlist token); True = old vec haiku augment
     )
+    WT_WINNER_PULLBACK_AUGMENT_ENABLED: bool = True
     KEY_LEVEL_CRASH_EXIT_ENABLED: bool = (
         False  # lane-D 2026-10-06 director ruling: brand-new switch -> default = today-live (False); True = vec-only behaviour test row (lanes B/C build the live twin).  # crypto KEY_LEVEL_CRASH lives only in EPQ check_exit_candidates (ablated live: ABLATION_DISABLE_QUICK_EXIT=True); True = old vec
     )
@@ -5340,6 +5342,7 @@ class QuickConfig:
 
     def apply_tradier_defaults(self):
         self.MODE = "tradier"
+        self.WT_WINNER_PULLBACK_AUGMENT_ENABLED = False
         self.BASE_TF = "5m"
         self.HTF_SIGNAL_VALID_BARS_D = 26  # 2026-10-13 V17: stocks RTH span (config_tradier)
         self.HTF_SIGNAL_VALID_BARS_4H = 14  # 2026-10-13 V17: session-anchored 4h (config_tradier)
@@ -20402,6 +20405,22 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
                 fire = True  # WIRING LANE E: morning rebuy bypasses signal vetoes above (live: queued OPEN, not a signal; order guards below still apply)
             if fire and _ang_timing_failed is not None and bool(_ang_timing_failed[i]):
                 fire = False  # live execute_now ANG timing HOLD applies to every OPEN and REENTRY
+            if fire and is_tradier and has_closed_before and not entry_sig[i] and not _ordinary_lr_flat_claim:
+                _csg_mask = None
+                for _mask_name, _mask_value in zip(_entry_filter_mask_names, _entry_filter_masks):
+                    if _mask_name == "CIRCUIT_SHARPE_GATES_FILTER_TF":
+                        _csg_mask = _mask_value
+                        break
+                fire = _tradier_reentry_final.allows_stock_reentry(
+                    fire,
+                    is_tradier,
+                    has_closed_before,
+                    bool(entry_sig[i]),
+                    _ordinary_lr_flat_claim,
+                    getattr(cfg, "CIRCUIT_SHARPE_GATES_FILTER_TF", "OFF"),
+                    _csg_mask,
+                    i,
+                )
             if fire:
                 mult = (
                     getattr(cfg, "REENTRY_TIER1_SIZE_MULT_TRADIER", 1.0)
@@ -22532,34 +22551,38 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         except Exception:
             _qos_fire, _qos_reason = False, ""
         _hw_fire, _hw_reason = False, ""
-        try:
-            from vec_decisions.wt_winner_pullback_augment import producer as _hw_producer
-            from vec_decisions.wt_winner_pullback_augment import final_gate as _hw_final_gate
-            _hw_fire, _hw_reason = _hw_producer(
-                is_long,
-                float(live_pnl_pct),
-                float(pos.get("peak_pnl_pct", 0.0)),
-                float(getattr(cfg, "MIN_GAIN", 3.0)),
-                float(_wt_aug_w1ltf[i]),
-                float(_wt_aug_w2ltf[i]),
-                float(_wt_aug_w115[i]),
-                float(_wt_aug_w215[i]),
-                float(_wt_aug_tr15[i]),
-                float(_wt_aug_pk15[i]),
-            )
-            _hw_fire = _hw_fire and _hw_final_gate(
-                is_long,
-                float(live_pnl_pct),
-                float(getattr(cfg, "MIN_GAIN", 3.0)),
-                float(_wt_aug_w1ltf[i]),
-                float(_wt_aug_w2ltf[i]),
-                float(_wt_aug_w115[i]),
-                float(_wt_aug_w215[i]),
-            )
-            if not _hw_fire:
-                _hw_reason = ""
-        except Exception:
-            _hw_fire, _hw_reason = False, ""
+        if (
+            str(getattr(cfg, "MODE", "crypto")) == "crypto"
+            and bool(getattr(cfg, "WT_WINNER_PULLBACK_AUGMENT_ENABLED", True))
+        ):
+            try:
+                from vec_decisions.wt_winner_pullback_augment import producer as _hw_producer
+                from vec_decisions.wt_winner_pullback_augment import final_gate as _hw_final_gate
+                _hw_fire, _hw_reason = _hw_producer(
+                    is_long,
+                    float(live_pnl_pct),
+                    float(pos.get("peak_pnl_pct", 0.0)),
+                    float(getattr(cfg, "MIN_GAIN", 3.0)),
+                    float(_wt_aug_w1ltf[i]),
+                    float(_wt_aug_w2ltf[i]),
+                    float(_wt_aug_w115[i]),
+                    float(_wt_aug_w215[i]),
+                    float(_wt_aug_tr15[i]),
+                    float(_wt_aug_pk15[i]),
+                )
+                _hw_fire = _hw_fire and _hw_final_gate(
+                    is_long,
+                    float(live_pnl_pct),
+                    float(getattr(cfg, "MIN_GAIN", 3.0)),
+                    float(_wt_aug_w1ltf[i]),
+                    float(_wt_aug_w2ltf[i]),
+                    float(_wt_aug_w115[i]),
+                    float(_wt_aug_w215[i]),
+                )
+                if not _hw_fire:
+                    _hw_reason = ""
+            except Exception:
+                _hw_fire, _hw_reason = False, ""
         _uag_src_ok = (
             _hq_fire
             or _dd_fire
@@ -22668,7 +22691,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         ):
             _aug_cd_bars = vec_decisions.gain_ladder_augment.cooldown_bars(cfg, bmin)
             _aug_last_bar = int(pos.get("last_aug_bar", -(10**9)))
-            if _dd_fire or _hq_fire or _qos_fire or (i - _aug_last_bar) >= _aug_cd_bars:  # QUICK: live has no cooldown on this path
+            if _dd_fire or _hq_fire or _qos_fire or _hw_fire or (i - _aug_last_bar) >= _aug_cd_bars:  # native hard WT source is paced by the 120s execute guard, not the generic ladder cooldown
                 # STDEV_SLOPE_SIZING ladder applies to augment as well (user mandate: entry AND augment sizing)
                 _aug_regime = float(regime_mult[i]) if i < len(regime_mult) else 1.0
                 _aug_add_mult = float(augment_mult[i]) * _aug_regime

@@ -20,7 +20,8 @@ def test_winner_producer_and_native_final_gate_predicates(is_long, aligned_wt, o
 
 @pytest.mark.parametrize("is_long", [True, False])
 @pytest.mark.parametrize("ltf_enabled", [False, True])
-def test_simulate_one_books_hard_wt_augment_only_when_selected_ltf_and_15m_align(is_long, ltf_enabled):
+@pytest.mark.parametrize("switch_enabled", [False, True])
+def test_simulate_one_books_hard_wt_augment_only_when_selected_ltf_and_15m_align(is_long, ltf_enabled, switch_enabled):
     n = 5
     prices = np.full(n, 104.0 if is_long else 96.0)
     prices[0] = 100.0
@@ -58,6 +59,7 @@ def test_simulate_one_books_hard_wt_augment_only_when_selected_ltf_and_15m_align
         "MIN_HOLD_BARS": 0,
         "MIN_GAIN": 3.0,
         "USE_1M_3M_SIGNALS_ENABLED": ltf_enabled,
+        "WT_WINNER_PULLBACK_AUGMENT_ENABLED": switch_enabled,
         "HTF_DIRECTION_GATE_ENABLED": False,
         "HTF_GATE_APPLY_TO_AUGMENT": False,
         "STRUCTURAL_RANGE_SHIFT_EXIT": False,
@@ -85,10 +87,13 @@ def test_simulate_one_books_hard_wt_augment_only_when_selected_ltf_and_15m_align
     data["wt2_15m"][1] = 1.0 if is_long else -1.0
     result = v12.simulate_one(data, "WT_HARD_AUG_TEST", is_long, cfg, force_initial_seed=True)
     augments = [row for row in result["ledger"] if row.get("type") == "AUGMENT"]
-    assert augments
-    assert augments[0]["bar"] == 1
-    assert "WINNER_WT_AUGMENT" in augments[0]["reason"]
-    assert len(augments) == 1
+    if switch_enabled:
+        assert augments
+        assert augments[0]["bar"] == 1
+        assert "WINNER_WT_AUGMENT" in augments[0]["reason"]
+        assert len(augments) == 1
+    else:
+        assert not augments
 
 
 @pytest.mark.parametrize("is_long", [True, False])
@@ -132,3 +137,69 @@ def test_simulate_one_blocks_when_selected_ltf_is_opposed(is_long):
     cfg._PARITY_PREFIX_EVAL = True
     result = v12.simulate_one(data, "WT_HARD_AUG_BLOCK_TEST", is_long, cfg, force_initial_seed=True)
     assert not any(row.get("type") == "AUGMENT" for row in result["ledger"])
+
+
+def test_wt_winner_augment_switch_is_crypto_only_even_if_set_true_for_tradier():
+    n = 5
+    prices = np.array([100.0, 96.0, 96.0, 96.0, 96.0])
+    data = {
+        "timestamps": np.arange(n, dtype=float) * 900.0 + 1700000000.0,
+        "close": prices.copy(),
+        "close_15m": prices.copy(),
+        "open_15m": prices.copy(),
+        "high_15m": prices.copy(),
+        "low_15m": prices.copy(),
+        "wt1_3m": np.array([0.0, -2.0, -2.0, -2.0, -2.0]),
+        "wt2_3m": np.full(n, -1.0),
+        "wt1_15m": np.array([0.0, -2.0, -2.0, -2.0, -2.0]),
+        "wt2_15m": np.full(n, -1.0),
+        "wt1_1h": np.full(n, -1.0),
+        "wt2_1h": np.zeros(n),
+        "wt1_4h": np.full(n, -1.0),
+        "wt2_4h": np.zeros(n),
+        "wt1_D": np.full(n, -1.0),
+        "wt2_D": np.zeros(n),
+        "wt_trough_structure_15m": np.zeros(n),
+        "wt_peak_structure_15m": np.zeros(n),
+        "dc_low_15m": np.full(n, 80.0),
+        "dc_high_15m": np.full(n, 120.0),
+        "dc_low_4h": np.full(n, 70.0),
+        "dc_high_4h": np.full(n, 130.0),
+    }
+
+    def run(enabled):
+        cfg = v12.QuickConfig()
+        cfg.apply_tradier_defaults()
+        cfg.MODE = "tradier"
+        cfg.BASE_TF = "15m"
+        cfg.START_POSITION_SIZE = 500.0
+        cfg.COOLDOWN_BARS = 0
+        cfg.MIN_HOLD_BARS = 0
+        cfg.MIN_GAIN = 3.0
+        cfg.USE_1M_3M_SIGNALS_ENABLED = True
+        cfg.WT_WINNER_PULLBACK_AUGMENT_ENABLED = enabled
+        cfg.HTF_DIRECTION_GATE_ENABLED = False
+        cfg.HTF_GATE_APPLY_TO_AUGMENT = False
+        cfg.STRUCTURAL_RANGE_SHIFT_EXIT = False
+        cfg.LIVE_EXIT_CHAIN_ENABLED = False
+        cfg.STOP_LOSS_ENABLED = False
+        cfg.NOLOSS_ENABLED = False
+        cfg.PROFIT_TARGET_ENABLED = False
+        cfg.PEAK_GIVEBACK_PROTECTION_ENABLED = False
+        cfg.AUGMENTED_DC_BREAK_ENABLED = False
+        cfg.BOUNCE_AUGMENT_ENABLED = False
+        cfg.PYRAMID_ENABLED = False
+        cfg.WT_CROSS_EXIT_ENABLED = False
+        cfg.ULTIMATE_DC_HARD_STOP_ENABLED = False
+        cfg.PPL_ENABLED = False
+        cfg.PARTIAL_PROFIT_LOCK_ENABLED = False
+        cfg.CYCLE_TP_TIERED_ENABLED = False
+        cfg.QUICK_CYCLE_TP_ENABLED = False
+        cfg.HAIKU_WINNER_AUGMENT_ENABLED = False
+        cfg._PARITY_PREFIX_EVAL = True
+        return v12.simulate_one(data, "WT_STOCK_GUARD_TEST", False, cfg, force_initial_seed=True)
+
+    enabled_ledger = run(True)["ledger"]
+    disabled_ledger = run(False)["ledger"]
+    assert enabled_ledger == disabled_ledger
+    assert not any("WINNER_WT_AUGMENT" in str(row.get("reason", "")) or "BOUNCE_AUGMENT" in str(row.get("reason", "")) for row in enabled_ledger)

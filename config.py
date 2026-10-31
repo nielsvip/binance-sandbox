@@ -1822,6 +1822,7 @@ class Config:
     HAIKU_WINNER_AUGMENT_ENABLED: bool = (
         False  # 2026-10-06 phase 4: True lets HaikuOverseer HAIKU_* augments through STRICT_VEC_PARITY (vec haiku_augment twins manage_winners; needs HAIKU_WINNER_ENABLED); False = today live (refused)
     )
+    WT_WINNER_PULLBACK_AUGMENT_ENABLED: bool = True
     KEY_LEVEL_CRASH_EXIT_ENABLED: bool = (
         False  # 2026-10-06 phase 4: key-level crash exit outside the ablated EPQ quick chain (live_twins/key_level.py); False = today live
     )

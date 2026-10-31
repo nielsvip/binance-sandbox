@@ -30,7 +30,7 @@ def producer(
     if gain_pct >= min_gain_pct and wt_ok:
         return True, "WINNER_WT_AUGMENT"
     if gain_pct >= 0.5 * min_gain_pct and bounce:
-        return True, "BOUNCE_AUGMENT"
+        return True, "WINNER_WT_AUGMENT" if gain_pct >= min_gain_pct else "BOUNCE_AUGMENT"
     return False, ""
 
 

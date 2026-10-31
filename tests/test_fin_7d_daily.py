@@ -163,3 +163,108 @@ def test_needs_refresh_after_twenty_hours():
 
 def test_the_refresh_target_leaves_margin_inside_the_trading_window():
     assert F.REFRESH_AFTER_S == 20 * 3600 and F.MAX_AGE_S == 30 * 3600 and F.REFRESH_AFTER_S < F.MAX_AGE_S
+
+
+# ── full-pass preemption (USER 2026-10-31: <1h for all men sym_sides) ──
+
+def _local_py(tmp_path, monkeypatch):
+    """Run the remote snippets locally against a fake HOME, so the hold logic itself is what is tested."""
+    import subprocess as sp
+    monkeypatch.setenv("HOME", str(tmp_path))
+    (tmp_path / "binance-sandbox" / "data").mkdir(parents=True, exist_ok=True)
+    def run(host, code, timeout=60):
+        r = sp.run([sys.executable, "-c", code], capture_output=True, text=True, env={"HOME": str(tmp_path), "PATH": "/usr/bin:/bin"})
+        return r.returncode, r.stdout, r.stderr
+    monkeypatch.setattr(F, "_py", run)
+    return tmp_path / "binance-sandbox" / "data" / "fleet_hold_hosts.json"
+
+
+def test_the_fin_hold_never_overwrites_another_lanes_live_hold(tmp_path, monkeypatch):
+    hf = _local_py(tmp_path, monkeypatch)
+    hf.write_text(json.dumps({"s5": {"until": time.time() + 3600, "why": "TRC7D: 30D paused"}}))
+    F.hold(True)
+    d = json.loads(hf.read_text())
+    assert d["s5"]["why"].startswith("TRC7D"), "a live trc hold must survive"
+    assert d["s2"]["why"].startswith("FIN7D") and d["s6"]["why"].startswith("FIN7D")
+
+
+def test_release_removes_only_fins_own_holds(tmp_path, monkeypatch):
+    hf = _local_py(tmp_path, monkeypatch)
+    hf.write_text(json.dumps({"s5": {"until": time.time() + 3600, "why": "TRC7D: 30D paused"}}))
+    F.hold(True)
+    F.hold(False)
+    d = json.loads(hf.read_text())
+    assert set(d) == {"s5"} and d["s5"]["why"].startswith("TRC7D")
+
+
+def test_an_expired_foreign_hold_is_replaced(tmp_path, monkeypatch):
+    hf = _local_py(tmp_path, monkeypatch)
+    hf.write_text(json.dumps({"s5": {"until": time.time() - 60, "why": "15-minute NN training reservation"}}))
+    F.hold(True)
+    assert json.loads(hf.read_text())["s5"]["why"].startswith("FIN7D")
+
+
+def _fake_run(monkeypatch, n_sides, boards_raise=False):
+    calls = []
+    monkeypatch.setattr(F, "build_queue_on_s1", lambda run_id: (Path("/dev/null"), {}, [f"S{i}_LONG" for i in range(n_sides)]))
+    monkeypatch.setattr(F, "load_prior", lambda: {})
+    monkeypatch.setattr(F, "sh", lambda h, c, timeout=40: (0, "", ""))
+    monkeypatch.setattr(F, "ship_queue", lambda h, q, r: True)
+    monkeypatch.setattr(F, "preempt", lambda: calls.append("preempt") or ["X30D_LONG"])
+    monkeypatch.setattr(F, "release", lambda: calls.append("release"))
+    def boards(*a, **k):
+        calls.append("boards")
+        if boards_raise:
+            raise RuntimeError("driver crashed mid-pass")
+        return 0
+    monkeypatch.setattr(F, "_run_boards", boards)
+    return calls
+
+
+def test_a_full_pass_pauses_the_30d_boards_and_releases_them(monkeypatch):
+    calls = _fake_run(monkeypatch, F.FULL_PASS_MIN)
+    F.run("20261031")
+    assert calls == ["preempt", "boards", "release"]
+
+
+def test_the_30d_boards_are_released_even_when_the_pass_crashes(monkeypatch):
+    calls = _fake_run(monkeypatch, F.FULL_PASS_MIN, boards_raise=True)
+    try:
+        F.run("20261031")
+    except RuntimeError:
+        pass
+    assert calls[-1] == "release", "a crashed pass must never leave the 30D fleet paused"
+
+
+def test_a_trickle_pauses_nothing(monkeypatch):
+    calls = _fake_run(monkeypatch, F.FULL_PASS_MIN - 1)
+    F.run("20261031")
+    assert calls == ["boards"]
+
+
+def test_the_full_pass_fits_the_hour():
+    assert F.FULL_PASS_DEADLINE_S <= 75 * 60 and sum(F.WORKERS.values()) >= 10 and F.FULL_PASS_REDO_ATTEMPTS <= 1
+
+
+def test_a_sigterm_still_releases_the_30d_boards(monkeypatch):
+    import signal
+    calls = _fake_run(monkeypatch, F.FULL_PASS_MIN)
+    def boards(*a, **k):
+        calls.append("boards")
+        F._terminate(signal.SIGTERM, None)
+    monkeypatch.setattr(F, "_run_boards", boards)
+    try:
+        F.run("20261031")
+    except SystemExit:
+        pass
+    assert calls[-1] == "release"
+
+
+def test_every_preempted_host_gets_a_dead_man_release(monkeypatch):
+    sent = []
+    monkeypatch.setattr(F, "hold", lambda on: {})
+    monkeypatch.setattr(F, "_py", lambda h, c, timeout=60: (0, "[]", ""))
+    monkeypatch.setattr(F, "sh", lambda h, c, timeout=40: sent.append((h, c)) or (0, "", ""))
+    F.preempt()
+    deadman = {h for h, c in sent if "sleep 7200" in c and "v15_preopen_7d.pause" in c}
+    assert deadman == set(F.PREEMPT_HOSTS)

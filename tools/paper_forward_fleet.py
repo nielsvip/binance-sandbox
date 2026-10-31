@@ -31,6 +31,7 @@ import signal
 import sqlite3
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -41,13 +42,17 @@ except ImportError:
     from paper_fleet_budget import DEFAULT_THRESHOLDS, HOSTS_BY_VENUE, collect_observed, decide_admission, stable_host
 
 ROOT = Path(__file__).resolve().parents[1]
-REQUIRED_SPEC_FIELDS = ("run_id", "epoch_id", "scenario_id", "sym_side", "venue", "plan_code_hash")
+REQUIRED_SPEC_FIELDS = ("run_id", "epoch_id", "scenario_id", "sym_side", "venue", "host", "plan_code_hash", "engine_root")
 TERMINAL_STATES = {"COMPLETED", "FAILED", "INTERRUPTED", "INVALID_SPEC", "UNMANIFESTED_SPEC", "MISSING_SPEC", "SPEC_CHANGED", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT"}
 WORKER_STATES = {"WAITING_FRESH_INPUT", "RUNNING", "RESOURCE_LIMIT_STOPPING", "FAILED", "COMPLETED", "COMPLETED_MULTI_FRAME_ENGINE_RUN", "STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT"}
 DEFAULT_WORKER_MEMORY_BYTES = 512 * 1024**2
 DEFAULT_WORKER_DISK_BYTES = 1024**3
 DEFAULT_WORKER_CPU_CORES = 0.25
 MAX_SPEC_BYTES = 2 * 1024**2
+MAX_MANIFEST_BYTES = 64 * 1024**2
+DEFAULT_MAX_WORKERS = 64
+DEFAULT_POLL_SECONDS = 60
+DEFAULT_SPEC_REFRESH_SECONDS = 300
 
 
 def utc_now():
@@ -94,11 +99,17 @@ def discover_specs(specs_dir):
     expected = {}
     manifest_error = None
     if manifest_path.exists():
-        raw_manifest = manifest_path.read_bytes()
-        if len(raw_manifest) > MAX_SPEC_BYTES:
+        try:
+            manifest_size = manifest_path.stat().st_size
+        except OSError:
+            manifest_size = MAX_MANIFEST_BYTES + 1
+        if manifest_size > MAX_MANIFEST_BYTES:
             manifest_error = "manifest exceeds bounded size"
         else:
             try:
+                raw_manifest = manifest_path.read_bytes()
+                if len(raw_manifest) > MAX_MANIFEST_BYTES:
+                    raise ValueError("manifest exceeds bounded size")
                 manifest = json.loads(raw_manifest)
                 if manifest.get("schema_version") != 1:
                     raise ValueError("manifest requires schema_version=1")
@@ -154,7 +165,8 @@ def discover_specs(specs_dir):
             _validate_spec(spec)
             if relpath in expected and any(spec.get(key) != value for key, value in expected[relpath].items()):
                 raise ValueError("spec identity does not match manifest job")
-            result.append({"spec_id": _identity_id(spec), "spec_path": str(path), "status": "REGISTERED", "error": None, "spec": spec, "spec_sha256": _digest(raw)})
+            pending_reason = spec.get("pending_reason", "PENDING_PARAMETER_VALUES") if not spec.get("launchable", True) else None
+            result.append({"spec_id": _identity_id(spec), "spec_path": str(path), "status": "PENDING_PARAMETERS" if pending_reason else "REGISTERED", "error": pending_reason, "spec": spec, "spec_sha256": _digest(raw)})
         except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
             expected_spec = expected.get(relpath)
             result.append({"spec_id": _identity_id(expected_spec) if expected_spec else spec_id, "spec_path": str(path), "status": "UNMANIFESTED_SPEC" if relpath not in listed else "INVALID_SPEC", "error": str(exc), "spec": expected_spec, "spec_sha256": None})
@@ -175,6 +187,17 @@ def _validate_spec(spec):
         raise ValueError("unsupported spec schema_version")
     if not isinstance(spec.get("full_settings"), str) or not isinstance(spec.get("candidate_overrides"), str):
         raise ValueError("full_settings and candidate_overrides paths are required")
+    if not isinstance(spec.get("engine_root"), str) or not spec["engine_root"].strip():
+        raise ValueError("engine_root path is required")
+    if "launchable" in spec and not isinstance(spec["launchable"], bool):
+        raise ValueError("launchable must be boolean")
+    if not spec.get("launchable", True) and not isinstance(spec.get("pending_reason", "PENDING_PARAMETER_VALUES"), str):
+        raise ValueError("pending_reason must be a string")
+    release = spec.get("paper_mask_release", [])
+    if not isinstance(release, list) or any(not isinstance(key, str) for key in release):
+        raise ValueError("paper_mask_release must be a list of keys")
+    if release and (not isinstance(spec.get("experiment_context"), dict) or not spec["experiment_context"]):
+        raise ValueError("nonempty paper_mask_release requires shared experiment_context")
     for key in ("poll_seconds", "max_age_seconds"):
         if key in spec and (isinstance(spec[key], bool) or not isinstance(spec[key], (int, float)) or not math.isfinite(spec[key]) or spec[key] <= 0):
             raise ValueError(f"{key} must be a finite positive number")
@@ -197,10 +220,14 @@ def worker_command(spec_row, root):
     receipt = _resolve_input(specs_dir, spec.get("receipt", feed_root / f"{venue}.receipt.json"))
     full_settings = _resolve_input(specs_dir, spec["full_settings"])
     candidate = _resolve_input(specs_dir, spec["candidate_overrides"])
+    engine_root = _resolve_input(specs_dir, spec["engine_root"])
+    if not engine_root.is_dir() or not (engine_root / "backtest_v12_engine.py").is_file() or not engine_root.is_relative_to(Path(root).resolve()):
+        raise ValueError("engine_root must be a private workspace directory containing backtest_v12_engine.py")
     run_dir = Path(root) / "data" / "paper_forward_lab" / "runs" / spec_row["spec_id"]
     command = [sys.executable, str(Path(root) / "tools" / "paper_forward_worker.py"), "--follow", "--sym-side", spec["sym_side"], "--venue", venue,
                "--snapshot", str(snapshot), "--receipt", str(receipt), "--manifest", spec_row["spec_path"], "--full-settings", str(full_settings),
                "--candidate-overrides", str(candidate), "--run-dir", str(run_dir)]
+    command.extend(("--engine-root", str(engine_root)))
     if "poll_seconds" in spec:
         command.extend(("--poll-seconds", str(spec["poll_seconds"])))
     if "max_age_seconds" in spec:
@@ -232,6 +259,90 @@ def _connect(db_path):
     return connection
 
 
+def coverage_summary(db_path):
+    """Read-only per-assignment and status counts for an operator/central monitor."""
+    path = Path(db_path).resolve(strict=True)
+    connection = sqlite3.connect(f"{path.as_uri()}?mode=ro", uri=True)
+    try:
+        rows = connection.execute("SELECT assigned_host,venue,status,COUNT(*),COUNT(DISTINCT scenario_id),COUNT(DISTINCT sym_side) FROM jobs GROUP BY assigned_host,venue,status").fetchall()
+        distinct = connection.execute("SELECT assigned_host,COUNT(DISTINCT scenario_id),COUNT(DISTINCT sym_side) FROM jobs GROUP BY assigned_host").fetchall()
+    finally:
+        connection.close()
+    by_host = {host: {"jobs": 0, "scenarios": 0, "sym_sides": 0, "statuses": {}, "venues": {}} for host in ("s1", "s2", "s5", "s6")}
+    overall_statuses = {}
+    for host, venue, status, count, scenarios, sym_sides in rows:
+        group = by_host.get(host)
+        if group is None:
+            continue
+        group["jobs"] += count
+        group["statuses"][status] = group["statuses"].get(status, 0) + count
+        venue_counts = group["venues"].setdefault(venue or "UNKNOWN", {})
+        venue_counts[status] = venue_counts.get(status, 0) + count
+        overall_statuses[status] = overall_statuses.get(status, 0) + count
+    for host, scenarios, sym_sides in distinct:
+        if host in by_host:
+            by_host[host]["scenarios"] = scenarios
+            by_host[host]["sym_sides"] = sym_sides
+    return {"total_jobs": sum(row[3] for row in rows), "by_host": by_host, "statuses": overall_statuses}
+
+
+def snapshot_state_database(source_path, destination_path):
+    """Create an atomic consistent SQLite online backup for external collection."""
+    source_path = Path(source_path).resolve(strict=True)
+    destination_path = Path(destination_path).expanduser().resolve()
+    if source_path == destination_path:
+        raise ValueError("snapshot destination must differ from source database")
+    destination_path.parent.mkdir(parents=True, exist_ok=True)
+    fd, temporary_name = tempfile.mkstemp(prefix=f".{destination_path.name}.", suffix=".tmp", dir=destination_path.parent)
+    os.close(fd)
+    temporary_path = Path(temporary_name)
+    source = sqlite3.connect(f"{source_path.as_uri()}?mode=ro", uri=True, timeout=30)
+    try:
+        destination = sqlite3.connect(temporary_path, timeout=30)
+        try:
+            source.backup(destination, pages=256, sleep=0.01)
+            check = destination.execute("PRAGMA integrity_check").fetchone()
+            if not check or check[0] != "ok":
+                raise RuntimeError("SQLite snapshot integrity check failed")
+            destination.commit()
+        finally:
+            destination.close()
+    except Exception:
+        temporary_path.unlink(missing_ok=True)
+        raise
+    finally:
+        source.close()
+    os.replace(temporary_path, destination_path)
+    raw = destination_path.read_bytes()
+    return {"snapshot_path": str(destination_path), "snapshot_bytes": len(raw), "snapshot_sha256": _digest(raw), "coverage": coverage_summary(destination_path)}
+
+
+class SpecCache:
+    """Cache spec reads; manifest metadata changes invalidate immediately."""
+
+    def __init__(self, specs_dir, refresh_seconds=DEFAULT_SPEC_REFRESH_SECONDS):
+        self.specs_dir = Path(specs_dir)
+        self.refresh_seconds = float(refresh_seconds)
+        self.last_refresh = 0.0
+        self.manifest_signature = None
+        self.rows = None
+
+    def get(self, now=None):
+        now = time.monotonic() if now is None else float(now)
+        manifest_path = self.specs_dir / "manifest.json"
+        try:
+            stat = manifest_path.stat()
+            signature = (stat.st_ino, stat.st_size, stat.st_mtime_ns)
+        except OSError:
+            signature = None
+        if self.rows is not None and signature == self.manifest_signature and now - self.last_refresh < self.refresh_seconds:
+            return self.rows
+        self.rows = discover_specs(self.specs_dir)
+        self.manifest_signature = signature
+        self.last_refresh = now
+        return self.rows
+
+
 def _upsert_discovered(connection, rows, host, now):
     for row in rows:
         spec = row.get("spec") or {}
@@ -246,20 +357,25 @@ def _upsert_discovered(connection, rows, host, now):
         status = row["status"]
         if status == "REGISTERED" and assigned != host:
             status = "ASSIGNED_OTHER_HOST"
-        old = connection.execute("SELECT status,pid,registered_at,spec_sha256 FROM jobs WHERE spec_id=?", (row["spec_id"],)).fetchone()
+        old = connection.execute("SELECT status,pid,registered_at,spec_sha256,detail FROM jobs WHERE spec_id=?", (row["spec_id"],)).fetchone()
+        was_pending = bool(old and old[0] == "PENDING_PARAMETERS")
+        ready_from_pending = was_pending and bool(spec.get("launchable", False))
         if spec and row.get("spec_sha256"):
             prior = connection.execute("""SELECT spec_id,spec_sha256 FROM jobs WHERE run_id=? AND epoch_id=? AND scenario_id=? AND sym_side=? AND spec_id<>? LIMIT 1""",
                                        (spec.get("run_id"), spec.get("epoch_id"), spec.get("scenario_id"), spec.get("sym_side"), row["spec_id"])).fetchone()
             if prior and prior[1] != row["spec_sha256"]:
                 status = "SPEC_CHANGED"
                 row["error"] = "spec changed without a new run_id/epoch_id; refusing duplicate-epoch execution"
-        if old and old[3] and row.get("spec_sha256") and old[3] != row["spec_sha256"]:
+        if old and old[3] and row.get("spec_sha256") and old[3] != row["spec_sha256"] and not ready_from_pending:
             status = "SPEC_CHANGED"
             row["error"] = "spec changed without a new run_id/epoch_id; refusing duplicate-epoch execution"
-        elif old and old[0] in {"STARTING", "RUNNING", "WAITING_FRESH_INPUT", "WAITING_FOR_CAPACITY", "RESOURCE_BLOCKED", "ASSIGNED_OTHER_HOST", "COMPLETED", "FAILED", "INTERRUPTED", "SPEC_CHANGED"}:
+        elif old and old[0] in {"STARTING", "RUNNING", "WAITING_FRESH_INPUT", "WAITING_FOR_CAPACITY", "RESOURCE_BLOCKED", "ASSIGNED_OTHER_HOST", "COMPLETED", "FAILED", "INTERRUPTED", "SPEC_CHANGED", "PENDING_PARAMETERS"} and not ready_from_pending:
             status = old[0]
         registered_at = old[2] if old else now
         detail = {"error": row.get("error")} if row.get("error") else {}
+        detail["launchable"] = bool(spec.get("launchable", True))
+        if not spec.get("launchable", True):
+            detail["pending_reason"] = spec.get("pending_reason", "PENDING_PARAMETER_VALUES")
         connection.execute("""INSERT INTO jobs(spec_id,spec_path,spec_sha256,run_id,epoch_id,scenario_id,sym_side,venue,
             assigned_host,status,detail,registered_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(spec_id) DO UPDATE SET spec_path=excluded.spec_path,spec_sha256=excluded.spec_sha256,
@@ -316,7 +432,7 @@ def _map_worker_status(worker_status):
     return "RUNNING"
 
 
-def resource_worker_limit(observed, venue, host, max_workers=1, worker_memory_bytes=DEFAULT_WORKER_MEMORY_BYTES,
+def resource_worker_limit(observed, venue, host, max_workers=DEFAULT_MAX_WORKERS, worker_memory_bytes=DEFAULT_WORKER_MEMORY_BYTES,
                           worker_disk_bytes=DEFAULT_WORKER_DISK_BYTES, worker_cpu_cores=DEFAULT_WORKER_CPU_CORES):
     """Fail closed at the admission gate, then bound concurrency by measured headroom."""
     decision = decide_admission(venue, host, observed)
@@ -360,12 +476,12 @@ def _launch(connection, row, root, now, launcher=subprocess.Popen):
     return process.pid
 
 
-def reconcile(specs_dir, db_path, root=ROOT, host=None, once=True, dry_run=False, max_workers=1, poll_seconds=5,
-              observed=None, launcher=subprocess.Popen):
+def reconcile(specs_dir, db_path, root=ROOT, host=None, once=True, dry_run=False, max_workers=DEFAULT_MAX_WORKERS, poll_seconds=DEFAULT_POLL_SECONDS,
+              observed=None, launcher=subprocess.Popen, rows=None):
     if host not in {item for hosts in HOSTS_BY_VENUE.values() for item in hosts}:
         raise ValueError("host must be one of s1, s2, s5, s6")
     root = Path(root).resolve(strict=True)
-    rows = discover_specs(specs_dir)
+    rows = discover_specs(specs_dir) if rows is None else rows
     venue = "crypto" if host in HOSTS_BY_VENUE["crypto"] else "stocks"
     observed = observed if observed is not None else collect_observed(Path(root) / "data")
     capacity, admission = resource_worker_limit(observed, venue, host, max_workers=max_workers)
@@ -444,20 +560,30 @@ def reconcile(specs_dir, db_path, root=ROOT, host=None, once=True, dry_run=False
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--host", choices=("s1", "s2", "s5", "s6"), required=True)
-    parser.add_argument("--specs-dir", type=Path, required=True)
+    parser.add_argument("--host", choices=("s1", "s2", "s5", "s6"))
+    parser.add_argument("--specs-dir", type=Path)
     parser.add_argument("--root", type=Path, default=ROOT)
     parser.add_argument("--state-db", type=Path)
-    parser.add_argument("--max-workers", type=int, default=1)
-    parser.add_argument("--poll-seconds", type=float, default=5)
+    parser.add_argument("--snapshot-to", type=Path, help="atomically back up --state-db for a central read-only collector")
+    parser.add_argument("--max-workers", type=int, default=DEFAULT_MAX_WORKERS)
+    parser.add_argument("--poll-seconds", type=float, default=DEFAULT_POLL_SECONDS)
+    parser.add_argument("--spec-refresh-seconds", type=float, default=DEFAULT_SPEC_REFRESH_SECONDS)
     parser.add_argument("--once", action="store_true", help="reconcile once and exit")
     parser.add_argument("--dry-run", action="store_true", help="report every queued spec without writing or launching")
     args = parser.parse_args(argv)
-    if args.max_workers < 1 or args.poll_seconds <= 0:
-        parser.error("max-workers must be positive and poll-seconds must be positive")
+    if args.snapshot_to:
+        if not args.state_db:
+            parser.error("--snapshot-to requires --state-db source path")
+        print(json.dumps(snapshot_state_database(args.state_db, args.snapshot_to), sort_keys=True), flush=True)
+        return 0
+    if not args.host or not args.specs_dir:
+        parser.error("--host and --specs-dir are required for coordinator mode")
+    if args.max_workers < 1 or args.poll_seconds <= 0 or args.spec_refresh_seconds <= 0:
+        parser.error("max-workers, poll-seconds, and spec-refresh-seconds must be positive")
     db_path = args.state_db or (args.root / "data" / "paper_forward_lab" / f"fleet_{args.host}.sqlite3")
+    spec_cache = SpecCache(args.specs_dir, args.spec_refresh_seconds)
     if args.dry_run:
-        print(json.dumps(reconcile(args.specs_dir, db_path, args.root, args.host, once=True, dry_run=True, max_workers=args.max_workers), indent=2, sort_keys=True))
+        print(json.dumps(reconcile(args.specs_dir, db_path, args.root, args.host, once=True, dry_run=True, max_workers=args.max_workers, rows=spec_cache.get()), indent=2, sort_keys=True))
         return 0
     lock_path = Path(db_path).with_suffix(Path(db_path).suffix + ".lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -473,7 +599,7 @@ def main(argv=None):
         old_handlers = {sig: signal.signal(sig, request_stop) for sig in (signal.SIGTERM, signal.SIGINT)}
         try:
             while True:
-                result = reconcile(args.specs_dir, db_path, args.root, args.host, once=args.once, max_workers=args.max_workers)
+                result = reconcile(args.specs_dir, db_path, args.root, args.host, once=args.once, max_workers=args.max_workers, rows=spec_cache.get())
                 print(json.dumps(result, sort_keys=True), flush=True)
                 if args.once or stop:
                     break

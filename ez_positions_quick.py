@@ -27461,7 +27461,15 @@ async def check_exit_candidates_for_account(
                             )
                 _min_g = float(getattr(config, "MIN_GAIN", 3.0))
                 hard_augment = False
-                if not hard_exit_reason:
+                _wt_aug_enabled = bool(
+                    _psym_get(
+                        symbol,
+                        position_side,
+                        "WT_WINNER_PULLBACK_AUGMENT_ENABLED",
+                        getattr(config, "WT_WINNER_PULLBACK_AUGMENT_ENABLED", True),
+                    )
+                )
+                if not hard_exit_reason and _wt_aug_enabled:
                     last_aug_age = minutes_since(position.last_augmentation_time)
                     _is_long = position_key.endswith("_LONG")
                     _wt_aug_ltf_enabled = bool(

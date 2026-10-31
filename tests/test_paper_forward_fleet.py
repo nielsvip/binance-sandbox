@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 
 from tools.paper_fleet_budget import stable_host
-from tools.paper_forward_fleet import _map_worker_status, discover_specs, main, reconcile, resource_worker_limit
+from tools.paper_forward_fleet import _map_worker_status, coverage_summary, discover_specs, main, reconcile, resource_worker_limit, snapshot_state_database, SpecCache
 
 
 def _symbol_for_host(host):
@@ -19,12 +19,15 @@ def _spec(root, sym_side, scenario_id, venue="crypto"):
     config.mkdir(exist_ok=True)
     (config / "full.json").write_text('{"A":1}', encoding="utf-8")
     (config / "candidate.json").write_text('{"A":2}', encoding="utf-8")
+    engine_root = root / "runtime"
+    engine_root.mkdir(exist_ok=True)
+    (engine_root / "backtest_v12_engine.py").write_text("# isolated fixture\n", encoding="utf-8")
     symbol = sym_side.rsplit("_", 1)[0]
     host = stable_host(venue, symbol, sym_side.rsplit("_", 1)[1])
     return {
         "run_id": f"run-{scenario_id}", "epoch_id": f"epoch-{scenario_id}", "scenario_id": scenario_id,
         "sym_side": sym_side, "venue": venue, "plan_code_hash": "codehash", "host": host,
-        "full_settings": "config/full.json", "candidate_overrides": "config/candidate.json",
+        "full_settings": "config/full.json", "candidate_overrides": "config/candidate.json", "engine_root": str(engine_root),
     }
 
 
@@ -59,6 +62,14 @@ def test_manifest_jobs_keep_missing_expected_identity_visible(tmp_path):
     assert row["spec"]["sym_side"] == "BTCUSDT_LONG"
 
 
+def test_large_job_manifest_uses_manifest_limit_not_spec_limit(tmp_path):
+    specs = tmp_path / "specs"
+    specs.mkdir()
+    (specs / "manifest.json").write_text(json.dumps({"schema_version": 1, "jobs": [], "padding": "x" * (2 * 1024**2 + 10)}), encoding="utf-8")
+
+    assert discover_specs(specs) == []
+
+
 def test_resource_limit_fails_closed_and_caps_by_headroom():
     missing = {"mem_available_bytes": None, "disk_free_bytes": 20 * 1024**3, "load1": 0.0, "ncpu": 16, "cpu_psi_avg10": 0.0}
     assert resource_worker_limit(missing, "crypto", "s1", max_workers=3)[0] == 0
@@ -73,6 +84,50 @@ def test_worker_terminal_and_wait_states_are_mapped_explicitly():
     assert _map_worker_status("RESOURCE_LIMIT_STOPPING") == "RUNNING"
     assert _map_worker_status("STOPPED_RESOURCE_LIMIT") == "STOPPED_RESOURCE_LIMIT"
     assert _map_worker_status("COMPLETED") == "COMPLETED"
+
+
+def test_spec_cache_avoids_unchanged_reads_and_invalidates_on_manifest_metadata(tmp_path, monkeypatch):
+    import os
+    import tools.paper_forward_fleet as fleet
+
+    specs = tmp_path / "specs"
+    _write_specs(specs, {"job.json": _spec(tmp_path, "BTCUSDT_LONG", "cached")})
+    original = fleet.discover_specs
+    calls = []
+
+    def counted(path):
+        calls.append(path)
+        return original(path)
+
+    monkeypatch.setattr(fleet, "discover_specs", counted)
+    cache = SpecCache(specs, refresh_seconds=60)
+    assert cache.get(now=100)
+    assert cache.get(now=101)
+    manifest = specs / "manifest.json"
+    stat = manifest.stat()
+    os.utime(manifest, ns=(stat.st_atime_ns, stat.st_mtime_ns + 2_000_000_000))
+    assert cache.get(now=102)
+    assert len(calls) == 2
+
+
+def test_pending_parameters_are_registered_but_never_assigned_a_worker(tmp_path):
+    specs = tmp_path / "specs"
+    symbol = _symbol_for_host("s1")
+    spec = dict(_spec(tmp_path, f"{symbol}_LONG", "unresolved"), launchable=False, pending_reason="PENDING_PARAMETER_VALUES")
+    _write_specs(specs, {"job.json": spec})
+
+    row = discover_specs(specs)[0]
+
+    assert row["status"] == "PENDING_PARAMETERS"
+    assert row["error"] == "PENDING_PARAMETER_VALUES"
+    (tmp_path / "data").mkdir()
+    db = tmp_path / "fleet.sqlite3"
+    observed = {"mem_available_bytes": 2 * 1024**3, "disk_free_bytes": 16 * 1024**3, "load1": 1.0, "ncpu": 16, "cpu_psi_avg10": 0.0}
+    launched = []
+    reconcile(specs, db, tmp_path, "s1", observed=observed, launcher=lambda command, **kwargs: launched.append(command))
+    with sqlite3.connect(db) as connection:
+        assert connection.execute("SELECT status FROM jobs").fetchone()[0] == "PENDING_PARAMETERS"
+    assert launched == []
 
 
 def test_dry_run_registers_every_manifest_item_without_writes_or_launch(tmp_path):
@@ -121,6 +176,7 @@ def test_once_persists_all_jobs_and_launches_only_bounded_worker(tmp_path):
     assert len(launched) == 1
     assert "--follow" in launched[0]
     assert "--manifest" in launched[0]
+    assert "--engine-root" in launched[0]
     assert all_count == 3
     assert waiting == 2
     assert heartbeat == "IDLE"
@@ -200,6 +256,25 @@ def test_changed_spec_requires_new_epoch_and_is_not_launched(tmp_path):
     assert launches == []
 
 
+def test_pending_spec_can_be_resolved_without_changing_planned_identity(tmp_path):
+    specs = tmp_path / "specs"
+    symbol = _symbol_for_host("s1")
+    pending = dict(_spec(tmp_path, f"{symbol}_LONG", "resolve-me"), launchable=False, pending_reason="PENDING_PARAMETER_VALUES")
+    _write_specs(specs, {"job.json": pending})
+    root = tmp_path
+    (root / "data").mkdir()
+    low = {"mem_available_bytes": 2 * 1024**3, "disk_free_bytes": 16 * 1024**3, "load1": 1.0, "ncpu": 16, "cpu_psi_avg10": 0.0}
+    db = tmp_path / "fleet.sqlite3"
+    reconcile(specs, db, root, "s1", once=True, observed=low)
+    ready = dict(pending, launchable=True, pending_reason=None)
+    _write_specs(specs, {"job.json": ready})
+    reconcile(specs, db, root, "s1", once=True, observed=low)
+
+    with sqlite3.connect(db) as connection:
+        status = connection.execute("SELECT status FROM jobs").fetchone()[0]
+    assert status == "RESOURCE_BLOCKED"
+
+
 def test_cli_once_and_dry_run_are_bounded(tmp_path, monkeypatch, capsys):
     specs = tmp_path / "specs"
     symbol = _symbol_for_host("s1")
@@ -221,3 +296,26 @@ def test_cli_once_and_dry_run_are_bounded(tmp_path, monkeypatch, capsys):
     once_result = json.loads(capsys.readouterr().out)
     assert once_result["mode"] == "ONCE"
     assert once_result["status_counts"]["RESOURCE_BLOCKED"] == 1
+
+
+def test_database_snapshot_is_atomic_and_reports_per_host_coverage(tmp_path):
+    specs = tmp_path / "specs"
+    symbol = _symbol_for_host("s1")
+    rows = {f"scenario-{number}.json": _spec(tmp_path, f"{symbol}_LONG", f"coverage-{number}") for number in range(2)}
+    _write_specs(specs, rows)
+    root = tmp_path
+    (root / "data").mkdir()
+    observed = {"mem_available_bytes": 2 * 1024**3, "disk_free_bytes": 16 * 1024**3, "load1": 1.0, "ncpu": 16, "cpu_psi_avg10": 0.0}
+    db = tmp_path / "fleet.sqlite3"
+    reconcile(specs, db, root, "s1", once=True, observed=observed)
+    destination = tmp_path / "upload" / "fleet_snapshot.sqlite3"
+
+    result = snapshot_state_database(db, destination)
+    coverage = coverage_summary(destination)
+
+    assert destination.is_file()
+    assert len(result["snapshot_sha256"]) == 64
+    assert result["coverage"]["by_host"]["s1"]["jobs"] == 2
+    assert coverage["total_jobs"] == 2
+    assert coverage["by_host"]["s1"]["sym_sides"] == 1
+    assert coverage["by_host"]["s1"]["statuses"] == {"RESOURCE_BLOCKED": 2}

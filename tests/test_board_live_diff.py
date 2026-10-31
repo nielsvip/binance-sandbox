@@ -20,7 +20,7 @@ from live_twins import vec_exact as vx
 
 
 def test_dead_board_keys_are_not_divergence():
-    for key in ("REENTRY_TIER2_MAX_MINUTES_TRADIER", "REENTRY_TIER2_MAX_MINUTES", "DC_BREAKOUT_OVERBOUGHT_K15M_CAP", "WT_DC_DETAILED_TF"):
+    for key in ("REENTRY_TIER2_MAX_MINUTES_TRADIER", "REENTRY_TIER2_MAX_MINUTES", "DC_BREAKOUT_OVERBOUGHT_K15M_CAP", "WT_DC_DETAILED_TF", "MIN_HOLD_BARS_BEFORE_EXIT", "DELTA_EXIT_MIN_HOLD", "MIN_HOLD_MINUTES_TRADIER"):
         assert vx.board_key_is_live(key, "STOCKS_LONG") is False, key
         assert vx.board_key_is_live(key, "CRYPTO_LONG") is False, key
 
@@ -41,6 +41,16 @@ def test_board_live_diff_reports_only_real_divergence():
     }
     live = {"DAYTRADE_DC_TARGET_TF": "OFF", "PARTIAL_PROFIT_LOCK_FRAC": 1.0}
     assert vx.board_live_diff("XRPUSDC", "LONG", board, live=live) == ["DAYTRADE_DC_TARGET_TF"]
+
+
+def test_retired_hold_keys_are_filtered_even_if_stale_defaults_call_them_live(monkeypatch):
+    monkeypatch.setattr(vx, "board_key_is_live", lambda key, cat_side: True)
+    board = {
+        "MIN_HOLD_BARS_BEFORE_EXIT": 10,
+        "DELTA_EXIT_MIN_HOLD": 3,
+        "MIN_HOLD_MINUTES_TRADIER": 30,
+    }
+    assert vx.board_live_diff("BTCUSDC", "SHORT", board, live={}) == []
 
 
 def test_board_live_diff_normalises_bools_and_numbers():

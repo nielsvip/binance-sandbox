@@ -58,11 +58,12 @@ def _atomic_json(path, payload):
 class ContinuousJournalForwardSession(JournalForwardSession):
     """Replay the durable journal, then append distinct fresh source frames."""
 
-    def __init__(self, *args, snapshot_path, receipt_path, symbol, frame_timeframe, required_timeframes, poll_seconds, max_age_seconds, run_root, max_frames=MAX_FRAMES, **kwargs):
+    def __init__(self, *args, snapshot_path, receipt_path, symbol, expected_host, frame_timeframe, required_timeframes, poll_seconds, max_age_seconds, run_root, max_frames=MAX_FRAMES, **kwargs):
         super().__init__(*args, **kwargs)
         self.snapshot_path = Path(snapshot_path)
         self.receipt_path = Path(receipt_path)
         self.symbol = symbol
+        self.expected_host = expected_host
         self.frame_timeframe = frame_timeframe
         self.required_timeframes = tuple(required_timeframes)
         self.poll_seconds = float(poll_seconds)
@@ -86,6 +87,7 @@ class ContinuousJournalForwardSession(JournalForwardSession):
             "host": self._identity.get("host"),
             "pid": os.getpid(),
             "observed_at_utc": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            "source_observed_at_utc": self.observed_at_utc,
             "last_source_timestamp_epoch_s": self.last_source_ts,
             "source_time_semantics": "native timeframe source timestamp; observed_at_utc is a separate local observation clock; no closed-bar claim",
             "journal_frames": self.journal._db.execute("SELECT COUNT(*) FROM frames").fetchone()[0],
@@ -113,6 +115,8 @@ class ContinuousJournalForwardSession(JournalForwardSession):
             expected_venue = "crypto" if self.mode == "crypto" else "stocks"
             if receipt.get("venue") != expected_venue:
                 return None, "FEED_VENUE_MISMATCH"
+            if receipt.get("host") != self.expected_host:
+                return None, "FEED_HOST_MISMATCH"
             snapshot = validate_snapshot_bytes(raw)
             indicators = snapshot.get(self.symbol)
             if not isinstance(indicators, dict):
@@ -120,6 +124,7 @@ class ContinuousJournalForwardSession(JournalForwardSession):
             if len(json.dumps(indicators, separators=(",", ":"), allow_nan=False).encode()) > MAX_SYMBOL_BYTES:
                 return None, "SYMBOL_RECORD_TOO_LARGE"
             observed = receipt.get("captured_at_utc")
+            self.observed_at_utc = observed
             observed_epoch = _utc_epoch(observed)
             now = time.time()
             if observed_epoch > now + 5:
@@ -261,7 +266,10 @@ import asyncio, hashlib, json, os, sys
 import signal
 from datetime import datetime, timezone
 from pathlib import Path
-from tools.paper_worker_isolation import install
+from tools.paper_worker_isolation import install, require_installed
+from tools.paper_forward_worker import ContinuousJournalForwardSession, _atomic_json
+from tools.paper_frame_stream import FrameJournal
+from tools.paper_snapshot_store import PaperSnapshotStore
 
 root = Path(sys.argv[1]).resolve()
 install(root)
@@ -271,13 +279,19 @@ mode = request["mode"]
 manifest = request["manifest"]
 settings = request["full_settings"]
 candidate = request["candidate_overrides"]
+engine_root = Path(request["engine_root"]).resolve()
+repo_root = Path(request["repo_root"]).resolve()
+if engine_root.is_symlink() or not engine_root.is_dir() or not (engine_root / "backtest_v12_engine.py").is_file():
+    raise RuntimeError("private engine_root must contain backtest_v12_engine.py")
+if not engine_root.is_relative_to(repo_root):
+    raise RuntimeError("engine_root must remain inside the repository workspace")
+sys.path.insert(0, str(engine_root))
+import tools as _tools_pkg
+_tools_pkg.__path__ = [str(engine_root / "tools"), str(repo_root / "tools")]
 requested_effective = dict(settings)
 requested_effective.update(candidate)
 
 import backtest_v12_engine as engine
-from tools.paper_forward_worker import ContinuousJournalForwardSession
-from tools.paper_frame_stream import FrameJournal
-from tools.paper_snapshot_store import PaperSnapshotStore
 import config as crypto_config
 import config_tradier as stock_config
 import ez_manage
@@ -286,54 +300,67 @@ import tradier_manage
 release = set(manifest.get("paper_mask_release", []))
 if release - set(candidate):
     raise RuntimeError("paper_mask_release may name candidate override keys only")
-if any(candidate.get(key) in (True, "True", "true") for key in release if key in ez_manage._NON_VEC_KNOBS_EZ or key in getattr(stock_config.TradierConfig, "PARITY_NON_VECTORIZABLE_SWITCHES", ())):
-    nonvec_release = True
+if mode == "crypto":
+    nonvec_keys = set(ez_manage._NON_VEC_KNOBS_EZ)
+    sub15m_blocked = dict(ez_manage.SUB15M_BLOCKED_SWITCHES)
 else:
-    nonvec_release = False
-if any(candidate.get(key) in (True, "True", "true") for key in release if key in ez_manage.SUB15M_BLOCKED_SWITCHES or key in tradier_manage.SUB15M_BLOCKED_SWITCHES):
-    sub15m_release = True
-else:
-    sub15m_release = False
+    nonvec_keys = set(getattr(stock_config.TradierConfig, "PARITY_NON_VECTORIZABLE_SWITCHES", ()))
+    sub15m_blocked = dict(tradier_manage.SUB15M_BLOCKED_SWITCHES)
+experiment_context = manifest.get("experiment_context", {})
+if release and (not isinstance(experiment_context, dict) or not experiment_context):
+    raise RuntimeError("paper_mask_release requires a shared nonempty experiment_context")
+nonvec_release = bool(release & nonvec_keys)
+sub15m_release = bool(release & set(sub15m_blocked))
 isolation_overrides = {}
-nonvec_keys = set(ez_manage._NON_VEC_KNOBS_EZ) | set(getattr(stock_config.TradierConfig, "PARITY_NON_VECTORIZABLE_SWITCHES", ()))
-sub15m_blocked = {**ez_manage.SUB15M_BLOCKED_SWITCHES, **tradier_manage.SUB15M_BLOCKED_SWITCHES}
+blocked_nonvec = {}
 for key in nonvec_keys:
+    current = settings.get(key, getattr(crypto_config.Config, key, getattr(stock_config.TradierConfig, key, None)))
+    if isinstance(current, bool):
+        blocked_nonvec[key] = False
+    elif isinstance(current, str) and key.endswith("_TF"):
+        blocked_nonvec[key] = "None"
+    elif isinstance(current, (list, tuple, set, frozenset)):
+        blocked_nonvec[key] = type(current)()
+    elif current is None and key.endswith("_ENABLED"):
+        blocked_nonvec[key] = False
+    elif current is None and key.endswith("_ACCOUNTS"):
+        blocked_nonvec[key] = []
+    else:
+        raise RuntimeError(f"no known blocked baseline value for nonvectorizable knob {key}")
     if key not in release:
-        current = settings.get(key, getattr(crypto_config.Config, key, getattr(stock_config.TradierConfig, key, None)))
-        if isinstance(current, bool):
-            isolation_overrides[key] = False
-        elif isinstance(current, str) and key.endswith("_TF"):
-            isolation_overrides[key] = "None"
-        elif isinstance(current, (list, tuple, set, frozenset)):
-            isolation_overrides[key] = type(current)()
-        elif current is None and key.endswith("_ENABLED"):
-            isolation_overrides[key] = False
-        else:
-            raise RuntimeError(f"no known blocked baseline value for nonvectorizable knob {key}")
+        isolation_overrides[key] = blocked_nonvec[key]
 for key, blocked_value in sub15m_blocked.items():
     if key not in release:
         isolation_overrides[key] = blocked_value
-guarded_true = {key for key, value in candidate.items() if value in (True, "True", "true") and (key in nonvec_keys or key in sub15m_blocked)}
-if guarded_true - release:
-    raise RuntimeError("guarded candidate key requires explicit paper_mask_release: " + ", ".join(sorted(guarded_true - release)))
+blocked_guarded = {**blocked_nonvec, **sub15m_blocked}
+release_required = {key for key, value in candidate.items() if key in blocked_guarded and value != blocked_guarded[key]}
+if release_required - release:
+    raise RuntimeError("candidate differs from blocked baseline without explicit paper_mask_release: " + ", ".join(sorted(release_required - release)))
 mask_master_keys = {"PARITY_DISABLE_NON_VECTORIZABLE", "V12_PARITY_DISABLE_NON_VECTORIZABLE", "TRC_PARITY_DISABLE_NON_VECTORIZABLE", "LTF_SUB15M_TRADING_ENABLED", "TRADIER_LTF_SUB15M_TRADING_ENABLED"}
 if any(candidate.get(key) is True for key in mask_master_keys):
     raise RuntimeError("candidate may not override paper isolation mask masters")
 paper_mask_release = {}
-if nonvec_release:
-    paper_mask_release.update(PARITY_DISABLE_NON_VECTORIZABLE=False, V12_PARITY_DISABLE_NON_VECTORIZABLE=False, TRC_PARITY_DISABLE_NON_VECTORIZABLE=False)
+if release:
+    paper_mask_release.update(PARITY_DISABLE_NON_VECTORIZABLE=False, V12_PARITY_DISABLE_NON_VECTORIZABLE=False)
 else:
-    isolation_overrides.update(PARITY_DISABLE_NON_VECTORIZABLE=True, V12_PARITY_DISABLE_NON_VECTORIZABLE=True, TRC_PARITY_DISABLE_NON_VECTORIZABLE=True)
+    isolation_overrides.update(PARITY_DISABLE_NON_VECTORIZABLE=True, V12_PARITY_DISABLE_NON_VECTORIZABLE=True)
+if mode == "stocks":
+    if release:
+        paper_mask_release["TRC_PARITY_DISABLE_NON_VECTORIZABLE"] = False
+    else:
+        isolation_overrides["TRC_PARITY_DISABLE_NON_VECTORIZABLE"] = True
 if sub15m_release:
-    paper_mask_release.update(LTF_SUB15M_TRADING_ENABLED=True, TRADIER_LTF_SUB15M_TRADING_ENABLED=True)
+    paper_mask_release["LTF_SUB15M_TRADING_ENABLED"] = True
 else:
-    isolation_overrides.update(LTF_SUB15M_TRADING_ENABLED=False, TRADIER_LTF_SUB15M_TRADING_ENABLED=False)
+    isolation_overrides["LTF_SUB15M_TRADING_ENABLED"] = False
 effective = dict(settings)
 effective.update(isolation_overrides)
 effective.update(paper_mask_release)
 effective.update(candidate)
 
 code_path = Path(engine.__file__).resolve()
+if not code_path.is_relative_to(engine_root):
+    raise RuntimeError("imported engine did not come from private engine_root")
 code_hash = hashlib.sha256(code_path.read_bytes()).hexdigest()
 settings_hash = hashlib.sha256(json.dumps(effective, sort_keys=True, separators=(",", ":"), allow_nan=False).encode()).hexdigest()
 symside = request["sym_side"]
@@ -365,7 +392,9 @@ result_manifest = {
     "code_sha256": code_hash, "code_file_hashes": {"backtest_v12_engine.py": code_hash},
     "plan_code_hash": manifest["plan_code_hash"], "started_at": started_at,
     "candidate_overrides": candidate, "isolation_overrides": isolation_overrides,
-    "paper_mask_release": paper_mask_release, "context": manifest.get("context", {}),
+    "paper_mask_release": paper_mask_release, "context": {**manifest.get("context", {}), "experiment_context": manifest.get("experiment_context", {})},
+    "candidate_getter_resolution": {}, "worker_isolation": require_installed(root),
+    "engine_root": str(engine_root),
     "effective_settings_file": effective_settings_path.name,
     "base_settings_file": base_settings_path.name,
     "finished": False, "status": "RUNNING",
@@ -392,6 +421,7 @@ if precedence_state.get("error"):
     raise RuntimeError("per-symbol settings precedence could not be installed: " + precedence_state["error"])
 
 getter = ez_manage._psym_get if mode == "crypto" else tradier_manage._cfg
+getter_receipts = {}
 for key, requested_value in candidate.items():
     default = requested_value
     if mode == "crypto":
@@ -400,6 +430,9 @@ for key, requested_value in candidate.items():
         resolved_value = getter(key, default, request.get("account", "trb"), symbol, request["side"])
     if resolved_value != requested_value:
         raise RuntimeError(f"effective per-symbol getter mismatch for {key}: requested={requested_value!r} resolved={resolved_value!r}")
+    getter_receipts[key] = {"requested": requested_value, "resolved": resolved_value, "matches": True, "resolver": "ez_manage._psym_get" if mode == "crypto" else "tradier_manage._cfg"}
+result_manifest["candidate_getter_resolution"] = getter_receipts
+_atomic_json(result_manifest_path, result_manifest)
 journal = FrameJournal(root / "receipts.sqlite3", identity)
 first_row = journal._db.execute("SELECT closed_ts,payload FROM frames ORDER BY sequence LIMIT 1").fetchone()
 if first_row:
@@ -419,7 +452,7 @@ async def apply_frame(payload, stores):
 session = ContinuousJournalForwardSession(
     journal, stores, apply_frame, code_path=code_path, mode=mode,
     snapshot_path=request["snapshot"], receipt_path=request["receipt"],
-    symbol=symbol, frame_timeframe=manifest.get("frame_timeframe", "1m" if mode == "crypto" else "5m"),
+    symbol=symbol, expected_host=manifest["host"], frame_timeframe=manifest.get("frame_timeframe", "1m" if mode == "crypto" else "5m"),
     required_timeframes=manifest.get("required_timeframes", [manifest.get("frame_timeframe", "1m" if mode == "crypto" else "5m")]),
     poll_seconds=request["poll_seconds"], max_age_seconds=request["max_age_seconds"],
     run_root=root, max_frames=manifest.get("max_frames", 1440),
@@ -486,41 +519,13 @@ def _read_json(path, limit=MAX_INPUT_BYTES):
     return json.loads(raw, parse_constant=lambda value: (_ for _ in ()).throw(ValueError(f"invalid JSON constant {value}")))
 
 
-def load_frames(path, symbol):
-    frames = []
-    total = 0
-    with Path(path).open("rb") as handle:
-        for line_number, raw in enumerate(handle, 1):
-            total += len(raw)
-            if total > MAX_INPUT_BYTES:
-                raise ValueError("frame stream exceeds 32 MiB")
-            if not raw.strip():
-                continue
-            frame = json.loads(raw, parse_constant=lambda value: (_ for _ in ()).throw(ValueError(f"invalid JSON constant {value}")))
-            if not isinstance(frame, dict) or set(frame) != {"ts", "indicators"}:
-                raise ValueError(f"frame line {line_number} must contain only ts and indicators")
-            if isinstance(frame["ts"], bool) or not isinstance(frame["ts"], (int, float)):
-                raise ValueError(f"frame line {line_number} timestamp must be epoch seconds")
-            ts = float(frame["ts"])
-            if not (ts > 0 and ts < float("inf")) or (frames and ts <= frames[-1]["ts"]):
-                raise ValueError(f"frame line {line_number} timestamp is invalid or not increasing")
-            indicators = frame["indicators"]
-            if not isinstance(indicators, dict) or "current_price" not in indicators:
-                raise ValueError(f"frame line {line_number} lacks explicit indicators/current_price")
-            frames.append({"ts": ts, "indicators": indicators})
-            if len(frames) > MAX_FRAMES:
-                raise ValueError(f"frame stream exceeds {MAX_FRAMES} frames")
-    if len(frames) < 2:
-        raise ValueError("independent forward worker requires at least two distinct closed frames")
-    return frames
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--follow", action="store_true", required=True)
     parser.add_argument("--manifest", required=True, type=Path)
     parser.add_argument("--sym-side", required=True)
     parser.add_argument("--venue", required=True, choices=("crypto", "stocks"))
+    parser.add_argument("--engine-root", type=Path)
     parser.add_argument("--snapshot", type=Path)
     parser.add_argument("--receipt", type=Path)
     parser.add_argument("--full-settings", type=Path)
@@ -554,6 +559,14 @@ def main(argv=None):
     candidate_path = args.candidate_overrides or Path(manifest.get("candidate_overrides", ""))
     if not all(path and str(path) != "." for path in (snapshot, receipt, full_settings_path, candidate_path)):
         parser.error("snapshot, receipt, full_settings, and candidate_overrides paths are required")
+    engine_root_value = args.engine_root or Path(manifest.get("engine_root", ""))
+    if not engine_root_value or str(engine_root_value) == ".":
+        parser.error("--engine-root or manifest engine_root is required")
+    if not engine_root_value.is_absolute():
+        engine_root_value = args.manifest.resolve().parent / engine_root_value
+    engine_root = engine_root_value.resolve()
+    if engine_root.is_symlink() or not engine_root.is_relative_to(ROOT.resolve()) or not (engine_root / "backtest_v12_engine.py").is_file():
+        parser.error("engine_root must be a real workspace directory containing backtest_v12_engine.py")
     full_settings = _read_json(full_settings_path)
     candidate = _read_json(candidate_path)
     if not isinstance(full_settings, dict) or not full_settings or not isinstance(candidate, dict):
@@ -569,14 +582,21 @@ def main(argv=None):
         parser.error("manifest has invalid frame_timeframe/required_timeframes")
     poll_seconds = float(args.poll_seconds if args.poll_seconds is not None else manifest.get("poll_seconds", 5))
     max_age_seconds = float(args.max_age_seconds if args.max_age_seconds is not None else manifest.get("max_age_seconds", 2 * TIMEFRAME_SECONDS[timeframe]))
+    max_frames = int(manifest.get("max_frames", MAX_FRAMES))
     if not (0.25 <= poll_seconds <= 300 and TIMEFRAME_SECONDS[timeframe] <= max_age_seconds <= 7 * 86400):
         parser.error("poll/max_age setting is outside bounded limits")
+    if not 2 <= max_frames <= MAX_FRAMES:
+        parser.error(f"manifest max_frames must be between 2 and {MAX_FRAMES}")
     manifest = dict(manifest)
     manifest["frame_timeframe"] = timeframe
     manifest["required_timeframes"] = required_tfs
+    manifest["max_frames"] = max_frames
     manifest["paper_mask_release"] = manifest.get("paper_mask_release", [])
     if not isinstance(manifest["paper_mask_release"], list) or any(not isinstance(key, str) for key in manifest["paper_mask_release"]):
         parser.error("paper_mask_release must be a list of candidate key names")
+    manifest["experiment_context"] = manifest.get("experiment_context", {})
+    if manifest["paper_mask_release"] and (not isinstance(manifest["experiment_context"], dict) or not manifest["experiment_context"]):
+        parser.error("nonempty paper_mask_release requires a shared experiment_context object")
     output_root = args.output_root.resolve()
     if not output_root.is_relative_to(ROOT.resolve()):
         parser.error("output root must remain inside the repository workspace")
@@ -598,6 +618,7 @@ def main(argv=None):
         "receipt": str(Path(receipt).resolve()),
         "full_settings": str(Path(full_settings_path).resolve()),
         "candidate_overrides": str(Path(candidate_path).resolve()),
+        "engine_root": str(engine_root),
         "frame_timeframe": timeframe,
         "required_timeframes": required_tfs,
         "poll_seconds": poll_seconds,
@@ -610,7 +631,7 @@ def main(argv=None):
     if not spec_path.exists():
         with spec_path.open("x", encoding="utf-8") as handle:
             handle.write(spec_bytes)
-    request = {"manifest": spec, "sym_side": args.sym_side, "symbol": symbol, "side": side, "mode": "crypto" if args.venue == "crypto" else "tradier", "full_settings": full_settings, "candidate_overrides": candidate, "snapshot": str(Path(snapshot).resolve()), "receipt": str(Path(receipt).resolve()), "poll_seconds": poll_seconds, "max_age_seconds": max_age_seconds, "account": args.account or manifest.get("account", "ang" if args.venue == "crypto" else "trb"), "capital": args.capital}
+    request = {"manifest": spec, "sym_side": args.sym_side, "symbol": symbol, "side": side, "mode": "crypto" if args.venue == "crypto" else "tradier", "full_settings": full_settings, "candidate_overrides": candidate, "engine_root": str(engine_root), "repo_root": str(ROOT.resolve()), "snapshot": str(Path(snapshot).resolve()), "receipt": str(Path(receipt).resolve()), "poll_seconds": poll_seconds, "max_age_seconds": max_age_seconds, "account": args.account or manifest.get("account", "ang" if args.venue == "crypto" else "trb"), "capital": args.capital}
     request_path = run_dir / "request.json"
     request_bytes = json.dumps(request, sort_keys=True, separators=(",", ":"), allow_nan=False) + "\n"
     if request_path.exists() and request_path.read_text(encoding="utf-8") != request_bytes:
@@ -619,7 +640,7 @@ def main(argv=None):
         with request_path.open("x", encoding="utf-8") as handle:
             handle.write(request_bytes)
     env = {key: value for key, value in os.environ.items() if not key.startswith(("V8_", "V12_", "PAPER_"))}
-    env.update({"PYTHONHASHSEED": "0", "V8_HASHSEED_LOCKED": "1", "PYTHONDONTWRITEBYTECODE": "1", "V12_BASE_PATH": str(run_dir), "BASE_PATH": str(run_dir), "EZ_LOG_DIR": str(run_dir), "TRADIER_API_LOG_DIR": str(run_dir), "TMPDIR": str(run_dir), "PAPER_FORWARD_ISOLATED": "1", "V8_FORCE_REAL": "1", "V12_LIVE_ONLY_PRODUCERS": "1", "V8_RATE_GUARD_DISABLED": "1", "V8_MAX_WALL_SECS": "0", "V8_ISOLATE_SIDE": side, "V8_LADDER_ONLY_SIDE": side, "V8_SWEEP_MODE": "1", "FORWARD_AUTO_PROMOTE": "0", "PER_SYM_STORE_SQLITE_DISABLED": "0", "V12_RUN_ONE_SET_PRECEDENCE": "1"})
+    env.update({"PYTHONHASHSEED": "0", "V8_HASHSEED_LOCKED": "1", "PYTHONDONTWRITEBYTECODE": "1", "V12_BASE_PATH": str(run_dir), "BASE_PATH": str(run_dir), "EZ_LOG_DIR": str(run_dir), "TRADIER_API_LOG_DIR": str(run_dir), "TMPDIR": str(run_dir), "PAPER_FORWARD_ISOLATED": "1", "V8_FORCE_REAL": "1", "V12_LIVE_ONLY_PRODUCERS": "1", "V8_RATE_GUARD_DISABLED": "1", "V8_MAX_WALL_SECS": "0", "V8_ISOLATE_SIDE": side, "V8_LADDER_ONLY_SIDE": side, "V8_SWEEP_MODE": "1", "V12_PARITY_REPORT_EVERY": "1000000", "FORWARD_AUTO_PROMOTE": "0", "PER_SYM_STORE_SQLITE_DISABLED": "0", "V12_RUN_ONE_SET_PRECEDENCE": "1"})
     with (run_dir / "worker.stdout.log").open("ab") as stdout_handle, (run_dir / "worker.stderr.log").open("ab") as stderr_handle:
         process = subprocess.Popen([sys.executable, "-c", CHILD, str(run_dir)], cwd=ROOT, env=env, stdout=stdout_handle, stderr=stderr_handle, close_fds=True)
         try:
@@ -636,7 +657,7 @@ def main(argv=None):
         result = _read_json(result_path)
         result["run_dir"] = str(run_dir)
     print(json.dumps(result, sort_keys=True, allow_nan=False))
-    return 0 if result.get("status") == "COMPLETED_MULTI_FRAME_ENGINE_RUN" else 1
+    return 0 if result.get("status") in {"STOPPED_BY_REQUEST", "STOPPED_RESOURCE_LIMIT", "COMPLETED"} else 1
 
 
 if __name__ == "__main__":
