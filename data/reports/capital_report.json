@@ -1,9 +1,9 @@
 {
- "generated_at": "2026-10-31 08:53 UTC",
- "total_capital_usd": 79.98,
+ "generated_at": "2026-10-31 09:30 UTC",
+ "total_capital_usd": 80.19,
  "tier_capital": {
   "A": 0.0,
-  "B": 79.98,
+  "B": 80.19,
   "C": 0.0
  },
  "tier_count": {
@@ -23,56 +23,56 @@
    "pk": "flz:ETHUSDC_SHORT",
    "symbol": "ETHUSDC",
    "account": "flz",
-   "value_usd": 20.14,
-   "gain_pct": -0.062,
+   "value_usd": 20.16,
+   "gain_pct": -0.147,
    "tier": "B",
    "perf_mult": 3.77,
    "amt": 0.009,
-   "mark": 2237.67721884
+   "mark": 2239.58
   },
   {
    "pk": "flz:DASHUSDT_SHORT",
    "symbol": "DASHUSDT",
    "account": "flz",
-   "value_usd": 19.93,
-   "gain_pct": 0.141,
+   "value_usd": 19.97,
+   "gain_pct": -0.063,
    "tier": "B",
    "perf_mult": 0.52,
    "amt": 0.418,
-   "mark": 47.68253721
+   "mark": 47.78
   },
   {
    "pk": "flz:HYPEUSDT_SHORT",
    "symbol": "HYPEUSDT",
    "account": "flz",
-   "value_usd": 14.8,
-   "gain_pct": 0.119,
+   "value_usd": 14.88,
+   "gain_pct": -0.399,
    "tier": "B",
    "perf_mult": 2.63,
    "amt": 0.17,
-   "mark": 87.071
+   "mark": 87.52277011
   },
   {
    "pk": "flz:ZECUSDC_LONG",
    "symbol": "ZECUSDC",
    "account": "flz",
-   "value_usd": 13.91,
-   "gain_pct": -0.308,
+   "value_usd": 13.99,
+   "gain_pct": 0.215,
    "tier": "B",
    "perf_mult": 1.21,
    "amt": 0.011,
-   "mark": 1264.89452691
+   "mark": 1271.52839913
   },
   {
    "pk": "flz:XRPUSDC_LONG",
    "symbol": "XRPUSDC",
    "account": "flz",
-   "value_usd": 11.2,
-   "gain_pct": -0.884,
+   "value_usd": 11.19,
+   "gain_pct": -0.9,
    "tier": "B",
    "perf_mult": 2.74,
    "amt": 9.0,
-   "mark": 1.244
+   "mark": 1.2438
   }
  ]
 }
