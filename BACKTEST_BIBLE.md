@@ -4,6 +4,13 @@
 - **Keys:** `~/.ssh/id_ed25519_storagebox` on S1, S2, S5, S6 (each registered on the box). Mac: `~/.ssh/hetzner_storagebox_ed25519`.
 - **Layout:** one top folder per source: `s1/`, `s2/`, `s5/`, `s6/`. Mac external drives will go under `mac-ext/`.
 - **Rules:** append-only. Sync jobs never use `--delete`. Server data is removed only after a checksum match on the box (`rsync -c --dry-run` shows no mismatches). Verified copies on the box are the single source of truth for klines and NPZ history.
+- **Public keys (registered on the box; safe to share):**
+  - Mac (`~/.ssh/hetzner_storagebox_ed25519`): `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF86wL0JIDSfkJn1F6kIZFdtTywJWEKlhqhGvRl49ZBx niels-mac-storagebox`
+  - S1 (`~/.ssh/id_ed25519_storagebox`): `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHLWJA2rLJgILgcjHV3EjtamBpL6Mw5aMKIMPORDkqf0 s1-storagebox`
+  - S2: `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEXB8XvXBULJF2hUApq+/y0Sli0bcB2sdryMkubdOEz8 s2-storagebox`
+  - S5: `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEejERTap7v4nrItOvgip6jsl99h7X9cQFEuIebE+3aV s5-storagebox`
+  - S6: `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAILs1KPCwN+bNToYxl8Kbp9N20OUz2rtiknc8/lRs+jKL s6-storagebox`
+- **Private keys** stay on their own machine only. Never copy them into the repo, the bible or chat.
 - **Not** `u705131` (an old box that no longer exists).
 
 # 📖 BACKTEST BIBLE — Single Source of Truth — 2026-09-26 Redo, updated 2026-10-07

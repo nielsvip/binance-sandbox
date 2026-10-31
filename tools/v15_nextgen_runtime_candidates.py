@@ -1,11 +1,18 @@
 """Review-only current-domain and wiring-era exploration guard; no pilot hook or defaults change."""
 import copy
+import hashlib
+import json
+from pathlib import Path
 
 
-def filter_current_cells(proposals, category, template_index, runtime_root=None):
+def filter_current_cells(proposals, category, template_index, runtime_root=None, cell_eligible=None):
     from tools.switch_types import coerce
     venue = "tradier" if category.startswith("STOCKS") else "crypto"
-    allowed = {(str(switch).strip(), str(candidate).strip(), str(header).strip()) for block in template_index.get("tabs", {}).values() for row, switch, candidate, default in block["rows"] for header in block["yellows"]}
+    allowed = {}
+    for tab, block in template_index.get("tabs", {}).items():
+        for number, switch, candidate, default in block["rows"]:
+            for header in block["yellows"]:
+                allowed.setdefault((str(switch).strip(), str(candidate).strip(), str(header).strip()), []).append((tab, number))
     accepted, rejected = [], []
     for original in proposals:
         row = dict(original)
@@ -19,8 +26,20 @@ def filter_current_cells(proposals, category, template_index, runtime_root=None)
             valid_filter, _, filter_reason = coerce(field, option, venue, strict_unknown=True, root=runtime_root)
             if not valid_switch or not valid_filter:
                 reason = "unknown_or_invalid_current_field: " + str(switch_reason if not valid_switch else filter_reason)
-            elif (str(switch).strip(), str(candidate).strip(), f"{str(field).strip()}={str(option).strip()}") not in allowed:
-                reason = "outside_exact_current_template"
+            else:
+                header = f"{str(field).strip()}={str(option).strip()}"
+                positions = allowed.get((str(switch).strip(), str(candidate).strip(), header)) or []
+                requested_tab = row.get("tab") or row.get("sheet")
+                if requested_tab:
+                    positions = [position for position in positions if position[0] == requested_tab]
+                if not positions:
+                    reason = "outside_exact_current_template_or_wrong_tab"
+                elif cell_eligible is None:
+                    reason = "actual_row_cell_classifier_required"
+                elif len({position[0] for position in positions}) > 1 and not requested_tab:
+                    reason = "ambiguous_tab_requires_explicit_identity"
+                elif not any(cell_eligible(tab, number, str(switch).strip(), candidate, header) is True for tab, number in positions):
+                    reason = "not_an_eligible_yellow_cell_of_actual_row"
         if reason:
             rejected.append({"proposal": row, "reason": reason})
         else:
@@ -28,7 +47,43 @@ def filter_current_cells(proposals, category, template_index, runtime_root=None)
     return {"accepted": accepted, "rejected": rejected, "scope": "current runtime field/type plus exact current template; no default inference or field installation"}
 
 
+class VerifiedWiringRegistry(dict):
+    pass
+
+
+def source_fingerprint(sources):
+    hashes = []
+    for source in sources:
+        payload = Path(source["path"]).read_bytes()
+        observed = hashlib.sha256(payload).hexdigest()
+        if observed != source["sha256"]:
+            raise ValueError("wiring source content hash mismatch")
+        hashes.append((source.get("asset") or Path(source["path"]).name, observed))
+    return hashlib.sha256(json.dumps(sorted(hashes), separators=(",", ":")).encode()).hexdigest()
+
+
+def load_wiring_registry(path, expected_sha256):
+    payload = Path(path).read_bytes()
+    if hashlib.sha256(payload).hexdigest() != expected_sha256:
+        raise ValueError("wiring registry content hash mismatch")
+    document = json.loads(payload)
+    if document.get("schema") != "wiring_epochs/1":
+        raise ValueError("unsupported wiring registry schema")
+    fields = document.get("fields") or {}
+    for field, entry in fields.items():
+        current, previous = entry.get("current_sources"), entry.get("previous_sources")
+        if not current or not previous:
+            raise ValueError("wiring registry requires both current and prior source proofs")
+        actual = source_fingerprint(current)
+        prior = source_fingerprint(previous)
+        if entry.get("wiring_sha256") != actual or (entry.get("new_or_changed") and actual == prior):
+            raise ValueError("wiring epoch is not supported by source content hashes")
+    return VerifiedWiringRegistry(fields)
+
+
 def protected_headers(switch, headers, wiring_registry, evidence_by_cell):
+    if not isinstance(wiring_registry, VerifiedWiringRegistry):
+        raise ValueError("requires content-verified wiring registry; unknown registry is not protection")
     result = set()
     for header in headers:
         evidence = (evidence_by_cell or {}).get(header) or {}

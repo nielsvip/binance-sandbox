@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-31T00:10:31.146206+00:00",
+  "recorded_at": "2026-10-31T00:20:36.684874+00:00",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -69,6 +69,17 @@
     "s5_s6_retirement": {
       "status": "not_ready",
       "retirement_performed": false
+    },
+    "verified_connection_feedback": {
+      "status": "incomplete",
+      "kinds": [
+        "switch-filter",
+        "filter-filter",
+        "switch-switch"
+      ],
+      "requirement": "measured context-specific evidence and explicit unverified status for predictions; feed future tests; preserve new-wiring exploration",
+      "finding": "runtime graph currently exposes filter-row pairs; arbitrary quartets retained in training state but no runtime consumer found",
+      "next": "review-only proof registry and proposal queue bridge"
     }
   },
   "benchmark_defect": {
@@ -348,12 +359,24 @@
       "before_cutoff_rows": 593034,
       "eligible_targets": 524290,
       "training_approved": false,
-      "context_neutral_copy": "compilation in progress; independent review pending"
+      "context_neutral_copy": "population03 complete; all noncontext event fields exactly equal to population02",
+      "offline_training_authorization": "approved after integrity review, resource hold; no training launched",
+      "per_row_engine_identity": "unknown on all296502 emittedrows; historical deadness cannot be assumed for new wiring"
     },
-    "root_validation": "8 converter, context invariance and corpus collector tests passed in 0.48s; not engine parity or performance evidence",
+    "root_validation": "11 converter/context/collector/runtime-guard tests passed0.55s; runtime guard remains review-only, row-specific yellow validation correction required. Baseline focused test fixture6pass1fail missingglobals; actual pilot imports confirmed; correction pending.",
     "oracle_preparation": "Frozen S2 pre-NN runtime materializing on S6; Python and NumPy native binaries match, Linux kernel patch levels differ; no engine evaluation yet",
     "promotion": false,
     "measured_gain_improvement": false,
-    "measured_90pct_compute_reduction": false
+    "measured_90pct_compute_reduction": false,
+    "baseline_oracle_attempt": {
+      "host": "s6",
+      "at_utc": "2026-10-31T00:20:36.684874+00:00",
+      "record_type": "observation_of_terminal_attempt",
+      "exit_code": 1,
+      "engine_evaluated": false,
+      "reason": "pre-import resource floor: MemAvailable4908.7MiB below7000MiB",
+      "receipt_root": "/home/niels/v15_bench/reviews/prior_oracle_20261031T000747Z",
+      "followup": "prepare alternate host; no workload killed or floor lowered"
+    }
   }
 }
