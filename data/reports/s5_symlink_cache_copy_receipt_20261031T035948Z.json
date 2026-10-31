@@ -1,0 +1,17 @@
+{
+  "recorded_at_utc": "2026-10-31T03:59:48Z",
+  "source_host": "s5",
+  "literal_symlink": "/home/niels/v20_u4/code/data/learn/_cache",
+  "literal_target": "/home/niels/binance-sandbox/data/learn/_cache",
+  "destination_root": "/Volumes/WD25/binance_archive/s5_symlink_cache_20261031T035948Z",
+  "wd25_volume_uuid": "04543668-3000-3F41-BB34-1C876F724D28",
+  "source_pre_post_identical": true,
+  "verification": "Four source files had identical size, mtime, inode and SHA256 before/after rsync. WD25 destination size and SHA256 match each source. No nested symlinks were present in this target directory.",
+  "total_bytes": 1417615,
+  "files": [
+    {"name":"template_index_CRYPTO_LONG_dc2e50c7de58.json","size_bytes":346744,"mtime_epoch":1793135970,"source_inode":5061907,"sha256":"20bf6a235235e2dd8069e625cbdb877a2c85e3972469f6522edb856bfaa2b619"},
+    {"name":"template_index_CRYPTO_SHORT_6c550e0b9905.json","size_bytes":345768,"mtime_epoch":1793135972,"source_inode":5061908,"sha256":"6a9317557c3b82fea5adde00033fc10e942ec6b7a9668c04ca5e3cacf221518a"},
+    {"name":"template_index_STOCKS_LONG_a39289ce7833.json","size_bytes":367483,"mtime_epoch":1793135974,"source_inode":5062172,"sha256":"54d1eed050bf1e386672976c09bde91e33a571528780fb3f1450f3450657db63"},
+    {"name":"template_index_STOCKS_SHORT_50e31de2decc.json","size_bytes":357620,"mtime_epoch":1793135976,"source_inode":5062175,"sha256":"c76993aff5bdf353e5843dff4f000edbbd946b628ed81492fd9e60840f25128e"}
+  ]
+}

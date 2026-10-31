@@ -55,8 +55,11 @@ def bind_prediction_artifact(source):
 
 
 def retained_prediction(artifact, index, proposal, context, resolve_original):
+    from tools.v18_brain import cat_side_of
     if not isinstance(artifact, PredictionArtifact):
         raise ValueError('source-bound NN artifact required')
+    if artifact['document']['meta'].get('cat_side') != cat_side_of(scientific_identity(context)['sym_side']):
+        raise ValueError('retained NN artifact belongs to another category/side')
     original = artifact['document']['template_untried'][index]
     resolved = resolve_original(original)
     if resolved.get('eligible') is not True or evidence.pair_identity(resolved['x'], resolved['y']) != evidence.pair_identity(proposal['x'], proposal['y']):

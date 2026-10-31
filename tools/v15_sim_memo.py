@@ -169,6 +169,11 @@ def _memo_simulate(V, orig, npz, sym, is_long, cfg, force_initial_seed=False):
     # and uncached engine writes then do not reach the caller's original cfg.
     resolve = getattr(V, "ensure_template_layer", None)
     resolved_cfg = resolve(cfg, sym, is_long) if callable(resolve) else cfg
+    try:
+        if isinstance(object.__getattribute__(resolved_cfg, "_FX_PROBE_SINK"), dict):
+            return orig(npz, sym, is_long, resolved_cfg, force_initial_seed)
+    except AttributeError:
+        pass
     missing = V._MISSING
     fp = _npz_content_fp(V, npz, is_long)
     if fp is None:

@@ -21,6 +21,27 @@ def domain(row):
     return {'eligible': True, 'protection': row['id'] == 'protection', 'recovery': row['id'] == 'recovery', 'protection_target': 'x_given_y', 'recovery_target': 'x_given_y', 'structurally_masked_research_priority': row['id'] == 'protection'}
 
 
+def test_retained_nn_scores_change_fair_order_but_never_eligibility_or_starve_low_score(tmp_path):
+    current = context(tmp_path)
+    proposals = catalog()[2:4]
+    def run(scores, name):
+        path = tmp_path / name
+        items = [dict(switch=row['x']['field'], cand=True, filter='COMMON', opt=1, p_pos_pred=score) for row, score in zip(proposals, scores)]
+        path.write_text(json.dumps(dict(meta=dict(schema='v18_linknet/1', cat_side='STOCKS_LONG'), template_untried=items)))
+        artifact = P.bind_prediction_artifact(dict(path=str(path), sha256=P.evidence.sha(path)))
+        resolve = lambda original: dict(eligible=True, x=dict(field=original['switch'], value=True), y=dict(field='COMMON', value=1))
+        bound = {row['id']: P.retained_prediction(artifact, index, row, current, resolve) for index, row in enumerate(proposals)}
+        classify = lambda row: dict(eligible=True, retained_prediction=bound[row['id']])
+        first = P.allocate(proposals, {}, current, 5, classify, lambda row: True)
+        second = P.allocate(proposals, first['next_state'], current, 5, classify, lambda row: True)
+        assert first['eligible_catalog_size'] == second['eligible_catalog_size'] == 2
+        assert {first['selected'][0]['id'], second['selected'][0]['id']} == {row['id'] for row in proposals}
+        assert P.validate_prediction_artifact(artifact)
+        return first['selected'][0]['id']
+    assert run([0.99, 0.0], 'left.json') == proposals[0]['id']
+    assert run([0.0, 0.99], 'right.json') == proposals[1]['id']
+
+
 def test_reserved_tests_use_existing_budget_even_with_zero_historical_frequency(tmp_path):
     proposals = catalog()
     before = copy.deepcopy(proposals)

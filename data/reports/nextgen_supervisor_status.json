@@ -1,5 +1,5 @@
 {
-  "recorded_at": "2026-10-31T03:00:44.666289+00:00",
+  "recorded_at": "2026-10-31T04:04:22.138627+00:00",
   "status": "active_not_achieved",
   "deployment_authorized_by_this_record": false,
   "requirements": {
@@ -33,7 +33,7 @@
         "destination": "/Volumes/WD25/binance_archive/learning_preserve_20261030T200206Z/s6_v20_u4/spills/",
         "qualification": "Full source preservation remains incomplete; later S6 training-state PKL copy is owned by corpus_inventory and is not yet verified."
       },
-      "latest_matrix": "data/reports/learning_preservation_matrix_20261031T0232Z.json"
+      "latest_matrix": "data/reports/learning_preservation_matrix_20261031T0309Z.json"
     },
     "full_matched_learning_refresh": {
       "status": "incomplete",
@@ -474,7 +474,8 @@
       "reclaimed_bytes": 4804077979,
       "member_bytes_verified": true,
       "qualification": "Deletion occurred before requested member-content verification; subsequent full checks passed.",
-      "matrix": "data/reports/learning_preservation_matrix_20261031T0232Z.json"
+      "matrix": "data/reports/learning_preservation_matrix_20261031T0309Z.json",
+      "matrix_sha256": "e0d2596c937f3ea6d0d5fe1e789ef7b9452a21ab85b77b3ec027a81748f97651"
     },
     "rollout": "NOT_PROMOTED",
     "gain_improvement": "UNPROVEN",
@@ -555,10 +556,29 @@
       "scope": "Immutable source snapshot, batch-boundary revalidation, stale booleans not measurement coverage; source-bound actual engine receipt plus same row/scientific identity required. Unit timing is not backtest performance."
     },
     "corrected_quartets": {
-      "status": "LAUNCHED_ROOT_SESSION44988_TERMINAL_NOT_YET_INSPECTED",
+      "status": "TERMINAL_RC0_THREE_PURE_FACTORIALS_NO_JOINT_WINNER",
       "stage": "/home/niels/v15_bench/reviews/protection_quartets_authority_20261031_06",
       "expected_baseline_sha256": "328fd8c00b334c4b1d2e08a920c8a792c237f40d0159a1ddc25a8e3f1f964746",
-      "stage_receipt_sha256": "288c8acfa46a9df115795dbb1644279d4619beda865bbeefbf074c72aa0801b0"
+      "stage_receipt_sha256": "288c8acfa46a9df115795dbb1644279d4619beda865bbeefbf074c72aa0801b0",
+      "evidence_dir": "data/reports/v20_fullcorpus_extension_20261030/corrected_protection_quartets_06",
+      "summary_sha256": "36aea8f0d6cf57ab00279bc230c85b0dadfc540a9eecf1cb0c79ca9714e7414a",
+      "qualification": "Own-yellow conditional benefit observed only with trigger enabled; joint still below baseline. All current independent confirmations false. Not promotion evidence."
+    },
+    "field_wiring_false_controls": {
+      "status": "BOTH_CRYPTO_AND_IBM_TERMINAL_RC0",
+      "crypto_saved_at": "2026-10-31T03:58:17.817851Z",
+      "ibm_saved_at": "2026-10-31T03:59:23.416190Z",
+      "scope": "Two added boolFalse fields; prior-config projection and ledger/result/cutoff matched corrected controls. No True-variant runs yet; v2 input isolation/typed projection strengthening requested."
+    },
+    "independent_consumer_tests": {
+      "status": "21_PASS_5_51_SECONDS",
+      "scope": "consumer+priority+knowledge-retention tests; not market performance or full runtime integration"
+    },
+    "fork_worker_smoke": {
+      "status": "ROOT_LAUNCHED_SESSION5601_TERMINAL_UNCHECKED",
+      "stage": "/home/niels/v15_bench/reviews/consumer_fork_smoke_20261031_01",
+      "receipt_sha256": "73aadc57d82ec7411f5443ca488f412cfa2f071596b9aa8141e2eec2da555471",
+      "scope": "Two actual evals max, no newsettings/optimizer/firstpass claim"
     }
   },
   "required_before_s2_comparison": {
@@ -635,5 +655,11 @@
     "current_local_short_at_read": "099c457aee495922df2599fd7895b68c9a7b12ac315b52690a05ada2944cd10e",
     "consequence": "unlaunched targeted stage rejected/rebuilt against exact frozen reference; current-domain reconciliation remains separate"
   },
-  "historical_fields_notice": "Early benchmark_repair/latest_review and legacy evidence fields retain dated provenance; latest_verified_progress and per-requirement current status take precedence. Do not infer active processes from historical session IDs."
+  "historical_fields_notice": "Early benchmark_repair/latest_review and legacy evidence fields retain dated provenance; latest_verified_progress and per-requirement current status take precedence. Do not infer active processes from historical session IDs.",
+  "orchestration_resume": {
+    "user_instruction": "No intention of interruption; keep going as main orchestrator, spawn agents",
+    "work_resumed": true,
+    "controller_last_observed": "paused",
+    "controller_note": "Available tools cannot resume goal controller; user informed. Work and delegated agents resumed under explicit user instruction."
+  }
 }

@@ -92,7 +92,7 @@ def _prepared(cfg, *, wt15_against=True, wt3_with=False):
         return value if value.size == size else np.full(size, default)
 
     close = np.full(n, 100.0)
-    return live_exit_chain.prepare(arrays, n, True, cfg, close, safe, symbol="TESTUSDT")
+    return live_exit_chain.prepare(arrays, n, True, cfg, close, safe)
 
 
 def _step(prepared, cfg, *, age_min=10.0):

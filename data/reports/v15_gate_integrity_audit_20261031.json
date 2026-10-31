@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "audited_at_utc": "2026-10-31T04:03:49Z",
+  "scope": "read-only gate/source integrity audit; staged patch only; no S2 mutation, gate submission, bench launch, or deployment",
+  "active_gate": {
+    "id": "20261031T013220Z",
+    "state_observed": "running",
+    "gate_pid": 2084313,
+    "observed_at_utc": "2026-10-31T04:03:49Z",
+    "candidate_note": "Color current-vs-original gain direction in charts index and append up/down pp to metric filenames",
+    "candidate_files": {
+      "tools/v15_daily_charts.py": "bc7948982128b9913b1d83d76896101f"
+    },
+    "active_bench_sides": [
+      "CHRUSDT_LONG",
+      "DOTUSDT_LONG",
+      "ALGOUSDT_SHORT",
+      "MINAUSDT_SHORT",
+      "AMD_LONG",
+      "QBTS_LONG",
+      "COIN_SHORT",
+      "CDE_SHORT"
+    ],
+    "process_roots": {
+      "champion": "/home/niels/v15_bench/runs/20261014__gate_20261031T013220Z_champ/root",
+      "candidate": "/home/niels/v15_bench/runs/20261014__gate_20261031T013220Z_cand/root"
+    },
+    "interpretation": "This chart-only A/B shares identical dependencies and does not test the pending speed-helper/60D candidate or current production engine/template/evaluator set."
+  },
+  "active_arm_hashes_sha256": {
+    "champion_and_candidate_identical": {
+      "v12_quick_engine.py": "78300f9ed913572d3e25b5fead68bc0671214d77cd5fd5cf32f8145a3913b19c",
+      "tools/opt/evaluate_v12.py": "b159f253ba49989b0bdd1e09a483826082ec80d273d48c1e86db0874b1c9b213",
+      "config.py": "3a789487426ef363a86887ea03fe04e2ff1b49af8f891308509ee5482f305501",
+      "TEMPLATE_CRYPTO_LONG.xlsx": "6e9d9f702019ea6c9057ef5ed1a3f8b0f5c461cf7d05b839e526f6f9e02f409a",
+      "TEMPLATE_CRYPTO_SHORT.xlsx": "cd2e5273d9a01459508d2bbdedc9025507bb80a0b372a22a74ffa8c205022b81",
+      "TEMPLATE_STOCKS_LONG.xlsx": "3d41f1ebc2373f9402b6b937ff8d4dd780531b2096ebfe0ca92786a20dedc199",
+      "TEMPLATE_STOCKS_SHORT.xlsx": "286bf3b96b7a269f45c9e30aa1abb75bae613672d4cfe62801616615f215353e"
+    },
+    "source": "S2 gate champion/candidate run roots; bench runner copies code root and then overwrites template/data inputs from snap_20261014."
+  },
+  "current_production_hashes_sha256": {
+    "S1_S2_S5_S6_sandbox_v15_pilot.py": "3588e3b2168540eede250ae65d6d19e42020d03dd7d0d30f42ff5f527e4aa5d6",
+    "S1_S2_S5_S6_sandbox_v15_pilot_md5": "7b22add277e23154b5b3b1aa3262aa4a",
+    "S2_sandbox_v12_quick_engine.py": "c86aded579e52f23ba8865de0d8b46a7f72b4e71ecfeab136ac5510567fb64fa",
+    "S2_sandbox_tools_opt_evaluate_v12.py": "555ecba9821093f54079d97ff4863f2b904ba7f552207ca702345797a443f0f5",
+    "Mac_workspace_v15_pilot.py": "e91ed048ecf972d899b243c843372476e35c1cddb70c06d3f23fe453c25de0a8",
+    "Mac_workspace_v15_pilot_md5": "0d77489f74319e9398cae2ecebe58058",
+    "Mac_workspace_tools_opt_evaluate_v12.py": "555ecba9821093f54079d97ff4863f2b904ba7f552207ca702797a443f0f5",
+    "Mac_workspace_v12_quick_engine.py": "ee7fc6150b8c5e02bc556e3c93d153bb6739351c5378c90ff5a2f59d2392073b"
+  },
+  "champion_production_divergence": {
+    "S2_stored_champion_v15_pilot_sha256": "2ecdf1b31dbadcee0be86797c05c44f46a00b30d0dc3a78b5e7a480695993f6d",
+    "S2_stored_champion_v15_pilot_md5": "e674ffe156db927feab54a33bc0c0524",
+    "S2_stored_champion_mtime": "2026-10-24T19:31:07Z",
+    "S1_S2_S5_S6_sandbox_pilot_mtime": "2026-10-28T22:09:33Z",
+    "pilot_diff_hunks_champion_vs_fleet": 27,
+    "representative_differences": [
+      "pinned V15_PINNED_BASELINE handling and resume stamps",
+      "pair-run wait/SystemExit handling",
+      "non-30D start-override support",
+      "baseline evaluation and category/per-symbol selection guards"
+    ],
+    "Mac_source_differs_from_fleet_sandbox": true,
+    "deployment_risk": "A champion-based full v15_pilot.py candidate can drop post-champion current pilot changes. Require a production-forward merged candidate and keep candidate submitted-file list explicit."
+  },
+  "supported_snapshot_path": {
+    "snapshot_command": "python3 ~/v15_bench/tools/v15_npz_bench.py snapshot --name <fresh-id> --sides <fresh-current-gate-sides> --pid <verified-current-production-pilot-pid>",
+    "snapshot_inputs": [
+      "current S2 sandbox NPZs for named sides",
+      "current S2 sandbox SPREADSHEETS/TEMPLATE_FINAL_NORM",
+      "current S2 sandbox data excluding configured excluded paths",
+      "captured process environment via --pid or explicit --env-json"
+    ],
+    "gate_snapshot_override": "V15_GATE_SNAP=<fresh-id> is read by v15_version_gate.py at import; default remains 20261014.",
+    "note": "Do not rebuild/force the 20261014 snapshot while its gate arms are active. Use a new snapshot name and capture the current production environment."
+  },
+  "gate_refresh_behavior": {
+    "submit": "Clones gate/champion/tree and copies only explicit --files into candidate tree.",
+    "run": "Uses champion/tree and candidate/tree as separate --code roots; no current sandbox refresh occurs.",
+    "deploy_scope": "PASS deploys only meta.files plus gate flag/env files; the common runtime context is not implicitly deployed.",
+    "snapshot_inputs": "v15_npz_bench build_root copies frozen snapshot data/templates over each code root."
+  },
+  "cli_syntax_correction": {
+    "reason": "S2 parser defines --files with nargs=\"*\"; a second --files option replaces/loses the first list.",
+    "correct_form": "Use --files exactly once, followed by every SRC=REL mapping, then the next option such as --note or --set.",
+    "example": "python3 ~/v15_bench/tools/v15_version_gate.py submit --files /staged/pilot.py=v15_pilot.py /staged/evaluator.py=tools/opt/evaluate_v12.py /staged/bench.py=tools/v15_npz_bench.py /staged/parity.py=switch_parity.py --note \"current-production forward merge\""
+  },
+  "proposed_review_only_gate_path": {
+    "stage_patch": "data/reports/v15_gate_current_runtime_context_20261031_v2.patch",
+    "stage_patch_sha256": "d6ee81012595a082ecfa177c7ab8229af6e231b361cfd919e962c01211c0960d",
+    "intent": "Opt-in V15_GATE_CURRENT_RUNTIME_CONTEXT=1 constructs immutable per-candidate champion/candidate code roots from current S2 production SRC; only explicit meta.files are overlaid into candidate. It hash-binds both source trees and the complete named snapshot including current templates/data/NPZ and captures production flags/env for both arms.",
+    "promotion": "On PASS/deploy-complete, archive existing champion tree and metadata under gate/history before promoting effective candidate runtime tree; deploy() still publishes only explicit meta.files plus gate flags/env.",
+    "thresholds": "No changes to decide(), fit/OOS tolerances, side-drop checks, coverage floor, or score semantics.",
+    "status": "Mac-stage patch only; not applied, compiled, tested, or submitted."
+  },
+  "allowlist_patch": {
+    "path": "data/reports/nextgen_60d_gate_whitelist_support_20261031.patch",
+    "sha256": "d886b08ee6c319cb4f10ebaee295ecaafddf131597e94c64165efdc0e15f18ca",
+    "status": "prepared_review_only_not_applied",
+    "adds_exact_paths": [
+      "tools/opt/evaluate_v12.py",
+      "v12_quick_engine.py"
+    ],
+    "assessment": "Current engine c86 is common production context, not a candidate change; exact engine allowlisting is unnecessary unless a future candidate changes the engine. Evaluator exact path is needed for the candidate 60D evaluator change."
+  },
+  "lock_scope": {
+    "LOCKED_FILES_search": "No current lock entry found for tools/v15_version_gate.py; references found were historical workflow notes.",
+    "Mac_file_flags": "ls -lO showed no uchg/immutable flag.",
+    "S2_file_flags": "lsattr showed only extents attribute, no immutable i flag; permissions 0644.",
+    "engine": "LOCKED_FILES records v12_quick_engine.py as edited/relocked on 2026-10-29; no engine edit is proposed.",
+    "action": "No S2 changes made; gate patch application remains outside this audit."
+  },
+  "remaining_validation": [
+    "Execution audit to verify engine actually imported in S6 c86 timing process, not pathname only.",
+    "Execution audit to deliver production-forward pilot variant preserving 27 post-champion hunks and Mac-only edits before any candidate submission.",
+    "No version-gate submission until fresh snapshot/context and exact candidate source bundle are reviewed."
+  ]
+}

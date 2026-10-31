@@ -80,8 +80,10 @@ def classify_path(path_name, metadata=None, venue=None):
     canonical_switch = meta.get("canonical_switch") or meta.get("gate_knob")
     if not meta:
         try:
-            from tools.forward_parity import families
-
+            try:
+                from tools.forward_parity import families
+            except ModuleNotFoundError:
+                from forward_parity import families
             rec = families.classify(name)
             if not str(rec.get("family", "")).startswith("UNCLASSIFIED:"):
                 tf = str(rec.get("input_tf") or "").lower() or None

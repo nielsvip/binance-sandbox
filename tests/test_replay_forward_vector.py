@@ -104,3 +104,69 @@ def test_replay_calls_state_for_on_strictly_causal_prefixes(tmp_path, monkeypatc
     assert next(row for row in rows if row["record"] == "initial_lifecycle")["cutoff_npz_open_ts"] == 900
     action_rows = [row for row in rows if row["record"] == "action"]
     assert [row["npz_open_ts"] for row in action_rows] == [1800, 2700]
+
+
+def test_actual_vector_planner_emits_convergence_open_and_honors_done_key(tmp_path):
+    import json
+
+    import tools.vector_direct_trader as vector_direct_trader
+
+    ss = "XUSDC_LONG"
+    state = {
+        "ok": True,
+        "npz_tail": 1800,
+        "open": True,
+        "engine_qty": 3.0,
+        "engine_open_qty": 2.0,
+        "engine_open_bar_ts": 900,
+        "acts_bar_ts": 1800,
+        "acts_last_bar": [],
+    }
+    states = {ss: state}
+    positions = {}
+    done = set()
+    allowed = lambda acct, side: acct == "ang" and side == ss
+    previous_start = vector_direct_trader.START_POSITION_SIZE
+    previous_max = vector_direct_trader.MAX_OPEN_NOTIONAL
+    previous_ceiling = vector_direct_trader.ENTRY_NOTIONAL_CEILING_USD
+    vector_direct_trader.START_POSITION_SIZE = 15.0
+    vector_direct_trader.MAX_OPEN_NOTIONAL = 80.0
+    vector_direct_trader.ENTRY_NOTIONAL_CEILING_USD = 80.0
+    try:
+        orders, notes = vector_direct_trader.plan_account(
+            "ang", "crypto", [ss], states, positions, 1800, done, allowed
+        )
+        assert not notes
+        assert len(orders) == 1
+        assert orders[0]["act"] == "OPEN"
+        assert orders[0]["notional"] == 22.5
+        assert orders[0]["key"] == "ang|XUSDC_LONG|1800|OPEN"
+        assert "OPEN" not in {row["type"] for row in state["acts_last_bar"]}
+
+        exchange_doc = {
+            "_fetched": time.time(),
+            "symbols": {"XUSDC": {
+                "step": 1.0,
+                "min_qty": 1.0,
+                "max_qty": 100000.0,
+                "min_notional": 5.0,
+                "status": "TRADING",
+            }},
+        }
+        (tmp_path / "exchange_info_crypto.json").write_text(json.dumps(exchange_doc))
+        sizer = object.__new__(vector_direct_trader.Binance)
+        sizer.out = tmp_path
+        sizer._xi = None
+        qty, reason = sizer.size(orders[0], 0.0, 0.01)
+        assert qty == 2250.0
+        assert reason == ""
+
+        done.add(orders[0]["key"])
+        repeated, _ = vector_direct_trader.plan_account(
+            "ang", "crypto", [ss], states, positions, 1800, done, allowed
+        )
+        assert repeated == []
+    finally:
+        vector_direct_trader.START_POSITION_SIZE = previous_start
+        vector_direct_trader.MAX_OPEN_NOTIONAL = previous_max
+        vector_direct_trader.ENTRY_NOTIONAL_CEILING_USD = previous_ceiling

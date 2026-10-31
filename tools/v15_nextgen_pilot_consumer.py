@@ -121,7 +121,7 @@ def capture_legal(info):
 
 
 class FirstPassConsumer:
-    def __init__(self, context_factory, classify, reserve, state, budget, row_status, capture_directory=None):
+    def __init__(self, context_factory, classify, reserve, state, budget, row_status, capture_directory=None, budget_policy_source=None):
         self.context_factory = context_factory
         self.classify = classify
         self.reserve = reserve
@@ -137,6 +137,18 @@ class FirstPassConsumer:
         self.plans = {}
         self.completed = {}
         self.batch_start_chain = None
+        self.allocations = {}
+        self.budget_policy_source = budget_policy_source
+        self.budget_policy = None
+        if budget_policy_source is not None:
+            path = priority.Path(budget_policy_source['path'])
+            if priority.evidence.sha(path) != budget_policy_source['sha256']:
+                raise ValueError('budget-policy source changed')
+            policy = json.loads(path.read_text())
+            fraction = policy.get('new_row_minimum_reserved_fraction')
+            if policy.get('schema') != 'first_pass_budget_policy/1' or policy.get('phase_completion') != 'budgeted_with_durable_debt' or policy.get('allow_old_cell_defer') is not True or type(fraction) not in (int, float) or not 0 < fraction <= 1:
+                raise ValueError('explicit approved budgeted first-pass policy required')
+            self.budget_policy = priority._freeze(policy)
     def begin_batch(self, chain):
         context = self.context_factory(copy.deepcopy(chain))
         priority.validate_epoch_sources(context['current_epoch'])
@@ -219,6 +231,18 @@ class FirstPassConsumer:
             else:
                 measured[label] = proof
                 self.measurements[identity] = proof
+        allocation = self.allocations.get(key)
+        deferred = []
+        if missing and self.budget_policy is not None and allocation is not None and 'naked' not in missing:
+            reserved_labels = {item['cell']['header'] for item in allocation['allocation']['selected']}
+            new_row = allocation['row_status'] in ('new', 'newly_wired', 'unobserved')
+            fraction = len(reserved_labels) / len(legal['hdrs']) if legal['hdrs'] else 1.0
+            if reserved_labels.isdisjoint(missing) and (not new_row or fraction >= self.budget_policy['new_row_minimum_reserved_fraction']):
+                reservation = allocation['reservation'].get('source')
+                if reservation is None or priority.evidence.sha(reservation['path']) != reservation['sha256']:
+                    raise ValueError('deferred-cell debt requires durable source-bound reservation')
+                deferred = list(missing)
+                missing = []
         if missing:
             return {'status': 'incomplete', 'complete': False, 'missing_actual_measurements': missing}
         before_hash = priority.evidence.guard.fingerprint(plan['chain_before'])
@@ -232,7 +256,7 @@ class FirstPassConsumer:
         for label, proof in measured.items():
             if label not in expected_settings:
                 expected_settings[label] = priority.evidence.guard.decoded(json.loads(priority.Path(proof['source']['path']).read_text())['requested_settings'])
-        record = dict(schema='current_first_pass_row/1', row=copy.deepcopy(row), source_epoch_sha256=context['current_epoch']['id'], scientific_identity=priority.scientific_identity(context), chain_before=priority.evidence.guard.normalized(plan['chain_before']), chain_after=priority.evidence.guard.normalized(chain_after), expected_settings=priority.evidence.guard.normalized(expected_settings), legal=priority.evidence.guard.normalized(dict(legal)), chain_before_sha256=before_hash, chain_after_sha256=after_hash, measurements={label: dict(proof['source']) for label, proof in measured.items()}, transition_source=dict(transition['source']) if transition is not None else None, status='all_legal_cells_actually_measured', complete=True)
+        record = dict(schema='current_first_pass_row/1', row=copy.deepcopy(row), source_epoch_sha256=context['current_epoch']['id'], scientific_identity=priority.scientific_identity(context), chain_before=priority.evidence.guard.normalized(plan['chain_before']), chain_after=priority.evidence.guard.normalized(chain_after), expected_settings=priority.evidence.guard.normalized(expected_settings), legal=priority.evidence.guard.normalized(dict(legal)), chain_before_sha256=before_hash, chain_after_sha256=after_hash, measurements={label: dict(proof['source']) for label, proof in measured.items()}, deferred_unmeasured_cells=deferred, durable_debt_source=allocation['reservation'].get('source') if deferred else None, budget_policy_source=self.budget_policy_source if deferred else None, transition_source=dict(transition['source']) if transition is not None else None, status='budgeted_row_accounted' if deferred else 'all_legal_cells_actually_measured', complete=True)
         path = priority.Path(self.capture_directory) / ('row_' + priority.evidence.guard.fingerprint(record) + '.json')
         payload = json.dumps(record, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
         if path.exists():
@@ -244,7 +268,7 @@ class FirstPassConsumer:
                 stream.flush()
                 os.fsync(stream.fileno())
         self.completed[key] = dict(record=priority._freeze(record), source=priority._freeze(dict(path=str(path), sha256=priority.evidence.sha(path))))
-        return {'status': 'all_legal_cells_actually_measured', 'complete': True, 'source': self.completed[key]['source']}
+        return {'status': record['status'], 'complete': True, 'unmeasured_deferred_cells': deferred, 'source': self.completed[key]['source']}
     def _validated_row_record(self, source):
         path = priority.Path(source['path'])
         if priority.evidence.sha(path) != source['sha256']:
@@ -266,8 +290,13 @@ class FirstPassConsumer:
             return record
         legal = priority.evidence.guard.decoded(record['legal'])
         settings = priority.evidence.guard.decoded(record['expected_settings'])
-        if set(record['measurements']) != {'naked', *legal['hdrs']}:
+        deferred = set(record.get('deferred_unmeasured_cells') or [])
+        if set(record['measurements']) | deferred != {'naked', *legal['hdrs']} or set(record['measurements']) & deferred:
             raise ValueError('row completion omits an original legal yellow')
+        if deferred:
+            policy_source, debt_source = record.get('budget_policy_source'), record.get('durable_debt_source')
+            if self.budget_policy_source != policy_source or not debt_source or priority.evidence.sha(debt_source['path']) != debt_source['sha256'] or priority.evidence.sha(policy_source['path']) != policy_source['sha256']:
+                raise ValueError('deferred debt or approved policy source changed')
         for label, measurement in record['measurements'].items():
             binding = legal['h2f'].get(label, {'filter': '__NAKED__', 'opt': None})
             cell = dict(row, filter=binding['filter'], opt=binding['opt'])
@@ -359,6 +388,7 @@ class FirstPassConsumer:
         if not isinstance(reservation, dict) or reservation.get('status') != 'reserved' or reservation.get('allocation_sha256') != expected:
             raise ValueError('durable exact allocation reservation required before state advance')
         self.state = allocation['next_state']
+        self.allocations[priority.evidence.guard.fingerprint(row)] = dict(allocation=allocation, reservation=reservation, row_status=context['row_status'])
         result['nextgen_allocation'] = allocation
         result['nextgen_reservation'] = reservation
         result['nextgen_scientific_identity'] = priority.scientific_identity(context)

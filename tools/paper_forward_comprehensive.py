@@ -50,6 +50,7 @@ import bisect
 import collections
 import glob
 import json
+import math
 import os
 import re
 import shutil
@@ -368,7 +369,30 @@ def score(events, horizon_bars: int, action_records=None):
     rc_cache: dict = {}
     def record(event, status, delta=None, method="UNRESOLVED", **comparison):
         if action_records is not None:
-            action_records.append({"event": {key: value for key, value in event.items() if not key.startswith("_")}, "path": event.get("_fam"), "status": status, "delta_fraction": delta, "method": method, "comparison": {"native_execution_validated": False, "settings_hash": "UNRECORDED", "price_basis": "15m_bar_proxy", **comparison}})
+            comparison = {"native_execution_validated": False, "settings_hash": "UNRECORDED", "price_basis": "source_event_price", **comparison}
+            if status == "SCORED":
+                comparison["legacy_15m_proxy_delta_fraction"] = delta
+                native_price = event.get("price")
+                try:
+                    native_price = float(native_price) if not isinstance(native_price, bool) else float("nan")
+                except (TypeError, ValueError):
+                    native_price = float("nan")
+                if not math.isfinite(native_price) or native_price <= 0:
+                    status, delta, method = "PENDING_NATIVE_PRICE", None, "source_event_price_required"
+                else:
+                    comparison["legacy_15m_candidate_price"] = comparison.get("candidate_price")
+                    comparison["candidate_price"] = native_price
+                    comparison["candidate_price_ts"] = event.get("ts")
+                    sign = 1.0 if str(event.get("position_key", "")).endswith("_LONG") else -1.0
+                    if event.get("kind") == "exit":
+                        baseline_price = comparison["baseline_price"]
+                        delta = sign * (native_price - baseline_price) / baseline_price
+                        method = "observed_exit_price_vs_next_recorded_close_gross"
+                        comparison["fees_verified"] = False
+                    else:
+                        delta = sign * (comparison["horizon_price"] - native_price) / native_price - comparison["cost_fraction"]
+                        method = "observed_entry_price_to_15m_horizon_net_fixed_cost"
+            action_records.append({"event": {key: value for key, value in event.items() if not key.startswith("_")}, "path": event.get("_fam"), "status": status, "delta_fraction": delta, "method": method, "comparison": comparison})
     for e in events:
         venue, kind, fam = e["_venue"], e.get("kind"), e["_fam"]
         if not fam or fam == "UNKNOWN":
@@ -1012,7 +1036,7 @@ def main():
     scores = persist(inv, per_sym_rows, path_rows, a, len(events))
     action_output = OUT / "counterfactual_action_scores.json"
     action_temporary = OUT / f".counterfactual_action_scores.{os.getpid()}.json"
-    action_temporary.write_text(json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "interpretation": "DIAGNOSTIC_ONLY_15M_PRICE_PROXY_NOT_NATIVE_EXECUTION", "records": action_records}, allow_nan=False))
+    action_temporary.write_text(json.dumps({"generated_at": datetime.now(timezone.utc).isoformat(), "interpretation": "DIAGNOSTIC_ONLY_OBSERVED_ACTION_PRICE_NOT_EXECUTED_STRATEGY_RETURN", "records": action_records}, allow_nan=False))
     os.replace(action_temporary, action_output)
     try:
         templates_updated = update_template_status_tabs(inv, scores)

@@ -162,6 +162,27 @@ def test_unsupported_nested_object_array_fails_open_without_cache_hit():
     assert SM.stats() == {"hits": 0, "runs": 0}
 
 
+def test_fx_probe_sink_dict_bypasses_memo_and_keeps_mutations():
+    V = _engine()
+    calls = {"n": 0}
+
+    def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
+        calls["n"] += 1
+        sink = object.__getattribute__(cfg, "_FX_PROBE_SINK")
+        sink["probe"] = np.array([calls["n"]])
+        return None
+
+    V.simulate_one = simulate_one
+    assert SM.install(V)
+    cfg = Cfg()
+    cfg._FX_PROBE_SINK = {}
+    assert V.simulate_one({"close": [1.0, 2.0]}, "X", True, cfg) is None
+    assert cfg._FX_PROBE_SINK["probe"].tolist() == [1]
+    assert V.simulate_one({"close": [1.0, 2.0]}, "X", True, cfg) is None
+    assert cfg._FX_PROBE_SINK["probe"].tolist() == [2]
+    assert calls["n"] == 2 and SM.stats() == {"hits": 0, "runs": 0}
+
+
 def test_template_layer_is_applied_before_cfg_proxy():
     V = _engine()
 

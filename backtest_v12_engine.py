@@ -1437,6 +1437,7 @@ from backtest_v8_harness import (
 # STEP 2: Simulation time controller
 # ═══════════════════════════════════════════════════════════════
 from tools.replay_clock import ReplayEventLedger, set_completed_bar_clock
+from tools.replay_ownership import replay_ownership_scope, configure_replay_ownership
 
 _sim_ts = [0.0]  # Decision clock; completed-bar replay adds the candle duration.
 _sim_bar_ts = [0.0]
@@ -2862,6 +2863,7 @@ def _refresh_sim_position_marks(trade_manager, price_cache, sim_dt):
         _pos.last_updated = sim_dt
 
 
+@replay_ownership_scope
 async def run_simulation(mode, account_key, start_date, capital, stores, resolution, *, forward_session=None):
     """Run the REAL trading engine on historical data.
 
@@ -4275,8 +4277,8 @@ async def run_simulation(mode, account_key, start_date, capital, stores, resolut
         _claim_original = _parity_claim_gate.try_claim
         _parity_claim_gate._claims.clear()
         _parity_claim_gate.try_claim = lambda key, now=None: _claim_original(key, _sim_ts[0] if now is None else now)
-        # This replay measures native decisions, so remove the temporary vec-dictate order suppression.
-        ez_manage._ezm_base_config.VEC_DICTATE_ONLY_ENABLED = False
+        _ownership_report = configure_replay_ownership(ez_manage._ezm_base_config, "crypto")
+        v8_logger.warning(f"[REPLAY_OWNERSHIP_MODE] {_ownership_report}")
         # ez_manage._PROCESS_START_TS is the WALL time at import while ez_manage.time is the SIM clock, so
         # (time.time() - _PROCESS_START_TS) was negative for the whole replay and the COLD_START_FLOOD_GUARD window never
         # ended (BTCUSDC_SHORT "2464984s left"): every vec-exact open lost its MTF bypass. A live process is warm after
@@ -8631,6 +8633,7 @@ def main():
 # ═══════════════════════════════════════════════════════════════
 # TRADIER SIMULATION — uses tradier_manage.py REAL code
 # ═══════════════════════════════════════════════════════════════
+@replay_ownership_scope
 async def run_simulation_tradier(account_key, start_date, capital, stores, resolution, *, forward_session=None):
     # RECONNECT 2026-04-14 — sweep override route covers ALL TRADIER_* canonical switches.
     # The generic V8_OVERRIDE_FILE loader below sets any key from data/sweep_alerts/canonical_switches.json
@@ -11162,6 +11165,8 @@ async def run_simulation_tradier(account_key, start_date, capital, stores, resol
     if os.environ.get("V12_REAL_EXECUTE") == "1":
         # parity lane A H3 (stocks): keep the REAL tradier execute_now; broker I/O = manager.place_order stub (_place).
         v8_logger.warning("[V12_REAL_EXECUTE] tradier: real execute_now (broker I/O stubbed only)")
+        _ownership_report = configure_replay_ownership(tm_mod.config, "tradier")
+        v8_logger.warning(f"[REPLAY_OWNERSHIP_MODE] {_ownership_report}")
     else:
         manager.execute_now = _v8_execute_now
     # Backtest queue_trade_action: only a true CLOSE substitutes the current
@@ -19079,6 +19084,7 @@ def run_one(symside, overrides=None, window_days=365, offset_days=0, targets=Non
                                                  "status": _fill_row["status"]})
         m["execution_ledger"] = _native_execution_rows
         m["canonical_order_ledger"] = _canonical_native_orders
+        m["replay_ownership"] = getattr(executed, "replay_ownership", [])
         m["sim_account"] = str(_run_one_sim_account or os.environ.get("V12_SIM_ACCOUNT") or ("trb" if mode == "tradier" else "ang")).lower()
         m["exit_guarantee_replay"] = _xg_rp.replay_stats() if _xg_rp is not None else None  # 2026-10-14: would-escalate / would-retry counts (pass-through)
         return m

@@ -128,6 +128,14 @@ def test_reclassification_appends_routing_revision_without_mutating_action(tmp_p
     db.close()
 
 
+def test_schema_refresh_rejects_caller_transaction(tmp_path):
+    db = ScenarioDB(tmp_path / "scenario.sqlite")
+    with db.transaction():
+        with pytest.raises(RuntimeError, match="outside an active transaction"):
+            sql_ingest._schema(db)
+    db.close()
+
+
 @pytest.mark.parametrize("bad", [True, math.inf, -math.inf, float("nan"), "0.1"])
 def test_rejects_boolean_nonfinite_or_nonnumeric_delta(tmp_path, bad):
     event = {"ts": "2026-10-31T10:00:00Z", "venue": "crypto", "account": "a", "position_key": "a:BTCUSDC_LONG", "action": "CLOSE", "fn": "PATH"}

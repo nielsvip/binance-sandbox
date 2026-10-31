@@ -1,0 +1,81 @@
+{
+  "checked_at": "2026-10-31T04:04:07.352270+00:00",
+  "requested_reasons": {
+    "QUICK_WT_CROSS_EXIT_1H_BEAR": "WT_CROSS_EXIT_ENABLED",
+    "DELTA_EXIT_DC15M_FLOOR_BREAK": "DC15M_FORCE_EXIT_ENABLED"
+  },
+  "active_template_directory": "SPREADSHEETS/TEMPLATE_FINAL_NORM",
+  "fleet_templates_verified": [
+    "s1",
+    "s2",
+    "s5",
+    "s6"
+  ],
+  "template_rows": {
+    "CRYPTO_LONG": {
+      "WT_CROSS_EXIT_ENABLED": [
+        34,
+        35
+      ],
+      "DC15M_FORCE_EXIT_ENABLED": [
+        12,
+        13
+      ]
+    },
+    "CRYPTO_SHORT": {
+      "WT_CROSS_EXIT_ENABLED": [
+        48,
+        49
+      ],
+      "DC15M_FORCE_EXIT_ENABLED": [
+        55,
+        56
+      ]
+    },
+    "STOCKS_LONG": {
+      "WT_CROSS_EXIT_ENABLED": [
+        141,
+        142
+      ],
+      "DC15M_FORCE_EXIT_ENABLED": [
+        133,
+        134
+      ]
+    },
+    "STOCKS_SHORT": {
+      "WT_CROSS_EXIT_ENABLED": [
+        157,
+        158
+      ],
+      "DC15M_FORCE_EXIT_ENABLED": [
+        124,
+        125
+      ]
+    }
+  },
+  "template_candidates": "True/False; one bold default pergroup; all nongrey",
+  "template_changes_required": false,
+  "engine_changes_required_for_missing_coverage": false,
+  "local_focused_template_and_wt_tests": "7 passed",
+  "fleet_s1_wt_behavior_tests": "3 passed, 4 template tests deselected (templates separately inspected on all hosts)",
+  "shared_dc_predicate_wiring_and_inventory_tests": "37 passed, 2 skipped",
+  "existing_unrelated_test_failures": [
+    "test_backstop_refused_families_classify expects removed HEDGE_CLOSE_WT3M1H registry entry",
+    "test_inventory_covers_backstop_refused_families expects removed HEDGE_CLOSE_WT3M1H inventory entry"
+  ],
+  "trading_hold_preserved": true,
+  "automatic_activation": false,
+  "changed_files_sha256": {
+    "tools/paper_forward_comprehensive.py": "3077d9e6c67a26bf1301406a0ff47e18d1b633327e90548c3d97a61e95c77cd9",
+    "tools/paper_inventory.py": "824ea13639bf9a388fcb2bfd1b4668ebad8640141b937d37efc14673dc12fb30",
+    "tools/paper_inventory_refresh.py": "22d21fadac3e914ff17063d600e9e8f89317547445691b499ca919da0e53082f",
+    "tools/paper_counterfactual_scope.py": "7ee8435033d70f4619ae0e5798042758f596d8d7d448ae7b14d29ef4d9a64216",
+    "tools/paper_counterfactual_sql.py": "7022558a43edd4e17159f50141969d8d24e1ad1b4f222dc84e44189628b8a3e5",
+    "tests/test_paper_vector_exit_coverage.py": "2602d9dafabba72d366d8a7d80cef195e4dbcadd4b0c51a284addfb5a3991a93"
+  },
+  "limitations": [
+    "Local engine/helper revisions differ from deployed fleet; no engine cut made.",
+    "Predicate tests do not establish full scalar/vector trade ledger parity.",
+    "Counterfactual entry comparisons use a defined horizon; exit comparisons are gross relative price deltas, not strategy PnL."
+  ]
+}

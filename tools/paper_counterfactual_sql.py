@@ -17,6 +17,11 @@ try:
 except ModuleNotFoundError:
     from paper_counterfactual_scope import classify_path
 
+try:
+    from tools.paper_forward_comprehensive import canon_family
+except ModuleNotFoundError:
+    from paper_forward_comprehensive import canon_family
+
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS counterfactual_actions (
@@ -106,7 +111,17 @@ def _hash(value: Any) -> str:
 
 
 def _classifier_hash() -> str:
-    return hashlib.sha256(Path(__file__).with_name("paper_counterfactual_scope.py").read_bytes()).hexdigest()
+    root = Path(__file__).resolve().parents[1]
+    paths = (
+        root / "tools" / "paper_counterfactual_scope.py",
+        root / "tools" / "forward_parity" / "families.py",
+        root / "tools" / "paper_forward_comprehensive.py",
+    )
+    fingerprints = {
+        path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+        for path in paths
+    }
+    return _hash(fingerprints)
 
 
 def _now() -> str:
@@ -135,9 +150,16 @@ def _sym_side(event: dict[str, Any]) -> str | None:
 
 
 def _schema(db) -> None:
-    # executescript manages its own transaction boundary. Keep it outside the
-    # caller's ScenarioDB transaction as required by sqlite3 semantics.
-    db.connection.executescript(_SCHEMA)
+    # executescript is outside the caller transaction and carries its own
+    # explicit transaction so view refresh cannot leave a partially updated DB.
+    if db.connection.in_transaction:
+        raise RuntimeError("counterfactual schema setup must run outside an active transaction")
+    try:
+        db.connection.executescript("BEGIN IMMEDIATE;\n" + _SCHEMA + "\nCOMMIT;")
+    except Exception:
+        if db.connection.in_transaction:
+            db.connection.rollback()
+        raise
 
 
 def _insert_immutable(db, table: str, key: str, row: dict[str, Any]) -> bool:
@@ -174,9 +196,10 @@ def _event_hash(event: dict[str, Any]) -> str:
 def _action_row(event: dict[str, Any]) -> dict[str, Any]:
     raw = _raw_event(event)
     event_hash = _hash(raw)
-    path_name = str(raw.get("fn") or raw.get("reason") or "")
+    raw_path_name = str(raw.get("fn") or raw.get("reason") or "")
     venue = _canonical_venue(raw.get("venue"))
-    classification = classify_path(path_name, venue=venue)
+    classification = classify_path(raw_path_name, venue=venue)
+    path_name = canon_family(raw_path_name)
     return {
         "action_id": event_hash,
         "event_hash": event_hash,
@@ -288,7 +311,14 @@ def ingest_counterfactual(db, root) -> dict[str, int]:
                 "classifier_hash": classifier_hash,
                 "route": row["route"],
                 "canonical_switch": row["canonical_switch"],
-                "evidence_json": _canonical(classify_path(row["path_name"], venue=row["venue"])["evidence"]),
+                "evidence_json": _canonical(
+                    classify_path(
+                        json.loads(row["source_json"]).get("fn")
+                        or json.loads(row["source_json"]).get("reason")
+                        or "",
+                        venue=row["venue"],
+                    )["evidence"]
+                ),
                 "assessed_at": _now(),
             }
             # A repeated run of the same classifier must retain the first

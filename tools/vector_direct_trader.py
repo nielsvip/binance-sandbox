@@ -221,6 +221,10 @@ SEVENDAY_LANE_DOWN_BRAKE = os.environ.get("VD_SEVENDAY_LANE_DOWN_BRAKE", "1") ==
 SEVENDAY_MAX_AGE_S = float(os.environ.get("VD_SEVENDAY_MAX_AGE_S", str(30 * 3600)))
 # each 7D arm trades its CONTROL account's book and nothing else: fin -> men, trc -> trb (the same mapping universe() uses)
 SEVENDAY_BOOK = {"fin": "men", "trc": "trb"}
+# the 7D arm that shares a process with its control reads its states from here (relative to the 30D state dir's
+# parent): data/forward_state_fin7d, built from per_sym_store_7d.db. trc already runs as its own process with
+# --state-dir forward_state_7d, so it needs no entry.
+SEVENDAY_STATE_DIRS = {"fin": "forward_state_fin7d"}
 MAC_POSITIONS = os.environ.get("VD_MAC_POSITIONS", "1") == "1"
 MAC_POSITIONS_MAX_AGE_S = float(os.environ.get("VD_MAC_POSITIONS_MAX_AGE_S", "900"))
 # Every held position must carry a resting protective stop. Audited per account at most this often (0 = off).
@@ -1243,10 +1247,11 @@ class Trader:
                 hb = d
         return hb
 
-    def load_states(self, sides):
+    def load_states(self, sides, state_dir=None):
         out = {}
+        base = Path(state_dir) if state_dir else self.state_dir
         for ss in sides:
-            d = read_json(self.state_dir / f"{ss}.json")
+            d = read_json(base / f"{ss}.json")
             if isinstance(d, dict):
                 out[ss] = reconcile_terminal_lifecycle(d)
         return out
@@ -1560,11 +1565,12 @@ class Trader:
         since.pop(ss, None)
         return None
 
-    def with_held_states(self, states, pos):
+    def with_held_states(self, states, pos, state_dir=None):
         """A held side outside the universe still needs its state (board flat -> close; board open -> manage)."""
+        base = Path(state_dir) if state_dir else getattr(self, "state_dir", None)
         for ss, p in pos.items():
-            if ss not in states and float(p.get("qty") or 0) > 0 and getattr(self, "state_dir", None):
-                d = read_json(self.state_dir / f"{ss}.json")
+            if ss not in states and float(p.get("qty") or 0) > 0 and base:
+                d = read_json(base / f"{ss}.json")
                 if isinstance(d, dict):
                     states[ss] = reconcile_terminal_lifecycle(d)
         return states
@@ -1760,11 +1766,23 @@ class Trader:
             self.audit_protection(acct, pos)
             if self.venue == "crypto":
                 halted.update(rolling_deterioration_halts(self.root, self.state_dir, states, bar, alert=self.alert))
-            self._remember_held_anchors(acct, pos, states)
+            # A 7D arm plans from its OWN 7D states, never its control's 30D ones (USER 2026-10-31 "any crypto sym_side
+            # that has not had an update for >20hrs has to get updated and traded on 7D fin account"). Without this,
+            # clearing fin's 7D gate would only have made fin trade men's 30D settings on men's symbols — a duplicate
+            # of men, not a comparison. The 30D deterioration latch compares against 30D published gains, so it is a
+            # 30D-arm concept and does not apply to a 7D arm, whose own guarantee is its <30 h freshness.
+            acct_states, acct_halted = states, halted
+            seven_dir = SEVENDAY_STATE_DIRS.get(acct) if self.venue == "crypto" else None
+            if seven_dir:
+                seven_path = self.state_dir.parent / seven_dir
+                acct_states = self.load_states(set(keys.get(acct, ())) | set(self.held.get(acct, ())), seven_path)
+                self.with_held_states(acct_states, pos, seven_path)
+                acct_halted = {}
+            self._remember_held_anchors(acct, pos, acct_states)
             t_obs, prev = self.obs.get(acct, (0, {}))
             prev_qty = prev if t_obs and bar - BAR_S <= t_obs < bar + BAR_S else {}
-            orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), states, pos, bar, self.done, allowed, prev_qty, wt15=self.wt15, noinfo_age=self.noinfo_age,
-                                         untradeable=untradeable, untradeable_close=untradeable_close, halted=halted)
+            orders, notes = plan_account(acct, self.venue, keys.get(acct, ()), acct_states, pos, bar, self.done, allowed, prev_qty, wt15=self.wt15, noinfo_age=self.noinfo_age,
+                                         untradeable=untradeable, untradeable_close=untradeable_close, halted=acct_halted)
             planned_at = time.time()
             for o in orders:
                 if o.get("reason") == "UNTRADEABLE_NO_VERDICT":
@@ -1773,7 +1791,7 @@ class Trader:
             # consumed_<venue>.json: which state (npz_tail, ts) this account was planned against, first time per state —
             # read by tools/s1_bar_guarantee.py as the per-bar "executed" stage
             for ss in set(keys.get(acct, ())) | set(pos):
-                st = states.get(ss) or {}
+                st = acct_states.get(ss) or {}   # the state this account was ACTUALLY planned against (7D for fin)
                 sig = [st.get("npz_tail"), st.get("ts"), (untradeable.get(ss) or {}).get("bar")]
                 row = consumed.setdefault(ss, {}).get(acct)
                 if not row or row.get("sig") != sig or not row.get("decision_provenance"):
@@ -1813,7 +1831,7 @@ class Trader:
                 except Exception as exc:
                     self.alert("PROTECTED_OTO_CANCEL_FAILED", account=acct, error=str(exc)[:200], severity="CRITICAL")
                     log(f"PROTECTED_OTO_CANCEL_FAILED {acct}: {exc}")
-            self.capture_order_states(orders, states)
+            self.capture_order_states(orders, acct_states)
             orders_n += self.send_orders(acct, orders, pos, killed)
         if consumed_dirty:
             try:

@@ -142,6 +142,8 @@ def _prefix_digest(prefix):
 def _source_hashes(code_root: Path):
     candidates = [
         Path("tools/v15_forward_state.py"),
+        Path("tools/vector_direct_trader.py"),
+        Path("tools/account_comparison_books.py"),
         Path("tools/opt/v12_pilot.py"),
         Path("tools/opt/evaluate_v12.py"),
         Path("v12_quick_engine.py"),
@@ -287,7 +289,8 @@ def _restore_state_context(forward_state, evaluate_v12, pilot_v12, quick_engine,
 
 def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
            end_ts: int, output_path: Path, code_root: Path, code_manifest: Path | None = None,
-           limit: int | None = None):
+           limit: int | None = None, planner_account: str | None = None,
+           exchange_info_path: Path | None = None):
     active_set = json.loads(active_path.read_text())
     if str(active_set.get("sym_side", "")).upper() != symside.upper():
         raise ValueError(f"active set is for {active_set.get('sym_side')}, requested {symside}")
@@ -321,6 +324,16 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
     }
     input_hash = _sha256(npz_path)
     active_hash = _sha256(active_path)
+    exchange_info = None
+    if planner_account:
+        if planner_account not in {str(x).split(":", 1)[0] for x in active_set.get("account_admission_keys", [])}:
+            raise ValueError(f"planner account {planner_account!r} absent from frozen active-set admissions")
+        if not exchange_info_path or not exchange_info_path.is_file():
+            raise ValueError("planner replay requires a frozen exchange-info JSON input")
+        exchange_info = json.loads(exchange_info_path.read_text())
+        symbol = symside.rsplit("_", 1)[0]
+        if symbol not in (exchange_info.get("symbols") or {}):
+            raise ValueError(f"frozen exchange info has no symbol filters for {symbol}")
     run_started = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     provenance_root = output_path.parent / (output_path.stem + "_state_provenance")
@@ -348,6 +361,20 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
     import tools.opt.v12_pilot as pilot_v12
     import tools.npz_cutoffs as npz_cutoffs
     import v12_quick_engine as quick_engine
+    if planner_account:
+        import tools.vector_direct_trader as vector_direct_trader
+        sizing_source = vector_direct_trader.apply_venue_sizing("crypto")
+        vector_direct_trader.ROOT = runtime_code
+        vector_direct_trader.OUT = provenance_root
+        vector_direct_trader.BAR_S = 900
+        exchange_cache = provenance_root / "exchange_info_crypto.json"
+        exchange_cache.parent.mkdir(parents=True, exist_ok=True)
+        exchange_cache.write_text(json.dumps(exchange_info, sort_keys=True))
+        binance_sizer = object.__new__(vector_direct_trader.Binance)
+        binance_sizer.out = provenance_root
+        binance_sizer._xi = None
+        broker_position = {}
+        done_keys = set()
 
     real_time_module = time
     original = _install_state_context(
@@ -374,6 +401,12 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 "active_set_defaults_round": active_set.get("defaults_round"),
                 "active_set_admission_keys": active_set.get("account_admission_keys"),
                 "active_set_has_current_admission": bool(active_set.get("account_admission_keys")),
+                "planner_account": planner_account,
+                "planner_starting_broker_position": "flat" if planner_account else None,
+                "planner_done_keys_start": "empty" if planner_account else None,
+                "planner_exchange_info_json": str(exchange_info_path) if planner_account else None,
+                "planner_exchange_info_sha256": _sha256(exchange_info_path) if planner_account else None,
+                "planner_sizing_source": sizing_source if planner_account else None,
                 "code_root": str(code_root),
                 "runtime_code_root": str(runtime_code),
                 "code_manifest": str(code_manifest) if code_manifest else None,
@@ -487,11 +520,77 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                         "bar": event.get("bar"),
                         "qty_is_diagnostic_only": True,
                     }, sort_keys=True, default=str) + "\n")
+                if planner_account:
+                    planner_state = {
+                        key: result.get(key) for key in (
+                            "ok", "reason", "open", "npz_tail", "engine_qty", "engine_open_qty",
+                            "engine_open_px", "engine_open_bar_ts", "entry_bar", "entry_px",
+                            "acts_bar_ts", "acts_last_bar", "src", "settings_fallback",
+                        )
+                    }
+                    states = {symside.upper(): planner_state}
+                    allowed_keys = {str(x).upper() for x in active_set.get("account_admission_keys", [])}
+                    allowed = lambda account, side: f"{account}:{side}".upper() in allowed_keys
+                    orders, notes = vector_direct_trader.plan_account(
+                        planner_account, "crypto", [symside.upper()], states,
+                        {symside.upper(): dict(broker_position)} if broker_position else {},
+                        bar_ts, done_keys, allowed,
+                    )
+                    if notes:
+                        stream.write(json.dumps({
+                            "record": "planner_notes", "npz_open_ts": bar_ts,
+                            "account": planner_account, "notes": notes,
+                        }, sort_keys=True, default=str) + "\n")
+                    market_price = float(prefix["close"][-1])
+                    current_model_types = {str(x.get("type") or "").upper() for x in (result.get("acts_last_bar") or [])}
+                    for order in orders:
+                        order_type = str(order["act"]).upper()
+                        held = float((broker_position or {}).get("qty") or 0.0)
+                        fill_qty, size_reason = binance_sizer.size(order, held, market_price)
+                        convergence = order_type == "OPEN" and "OPEN" not in current_model_types
+                        stream.write(json.dumps({
+                            "record": "planner_order", "npz_open_ts": bar_ts,
+                            "decision_clock_ts": decision_ts, "account": planner_account,
+                            "action": order_type,
+                            "classification": "convergence" if convergence else "same_bar_model_action",
+                            "model_action_types_at_bar": sorted(current_model_types),
+                            "reason": order.get("why"), "order_key": order.get("key"),
+                            "requested_notional": order.get("notional"),
+                            "requested_qty": order.get("qty"), "held_qty_before": held,
+                            "market_price": market_price, "sized_qty": fill_qty,
+                            "size_reason": size_reason, "qty_is_diagnostic_only": True,
+                        }, sort_keys=True, default=str) + "\n")
+                        if not (float(fill_qty) > 0):
+                            continue
+                        done_keys.add(order["key"])
+                        if order_type == "OPEN":
+                            broker_position = {"qty": float(fill_qty), "price": market_price}
+                        elif order_type == "AUGMENT":
+                            old_qty = held
+                            new_qty = old_qty + float(fill_qty)
+                            old_price = float((broker_position or {}).get("price") or market_price)
+                            broker_position = {"qty": new_qty, "price": (old_qty * old_price + float(fill_qty) * market_price) / new_qty}
+                        elif order_type == "REDUCE":
+                            left = max(0.0, held - float(fill_qty))
+                            broker_position = {"qty": left, "price": float((broker_position or {}).get("price") or market_price)} if left > 0 else {}
+                        elif order_type == "CLOSE":
+                            broker_position = {}
+                        stream.write(json.dumps({
+                            "record": "planner_fill", "npz_open_ts": bar_ts,
+                            "decision_clock_ts": decision_ts, "account": planner_account,
+                            "action": order_type, "order_key": order["key"],
+                            "filled_qty": float(fill_qty), "broker_qty_after": float((broker_position or {}).get("qty") or 0.0),
+                            "broker_price_after": (broker_position or {}).get("price"),
+                            "done_key_count": len(done_keys), "qty_is_diagnostic_only": True,
+                        }, sort_keys=True, default=str) + "\n")
             trailer = {
                 "record": "replay_summary",
                 "sym_side": symside.upper(),
                 "states_evaluated": state_rows,
                 "action_counts": counts,
+                "planner_account": planner_account,
+                "planner_final_broker_position": broker_position if planner_account else None,
+                "planner_done_key_count": len(done_keys) if planner_account else None,
                 "invalid_state_counts": invalid_counts,
                 "replay_completed_at_wall_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 "provenance_output_dir": str(provenance_root),
@@ -524,10 +623,13 @@ def main(argv=None):
     parser.add_argument("--code-root", required=True, type=Path)
     parser.add_argument("--code-manifest", type=Path)
     parser.add_argument("--limit", type=int, help="process only the first N selected bars (proof mode)")
+    parser.add_argument("--planner-account", help="also replay the actual vector_direct_trader plan_account for this frozen admitted account")
+    parser.add_argument("--exchange-info-json", type=Path, help="frozen Binance exchange-info cache required by planner sizing")
     args = parser.parse_args(argv)
     print(json.dumps(replay(
         args.npz, args.active_set, args.sym_side, args.start_ts, args.end_ts,
         args.out, args.code_root.resolve(), args.code_manifest, args.limit,
+        args.planner_account, args.exchange_info_json,
     ), sort_keys=True))
 
 
