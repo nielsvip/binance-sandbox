@@ -149,8 +149,10 @@ def _ignore_code(_directory, names):
     return {name for name in names if any(fnmatch.fnmatch(name, pattern) for pattern in CODE_EXCLUDE)}
 
 
-def load_artifact_verifier(code_root):
+def load_artifact_verifier(code_root, fallback_path=None):
     path = Path(code_root) / "tools/v15_nextgen_gate_artifacts.py"
+    if not path.is_file() and fallback_path:
+        path = Path(fallback_path)
     if path.is_symlink() or not path.is_file():
         raise ValueError(f"frozen runtime lacks model artifact verifier: {path}")
     spec = importlib.util.spec_from_file_location("v22_gate_artifact_verifier", path)
@@ -159,15 +161,31 @@ def load_artifact_verifier(code_root):
     return module
 
 
-def verify_after_build_root(snapshot, code_root, flags, expected_artifacts, scratch_parent):
+def verify_after_build_root(snapshot, code_root, flags, expected_artifacts, scratch_parent, verifier_path, active_policy):
     snapshot, code_root = Path(snapshot), Path(code_root)
     scratch_parent = Path(scratch_parent)
     with tempfile.TemporaryDirectory(prefix="v22_build_root_probe_", dir=scratch_parent) as temporary:
         root = Path(temporary) / "root"
         shutil.copytree(code_root, root, copy_function=os.link, ignore=_ignore_code)
         shutil.copytree(snapshot / "data", root / "data", copy_function=os.link)
-        verifier = load_artifact_verifier(root)
-        receipt = verifier.verify_declared_bundle(root, flags, required=True)
+        verifier = load_artifact_verifier(root, verifier_path)
+        if active_policy:
+            receipt = verifier.verify_declared_bundle(root, flags, required=True)
+        else:
+            declaration_path = root / "tools/v18_model_bundle.json"
+            declaration_bytes = declaration_path.read_bytes()
+            declaration = json.loads(declaration_bytes)
+            expected = declaration.get("expected_sha256_by_filename")
+            if not isinstance(expected, dict) or len(expected) != 32:
+                raise ValueError("reference arm must declare exactly 32 model artifacts")
+            for name, expected_sha in expected.items():
+                artifact = root / artifact_relative(name)
+                if not artifact.is_file() or sha256(artifact) != expected_sha:
+                    raise ValueError(f"reference model artifact differs from declaration: {name}")
+            receipt = verifier.resolve_models(root, flags, expected)
+            receipt["bundle_manifest_sha256"] = hashlib.sha256(declaration_bytes).hexdigest()
+            receipt["bundle_id"] = declaration.get("bundle_id")
+            receipt["verification_policy"] = "pinned reference-off env plus actual planner resolver; expanded-bundle activation guard is candidate-only"
         model_receipts = receipt.get("models", {})
         if len(model_receipts) != 32:
             raise ValueError("post-build-root resolver did not consume all 32 declared NN artifacts")
@@ -178,7 +196,55 @@ def verify_after_build_root(snapshot, code_root, flags, expected_artifacts, scra
         return {"bundle_id": receipt.get("bundle_id"), "bundle_manifest_sha256": receipt.get("bundle_manifest_sha256"), "planner_sha256": receipt.get("planner_sha256"), "resolved_artifact_sha256": consumed, "model_paths": {name: row["path"] for name, row in model_receipts.items()}, "verification": "actual frozen resolver after same code-exclude then snapshot-data-copy sequence as v15_npz_bench.build_root"}
 
 
-def prepare(parent_snapshot, spec_path, reference_code, candidate_code, output_dir, bench_dir):
+def verify_pilot_root(root, spec_path, arm_name):
+    root = Path(root).resolve()
+    spec_path = Path(spec_path).resolve()
+    spec = json.loads(spec_path.read_text())
+    arm = spec[arm_name]
+    runtime_pin = spec["runtime"]
+    runtime_manifest_path = Path(runtime_pin["path"])
+    runtime_bytes = runtime_manifest_path.read_bytes()
+    if hashlib.sha256(runtime_bytes).hexdigest() != runtime_pin["sha256"]:
+        raise ValueError("frozen runtime manifest pin mismatch")
+    runtime = json.loads(runtime_bytes)
+    expected_code = dict(runtime["files"])
+    expected_code.update(spec.get("compatibility", {}))
+    for relative, expected_sha in expected_code.items():
+        path = root / relative
+        if path.is_symlink() or not path.is_file() or sha256(path) != expected_sha:
+            raise ValueError(f"actual pilot root common-runtime mismatch: {relative}")
+    bundle = read_bundle(Path(arm["path"]).parent.parent)
+    if bundle["manifest_sha256"] != arm["sha256"]:
+        raise ValueError("pinned arm model declaration sha256 mismatch")
+    manifest_path = root / "tools/v18_model_bundle.json"
+    if manifest_path.is_symlink() or not manifest_path.is_file() or sha256(manifest_path) != bundle["manifest_sha256"]:
+        raise ValueError("actual pilot root model declaration mismatch")
+    flags = {**spec.get("equal_runtime_flags", {}), **spec[f"{arm_name}_runtime_flags"]}
+    verifier_path = Path(spec["reference_policy"]["path"]).resolve().parent / "tools/v15_nextgen_gate_artifacts.py"
+    if not verifier_path.is_file():
+        raise ValueError("pinned NN runtime resolver helper is unavailable")
+    verifier = load_artifact_verifier(root, verifier_path)
+    if arm_name == "candidate":
+        receipt = verifier.verify_declared_bundle(root, flags, required=True)
+    else:
+        declaration_bytes = manifest_path.read_bytes()
+        declaration = json.loads(declaration_bytes)
+        expected = declaration.get("expected_sha256_by_filename")
+        if not isinstance(expected, dict) or len(expected) != 32:
+            raise ValueError("reference arm must declare exactly 32 model artifacts")
+        for name, expected_sha in expected.items():
+            path = root / artifact_relative(name)
+            if path.is_symlink() or not path.is_file() or sha256(path) != expected_sha:
+                raise ValueError(f"actual pilot root reference artifact mismatch: {name}")
+        receipt = verifier.resolve_models(root, flags, expected)
+        receipt["bundle_manifest_sha256"] = hashlib.sha256(declaration_bytes).hexdigest()
+        receipt["bundle_id"] = declaration.get("bundle_id")
+    if len(receipt.get("models", {})) != 32:
+        raise ValueError("actual pilot root resolver did not resolve all32 artifacts")
+    return {"schema": "v22_actual_pilot_root_verification/1", "arm": arm_name, "root": str(root), "runtime_manifest_sha256": runtime_pin["sha256"], "common_runtime_files_verified": len(expected_code), "bundle_id": receipt.get("bundle_id"), "bundle_manifest_sha256": receipt.get("bundle_manifest_sha256"), "planner_sha256": receipt.get("planner_sha256"), "resolved_artifact_sha256": {name: row["sha256"] for name, row in receipt["models"].items()}, "resolver_policy": "actual run-root resolver under recorded arm flags; confirms resolved hashes, not an OS-level runtime read trace"}
+
+
+def prepare(parent_snapshot, spec_path, reference_code, candidate_code, output_dir, bench_dir, snapshot_tag=""):
     parent, parent_manifest, parent_manifest_sha = validate_parent_snapshot(parent_snapshot)
     spec_path = Path(spec_path).resolve()
     spec = json.loads(spec_path.read_text())
@@ -188,6 +254,11 @@ def prepare(parent_snapshot, spec_path, reference_code, candidate_code, output_d
         "reference": {"bundle": read_bundle(Path(spec["reference"]["path"]).parent.parent), "code": Path(reference_code).resolve(), "flags": {**spec.get("equal_runtime_flags", {}), **spec["reference_runtime_flags"]}},
         "candidate": {"bundle": read_bundle(Path(spec["candidate"]["path"]).parent.parent), "code": Path(candidate_code).resolve(), "flags": {**spec.get("equal_runtime_flags", {}), **spec["candidate_runtime_flags"]}},
     }
+    policy_path = Path(spec["reference_policy"]["path"]).resolve()
+    verifier_path = policy_path.parent / "tools/v15_nextgen_gate_artifacts.py"
+    if not verifier_path.is_file():
+        raise ValueError(f"frozen comparison artifact verifier missing: {verifier_path}")
+    verifier_sha = sha256(verifier_path)
     for arm in arms.values():
         if arm["bundle"]["manifest_sha256"] != spec["reference" if arm is arms["reference"] else "candidate"]["sha256"]:
             raise ValueError("model declaration sha256 differs from pinned comparison spec")
@@ -205,7 +276,8 @@ def prepare(parent_snapshot, spec_path, reference_code, candidate_code, output_d
     original_shared = shared_snapshot_inventory(parent, model_paths)
     records = {}
     for name, arm in arms.items():
-        snapshot_id = f"{parent_id}_v22_{comparison}_{name}"
+        suffix = f"_{snapshot_tag}" if snapshot_tag else ""
+        snapshot_id = f"{parent_id}_v22_{comparison}{suffix}_{name}"
         destination = bench_dir / f"snap_{snapshot_id}"
         if destination.exists():
             raise FileExistsError(f"derived snapshot already exists: {destination}")
@@ -220,7 +292,8 @@ def prepare(parent_snapshot, spec_path, reference_code, candidate_code, output_d
         manifest_path.write_text(json.dumps(manifest, indent=1))
         if json.loads(manifest_path.read_text())["v22_derived_snapshot"]["parent_manifest_sha256"] != parent_manifest_sha:
             raise ValueError("derived snapshot manifest failed parent pin round-trip")
-        resolved = verify_after_build_root(destination, arm["code"], arm["flags"], arm["bundle"]["artifacts"], output_dir)
+        resolved = verify_after_build_root(destination, arm["code"], arm["flags"], arm["bundle"]["artifacts"], output_dir, verifier_path, name == "candidate")
+        resolved["artifact_verifier_sha256"] = verifier_sha
         env = dict(parent_manifest.get("env") or {})
         env.update(spec.get("equal_runtime_flags", {}))
         env.update(spec[f"{name}_runtime_flags"])
@@ -248,8 +321,17 @@ def main(argv=None):
     staging.add_argument("--candidate-code", required=True)
     staging.add_argument("--output-dir", required=True)
     staging.add_argument("--bench-dir", default=str(Path.home() / "v15_bench"))
+    staging.add_argument("--snapshot-tag", default="", help="optional isolated suffix when a prior preparation left a partial snapshot")
+    verify = subparsers.add_parser("verify-root")
+    verify.add_argument("--root", required=True, help="actual v15_npz_bench run root")
+    verify.add_argument("--spec", required=True)
+    verify.add_argument("--arm", choices=("reference", "candidate"), required=True)
     args = parser.parse_args(argv)
-    report_path, report = prepare(args.snapshot, args.spec, args.reference_code, args.candidate_code, args.output_dir, args.bench_dir)
+    if args.command == "verify-root":
+        receipt = verify_pilot_root(args.root, args.spec, args.arm)
+        print(json.dumps(receipt, indent=2, sort_keys=True))
+        return 0
+    report_path, report = prepare(args.snapshot, args.spec, args.reference_code, args.candidate_code, args.output_dir, args.bench_dir, args.snapshot_tag)
     print(json.dumps({"report": str(report_path), "launch_started": False, "arms": {name: value["command"] for name, value in report["arms"].items()}}, indent=2))
     return 0
 

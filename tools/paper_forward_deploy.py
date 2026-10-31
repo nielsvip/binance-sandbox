@@ -65,7 +65,7 @@ def deploy(batch, runtime, remote_root, host, activate=False):
         run(ssh + ["mkdir -p ~/.config/systemd/user; if test -f ~/.config/systemd/user/paper-independent-forward.service; then cp ~/.config/systemd/user/paper-independent-forward.service ~/.config/systemd/user/paper-independent-forward.service.before.$(date -u +%Y%m%d%H%M%S); fi"])
         run(["rsync", "-az", str(path), f"{alias}:.config/systemd/user/"])
         archive_path = Path(directory) / "paper-native-journal.service"
-        archive_path.write_text(unit(archive_command, "Bounded native observations for independent paper scenarios", "512M", "256M", "25%"))
+        archive_path.write_text(unit(archive_command, "Bounded native observations for independent paper scenarios", "512M", "256M", "25%").replace("Restart=on-failure", "Restart=always"))
         run(ssh + ["if test -f ~/.config/systemd/user/paper-native-journal.service; then cp ~/.config/systemd/user/paper-native-journal.service ~/.config/systemd/user/paper-native-journal.service.before.$(date -u +%Y%m%d%H%M%S); fi"])
         run(["rsync", "-az", str(archive_path), f"{alias}:.config/systemd/user/"])
         feed_path = Path(directory) / "paper-native-feed.service"

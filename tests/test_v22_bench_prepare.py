@@ -1,10 +1,11 @@
 import hashlib
 import json
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
 
-from tools.v22_bench_prepare import prepare
+from tools.v22_bench_prepare import prepare, verify_pilot_root
 
 
 CATEGORIES = ("CRYPTO_LONG", "CRYPTO_SHORT", "STOCKS_LONG", "STOCKS_SHORT")
@@ -47,6 +48,11 @@ class V22BenchPrepareTests(unittest.TestCase):
         self.bundles = {}
         self.codes = {}
         self.spec = {"schema": "v15_nn_comparison/1", "comparison_id": "unit_v22", "equal_runtime_flags": {"V15_REQUIRE_MODEL_BUNDLE": "1"}, "reference_runtime_flags": {"V18_LINKNET_FIRST": "0", "V18_LINKNET_BUNDLE_REQUIRED": "0", "V15_REQUIRE_MODEL_BUNDLE": "1", "V15_NN_REFERENCE_LEGACY_POLICY": "1"}, "candidate_runtime_flags": {"V18_LINKNET_FIRST": "1", "V18_LINKNET_BUNDLE_REQUIRED": "1", "V15_REQUIRE_MODEL_BUNDLE": "1"}}
+        verifier_root = self.root / "review/tools"
+        verifier_root.mkdir(parents=True)
+        (self.root / "review/reference_policy_receipt.json").write_text("{}")
+        (verifier_root / "v15_nextgen_gate_artifacts.py").write_bytes((Path(__file__).parents[1] / "tools/v15_nextgen_gate_artifacts.py").read_bytes())
+        self.spec["reference_policy"] = {"path": str(self.root / "review/reference_policy_receipt.json")}
         for arm in ("reference", "candidate"):
             bundle_root = self.root / f"{arm}_bundle"
             (bundle_root / "tools").mkdir(parents=True)
@@ -70,6 +76,7 @@ class V22BenchPrepareTests(unittest.TestCase):
             (code_root / "tools").mkdir(parents=True)
             (code_root / "tools/v15_nextgen_gate_artifacts.py").write_bytes((Path(__file__).parents[1] / "tools/v15_nextgen_gate_artifacts.py").read_bytes())
             (code_root / "tools/v15_v18_planner.py").write_text("from pathlib import Path\ndef learn_file(name, root, sub):\n    return Path(root) / ('data/brain' if sub == 'brain' else 'data/learn') / name\n")
+            (code_root / "tools/v18_brain.py").write_text("# compatibility stub\n")
             (code_root / "tools/v18_model_bundle.json").write_bytes(manifest_path.read_bytes())
             (code_root / "v15_pilot.py").write_text("# frozen pilot stub\n")
             # build_root excludes data from code and then copies the snapshot data over it.
@@ -78,6 +85,11 @@ class V22BenchPrepareTests(unittest.TestCase):
             self.bundles[arm] = bundle_root
             self.codes[arm] = code_root
             self.spec[arm] = {"path": str(manifest_path), "sha256": digest(manifest_path.read_bytes())}
+        self.spec["compatibility"] = {"tools/v15_v18_planner.py": digest((self.codes["candidate"] / "tools/v15_v18_planner.py").read_bytes()), "tools/v18_brain.py": digest((self.codes["candidate"] / "tools/v18_brain.py").read_bytes())}
+        runtime_manifest_path = self.root / "runtime_manifest.json"
+        runtime_manifest = {"schema": "v15_nn_runtime/1", "files": {"v15_pilot.py": digest((self.codes["candidate"] / "v15_pilot.py").read_bytes())}}
+        runtime_manifest_path.write_text(json.dumps(runtime_manifest))
+        self.spec["runtime"] = {"path": str(runtime_manifest_path), "sha256": digest(runtime_manifest_path.read_bytes())}
         self.spec_path = self.root / "comparison_spec.json"
         self.spec_path.write_text(json.dumps(self.spec))
         self.bench = self.root / "bench"
@@ -109,6 +121,15 @@ class V22BenchPrepareTests(unittest.TestCase):
         self.assertEqual(report["arms"]["reference"]["shared_inputs_match_parent"], True)
         self.assertEqual(report["arms"]["candidate"]["shared_inputs_match_parent"], True)
         self.assertIn("--min-disk-mb 20000 --min-free-mb 7000", report["arms"]["candidate"]["command"])
+        self.assertEqual(len(report["arms"]["reference"]["resolved_after_build_root"]["artifact_verifier_sha256"]), 64)
+        actual_root = self.root / "actual_candidate_pilot_root"
+        shutil.copytree(self.codes["candidate"], actual_root)
+        shutil.rmtree(actual_root / "data")
+        shutil.copytree(cand / "data", actual_root / "data")
+        actual_receipt = verify_pilot_root(actual_root, self.spec_path, "candidate")
+        self.assertEqual(actual_receipt["arm"], "candidate")
+        self.assertEqual(actual_receipt["common_runtime_files_verified"], 3)
+        self.assertEqual(len(actual_receipt["resolved_artifact_sha256"]), 32)
         self.assertEqual((self.parent / "npz" / f"{SIDES[0].rsplit('_', 1)[0]}.npz").stat().st_ino, (ref / "npz" / f"{SIDES[0].rsplit('_', 1)[0]}.npz").stat().st_ino)
 
     def test_refuses_modified_declared_artifact_before_staging(self):

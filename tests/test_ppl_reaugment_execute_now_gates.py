@@ -168,6 +168,7 @@ def test_native_losing_and_augment_depth_gates_with_pullback_exemption():
 def test_projected_entry_and_augment_guard_match_live_thresholds():
     assert not projected_entry_nonnegative(True, 100.0, 1.0, 1.0, 99.0)
     assert projected_entry_nonnegative(False, 100.0, 1.0, 1.0, 99.0)
+    assert projected_entry_nonnegative(True, 100.0, 1.0, 1.0, float("nan"))
     cfg = SimpleNamespace(MIN_GAIN=3.0)
     assert not passes_augment_guard(cfg, 2.9, 51.0, 50.0)
     assert passes_augment_guard(cfg, 3.0, 51.0, 50.0)
@@ -263,5 +264,38 @@ def test_short_ppl_reaugment_passes_native_gates_on_trigger_bar():
     cfg = _cfg()
     result = V.simulate_one(npz, "PROBE", False, cfg, force_initial_seed=True)
     reaugments = [event for event in result["ledger"] if event.get("reason") == "PPL_REAUGMENT_WT_CROSS"]
+    assert len(reaugments) == 1
+    assert reaugments[0]["bar"] == 9
+
+
+def test_tradier_ppl_ledger_does_not_apply_crypto_three_percent_gate():
+    import datetime as dt
+
+    npz = _reaugment_fixture(2.8)
+    npz["timestamps"] = np.arange(len(npz["close"]), dtype=float) * 300.0 + int(
+        dt.datetime(2025, 10, 31, 13, 30, tzinfo=dt.timezone.utc).timestamp()
+    )
+    npz["timestamp_15m"] = npz["timestamps"]
+    npz["open_15m"] = npz["close"].copy()
+    npz["high_15m"] = npz["close"].copy()
+    npz["low_15m"] = npz["close"].copy()
+    npz["close"][10:] = npz["close"][9]
+    cfg = V.QuickConfig()
+    cfg.apply_tradier_defaults()
+    cfg.apply_cat_side_defaults("STOCKS_LONG")
+    cfg.PARTIAL_PROFIT_LOCK_ENABLED = True
+    cfg.PARTIAL_PROFIT_LOCK_GAIN_PCT = 1.0
+    cfg.PARTIAL_PROFIT_LOCK_ARM_GAIN_PCT = 2.0
+    cfg.PARTIAL_PROFIT_LOCK_BE_BUFFER_PCT = 0.02
+    cfg.PARTIAL_PROFIT_LOCK_FRAC = 0.5
+    cfg.PPL_REAUGMENT_ENABLED = True
+    cfg.PPL_REAUGMENT_SIZE_MULT = 1.5
+    cfg.PPL_REAUGMENT_TRIGGER = "WT_CROSS"
+    cfg.AUGMENTED_DC_BREAK_ENABLED = False
+    result = V.simulate_one(npz, "PROBE", True, cfg, force_initial_seed=True)
+    reaugments = [
+        event for event in result["ledger"]
+        if event.get("reason") == "PPL_REAUGMENT_WT_CROSS"
+    ]
     assert len(reaugments) == 1
     assert reaugments[0]["bar"] == 9

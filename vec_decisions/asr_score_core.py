@@ -488,8 +488,10 @@ def apply_15m_momentum_vec(
 
     current = col("wt1_15m", 0.0)
     wt2 = col("wt2_15m", 0.0)
-    previous = col("wt1_15m_prev", np.nan)
-    previous = np.where(np.isnan(previous), wt2, previous)
+    if "wt1_15m_prev" in npz:
+        previous = col("wt1_15m_prev", 0.0)
+    else:
+        previous = wt2
     cross_bull = col("wt_cross_bull_3m", 0.0) != 0
     cross_bear = col("wt_cross_bear_3m", 0.0) != 0
     cross_value = col("wt_crossover_value_3m", 0.0)
@@ -598,4 +600,167 @@ def apply_ma_distance_score_vec(
     amounts = {"SMA500_DEEP": 15, "SMA500_OVER": -10, "SMA500_ABOVE": 15, "SMA500_UNDER": -10, "EMA20_4H_DEEP": 10, "EMA20_4H_ABOVE": 10}
     for name, mask in masks.items():
         result += mask.astype(float) * amounts[name]
+    return result, masks
+
+
+def apply_rank_conviction_scalar(score, reasons, indicators, metrics, is_long, cfg):
+    """Apply native RANK_CONVICTION score branch with its metric fallback."""
+    if not bool(_cfg(cfg, "RANK_CONVICTION_ENABLED", True)):
+        return float(score), reasons
+    raw = indicators.get("0ranking_points_global", indicators.get("0ranking_points"))
+    if raw is None and isinstance(metrics, dict):
+        raw = metrics.get("0ranking_points_global", metrics.get("0ranking_points", 0))
+    rank = _float(raw, 0)
+    strong = float(_cfg(cfg, "RP_STRONG_THRESHOLD", 70.0))
+    weak = float(_cfg(cfg, "RP_WEAK_THRESHOLD", 30.0))
+    bonus = float(_cfg(cfg, "RP_STRONG_BONUS", 15.0))
+    weak_penalty = float(_cfg(cfg, "RP_WEAK_PENALTY", -10.0))
+    opposite_penalty = float(_cfg(cfg, "RP_OPPOSITE_PENALTY", -20.0))
+    magnitude = abs(float(rank or 0.0))
+    match = (is_long and rank > 0) or ((not is_long) and rank < 0)
+    opposite = (is_long and rank < 0) or ((not is_long) and rank > 0)
+    result = float(score)
+    if match and magnitude >= strong:
+        result += bonus
+        reasons.append(f"RANK_STRONG({rank:.0f},+{bonus:.0f})")
+    elif magnitude < weak:
+        result += weak_penalty
+        reasons.append(f"RANK_WEAK({rank:.0f},{weak_penalty:.0f})")
+    elif opposite and magnitude >= strong:
+        result += opposite_penalty
+        reasons.append(f"RANK_OPPOSITE({rank:.0f},{opposite_penalty:.0f})")
+    return result, reasons
+
+
+def apply_rank_conviction_vec(npz, n, is_long, cfg, score=None, metrics=None):
+    """NumPy twin of RANK_CONVICTION; returns score plus ordered branch masks."""
+    result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).copy()
+    if result.shape != (n,):
+        raise ValueError("score must have shape (n,)")
+    masks = {}
+    if not bool(_cfg(cfg, "RANK_CONVICTION_ENABLED", True)):
+        return result, masks
+    key = "0ranking_points_global" if "0ranking_points_global" in npz else "0ranking_points"
+    raw = npz.get(key)
+    if raw is None and isinstance(metrics, Mapping):
+        raw = metrics.get("0ranking_points_global", metrics.get("0ranking_points"))
+    if raw is None:
+        rank = np.zeros(n, dtype=float)
+    else:
+        try:
+            rank = np.asarray(raw, dtype=float).reshape(-1)
+        except (TypeError, ValueError):
+            rank = np.zeros(n, dtype=float)
+        if rank.size != n:
+            rank = np.zeros(n, dtype=float)
+    strong = float(_cfg(cfg, "RP_STRONG_THRESHOLD", 70.0))
+    weak = float(_cfg(cfg, "RP_WEAK_THRESHOLD", 30.0))
+    bonus = float(_cfg(cfg, "RP_STRONG_BONUS", 15.0))
+    weak_penalty = float(_cfg(cfg, "RP_WEAK_PENALTY", -10.0))
+    opposite_penalty = float(_cfg(cfg, "RP_OPPOSITE_PENALTY", -20.0))
+    magnitude = np.abs(rank)
+    match = rank > 0 if is_long else rank < 0
+    opposite = rank < 0 if is_long else rank > 0
+    strong_match = match & (magnitude >= strong)
+    weak_mask = ~strong_match & (magnitude < weak)
+    opposite_mask = ~strong_match & ~weak_mask & opposite & (magnitude >= strong)
+    for name, mask, amount in (
+        ("RANK_STRONG", strong_match, bonus),
+        ("RANK_WEAK", weak_mask, weak_penalty),
+        ("RANK_OPPOSITE", opposite_mask, opposite_penalty),
+    ):
+        masks[name] = mask
+        result += mask.astype(float) * amount
+    return result, masks
+
+
+def apply_channel_k_cross_score_scalar(score, reasons, indicators, current_price, is_long):
+    """Apply the first directional rate() score slice: channel recovery, K zones and DC-basis crosses."""
+    def value(key, default=0.0):
+        return _float(indicators.get(key), default)
+    result = float(score)
+    widths = {}
+    for tf, threshold in (("1h", 5.0), ("D", 6.0), ("4h", 4.0)):
+        high, low = value(f"dc_high_{tf}"), value(f"dc_low_{tf}")
+        widths[tf] = ((high - low) / low) * 100 if low > 0 else 0.0
+    if is_long:
+        for tf, width_thr, price_frac, amount, tag in (
+            ("1h", 5.0, .97, 25, "JUMP_PULLBACK"),
+            ("D", 6.0, .95, 35, "JUMP_PB_D"),
+            ("4h", 4.0, .96, 30, "JUMP_PB_4H"),
+        ):
+            if widths[tf] > width_thr and current_price < value(f"dc_high_{tf}") * price_frac and current_price > value(f"dc_basis_{tf}"):
+                result += amount; reasons.append(f"{tag}(+{amount})")
+        for tf, threshold, amount, tag in (("15m",20,10,"LOW_K15"),("1h",20,15,"LOW_K1H"),("4h",25,20,"LOW_K4H"),("D",30,25,"LOW_KD")):
+            if value(f"k_{tf}",50.0) < threshold:
+                result += amount; reasons.append(f"{tag}(+{amount})")
+        for tf, amount in (("3m",30),("15m",25),("1h",20),("4h",15),("D",10)):
+            if indicators.get(f"dc_basis_crossover_{tf}", False):
+                result += amount; reasons.append(f"DCB_CO_{tf.upper()}(+{amount})")
+        for tf, amount in (("3m",30),("15m",25),("1h",20)):
+            if indicators.get(f"dc_basis_crossunder_{tf}", False):
+                result -= amount; reasons.append(f"DCB_CU_{tf.upper()}_BAD(-{amount})")
+    else:
+        for tf, width_thr, price_frac, amount, tag in (
+            ("1h", 5.0, 1.03, 25, "DROP_RECOVERY"),
+            ("D", 6.0, 1.05, 35, "DROP_REC_D"),
+            ("4h", 4.0, 1.04, 30, "DROP_REC_4H"),
+        ):
+            if widths[tf] > width_thr and current_price > value(f"dc_low_{tf}") * price_frac and current_price < value(f"dc_basis_{tf}"):
+                result += amount; reasons.append(f"{tag}(+{amount})")
+        for tf, threshold, amount, tag in (("15m",80,10,"HIGH_K15"),("1h",80,15,"HIGH_K1H"),("4h",75,20,"HIGH_K4H"),("D",70,25,"HIGH_KD")):
+            if value(f"k_{tf}",50.0) > threshold:
+                result += amount; reasons.append(f"{tag}(+{amount})")
+        for tf, amount in (("3m",30),("15m",25),("1h",20),("4h",15),("D",10)):
+            if indicators.get(f"dc_basis_crossunder_{tf}", False):
+                result += amount; reasons.append(f"DCB_CU_{tf.upper()}(+{amount})")
+        for tf, amount in (("3m",30),("15m",25),("1h",20)):
+            if indicators.get(f"dc_basis_crossover_{tf}", False):
+                result -= amount; reasons.append(f"DCB_CO_{tf.upper()}_BAD(-{amount})")
+    return result, reasons
+
+
+def apply_channel_k_cross_score_vec(npz, n, is_long, score=None):
+    """NumPy twin of native channel recovery, K-zone and DC-basis cross score slice."""
+    result = np.zeros(n, dtype=float) if score is None else np.asarray(score, dtype=float).copy()
+    if result.shape != (n,):
+        raise ValueError("score must have shape (n,)")
+    def col(key, default=0.0):
+        value = npz.get(key)
+        if value is None:
+            return np.full(n, default, dtype=float)
+        try:
+            arr = np.asarray(value, dtype=float).reshape(-1)
+        except (TypeError, ValueError):
+            return np.full(n, default, dtype=float)
+        return arr if arr.size == n else np.full(n, default, dtype=float)
+    masks = {}
+    def add(name, mask, amount):
+        masks[name] = np.asarray(mask, dtype=bool)
+        result[:] += masks[name].astype(float) * amount
+    price = col("close")
+    widths = {}
+    for tf in ("1h", "D", "4h"):
+        high, low = col(f"dc_high_{tf}"), col(f"dc_low_{tf}")
+        width = np.zeros(n, dtype=float)
+        np.divide(high - low, low, out=width, where=low > 0)
+        widths[tf] = width * 100
+    if is_long:
+        for tf, threshold, frac, amount, tag in (("1h",5,.97,25,"JUMP_PULLBACK"),("D",6,.95,35,"JUMP_PB_D"),("4h",4,.96,30,"JUMP_PB_4H")):
+            add(tag,(widths[tf]>threshold)&(price<col(f"dc_high_{tf}")*frac)&(price>col(f"dc_basis_{tf}")),amount)
+        for tf, threshold, amount, tag in (("15m",20,10,"LOW_K15"),("1h",20,15,"LOW_K1H"),("4h",25,20,"LOW_K4H"),("D",30,25,"LOW_KD")):
+            add(tag,col(f"k_{tf}",50)<threshold,amount)
+        for tf, amount in (("3m",30),("15m",25),("1h",20),("4h",15),("D",10)):
+            add(f"DCB_CO_{tf.upper()}",col(f"dc_basis_crossover_{tf}")!=0,amount)
+        for tf, amount in (("3m",30),("15m",25),("1h",20)):
+            add(f"DCB_CU_{tf.upper()}_BAD",col(f"dc_basis_crossunder_{tf}")!=0,-amount)
+    else:
+        for tf, threshold, frac, amount, tag in (("1h",5,1.03,25,"DROP_RECOVERY"),("D",6,1.05,35,"DROP_REC_D"),("4h",4,1.04,30,"DROP_REC_4H")):
+            add(tag,(widths[tf]>threshold)&(price>col(f"dc_low_{tf}")*frac)&(price<col(f"dc_basis_{tf}")),amount)
+        for tf, threshold, amount, tag in (("15m",80,10,"HIGH_K15"),("1h",80,15,"HIGH_K1H"),("4h",75,20,"HIGH_K4H"),("D",70,25,"HIGH_KD")):
+            add(tag,col(f"k_{tf}",50)>threshold,amount)
+        for tf, amount in (("3m",30),("15m",25),("1h",20),("4h",15),("D",10)):
+            add(f"DCB_CU_{tf.upper()}",col(f"dc_basis_crossunder_{tf}")!=0,amount)
+        for tf, amount in (("3m",30),("15m",25),("1h",20)):
+            add(f"DCB_CO_{tf.upper()}_BAD",col(f"dc_basis_crossover_{tf}")!=0,-amount)
     return result, masks

@@ -57,7 +57,7 @@ def projected_entry_nonnegative(is_long, entry_price, position_qty, add_qty, px)
         return True
     projected = (amount * entry + add * price) / (amount + add)
     projected_gain = (price - projected) / projected * 100.0 if is_long else (projected - price) / projected * 100.0
-    return projected_gain >= 0.0
+    return not (projected_gain < 0.0)
 
 
 def passes_raw_three_percent_gate(raw_gain_pct, position_value, *, reentry=False, vector_exempt=False):

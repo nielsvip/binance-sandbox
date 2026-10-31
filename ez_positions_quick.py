@@ -4797,34 +4797,13 @@ class AdvancedSignalRater:
             elif not is_long and _rs_ratio < _rs_min:
                 score -= 10
                 reasons.append(f"RATIO_OVERWEIGHT_SHORT(R={_rs_ratio:.2f},-10)")
-        # === RANK_CONVICTION (2026-04-16): route 0ranking_points_global into score ===
-        # 0ranking_points / 0ranking_points_global is a continuous symbol rank already computed every tick.
-        # Positive = bullish rank; negative = bearish rank. Direction-matching strong rank → big bonus.
-        # Opposite strong rank → heavy penalty (low-quality against-trend entry).
-        if bool(getattr(config, "RANK_CONVICTION_ENABLED", True)) and not is_exit:
-            _rp_raw = ind.get("0ranking_points_global", ind.get("0ranking_points"))
-            if _rp_raw is None and isinstance(metrics, dict):
-                _rp_raw = metrics.get(
-                    "0ranking_points_global", metrics.get("0ranking_points", 0)
-                )
-            _rp = safe_fetch_float(_rp_raw, 0)
-            _rp_strong = float(getattr(config, "RP_STRONG_THRESHOLD", 70.0))
-            _rp_weak = float(getattr(config, "RP_WEAK_THRESHOLD", 30.0))
-            _rp_bonus = float(getattr(config, "RP_STRONG_BONUS", 15.0))
-            _rp_weak_pen = float(getattr(config, "RP_WEAK_PENALTY", -10.0))
-            _rp_opp_pen = float(getattr(config, "RP_OPPOSITE_PENALTY", -20.0))
-            _rp_abs = abs(float(_rp or 0.0))
-            _rp_dir_match = (is_long and _rp > 0) or (not is_long and _rp < 0)
-            _rp_dir_opposite = (is_long and _rp < 0) or (not is_long and _rp > 0)
-            if _rp_dir_match and _rp_abs >= _rp_strong:
-                score += _rp_bonus
-                reasons.append(f"RANK_STRONG({_rp:.0f},+{_rp_bonus:.0f})")
-            elif _rp_abs < _rp_weak:
-                score += _rp_weak_pen
-                reasons.append(f"RANK_WEAK({_rp:.0f},{_rp_weak_pen:.0f})")
-            elif _rp_dir_opposite and _rp_abs >= _rp_strong:
-                score += _rp_opp_pen
-                reasons.append(f"RANK_OPPOSITE({_rp:.0f},{_rp_opp_pen:.0f})")
+        # Shared rank-conviction score adapter keeps native reason output unchanged.
+        if not is_exit:
+            from vec_decisions.asr_score_core import apply_rank_conviction_scalar
+
+            score, reasons = apply_rank_conviction_scalar(
+                score, reasons, ind, metrics, is_long, config
+            )
         # WT+K UNIFIED ENTRY CONDITIONS (replaces is_long_stoch_ok / is_short_stoch_ok)
         # _mts already computed above (before alignment helpers)
         _mts_bottom = _mts["bottom_score"]
@@ -8744,38 +8723,8 @@ class AdvancedSignalRater:
                         reasons.append(_fam_tag)
                 except Exception:
                     pass
-            # USER 2026-05-30: a confirmed DC breakout is NOT gutted for being overbought — riding a breakout
-            # requires high momentum. Normal overbought entries still get the 0.2x cut. ROLLBACK: =False.
-            _sg_breakout = bool(
-                getattr(config, "OVERBOUGHT_SCORE_GUT_BREAKOUT_BYPASS", True)
-            ) and (
-                (
-                    is_long
-                    and (
-                        (dc_high_1h > 0 and current_price > dc_high_1h)
-                        or (dc_high_3m > 0 and current_price > dc_high_3m)
-                    )
-                )
-                or (
-                    (not is_long)
-                    and (
-                        (dc_low_1h > 0 and current_price < dc_low_1h)
-                        or (dc_low_3m > 0 and current_price < dc_low_3m)
-                    )
-                )
-            )
-            if not _sg_breakout and (
-                (is_long and ((k_1m > 70 and true_lag < 10.0) or k_3m > 80))
-                or (not is_long and ((k_1m < 30 and true_lag < 10.0) or k_3m < 20))
-            ):
-                score = 0.2 * score
-            final_score = max(0, min(60, int(round(score))))
-            if final_score >= 29:
-                rec = "STRONG_BUY" if is_long else "STRONG_SELL"
-            elif final_score >= 24:
-                rec = "GOOD_BUY" if is_long else "GOOD_SELL"
-            elif final_score >= 18:
-                rec = "WEAK_BUY" if is_long else "WEAK_SELL"
+            from vec_decisions.asr_score_tail import finish_scalar as _finish_asr_score
+            final_score, rec = _finish_asr_score(config, score, current_price, is_long, dc_high_1h, dc_high_3m, dc_low_1h, dc_low_3m, k_1m, k_3m, true_lag, rec)
             return final_score, rec, ", ".join(reasons)
         return 0, "HOLD", "EXIT_FALLTHROUGH_NO_SIGNAL"
 

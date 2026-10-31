@@ -5,6 +5,7 @@ from vec_decisions.asr_score_core import (
     apply_structure_score_scalar, apply_structure_score_vec,
     apply_15m_momentum_scalar, apply_15m_momentum_vec,
     apply_ma_distance_score_scalar, apply_ma_distance_score_vec,
+    apply_rank_conviction_scalar, apply_rank_conviction_vec,
 )
 
 
@@ -200,9 +201,9 @@ def test_15m_momentum_matches_sha_verified_pre_edit_native_ast_and_numpy():
     rows = [
         {"wt1_15m": 3.0, "wt2_15m": 2.0, "wt1_15m_prev": 4.0},
         {"wt1_15m": 4.0, "wt2_15m": 3.0, "wt1_15m_prev": 3.0, "wt_cross_bear_3m": 1, "wt_crossover_value_3m": 2.0, "wt_crossover_value_3m_prev": 3.0},
-        {"wt1_15m": 1.0, "wt2_15m": 2.0, "wt_cross_bull_3m": 1, "wt_crossover_value_3m": 5.0, "wt_crossover_value_3m_prev": 4.0},
+        {"wt1_15m": 1.0, "wt2_15m": 2.0, "wt1_15m_prev": 2.0, "wt_cross_bull_3m": 1, "wt_crossover_value_3m": 5.0, "wt_crossover_value_3m_prev": 4.0},
         {"wt1_15m": float("inf"), "wt2_15m": 0.0, "wt1_15m_prev": 0.0},
-        {"wt1_15m": float("nan"), "wt2_15m": 1.0},
+        {"wt1_15m": float("nan"), "wt2_15m": 1.0, "wt1_15m_prev": 1.0},
     ]
     keys = set().union(*(row.keys() for row in rows))
     arrays = {key: np.asarray([row.get(key, np.nan if key.endswith("_prev") else 0.0) for row in rows]) for key in keys}
@@ -247,3 +248,62 @@ def test_ma_distance_score_matches_sha_verified_pre_edit_native_ast_and_numpy():
             scalar, reasons = apply_ma_distance_score_scalar(1.5, [], indicators, indicators["close"], is_long)
             assert scalar == env["score"] == vector[index]
             assert reasons == env["reasons"]
+
+
+def test_rank_conviction_matches_sha_verified_pre_edit_native_ast_and_numpy():
+    import ast
+    import hashlib
+    from pathlib import Path
+    from types import SimpleNamespace
+
+    source_dir = Path(__file__).resolve().parents[1]
+    refs = sorted((source_dir / "backups").glob("before_asr_rank_conviction_wire_ez_positions_quick_*.py"))
+    reference = next(path for path in refs if hashlib.sha256(path.read_bytes()).hexdigest() == "bda14b42c1f9771b32ed21990e0aff781d8ba595536719cae92dbd3f25a10cd5")
+    rate = next(node for node in ast.walk(ast.parse(reference.read_text())) if isinstance(node, ast.AsyncFunctionDef) and node.name == "rate" and node.lineno == 3616)
+    native = next(node for node in rate.body if isinstance(node, ast.If) and "RANK_CONVICTION_ENABLED" in ast.unparse(node))
+    cfg = SimpleNamespace(RANK_CONVICTION_ENABLED=True, RP_STRONG_THRESHOLD=70.0, RP_WEAK_THRESHOLD=30.0, RP_STRONG_BONUS=15.0, RP_WEAK_PENALTY=-10.0, RP_OPPOSITE_PENALTY=-20.0)
+    rows = [
+        {"0ranking_points_global": 70.0},
+        {"0ranking_points_global": -70.0},
+        {"0ranking_points_global": 29.9},
+        {"0ranking_points_global": 30.0},
+        {"0ranking_points_global": float("nan")},
+        {"0ranking_points_global": 0.0},
+        {"0ranking_points_global": 0.0},
+    ]
+    arrays = {key: np.asarray([row.get(key, np.nan) for row in rows]) for key in set().union(*(row.keys() for row in rows))}
+    for is_long in (True, False):
+        vector, _ = apply_rank_conviction_vec(arrays, len(rows), is_long, cfg, score=np.full(len(rows), 2.0))
+        for index, indicators in enumerate(rows):
+            env = {"score": 2.0, "reasons": [], "ind": indicators, "metrics": {}, "is_long": is_long, "is_exit": False, "config": cfg, "safe_fetch_float": __import__("utils").safe_fetch_float}
+            exec(compile(ast.Module(body=[native], type_ignores=[]), str(reference), "exec"), env)
+            scalar, reasons = apply_rank_conviction_scalar(2.0, [], indicators, {}, is_long, cfg)
+            assert scalar == env["score"] == vector[index]
+            assert reasons == env["reasons"]
+
+
+def test_rank_conviction_falls_back_when_whole_global_column_is_absent():
+    from types import SimpleNamespace
+
+    cfg = SimpleNamespace(RANK_CONVICTION_ENABLED=True, RP_STRONG_THRESHOLD=70.0, RP_WEAK_THRESHOLD=30.0, RP_STRONG_BONUS=15.0, RP_WEAK_PENALTY=-10.0, RP_OPPOSITE_PENALTY=-20.0)
+    arrays = {"0ranking_points": np.array([85.0, -85.0, 0.0])}
+    vector, masks = apply_rank_conviction_vec(arrays, 3, True, cfg)
+    assert vector.tolist() == [15.0, -20.0, -10.0]
+    assert masks["RANK_STRONG"].tolist() == [True, False, False]
+
+
+def test_15m_previous_uses_wt2_only_when_whole_npz_column_is_absent():
+    from types import SimpleNamespace
+
+    cfg = SimpleNamespace(WT15M_AGAINST_PENALTY=-5.0)
+    arrays = {"wt1_15m": np.array([3.0]), "wt2_15m": np.array([4.0])}
+    vector, fire = apply_15m_momentum_vec(arrays, 1, True, cfg)
+    scalar, _ = apply_15m_momentum_scalar(0.0, [], {}, True, cfg, 3.0, 4.0, False, False)
+    assert fire.tolist() == [True]
+    assert vector.tolist() == [scalar] == [-5.0]
+    present_nan, present_nan_fire = apply_15m_momentum_vec(
+        {"wt1_15m": np.array([3.0]), "wt2_15m": np.array([4.0]), "wt1_15m_prev": np.array([np.nan])},
+        1, True, cfg
+    )
+    assert not present_nan_fire[0]
+    assert present_nan[0] == 0.0
