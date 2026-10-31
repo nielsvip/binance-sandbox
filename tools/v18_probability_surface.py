@@ -33,11 +33,16 @@ class ProbabilitySurface:
             raise ValueError("surface schema/category/prediction label differs")
         if metadata.get("production_scorer") != entry["production_scorer"] or metadata.get("model_trained_at") != entry["model_trained_at"] or canonical_sha(metadata.get("platt")) != entry["calibration_sha256"]:
             raise ValueError("surface model/calibration identity differs")
+        calibration = metadata.get("platt")
+        if not isinstance(calibration, dict) or set(calibration) != {"R", "F"} or any(not isinstance(values, (list, tuple)) or len(values) != 2 or not all(isinstance(value, (int, float)) and math.isfinite(value) for value in values) for values in calibration.values()):
+            raise ValueError("surface calibration parameters are not finite R/F pairs")
         contexts = metadata.get("contexts")
         if entry.get("feature_mode") != "context_free" or metadata.get("production_scorer") not in ("v1", "hybrid_v1", "counts") or not isinstance(contexts, list) or len(contexts) != 1 or contexts[0].get("name") != "CAT_SIDE_DEFAULTS" or contexts[0].get("n_features") != 0:
             raise ValueError("surface is not the supported context-free model")
         if self.regimes != ("ALL", "FLAT", "UP", "DOWN", "STRONG_UP", "STRONG_DOWN") or len(set(self.rows)) != len(self.rows) or len(set(self.yellows)) != len(self.yellows):
             raise ValueError("surface regimes or keys are ambiguous")
+        if any(not isinstance(key, str) or "|" not in key or "=" not in key.partition("|")[2] for key in self.rows) or any(not isinstance(header, str) or "=" not in header for header in self.yellows):
+            raise ValueError("surface row/header key schema differs")
         if row.ndim != 1 or yellow.shape != row.shape or self.measured.shape != row.shape or self.measured.dtype.kind not in "iu" or self.probability.shape != (len(row), len(self.regimes)) or not np.isfinite(self.probability).all() or ((self.probability < 0) | (self.probability > 1)).any() or (self.measured < 0).any():
             raise ValueError("surface probabilities/counts have invalid shapes or values")
         if row.dtype.kind not in "iu" or yellow.dtype.kind not in "iu" or ((row < 0) | (row >= len(self.rows))).any() or ((yellow < 0) | (yellow >= len(self.yellows))).any() or (row[1:] < row[:-1]).any():
@@ -61,8 +66,7 @@ class ProbabilitySurface:
     def lookup(self, sheet, row_key, header, regime):
         item = self.row_index.get(str(sheet) + "|" + str(row_key))
         yellow = self.yellow_index.get(str(header))
-        selected_regime = "ALL" if regime in (None, "UNK", "ALL") else regime
-        column = self.regime_index.get(selected_regime)
+        column = self.regime_index.get(regime)
         if item is None or yellow is None or column is None:
             return None
         offset = item[1].get(yellow)

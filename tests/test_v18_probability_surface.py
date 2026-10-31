@@ -37,6 +37,7 @@ def runtime(model, monkeypatch, environment=None, n=10):
     for key, value in (environment or {}).items():
         monkeypatch.setenv(key, value)
     value = brain.PilotBrainV18(model, "BTCUSDT_LONG")
+    value.ctx["regime"] = "ALL"
     value._x = lambda *args: ([1.0] + [0.0] * (brain.NF - 1), n)
     value.w["F0"][0] = -8.0
     return value
@@ -48,7 +49,8 @@ def test_exact_tab_row_header_regime_and_immutable_cache(tmp_path, monkeypatch):
     again, _ = surface.load_surface(environment, model, "CRYPTO_LONG", tmp_path)
     assert provider is again and why.startswith("loaded")
     assert provider.lookup("TAB1", "SW=1", "F=0", "UP") == pytest.approx((0.0004, 900))
-    assert provider.lookup("TAB1", "SW=1", "F=0", "UNK") == provider.lookup("TAB1", "SW=1", "F=0", "ALL")
+    assert provider.lookup("TAB1", "SW=1", "F=0", "UNK") is None
+    assert provider.lookup("TAB1", "SW=1", "F=0", None) is None
     assert provider.lookup("TAB2", "SW=1", "F=0", "ALL") is None
     assert provider.lookup("TAB1", "SW=1", "F=0", "FUTURE") is None
     assert provider.lookup("TAB1", "SW=10", "F=0", "ALL") is None
