@@ -175,4 +175,9 @@ def apply_asr_post_late_entry_array(npz, cfg, is_long, state, score):
             masks["DELTA_CONFIRM"] = np.zeros(n, dtype=bool)
             masks["DELTA_OPPOSE"] = np.zeros(n, dtype=bool)
             masks["DELTA_HTF_AGAINST"] = np.zeros(n, dtype=bool)
+    from vec_decisions.asr_family_lane_score import apply_family_lane_score_array
+    result, family_masks = apply_family_lane_score_array(
+        npz, _numeric(state, "current_price", n, 0.0), is_long, cfg, result
+    )
+    masks.update({f"family:{key}": value for key, value in family_masks.items()})
     return result, masks

@@ -1,0 +1,113 @@
+{
+  "generated_utc": "2026-10-31T08:11:49.774384+00:00",
+  "scope": "Incremental ASR ordered entry scorer and selected exit helpers. Helper/unit parity is not v12 action-bar parity.",
+  "entry_stage_order": [
+    "causal stale/WT_DC/BASIS/R-G eligibility and selected HTF score prefixes",
+    "selected 4696-5672 score/veto blocks",
+    "stateful 5675-6052 mandatory reentry",
+    "6053-6264 RSI/MFI, DC/BOTA and second entry moment",
+    "7169+ pre-DC, DC structure, breakout, directional, WT, volume, history, channel/rank/post-rank/DC sufficiency, late research",
+    "native no-double-augment wait gate",
+    "native MQ bonus, explicit DeltaTracker score and separate 4h/D penalties, six B-family +35 tags",
+    "final 0.2 multiplier/clamp/threshold tail"
+  ],
+  "new_work": [
+    {
+      "module": "vec_decisions/asr_post_late_entry.py",
+      "native_refs": "ez_positions_quick.py:7582-7636",
+      "details": "NumPy MQ quality+reversal matched directly to _market_quality_score on randomized rows for both sides; explicit DeltaTracker availability/presence/entry side/active TF/z contract; separate 4h and D penalty masks; score stage runs before final tail."
+    },
+    {
+      "module": "vec_decisions/asr_family_lane_score.py",
+      "native_refs": "ez_positions_quick.py:3551-3609 and 7633-7637",
+      "details": "All six native scoring tags computed as arrays from their shared scalar/array predicate cores and native 15m analog inputs; 600 randomized rows compared against _family_lane_tags both directions; +35 each."
+    },
+    {
+      "module": "vec_decisions/asr_no_double_augment_gate.py",
+      "native_refs": "ez_positions_quick.py:7528-7555",
+      "details": "Strict native <24m and gain<MIN_GAIN wait, explicit held-position/last-augmentation lifecycle inputs, composed before late score."
+    },
+    {
+      "module": "vec_decisions/asr_ordered_composer.py::evaluate_asr_entry_candidate_array",
+      "native_refs": "ez_positions_quick.py:7169-7642",
+      "details": "Prefix+late candidate path now supports explicit lifecycle gate and post-late MQ/Delta/family stage before finish_array; still partial and has no v12 simulate_one caller."
+    },
+    {
+      "module": "vec_paths/exit_tight_breakout_scorer.py::score_exit_tight_breakout_array",
+      "details": "Scalar/array scorer helper only; not independently counted as a reachable action without engine consumer proof."
+    }
+  ],
+  "unresolved": [
+    {
+      "native_span": "ez_positions_quick.py:3616-3669",
+      "gap": "rate initialization, exact account/config/symbol/side, live position lookup and is_exit mode.",
+      "inputs": [
+        "per-account effective config",
+        "position/tracker snapshot"
+      ]
+    },
+    {
+      "native_span": "ez_positions_quick.py:4035-4695",
+      "gap": "indicator/metrics hydration and producers before score; DeltaTracker and regime/MTS/market state are not computed by raw-NPZ candidate API.",
+      "inputs": [
+        "selected timeframe live indicator view",
+        "metrics and exact sentiment/tracker providers",
+        "causal DeltaTracker output",
+        "regime/MTS outputs"
+      ]
+    },
+    {
+      "native_span": "ez_positions_quick.py:5435-5484",
+      "gap": "reentry/recent-exit and position lifecycle state producer is unbound.",
+      "inputs": [
+        "accepted event history for last entry/augmentation/reduction/exit times/prices",
+        "gain/prev_gain/open age and position stats"
+      ]
+    },
+    {
+      "native_span": "ez_positions_quick.py:6265-6419",
+      "gap": "scalp-only scoring/action paths.",
+      "status": "excluded by user"
+    },
+    {
+      "native_span": "ez_positions_quick.py:6420-7168",
+      "gap": "ordered non-scalp exit scorer/early returns not composed as action masks; tight-breakout and no-loss helpers are utility functions only; MACD/formation/WT/structural/tracker gates remain.",
+      "inputs": [
+        "position gain and age",
+        "ratio/tracker/account context",
+        "ordered per-branch current/prior indicators",
+        "action-priority state"
+      ]
+    },
+    {
+      "native_span": "v12_quick_engine.py::simulate_one entry/exit lifecycle",
+      "gap": "no import or call to ASR prefix/candidate composer. No actual v12 entry recommendation/OPEN action consumed and no action-bar parity proof."
+    },
+    {
+      "native_span": "action dispatch / family producer contract",
+      "gap": "candidate output still declares complete_rate=False; full v12 action threshold, competing-gate order and action dispatch are not wired."
+    }
+  ],
+  "tests": {
+    "focused_latest": "21 passed (lifecycle gate, candidate route, MQ/Delta, family, composer) plus 2 family tests and prior exit scorer tests; broad suite not rerun.",
+    "verification_limit": "Tests prove stated scalar/array predicates and composer sequence only, not complete AdvancedSignalRater parity or action bars."
+  },
+  "sha256": {
+    "vec_decisions/asr_entry_prefix.py": "195ecd3b9597c84b840ac943caf7372c5d2a0231b0c495564d1dc60577f0d6ed",
+    "vec_decisions/asr_inline_score.py": "09be907dbdaad80749455ce6f352cf431a71e7357fcc39aa766b07134af05d40",
+    "vec_decisions/asr_reentry_stage.py": "32c25a9e4aa69b3d3352a503e4c07a177d4278cc30e3e570b0be55f4aba2d234",
+    "vec_decisions/asr_ordered_composer.py": "fcbd66c54afacae5a26a6a13e7c8e1c9670697f71212b6ada45165d54f90de45",
+    "vec_decisions/asr_post_late_entry.py": "fd82ea9c970ecfa4d0c103e0898f2bd8d29aeffe5c733bf45f8e21cb201eac2e",
+    "vec_decisions/asr_family_lane_score.py": "7fd609245ff10ed7817b349067e71721e6ae148ad035319d93334c53b53170ed",
+    "vec_decisions/asr_no_double_augment_gate.py": "ca9293c6befbcf411440bda9ba60901eae3e2d5632da74852a82eff34f232eb2",
+    "vec_decisions/asr_pre_score_gates.py": "259df1a23099de135431af7abd4bda968652cdea06df85e5c31314114bde0eb9",
+    "vec_decisions/asr_upstream_entry_gates.py": "fe228ebb9a1d02c11cd432eef91e9a5c0d5f9180e08101815d67c5abb2668f57",
+    "vec_paths/exit_tight_breakout_scorer.py": "b6b2168a5a3143288ad963c82522da2e2c099c71ae77de3d0219f2dc94e1abde",
+    "tests/test_asr_post_late_entry.py": "dbc3c0ab48a617bb72f8e51d06b3fb94f932f46b32d5e5e8bf41d93c0f2cb251",
+    "tests/test_asr_family_lane_score.py": "94a86586981b8e7dc009b4e599b990daddf21e85107e12be8834480b26af9e3b",
+    "tests/test_asr_no_double_augment_gate.py": "525e6974faba8967bba5c216520fe607feda12ae04dea85d6e7a973c6394d5d6",
+    "tests/test_exit_tight_breakout_scorer.py": "a74c5116a7f2f43d935255ed8126d8c43818825ba1f3af426564d15a7cb2580d",
+    "tests/test_asr_ordered_composer.py": "a50f4cc927368c2b582cb4be34295b728793e6cdabc866a58806b9ec62f6029f",
+    "tests/test_asr_entry_candidate_route.py": "c66bf0ba6c9c4bf70b2327bd333f5dd7c319621a925fdcbacd7331c6b4fea15f"
+  }
+}

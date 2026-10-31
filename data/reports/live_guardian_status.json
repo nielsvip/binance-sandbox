@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T08:09:07Z",
+ "ts": "2026-10-31T08:13:58Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 2,
    "open_positions": 1,
-   "unrealised_usd": -0.06,
+   "unrealised_usd": -0.05,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 48,
    "open_positions": 7,
-   "unrealised_usd": -0.53,
+   "unrealised_usd": -0.56,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 82,
    "open_positions": 5,
-   "unrealised_usd": -0.56,
+   "unrealised_usd": -0.46,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,80 +127,64 @@
     "23901"
    ],
    "starts_30m": 1,
-   "log_age_s": 10.0
+   "log_age_s": 3.0
   },
   "men": {
    "pids": [
     "84264"
    ],
    "starts_30m": 1,
-   "log_age_s": 5.0
+   "log_age_s": 20.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 1.0
   },
   "inf": {
    "pids": [
     "68362"
    ],
    "starts_30m": 1,
-   "log_age_s": 7.0
+   "log_age_s": 8.0
   },
   "flz": {
    "pids": [
     "88793"
    ],
    "starts_30m": 1,
-   "log_age_s": 1607.0
+   "log_age_s": 1897.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 12409.0
+   "log_age_s": 12699.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 12725.0
+   "log_age_s": 13015.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T08:09:07Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "men:BOMEUSDC_SHORT",
-   "evidence": "31 07:58:48 - WARNING - [men] [REENTRY_GRANDFATHERED] men:BOMEUSDC_SHORT: bypass MAX_ORDER_VALUE $20 / MAX_POSITION_SIZE $20 \u2014 restoring $2022 on bounce (prior max 24630.0000)"
-  },
-  {
-   "ts": "2026-10-31T08:09:07Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "men:BOMEUSDC_SHORT",
-   "evidence": "order notional $2021.61 > MAX_ORDER_VALUE $300: 31 07:58:48 - INFO - [men] [execute_trade_action][men] \u2705 \u2705 \u2705 \u2705 OPEN men:BOMEUSDC_SHORT @ 0.000606 qty=3335111.249255 ($2021.61) side=SELL | QUICK_OPEN_STRONG_SELL_k1:38/d122/k3:8.93/d3:14.84_@0.0006_T"
-  },
-  {
-   "ts": "2026-10-31T08:09:08Z",
+   "ts": "2026-10-31T08:13:58Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:HYPEUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T06:26:14Z bar=2026-10-31T04:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T08:09:09Z",
+   "ts": "2026-10-31T08:13:59Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 1607s"
+   "evidence": "ez_manage_flz.log not written for 1897s"
   }
  ],
  "alert_counts": {
-  "CAP_BYPASS": 1,
-  "SIZE_ANOMALY": 1,
   "VEC_DECISION_NOT_FILLED": 1,
   "STALE_LOG": 1
  },
@@ -269,5 +253,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.71
+ "sweep_s": 1.28
 }

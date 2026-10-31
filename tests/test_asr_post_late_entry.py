@@ -52,12 +52,13 @@ def test_post_late_delta_bonus_penalty_and_htf_checks_are_causal():
              "delta_entry_ok": [True, False, True, True],
              "delta_active_tfs": [2, 1, 2, 3]}
     got, masks = apply_asr_post_late_entry_array(npz, Cfg(), True, state, np.zeros(n))
-    assert got.tolist() == [15.0, -50.0, 0.0, -35.0]
+    assert got.tolist() == [50.0, -15.0, 35.0, 0.0]
     assert masks["DELTA_CONFIRM"].tolist() == [True, False, False, True]
     assert masks["DELTA_OPPOSE"].tolist() == [False, True, False, False]
     assert masks["DELTA_HTF_AGAINST"].tolist() == [False, True, False, True]
     assert masks["DELTA_HTF_4H_AGAINST"].tolist() == [False, True, False, True]
     assert masks["DELTA_HTF_D_AGAINST"].tolist() == [False, False, False, True]
+    assert masks["family:B_SRS_ENTRY_FAMILY"].all()
 
 
 def test_active_delta_tracker_cannot_silently_default_missing_result():
@@ -70,5 +71,5 @@ def test_disabled_delta_engine_needs_no_tracker_state():
         MARKET_QUALITY_SCORE_ENABLED = False
         DELTA_ENGINE_ENABLED = False
     score, masks = apply_asr_post_late_entry_array({}, Disabled(), False, {}, [3])
-    assert score.tolist() == [3]
+    assert score.tolist() == [38]
     assert not masks["MARKET_QUALITY_SCORE"].any()

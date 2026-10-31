@@ -219,6 +219,11 @@ def test_post_late_market_quality_precedes_final_score_tail(monkeypatch):
     inputs = _inputs(7)
     cfg = inputs["cfg"]
     cfg.MARKET_QUALITY_SCORE_ENABLED = True
+    cfg.MOM3_ENTRY_ENABLED = False
+    cfg.STRUCTURAL_RANGE_SHIFT_EXIT = False
+    cfg.REENTRY_B15_STRONG_TREND_ENABLED = False
+    cfg.REENTRY_B14_HA_TREND_ENABLED = False
+    cfg.REENTRY_B12_WT_MOM_ENABLED = False
     values = inputs["stages"]["channel_confluence"]["npz"]
     values.update({
         "bb_width_1h": np.full(7, 4.0), "bb_width_4h": np.full(7, 8.0),

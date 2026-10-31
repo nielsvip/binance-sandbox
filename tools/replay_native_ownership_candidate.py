@@ -70,7 +70,58 @@ import config as config_module
 import ez_manage as ez_manage_module
 import ez_positions_quick as ez_positions_module
 import backtest_v12_engine as engine_module
+import ez_indicators as indicators_module
+import shared_mem_safe as shared_mem_safe_module
+import ez_share_ind as ez_share_ind_module
 import per_sym_store as per_sym_store_module
+
+class _ReplayPubSub:
+ def __init__(self): self.channels=[]
+ async def subscribe(self,*channels): self.channels.extend(channels)
+ async def unsubscribe(self,*channels): pass
+ async def get_message(self,*args,**kwargs): return None
+ async def aclose(self): pass
+
+class _ReplayAsyncRedis:
+ def pubsub(self): return _ReplayPubSub()
+ async def get(self,*args,**kwargs): return None
+ async def set(self,*args,**kwargs): return True
+ async def delete(self,*args,**kwargs): return 0
+ async def setex(self,*args,**kwargs): return True
+ async def mget(self,*args,**kwargs): return [None for _ in (args[0] if args else [])]
+ async def publish(self,*args,**kwargs): return 0
+ async def ping(self,*args,**kwargs): return True
+ async def aclose(self): return None
+
+def _replay_async_redis(*args,**kwargs): return _ReplayAsyncRedis()
+
+indicators_module.redis.Redis=_replay_async_redis
+indicators_module.redis.from_url=_replay_async_redis
+def _empty_replay_indicator_cache(self):
+ self.data={}
+ self._previous_indicators={}
+indicators_module.IndicatorOrchestrator._load_existing_data=_empty_replay_indicator_cache
+def _offline_replay_shared_memory(self,*args,**kwargs):
+ self.shared_proxy=None
+ return None
+indicators_module.IndicatorOrchestrator._connect_shared_memory=_offline_replay_shared_memory
+shared_mem_safe_module.connect_store=lambda *args,**kwargs: None
+ez_share_ind_module.get_shared_memory_client=lambda *args,**kwargs: None
+_frozen_indicator_coverage={"calls":0,"first_timestamp":None,"last_timestamp":None,"first_key_count":0}
+_original_build_indicator_dict=engine_module.IndicatorStore.build_indicator_dict
+def _record_frozen_indicator_row(self,index,*args,**kwargs):
+ result=_original_build_indicator_dict(self,index,*args,**kwargs)
+ _frozen_indicator_coverage["calls"]+=1
+ try:
+  timestamp=float(self.timestamps[int(index)])
+ except Exception:
+  timestamp=None
+ if _frozen_indicator_coverage["first_timestamp"] is None:
+  _frozen_indicator_coverage["first_timestamp"]=timestamp
+  _frozen_indicator_coverage["first_key_count"]=len(result) if isinstance(result,dict) else 0
+ _frozen_indicator_coverage["last_timestamp"]=timestamp
+ return result
+engine_module.IndicatorStore.build_indicator_dict=_record_frozen_indicator_row
 import stale_set_halt as stale_set_halt_module
 from live_twins import vec_exact as vec_exact_module
 from tools import mac_positions_push_executors as mac_positions_module
@@ -112,7 +163,7 @@ active=json.loads(active_path.read_text())
 sym_side=str(active["sym_side"]).upper()
 if f"{account}:{sym_side}".upper() not in {str(value).upper() for value in active.get("account_admission_keys",[])}: raise RuntimeError("account is not in frozen active-set admission")
 if sha(code/"data"/"published_selection.json")!=sha(input_dir/"frozen_data"/"published_selection.json"): raise RuntimeError("published board differs from frozen authentic input")
-pre={"record":"native_diagnostic_manifest","account":account,"sym_side":sym_side,"source_code_manifest_sha256":code_manifest_status["sha256"],"source_code_manifest_path":code_manifest_status["path"],"source_code_manifest_verified_files":code_manifest_status["verified_files"],"mac_positions_publisher_root":str(mac_positions_module.ROOT),"ownership_scope_probe":ownership_probe,"npz_sha256":sha(npz_path),"active_set_sha256":sha(active_path),"database_sha256":sha(os.environ["PER_SYM_STORE_DB"]),"published_selection_sha256":sha(code/"data"/"published_selection.json"),"market_mode_sha256":sha(config_module.Config.MARKET_MODE_FILE),"board_check":{"ok":board_ok,"detail":board_detail},"runtime_guard":runtime,"runtime_paths":prepaths,"logger_redirect":redirect_result,"network_guard_before_run":network_status,"real_execute":"run_one actual execute_now path with backtest-owned broker stub; no external broker client","ownership_mode":"V12_REPLAY_NATIVE_OWNERSHIP=1 scoped override","rate_guard_disabled":"V8_RATE_GUARD_DISABLED=1"}
+pre={"record":"native_diagnostic_manifest","account":account,"sym_side":sym_side,"source_code_manifest_sha256":code_manifest_status["sha256"],"source_code_manifest_path":code_manifest_status["path"],"source_code_manifest_verified_files":code_manifest_status["verified_files"],"mac_positions_publisher_root":str(mac_positions_module.ROOT),"ownership_scope_probe":ownership_probe,"npz_sha256":sha(npz_path),"active_set_sha256":sha(active_path),"database_sha256":sha(os.environ["PER_SYM_STORE_DB"]),"published_selection_sha256":sha(code/"data"/"published_selection.json"),"market_mode_sha256":sha(config_module.Config.MARKET_MODE_FILE),"board_check":{"ok":board_ok,"detail":board_detail},"runtime_guard":runtime,"runtime_paths":prepaths,"logger_redirect":redirect_result,"network_guard_before_run":network_status,"real_execute":"run_one actual execute_now path with backtest-owned broker stub; no external broker client","ownership_mode":"V12_REPLAY_NATIVE_OWNERSHIP=1 scoped override","rate_guard_disabled":"V8_RATE_GUARD_DISABLED=1","indicator_io_isolation":{"redis_client":"run-owned async no-network mock","initial_indicator_cache":"empty; no Redis or historical market_data hydration","shared_memory":"disabled via run-owned offline hooks","decision_indicator_source":"frozen NPZ IndicatorStore build_indicator_dict","coverage_counter_installed":True}}
 out.mkdir(parents=True,exist_ok=True)
 pre["preflight_completed_epoch"]=time.time()
 (out/"manifest.json").write_text(json.dumps(pre,sort_keys=True,default=str)+"\n")
@@ -123,12 +174,16 @@ start=time.time(); pre["started_epoch"]=start
 try:
  overrides=dict(active["overrides"]); overrides["SIM_ACCOUNT"]=account
  result=engine_module.run_one(sym_side,overrides,window_days=30,offset_days=0)
- selected={"symside":result.get("symside"),"valid":result.get("valid"),"invalid_reason":result.get("invalid_reason"),"trace":result.get("trace"),"execution_ledger":result.get("execution_ledger"),"canonical_order_ledger":result.get("canonical_order_ledger"),"replay_coverage":result.get("replay_coverage"),"replay_ownership":result.get("replay_ownership"),"producer_coverage":result.get("producer_coverage"),"replay_settings_policy":result.get("replay_settings_policy"),"sim_account":result.get("sim_account"),"trade_count":len(result.get("trades_list") or result.get("trades_detail") or [])}
+ selected={"symside":result.get("symside"),"valid":result.get("valid"),"invalid_reason":result.get("invalid_reason"),"trace":result.get("trace"),"execution_ledger":result.get("execution_ledger"),"canonical_order_ledger":result.get("canonical_order_ledger"),"replay_coverage":result.get("replay_coverage"),"replay_ownership":result.get("replay_ownership"),"producer_coverage":result.get("producer_coverage"),"replay_settings_policy":result.get("replay_settings_policy"),"sim_account":result.get("sim_account"),"trade_count":len(result.get("trades_list") or result.get("trades_detail") or []),"frozen_indicator_store_coverage":dict(_frozen_indicator_coverage)}
 except BaseException as error:
  selected={"valid":False,"invalid_reason":f"runner {type(error).__name__}: {error}","trace":traceback.format_exc()}
 finally:
  pre["ended_epoch"]=time.time(); pre["elapsed_seconds"]=pre["ended_epoch"]-start
  pre["network_guard_after_run"]=network_guard.require_installed()
+ selected["frozen_indicator_store_coverage"]=dict(_frozen_indicator_coverage)
+ if _frozen_indicator_coverage["calls"]<1 or _frozen_indicator_coverage["first_key_count"]<1:
+  selected["valid"]=False
+  selected["invalid_reason"]="frozen NPZ IndicatorStore did not serve an indicator row"
  if pre["network_guard_after_run"]["blocked_attempts"]:
   selected["valid"]=False
   selected["invalid_reason"]=f"network guard blocked {pre['network_guard_after_run']['blocked_attempts']} attempts"

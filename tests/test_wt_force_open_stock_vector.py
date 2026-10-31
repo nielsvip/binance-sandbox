@@ -129,6 +129,9 @@ def test_stock_force_open_simulate_one_open_matches_selected_bar():
     cfg.WT_3M_FORCE_OPEN_BUILD_TO_TARGET = False
     cfg.WT_3M_FORCE_OPEN_BYPASS_GATES = True
     cfg.GR_FILTER_ALL_ENTRIES = False
+    # Keep the native generic GR consensus gate off in this route fixture;
+    # the producer's own optional force-open GR gate is disabled above.
+    cfg.GOLDEN_RULE_HTF_MIN_TFS = 0
     cfg.STOCKS_LIVE_ENTRY_STACK_ENABLED = False
     cfg.ABLATION_DISABLE_QUICK_ENTRY = True
     cfg.STRUCTURAL_RANGE_SHIFT_EXIT = False

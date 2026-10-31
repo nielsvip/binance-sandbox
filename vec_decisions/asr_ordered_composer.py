@@ -313,7 +313,7 @@ def compose_asr_late_score(inputs, is_long, is_exit=False, post_late_entry_state
     }
 
 
-def compose_asr_entry_candidate_array(prefix_result, late_inputs, is_long, upstream_entry_eligible, post_late_entry_state=None):
+def compose_asr_entry_candidate_array(prefix_result, late_inputs, is_long, upstream_entry_eligible, post_late_entry_state=None, lifecycle_state=None):
     """Join the causal entry prefix to the ordered post-7169 score chain.
 
     The caller supplies all earlier lifecycle/portfolio gates explicitly in
@@ -342,6 +342,11 @@ def compose_asr_entry_candidate_array(prefix_result, late_inputs, is_long, upstr
     prefix_allowed = _column(prefix_result["entry_allowed"], "prefix entry_allowed", n, bool)
     upstream = _column(upstream_raw, "upstream_entry_eligible", n, bool)
     allowed = prefix_allowed & upstream
+    lifecycle_detail = None
+    if lifecycle_state is not None:
+        from vec_decisions.asr_no_double_augment_gate import asr_no_double_augment_gate
+        lifecycle_detail = asr_no_double_augment_gate(lifecycle_state, late_inputs["cfg"], n)
+        allowed &= ~lifecycle_detail["blocked"]
     inputs = dict(late_inputs)
     inputs["score_before_dc"] = np.where(allowed, score, 0.0)
     if post_late_entry_state is None:
@@ -356,6 +361,9 @@ def compose_asr_entry_candidate_array(prefix_result, late_inputs, is_long, upstr
     output["masks"] = dict(late["masks"])
     output["masks"]["upstream_entry_veto"] = ~upstream
     output["masks"]["entry_prefix_veto"] = upstream & ~prefix_allowed
+    if lifecycle_detail is not None:
+        output["masks"]["no_double_augment_veto"] = lifecycle_detail["blocked"]
+        output["masks"]["position_has_recent_augmentation"] = lifecycle_detail["position_has_recent_augmentation"]
     if upstream_detail is not None:
         output["upstream_reason"] = upstream_detail["reason"]
         output["masks"].update({f"upstream:{key}": value for key,value in upstream_detail["masks"].items()})
@@ -387,13 +395,15 @@ def evaluate_asr_entry_candidate_array(npz,n,is_long,cfg,prefix_context,late_cau
     prefix=score_asr_entry_prefix_array(npz,n,is_long,cfg,prefix_context,score=score)
     late_inputs=assemble_asr_composer_inputs(npz,cfg,late_causal_state,n,is_long)
     post_late_state = late_causal_state.get("post_late_entry_state")
-    if post_late_state is None:
-        result = compose_asr_entry_candidate_array(prefix, late_inputs, is_long, upstream_entry_state)
-    else:
-        result = compose_asr_entry_candidate_array(
-            prefix, late_inputs, is_long, upstream_entry_state,
-            post_late_entry_state=post_late_state,
-        )
+    lifecycle_state = late_causal_state.get("lifecycle_state")
+    kwargs = {}
+    if post_late_state is not None:
+        kwargs["post_late_entry_state"] = post_late_state
+    if lifecycle_state is not None:
+        kwargs["lifecycle_state"] = lifecycle_state
+    result = compose_asr_entry_candidate_array(
+        prefix, late_inputs, is_long, upstream_entry_state, **kwargs
+    )
     result["prefix_result"]=prefix
     result["reentry_state_out"]=prefix.get("reentry_state_out")
     result["masks"].update({f"prefix:{key}":value for key,value in prefix.get("masks",{}).items()})

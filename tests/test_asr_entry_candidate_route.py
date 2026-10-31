@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from types import SimpleNamespace
 
 import vec_decisions.asr_ordered_composer as composer
 
@@ -89,3 +90,24 @@ def test_raw_npz_candidate_api_rejects_mismatched_late_price():
         composer.evaluate_asr_entry_candidate_array(
             {"timestamps":np.array([1])},1,True,object(),{"current_price":[100.]},
             {"current_price":[101.]},{"membership":True})
+
+
+def test_candidate_route_applies_native_no_double_augment_before_late_score(monkeypatch):
+    seen = {}
+    def fake_late(inputs, is_long, is_exit=False):
+        seen["score"] = inputs["score_before_dc"].copy()
+        score = inputs["score_before_dc"] + 20
+        return {"final_score": score, "recommendation": np.where(score > 0, "GOOD_BUY", "WAIT"),
+                "masks": {}, "complete_rate": False, "remaining_stages": ()}
+    monkeypatch.setattr(composer, "compose_asr_late_score", fake_late)
+    prefix = {"score": np.array([10., 11.]), "entry_allowed": np.array([True, True])}
+    late = {"n": 2, "cfg": SimpleNamespace(MIN_GAIN=.5), "stages": {}}
+    lifecycle = {"position_exists": [True, True], "last_augmentation_present": [True, True],
+                 "minutes_since_augmentation": [23.0, 24.0], "gain": [.49, .49]}
+    result = composer.compose_asr_entry_candidate_array(
+        prefix, late, True, np.array([True, True]), lifecycle_state=lifecycle
+    )
+    assert seen["score"].tolist() == [0.0, 11.0]
+    assert result["entry_allowed"].tolist() == [False, True]
+    assert result["recommendation"].tolist() == ["WAIT", "GOOD_BUY"]
+    assert result["masks"]["no_double_augment_veto"].tolist() == [True, False]
