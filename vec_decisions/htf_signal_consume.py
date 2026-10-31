@@ -515,6 +515,7 @@ def build_ctx(cfg: Any, npz: Mapping, n: int, is_long: bool, ts: np.ndarray, ent
     try:
         venue = str(_g(cfg, "MODE", "crypto"))
         dcx = None
+        score_htf = np.zeros(n, dtype=bool)
         nonhtf_or = np.zeros(n, dtype=bool)
         for lb, m in list(or_srcs or []):
             try:
@@ -522,13 +523,25 @@ def build_ctx(cfg: Any, npz: Mapping, n: int, is_long: bool, ts: np.ndarray, ent
                 if mm.shape[0] != n:
                     continue
                 lbu = str(lb).upper()
-                if lbu.startswith("DC_BREAKOUT_TF_EXPANDED_") and norm_tf(lbu.rsplit("_", 1)[-1]) is not None:
+                if lbu == "TRADIER_SIGNAL_SCORE_HTF":
+                    score_htf |= mm
+                elif lbu.startswith("DC_BREAKOUT_TF_EXPANDED_") and norm_tf(lbu.rsplit("_", 1)[-1]) is not None:
                     dcx = mm if dcx is None else (dcx | mm)
                 else:
                     nonhtf_or |= mm
             except Exception:
                 pass
         paths = path_masks(cfg, npz, n, is_long, ts, core["blocks"], core["dc_tiers"], dcx, core.get("golden_lc"), venue)
+        if np.any(score_htf):
+            tf = norm_tf(_g(cfg, "BB_BREAKOUT_ENTRY_TF", "OFF"))
+            if tf is not None:
+                path = f"BB_BREAKOUT_ENTRY_{tf}"
+                matched = next((item for item in paths if item["path"] == path), None)
+                if matched is None:
+                    ids = instance_ids(npz, ts, tf, n)
+                    paths.append({"path": path, "tf": tf, "mask": score_htf.copy(), "inst": ids, "start": run_start(ids), "valid": valid_bars(cfg, tf, venue)})
+                else:
+                    matched["mask"] = np.asarray(matched["mask"], dtype=bool) | score_htf
         if not paths:
             return None
         es_n = core.get("es_nonhtf")

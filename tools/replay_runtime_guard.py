@@ -65,6 +65,9 @@ def assert_state_module_paths(code_root, run_root, modules):
     return assert_runtime_paths(code_root, run_root, paths)
 
 def assert_native_runtime(code_root, run_root, active_file, modules):
+    from tools.replay_network_guard import require_installed
+    network = require_installed()
+    assert_runtime_paths(code_root, run_root, {"network_audit": network["audit_path"]})
     code = Path(code_root).resolve()
     paths = {"code_root": code, "active_file": active_file}
     for name in ("config", "ez_manage", "ez_positions_quick", "backtest_v12_engine", "per_sym_store", "live_twins.vec_exact"):
@@ -93,4 +96,4 @@ def assert_native_runtime(code_root, run_root, active_file, modules):
     resolved = assert_runtime_paths(code, run_root, paths)
     resolved.update(assert_state_module_paths(code, run_root, modules))
     active = assert_frozen_active_row(paths["per_sym_store.DB_PATH"], active_file)
-    return {"status": "PREFLIGHT_PATHS_AND_ACTIVE_ROW_VERIFIED", "paths": resolved, "active": active, "note": "Does not prove trading parity or future file writes"}
+    return {"status": "PREFLIGHT_PATHS_AND_ACTIVE_ROW_VERIFIED", "paths": resolved, "active": active, "network_guard": network, "note": "Does not prove trading parity or future file writes"}

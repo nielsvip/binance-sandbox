@@ -406,6 +406,9 @@ def replay(args):
     runtime_guard.assert_runtime_paths(code_root, isolation_root,
                                        {"BASE_PATH": os.environ["BASE_PATH"], "V12_BASE_PATH": os.environ["V12_BASE_PATH"],
                                         "PER_SYM_STORE_DB": os.environ["PER_SYM_STORE_DB"]})
+    root.mkdir(parents=True, exist_ok=True)
+    network_guard = _load_isolated_helper(code_root / "tools" / "replay_network_guard.py", "replay_network_guard")
+    network_guard.install(root / "network_attempts.jsonl", isolation_root)
     log_redirect = _load_isolated_helper(code_root / "tools" / "replay_log_redirect.py", "replay_log_redirect")
     log_redirect_status = log_redirect.install_replay_log_redirect(root / "logs")
     out_dir = root / "data" / "vector_direct"
@@ -558,6 +561,7 @@ def replay(args):
                 "broker_transport": "exact _MockBroker.send and _MockBroker._req methods; unsupported requests raise",
                 "mock_broker_transport_verified": type(broker) is _MockBroker and broker.send.__func__ is _MockBroker.send and broker._req.__func__ is _MockBroker._req,
                 "runtime_log_redirect": log_redirect_status,
+                "network_guard": network_guard.require_installed(),
                 "runtime_preflight": {"paths": runtime_paths, "active_row": active_row,
                                       "published_board": {"ok": board_ok, "detail": board_detail},
                                       "mac_position_publisher_root": str(publisher_root),

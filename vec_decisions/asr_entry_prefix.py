@@ -15,7 +15,7 @@ from vec_decisions.asr_mts_entry_gate import mts_entry_gate_array
 from vec_decisions.asr_inline_score import (
     all_tf_wt_entry_array, bc155_score_array, data_blind_gate_array, hlr_rally_score_array, k_zone_score_array,
     momentum_fade_score_array, mover_score_array, satoshit_score_array, stoch_kx_score_array,
-    stochastic_alignment_score_array,
+    rsi_mfi_score_array, dc_momentum_bota_score_array, stochastic_alignment_score_array,
 )
 from vec_decisions.asr_mts_mi_score import mts_mi_score_array
 from vec_decisions.asr_portfolio_ratio_score import portfolio_ratio_array
@@ -313,6 +313,50 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
     veto("ASR_REENTRY_STAGE", ~reentry["entry_allowed"])
     masks.update({f"reentry:{key}": value for key, value in reentry.items() if isinstance(value, np.ndarray) and key not in ("score", "entry_allowed")})
     masks["reentry:bounce_reset_final"] = np.full(n, reentry["bounce_reentry_k_reset"], dtype=bool)
+
+    entry_active = ~blocked
+    proposed, rsi_masks = rsi_mfi_score_array(arrays, is_long, score=result)
+    result = np.where(entry_active, proposed, result)
+    masks.update({f"rsi_mfi:{key}": entry_active & value for key, value in rsi_masks.items()})
+    dcb_state = {"current_price": current_price, "pnl_pct": _required_col(context, "pnl_pct", n)}
+    proposed, dcb_masks = dc_momentum_bota_score_array(arrays, dcb_state, is_long, score=result)
+    result = np.where(entry_active, proposed, result)
+    masks.update({f"dc_bota:{key}": entry_active & value for key, value in dcb_masks.items() if np.asarray(value).dtype == bool})
+    dcb_bypass = dcb_masks["DC_MOMENTUM"] | dcb_masks["BOTA_PULLBACK"]
+    k1, d1 = _col(arrays, "k_1m", n, 50.0), _col(arrays, "d_1m", n, 50.0)
+    k3, d3 = _col(arrays, "k_3m", n, 50.0), _col(arrays, "d_3m", n, 50.0)
+    protect = (_required_col(context, "pnl_pct", n) > 1.8) & (_required_col(context, "pnl_pct", n) < 2.3)
+    protect &= ((k1 < d1) | (k3 < d3)) if is_long else ((k1 > d1) | (k3 > d3))
+    veto("EXCLUDED_SCALP_REDUCE", protect)
+    second_active = ~blocked & ~dcb_bypass
+    k1p = _col(arrays, "k_1m_prev", n, 50.0)
+    k3p = _col(arrays, "k_3m_prev", n, 50.0)
+    k15, k15p = _col(arrays, "k_15m", n, 50.0), _col(arrays, "k_15m_prev", n, 50.0)
+    lag = _required_col(context, "true_lag", n)
+    k1co = (k1 > d1) & (lag < 10.0) & (k1p <= d1) & (k1 < 30.0)
+    k1cu = (k1 < d1) & (lag < 10.0) & (k1p >= d1) & (k1 > 70.0)
+    k3co = (k3 > d3) & (k3p <= d3) & (k3 < 30.0)
+    k3cu = (k3 < d3) & (k3p >= d3) & (k3 > 70.0)
+    k15co = (k15 > _col(arrays, "d_15m", n, 50.0)) & (_col(arrays, "k_15m_prev", n, 50.0) <= _col(arrays, "d_15m", n, 50.0)) & (k15 < 30.0)
+    k15cu = (k15 < _col(arrays, "d_15m", n, 50.0)) & (_col(arrays, "k_15m_prev", n, 50.0) >= _col(arrays, "d_15m", n, 50.0)) & (k15 > 70.0)
+    if is_long:
+        second_good = (k3 < 25.0) | ((((k1 < 15.0) & (k1 > k1p)) | k1co) & (lag < 10.0)) | k3co | reentry["force_reentry"]
+    else:
+        second_good = (k3 > 75.0) | ((((k1 > 85.0) & (k1 < k1p)) | k1cu) & (lag < 10.0)) | k3cu | reentry["force_reentry"]
+    veto("POST_BOTA_ENTRY_MOMENT", second_active & ~second_good)
+    second_fire = second_active & second_good & ~blocked
+    if is_long:
+        result += second_fire * (~reentry["tier1_forced"] & ~reentry["tier2_chase"] & ~reentry["force_reentry"] & ~dcb_bypass) * (-10.0 * (~_col(context, "trend_is_bullish", n, False, bool)))
+        combo = (k1co & (k3 < 80.0) & (lag < 10.0)) | (k3co & (k15 > 80.0))
+        result += (second_fire & combo) * 5.0
+        result += (second_fire & combo & (((k15 > 50.0) & (k3 > d3)) | ((k15 < 30.0) & (k3 > d3)))) * 5.0
+        result += (second_fire & k15co) * 4.0
+    else:
+        result += second_fire * (~reentry["tier1_forced"] & ~reentry["tier2_chase"] & ~reentry["force_reentry"] & ~dcb_bypass) * (-10.0 * (~_col(context, "trend_is_bearish", n, False, bool)))
+        combo = (k1cu & (k3 > 20.0) & (lag < 10.0)) | (k3cu & (k15 < 20.0))
+        result += (second_fire & combo) * 5.0
+        result += (second_fire & combo & (((k15 < 50.0) & (k3 < d3)) | ((k15 > 70.0) & (k3 < d3)))) * 5.0
+        result += (second_fire & k15cu) * 4.0
     return {
         "score": result,
         "entry_allowed": ~blocked,
@@ -323,11 +367,12 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
         "complete_rate": False,
         "covered_native_spans": ("ez_positions_quick.py:4696-4954 selected gate/score blocks including chase/ATR vetoes", "ez_positions_quick.py:4955-5071 channel/K/DC-cross and directional scores", "ez_positions_quick.py:5072-5434 BC155 through HLR/candle-alignment and unreliable-indicator gates",
             "ez_positions_quick.py:5485-5672 data-blind veto, KX score, and all-TF WT veto/penalties",
-            "ez_positions_quick.py:5675-6052 stateful mandatory reentry, early entry moment, and score bonuses"),
+            "ez_positions_quick.py:5675-6052 stateful mandatory reentry, early entry moment, and score bonuses",
+            "ez_positions_quick.py:6053-6264 RSI/MFI, DC/BOTA scoring, and second entry-moment gate"),
         "remaining": (
             "pre_score_lifecycle_gates", "regime_input_producer",
-            "tracker_position_and_market_state:ez_positions_quick.py:5435-5484", "RSI_MFI_DC_BOTA_scores:ez_positions_quick.py:6053-6264",
-            "scalp_and_lifecycle_paths:ez_positions_quick.py:6265-7158",
-            "action_threshold_and_execution",
+            "tracker_position_and_market_state:ez_positions_quick.py:5435-5484",
+            "scalp_paths_excluded_by_user:ez_positions_quick.py:6265-7158",
+            "non-scapl_exit_and_action_threshold_paths", "action_threshold_and_execution",
         ),
     }

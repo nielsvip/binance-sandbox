@@ -2,6 +2,7 @@ import errno
 import json
 import os
 import socket
+import sys
 import threading
 import time
 from pathlib import Path
@@ -17,10 +18,14 @@ def install(audit_path, run_root):
     root = Path(run_root).resolve()
     if not raw.is_absolute() or not root.is_dir() or not path.parent.is_dir() or not path.is_relative_to(root):
         raise RuntimeError("Replay network audit requires an existing run-owned directory")
-    if _installed is not None:
-        if path != _installed:
+    existing = getattr(socket, "_frozen_replay_guard", None)
+    if existing is not None:
+        if str(path) != existing["audit_path"]:
             raise RuntimeError("Replay network guard already owns a different audit file")
-        return status()
+        return require_installed()
+    loaded = [name for name in ("config", "config_tradier", "ez_manage", "tradier_manage", "ez_positions_quick", "ez_positions_service", "per_sym_store", "backtest_v12_engine") if name in sys.modules]
+    if loaded:
+        raise RuntimeError(f"Replay network guard must precede project imports: {loaded}")
     os.environ["PYTHON_DOTENV_DISABLED"] = "1"
     def blocked(operation, address):
         record = {"record": "blocked_replay_network_attempt", "pid": os.getpid(), "time_ns": time.time_ns(), "operation": operation, "address": str(address)}
@@ -48,10 +53,13 @@ def install(audit_path, run_root):
     socket.gethostbyname = gethostbyname
     socket.gethostbyname_ex = gethostbyname_ex
     _installed = path
+    socket._frozen_replay_guard = {"audit_path": str(path), "attempts": _attempts, "socket_type": socket.socket, "hooks": [(socket.socket, "connect", connect), (socket.socket, "connect_ex", connect_ex), (socket.socket, "sendto", sendto), (socket, "getaddrinfo", getaddrinfo), (socket, "gethostbyname", gethostbyname), (socket, "gethostbyname_ex", gethostbyname_ex)]}
     return status()
 
 def status():
-    return {"installed": _installed is not None, "audit_path": str(_installed) if _installed is not None else None, "blocked_attempts": len(_attempts), "dotenv_disabled": os.environ.get("PYTHON_DOTENV_DISABLED") == "1"}
+    guard = getattr(socket, "_frozen_replay_guard", None)
+    installed = bool(guard) and socket.socket is guard["socket_type"] and all(getattr(owner, name) is callback for owner, name, callback in guard["hooks"])
+    return {"installed": bool(installed), "audit_path": guard["audit_path"] if guard else None, "blocked_attempts": len(guard["attempts"]) if guard else 0, "dotenv_disabled": os.environ.get("PYTHON_DOTENV_DISABLED") == "1"}
 
 def require_installed():
     state = status()

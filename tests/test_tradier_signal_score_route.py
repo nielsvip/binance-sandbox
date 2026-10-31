@@ -603,6 +603,77 @@ def test_vector_mts_scores_match_native_analyzer_both_sides():
             assert reasons[index] == expected_reason
 
 
+def test_htf_score_only_setup_uses_per_evaluation_retry_book():
+    import vec_decisions.htf_signal_consume as hsc
+
+    npz = _base_npz()
+    n = len(npz["close"])
+    bar = 201
+    npz["close"] = np.full(n, 100.0)
+    npz["k_5m"] = np.full(n, 50.0)
+    npz["d_5m"] = np.full(n, 50.0)
+    npz["k_4h"] = np.full(n, 50.0)
+    npz["d_4h"] = np.full(n, 50.0)
+    npz["mfi_4h"] = np.full(n, 50.0)
+    npz["bb_pct_b_4h"] = np.full(n, 0.98)
+    npz["bb_upper_4h"] = np.full(n, 105.0)
+    npz["wt1_15m"] = np.zeros(n)
+    npz["wt2_15m"] = np.zeros(n)
+    npz["wt1_1h"] = np.zeros(n)
+    npz["wt2_1h"] = np.zeros(n)
+    npz["timestamps"] = 1_700_000_000.0 + np.arange(n) * 900.0
+    npz["stoch_k_15m"] = np.full(n, 50.0)
+    npz["stoch_d_15m"] = np.full(n, 50.0)
+    npz["stoch_k_15m"][bar - 1] = 40.0
+    npz["stoch_k_15m"][bar] = 60.0
+    npz["stoch_d_15m"][bar - 1] = 50.0
+    npz["stoch_d_15m"][bar] = 50.0
+    cfg = _cfg()
+    cfg.MODE = "tradier"
+    cfg.LTF_SUB15M_TRADING_ENABLED = False
+    cfg.K_ZONE_ENTRY_ENABLED_TRADIER = False
+    cfg.BACKTEST_VALIDATED_GATES_TRADIER = False
+    cfg.MARKET_QUALITY_SCORE_ENABLED_TRADIER = False
+    cfg.WT_COMPOSITE_SCORING_ENABLED_TRADIER = False
+    cfg.WT_COMPOSITE_SCORING_ENABLED = False
+    cfg.BB_BREAKOUT_ENTRY_TF = "4h"
+    cfg.HTF_SIGNAL_CONSUME_ENABLED = True
+    cfg.ENTRY_SCORE_THRESHOLD = 0.0
+    entry_sig = V.compute_entry_signals(npz, n, True, cfg, "SYNTH")
+    assert entry_sig[bar]
+    score_htf = np.asarray(cfg._tradier_signal_score_htf_mask, dtype=bool)
+    score_nonhtf = np.asarray(cfg._tradier_signal_score_mask, dtype=bool)
+    assert score_htf[bar] and not score_nonhtf[bar]
+    ts = np.asarray(npz["timestamps"], dtype=float)
+    blocks = V.compute_reentry_blocks(npz, n, True, cfg)
+    core = {"blocks": blocks, "dc_tiers": {}, "golden_lc": None, "es_nonhtf": np.zeros(n, dtype=bool)}
+    sources = [("TRADIER_SIGNAL_SCORE", score_nonhtf), ("TRADIER_SIGNAL_SCORE_HTF", score_htf)]
+    args = (cfg, npz, n, True, ts, entry_sig, core, sources, V._safe)
+    instance = int(hsc.instance_ids(npz, ts, "4h", n)[bar])
+    global_keys = ("v12:SYNTH:LONG:score", "v12:OTHER:LONG:score")
+    old_globals = {key: hsc._LIVE_BOOKS.get(key) for key in global_keys}
+    for key in global_keys:
+        poisoned = hsc.RetryBook()
+        for _ in range(hsc.max_attempts(cfg)):
+            poisoned.commit(("BB_BREAKOUT_ENTRY_4h", instance) for _ in range(1))
+        hsc._LIVE_BOOKS[key] = poisoned
+    try:
+        first = hsc.build_ctx(*args)
+        assert first is not None and first["htf_only"][bar]
+        assert hsc.gate(first, cfg, bar, [])
+        second = hsc.build_ctx(*args)
+        assert second is not None and not second["book"].book
+        assert hsc.gate(second, cfg, bar, [])
+        nonhtf = hsc.build_ctx(cfg, npz, n, True, ts, entry_sig, core, [("TRADIER_SIGNAL_SCORE", score_htf)], V._safe)
+        assert nonhtf is not None and not nonhtf["htf_only"][bar]
+    finally:
+        for key, old in old_globals.items():
+            if old is None:
+                hsc._LIVE_BOOKS.pop(key, None)
+            else:
+                hsc._LIVE_BOOKS[key] = old
+
+
 def test_htf_bb_scalar_fallback_cannot_override_blocked_threshold_zero():
     npz = _base_npz()
     n = len(npz["close"])

@@ -162,6 +162,30 @@ def _prefix_digest(prefix):
     return h.hexdigest()
 
 
+def _install_replay_network_guard(code_root: Path, audit_path: Path, run_root: Path):
+    import importlib.util
+
+    helper_path = code_root / "tools" / "replay_network_guard.py"
+    if not helper_path.is_file():
+        raise RuntimeError(f"replay source bundle is missing its network guard: {helper_path}")
+    spec = importlib.util.spec_from_file_location(
+        f"replay_network_guard_{os.getpid()}", helper_path
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"cannot load replay network guard: {helper_path}")
+    guard = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(guard)
+    guard.install(audit_path, run_root)
+    return guard, guard.require_installed()
+
+
+def _network_attempt_count(audit_path: Path) -> int:
+    if not audit_path.is_file():
+        return 0
+    with audit_path.open("r", encoding="utf-8") as stream:
+        return sum(1 for line in stream if line.strip())
+
+
 def _source_hashes(code_root: Path):
     candidates = [
         Path("tools/v15_forward_state.py"),
@@ -330,6 +354,11 @@ def _parallel_state_chunk(task):
     """Evaluate independent causal prefixes in one isolated process context."""
     (npz_path, symside, indexes, runtime_code, canonical_npz_path,
      active_set, provenance_root) = task
+    provenance_root.mkdir(parents=True, exist_ok=True)
+    network_audit_path = provenance_root / "network_guard_attempts.jsonl"
+    _network_guard, _network_guard_status = _install_replay_network_guard(
+        Path(runtime_code), network_audit_path, provenance_root.parents[1]
+    )
     with np.load(npz_path, allow_pickle=True) as archive:
         arrays = {key: archive[key] for key in archive.files}
     row_count = len(arrays["timestamps"])
@@ -460,6 +489,17 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
     runtime_root, runtime_code, canonical_npz_path = _make_runtime(
         code_root, npz_path, symside, output_path
     )
+    provenance_root.mkdir(parents=True, exist_ok=True)
+    network_audit_path = output_path.with_name(
+        output_path.stem + "_network_guard_attempts.jsonl"
+    )
+    network_guard, network_guard_status = _install_replay_network_guard(
+        runtime_code, network_audit_path, output_path.parent
+    )
+    worker_network_audits = [
+        provenance_root / f"state_worker_{worker_index:02d}" / "network_guard_attempts.jsonl"
+        for worker_index in range(state_workers)
+    ] if state_workers > 1 else []
     env_names = (
         "BASE_PATH", "V12_BASE_PATH", "V12_NPZ_DIR", "V12_RUN_ONE_SET_PRECEDENCE",
         "V12_SIM_ALLOW_LIVE_MARKET_FILE", "V12_ALLOW_STALE_NPZ",
@@ -545,6 +585,9 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 "bar_count": len(selected),
                 "state_workers": state_workers,
                 "state_worker_semantics": "independent causal state_for prefixes; output sorted by bar; planner and simulated fills remain serial" if state_workers > 1 else "serial causal state_for prefixes",
+                "network_guard_main": network_guard_status,
+                "network_guard_main_audit": str(network_audit_path),
+                "network_guard_worker_audits": [str(path) for path in worker_network_audits],
                 "npz_row_aligned_array_count": len(row_aligned_keys),
                 "npz_row_aligned_keys_sha256": _canonical_sha256(row_aligned_keys),
                 "npz_nonrow_array_shapes": nonrow_shapes,
@@ -741,6 +784,10 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                            and phase_counts["scored"] == expected_scored_rows)
             if not coverage_ok:
                 raise AssertionError(f"replay coverage mismatch: states={state_rows}/{len(selected)}, phases={phase_counts}, expected warmup/scored={expected_warmup_rows}/{expected_scored_rows}")
+            worker_network_attempts = sum(
+                _network_attempt_count(path) for path in worker_network_audits
+            )
+            main_network_attempts = _network_attempt_count(network_audit_path)
             trailer = {
                 "record": "replay_summary",
                 "sym_side": symside.upper(),
@@ -753,6 +800,13 @@ def replay(npz_path: Path, active_path: Path, symside: str, start_ts: int,
                 "planner_final_broker_position": broker_position if planner_account else None,
                 "planner_done_key_count": len(done_keys) if planner_account else None,
                 "invalid_state_counts": invalid_counts,
+                "network_guard": {
+                    "main_blocked_attempts": main_network_attempts,
+                    "worker_blocked_attempts": worker_network_attempts,
+                    "main_audit": str(network_audit_path),
+                    "worker_audits": [str(path) for path in worker_network_audits],
+                    "network_attempt_free": main_network_attempts + worker_network_attempts == 0,
+                },
                 "replay_completed_at_wall_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
                 "provenance_output_dir": str(provenance_root),
                 "runtime_code_root": str(runtime_root),

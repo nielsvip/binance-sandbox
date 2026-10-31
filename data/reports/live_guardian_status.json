@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T07:43:10Z",
+ "ts": "2026-10-31T07:48:12Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -30,7 +30,7 @@
    "fills_6h": 2,
    "open_positions": 1,
    "unrealised_usd": -0.08,
-   "pos_mismatch": 0,
+   "pos_mismatch": 1,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -43,10 +43,10 @@
    }
   },
   "men": {
-   "fills_6h": 52,
+   "fills_6h": 51,
    "open_positions": 7,
    "unrealised_usd": -0.66,
-   "pos_mismatch": 0,
+   "pos_mismatch": 1,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -59,10 +59,10 @@
    }
   },
   "ang": {
-   "fills_6h": 90,
+   "fills_6h": 86,
    "open_positions": 6,
-   "unrealised_usd": -0.72,
-   "pos_mismatch": 0,
+   "unrealised_usd": -0.73,
+   "pos_mismatch": 2,
    "vec_parity": {
     "live_vec_decisions": 0,
     "state_divergent": 0,
@@ -91,9 +91,9 @@
    }
   },
   "flz": {
-   "fills_6h": 17,
+   "fills_6h": 16,
    "open_positions": 3,
-   "unrealised_usd": -0.32,
+   "unrealised_usd": -0.3,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -123,23 +123,25 @@
  "reconcile": {},
  "process": {
   "fin": {
-   "pids": [],
+   "pids": [
+    "23901"
+   ],
    "starts_30m": 1,
-   "log_age_s": 991.0
+   "log_age_s": 1295.0
   },
   "men": {
    "pids": [
     "84264"
    ],
    "starts_30m": 1,
-   "log_age_s": 18.0
+   "log_age_s": 1.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 37.0
+   "log_age_s": 26.0
   },
   "inf": {
    "pids": [
@@ -153,62 +155,74 @@
     "88793"
    ],
    "starts_30m": 1,
-   "log_age_s": 50.0
+   "log_age_s": 353.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 10852.0
+   "log_age_s": 11156.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 11168.0
+   "log_age_s": 11472.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T07:43:11Z",
+   "ts": "2026-10-31T07:48:12Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "fin:FLUXUSDT_LONG",
+   "evidence": "positions file amt 249 vs fill-ledger amt 435"
+  },
+  {
+   "ts": "2026-10-31T07:48:13Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "men:1000XECUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 2361"
+  },
+  {
+   "ts": "2026-10-31T07:48:14Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:RSRUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 10893"
+  },
+  {
+   "ts": "2026-10-31T07:48:14Z",
+   "severity": "WARN",
+   "kind": "POSITION_STATE_MISMATCH",
+   "key": "ang:SKYUSDT_SHORT",
+   "evidence": "positions file amt 0 vs fill-ledger amt 224"
+  },
+  {
+   "ts": "2026-10-31T07:48:14Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:HYPEUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T06:26:14Z bar=2026-10-31T04:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T07:43:11Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "flz:DOGEUSDC_SHORT",
-   "evidence": "31 07:29:09 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:DOGEUSDC_SHORT: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $509 on bounce (prior max 1554.0000)"
-  },
-  {
-   "ts": "2026-10-31T07:43:11Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "flz:DOGEUSDC_SHORT",
-   "evidence": "order notional $509.06 > MAX_ORDER_VALUE $300: 31 07:29:09 - INFO - [flz] [execute_trade_action][flz] \u2705 \u2705 \u2705 \u2705 OPEN flz:DOGEUSDC_SHORT @ 0.075240 qty=6765.841807 ($509.06) side=SELL | QUICK_OPEN_STRONG_SELL_k1:8/d119/k3:27.51/d3:27.96_@0.0752_TIER1"
-  },
-  {
-   "ts": "2026-10-31T07:43:12Z",
-   "severity": "CRITICAL",
-   "kind": "PROCESS_DOWN",
-   "key": "fin",
-   "evidence": "no ez_manage.py --account fin process"
-  },
-  {
-   "ts": "2026-10-31T07:43:12Z",
+   "ts": "2026-10-31T07:48:15Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 991s"
+   "evidence": "ez_manage_fin.log not written for 1295s"
+  },
+  {
+   "ts": "2026-10-31T07:48:15Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "flz",
+   "evidence": "ez_manage_flz.log not written for 353s"
   }
  ],
  "alert_counts": {
+  "POSITION_STATE_MISMATCH": 4,
   "VEC_DECISION_NOT_FILLED": 1,
-  "CAP_BYPASS": 1,
-  "SIZE_ANOMALY": 1,
-  "PROCESS_DOWN": 1,
-  "STALE_LOG": 1
+  "STALE_LOG": 2
  },
  "active_interventions": {
   "acct:trc": {
@@ -268,5 +282,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 2.41
+ "sweep_s": 3.4
 }

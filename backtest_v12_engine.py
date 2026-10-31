@@ -1829,7 +1829,13 @@ async def drain_pending_v8_tasks():
 def _isolate_frozen_data_feeds(service_module, quick_module):
     async def _frozen_feed(*args, **kwargs):
         return None
-    for owner, methods in ((getattr(service_module, 'IndicatorsBridge', None), ('_hot_path_loop', '_cold_data_loop', '_redis_fallback_loop', '_refresh_from_source')), (getattr(quick_module, 'FastDataManager', None), ('_maintain_shared_memory_connection', '_maintain_cold_data_sync')), (getattr(service_module, 'PositionService', None), ('_periodic_phantom_kill',))):
+    bridge_owner = getattr(service_module, 'IndicatorsBridge', None)
+    if bridge_owner is not None and hasattr(bridge_owner, '_connect_shared_memory'):
+        def _offline_shared_memory(self, *args, **kwargs):
+            self.shared_proxy = None
+            return None
+        bridge_owner._connect_shared_memory = _offline_shared_memory
+    for owner, methods in ((bridge_owner, ('_hot_path_loop', '_cold_data_loop', '_redis_fallback_loop', '_refresh_from_source')), (getattr(quick_module, 'FastDataManager', None), ('_maintain_shared_memory_connection', '_maintain_cold_data_sync')), (getattr(service_module, 'PositionService', None), ('_periodic_phantom_kill',))):
         if owner is not None:
             for method in methods:
                 if hasattr(owner, method):
@@ -2035,6 +2041,23 @@ def apply_patches(stores: Dict[str, IndicatorStore], mode: str):
     async def _get_mem_redis():
         return _mem_redis
     utils.get_simple_redis_manager = _get_mem_redis
+    # Imported-by-value Redis factories in project modules must be replaced too.
+    # Patching utils alone leaves bootstrap_position_service holding its original
+    # function and can connect this replay to the host Redis server.
+    for _redis_module in (ez_manage, ez_positions_service):
+        if hasattr(_redis_module, 'get_simple_redis_manager'):
+            _redis_module.get_simple_redis_manager = _get_mem_redis
+
+    async def _get_mem_redis_client(self):
+        self.redis_manager = _mem_redis
+        return _mem_redis
+
+    # PositionService and WebSocketManager construct direct redis.asyncio clients
+    # in their original _ensure_redis_client methods. Keep their interfaces but
+    # direct every call to the same run-local in-memory implementation.
+    ez_positions_service.PositionService._ensure_redis_client = _get_mem_redis_client
+    if hasattr(ez_manage, 'WebSocketManager'):
+        ez_manage.WebSocketManager._ensure_redis_client = _get_mem_redis_client
 
     # --- Patch bootstrap_position_service to skip Redis hydration ---
     _original_bootstrap = ez_positions_service.bootstrap_position_service

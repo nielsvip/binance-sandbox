@@ -42,3 +42,37 @@ except RuntimeError:pass
 else:raise AssertionError('Audit destination changed')
 '''
     subprocess.run([sys.executable,'-c',code,str(tmp_path/'a.jsonl'),str(tmp_path/'b.jsonl')],check=True)
+
+def test_modified_guard_hooks_fail_preflight(tmp_path):
+    code="""
+import socket,sys
+from tools.replay_network_guard import install,require_installed
+install(sys.argv[1],sys.argv[2])
+socket.socket.connect=lambda *args:None
+try:require_installed()
+except RuntimeError:pass
+else:raise AssertionError('Modified guard was accepted')
+"""
+    subprocess.run([sys.executable,'-c',code,str(tmp_path/'a.jsonl'),str(tmp_path)],check=True)
+
+def test_audit_path_cannot_escape_run_root(tmp_path):
+    code="""
+import sys
+from tools.replay_network_guard import install
+try:install(sys.argv[1],sys.argv[2])
+except RuntimeError:pass
+else:raise AssertionError('Escaping audit accepted')
+"""
+    run=tmp_path/'run';run.mkdir()
+    subprocess.run([sys.executable,'-c',code,str(tmp_path/'a.jsonl'),str(run)],check=True)
+
+def test_install_after_project_import_is_rejected(tmp_path):
+    code="""
+import sys,types
+from tools.replay_network_guard import install
+sys.modules['ez_manage']=types.ModuleType('ez_manage')
+try:install(sys.argv[1],sys.argv[2])
+except RuntimeError as error:assert 'precede project imports' in str(error)
+else:raise AssertionError('Late installation accepted')
+"""
+    subprocess.run([sys.executable,'-c',code,str(tmp_path/'a.jsonl'),str(tmp_path)],check=True)

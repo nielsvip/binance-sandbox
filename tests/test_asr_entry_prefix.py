@@ -41,10 +41,10 @@ def _arrays(n=3):
         "k_15m_prev": np.array([50.0, 90.0, 24.0][:n]),
         "k_3m": np.array([40.0, 70.0, 60.0][:n]),
         "d_3m": np.array([35.0, 75.0, 55.0][:n]),
-        "k_1m": np.full(n, 50.0), "d_1m": np.full(n, 50.0),
-        "k_15m": np.array([40.0, 70.0, 60.0][:n]), "d_15m": np.array([35.0, 75.0, 55.0][:n]),
-        "k_15m_prev": np.array([40.0, 70.0, 60.0][:n]),
-        "k_1m_prev": np.full(n, 50.0), "k_3m_prev": np.full(n, 50.0),
+        "k_1m": np.array([20.0, 50.0, 20.0][:n]), "d_1m": np.array([15.0, 50.0, 15.0][:n]),
+        "k_15m": np.array([20.0, 80.0, 20.0][:n]), "d_15m": np.array([35.0, 85.0, 35.0][:n]),
+        "k_15m_prev": np.array([25.0, 90.0, 25.0][:n]),
+        "k_1m_prev": np.array([10.0, 50.0, 10.0][:n]), "k_3m_prev": np.full(n, 50.0),
         "wt_cross_bull_3m": np.zeros(n), "wt_cross_bear_3m": np.zeros(n),
         "wt_crossover_value_3m": np.zeros(n), "wt_crossover_value_3m_prev": np.zeros(n),
         "mts_bottom": np.zeros(n), "mts_entry_quality": np.zeros(n),
@@ -67,7 +67,7 @@ def _arrays(n=3):
 
 def test_entry_prefix_preserves_native_score_order_and_explicit_context():
     npz = _arrays()
-    context = {"current_price": np.array([100.0, 100.0, 100.0]), "portfolio_ratio_active": False, "mover_registry_available": False, "last_reduction_price": np.zeros(3), "minutes_since_reduction": np.full(3, 10.0), "gain": np.zeros(3), "prev_gain": np.zeros(3), "true_lag": np.full(3, 999.0), "position_amt": np.ones(3), "prev_cross_price": np.zeros(3),
+    context = {"current_price": np.array([100.0, 100.0, 100.0]), "portfolio_ratio_active": False, "mover_registry_available": False, "last_reduction_price": np.zeros(3), "minutes_since_reduction": np.full(3, 10.0), "gain": np.zeros(3), "prev_gain": np.zeros(3), "true_lag": np.full(3, 9.0), "position_amt": np.ones(3), "prev_cross_price": np.zeros(3),
                "vol_ok": np.ones(3, dtype=bool), "vol_strong": np.zeros(3, dtype=bool), "rel_vol_3m": np.ones(3),
                "pnl_pct": np.zeros(3), "trend_is_bullish": np.ones(3, dtype=bool), "trend_is_bearish": np.zeros(3, dtype=bool), "bounce_reentry_k_reset": True}
     result = score_asr_entry_prefix_array(npz, 3, True, _cfg(), context)
@@ -81,6 +81,7 @@ def test_entry_prefix_preserves_native_score_order_and_explicit_context():
         "ez_positions_quick.py:5072-5434 BC155 through HLR/candle-alignment and unreliable-indicator gates",
         "ez_positions_quick.py:5485-5672 data-blind veto, KX score, and all-TF WT veto/penalties",
         "ez_positions_quick.py:5675-6052 stateful mandatory reentry, early entry moment, and score bonuses",
+        "ez_positions_quick.py:6053-6264 RSI/MFI, DC/BOTA scoring, and second entry-moment gate",
     )
     assert result["masks"]["stoch_entry:long_ok"].tolist() == [True, False, True]
 
@@ -117,7 +118,7 @@ def test_entry_prefix_chase_and_atr_gates_use_effective_settings():
     context = {"current_price": np.full(3, 100.0), "portfolio_ratio_active": False,
                "mover_registry_available": False, "last_reduction_price": np.zeros(3),
                "minutes_since_reduction": np.full(3, 10.0), "gain": np.zeros(3),
-               "prev_gain": np.zeros(3), "true_lag": np.full(3, 999.0), "position_amt": np.ones(3),
+               "prev_gain": np.zeros(3), "true_lag": np.full(3, 9.0), "position_amt": np.ones(3),
                "prev_cross_price": np.zeros(3), "vol_ok": np.ones(3, dtype=bool), "vol_strong": np.zeros(3, dtype=bool),
                "rel_vol_3m": np.ones(3), "pnl_pct": np.zeros(3), "trend_is_bullish": np.ones(3, dtype=bool), "trend_is_bearish": np.zeros(3, dtype=bool), "bounce_reentry_k_reset": True,
                "long_stoch_chase_block": True, "entry_atr_pct_min": 0.5}
@@ -129,3 +130,80 @@ def test_entry_prefix_chase_and_atr_gates_use_effective_settings():
     disabled = score_asr_entry_prefix_array(values, 3, True, _cfg(), context)
     assert not disabled["masks"]["LONG_CHASE_BLOCK"].any()
     assert not disabled["masks"]["ATR_TOO_LOW"].any()
+
+
+def test_asr_reentry_bounce_reset_is_causal_and_persists_across_bars():
+    from vec_decisions.asr_reentry_stage import apply_asr_reentry_entry_stage
+    n = 3
+    indicators = {"k_1m": np.full(n, 50.0), "k_1m_prev": np.full(n, 50.0), "d_1m": np.full(n, 50.0),
+                  "k_3m": np.array([30.0, 40.0, 40.0]), "k_3m_prev": np.array([35.0, 35.0, 35.0]),
+                  "d_3m": np.array([40.0, 40.0, 40.0]), "k_15m": np.full(n, 50.0),
+                  "k_15m_prev": np.full(n, 50.0), "d_15m": np.full(n, 50.0)}
+    context = {"current_price": np.full(n, 100.0), "last_reduction_price": np.zeros(n),
+               "minutes_since_reduction": np.full(n, 10.0), "position_amt": np.ones(n),
+               "prev_cross_price": np.zeros(n), "vol_ok": np.ones(n, dtype=bool),
+               "vol_strong": np.zeros(n, dtype=bool), "rel_vol_3m": np.ones(n), "pnl_pct": np.zeros(n),
+               "trend_is_bullish": np.ones(n, dtype=bool), "trend_is_bearish": np.zeros(n, dtype=bool),
+               "bounce_reentry_k_reset": False}
+    result = apply_asr_reentry_entry_stage(indicators, context, True, _cfg(), np.zeros(n))
+    assert result["tier1_forced"].tolist() == [True, True, True]
+    assert result["bounce_reentry_k_reset"] is True
+    assert result["entry_allowed"].tolist() == [True, True, True]
+
+
+def test_asr_reentry_tier2_cross_priority_and_bounce_wait_boundaries():
+    from vec_decisions.asr_reentry_stage import apply_asr_reentry_entry_stage
+    values = {"k_1m": np.array([60.0, 50.0]), "k_1m_prev": np.array([55.0, 50.0]),
+              "d_1m": np.array([50.0, 50.0]), "k_3m": np.array([60.0, 60.0]),
+              "k_3m_prev": np.array([55.0, 60.0]), "d_3m": np.array([50.0, 50.0]),
+              "k_15m": np.array([50.0, 50.0]), "k_15m_prev": np.array([50.0, 50.0]),
+              "d_15m": np.array([50.0, 50.0])}
+    context = {"current_price": np.array([100.5, 99.9]), "last_reduction_price": np.array([100.0, 100.0]),
+               "minutes_since_reduction": np.array([20.0, 20.0]), "position_amt": np.ones(2),
+               "prev_cross_price": np.zeros(2), "vol_ok": np.ones(2, dtype=bool),
+               "vol_strong": np.zeros(2, dtype=bool), "rel_vol_3m": np.ones(2), "pnl_pct": np.zeros(2),
+               "trend_is_bullish": np.ones(2, dtype=bool), "trend_is_bearish": np.zeros(2, dtype=bool),
+               "bounce_reentry_k_reset": False}
+    result = apply_asr_reentry_entry_stage(values, context, True, _cfg(), np.zeros(2))
+    assert result["tier2_chase"].tolist() == [False, False]
+    assert result["bounce_wait"].tolist() == [False, True]
+    assert result["entry_allowed"].tolist() == [True, False]
+
+
+def test_asr_obligatory_reentry_uses_shared_tier_and_native_long_tail_double_score():
+    from vec_decisions.asr_reentry_stage import apply_asr_reentry_entry_stage
+    values = {"k_1m": np.array([50.0]), "k_1m_prev": np.array([50.0]), "d_1m": np.array([50.0]),
+              "k_3m": np.array([50.0]), "k_3m_prev": np.array([50.0]), "d_3m": np.array([50.0]),
+              "k_15m": np.array([50.0]), "k_15m_prev": np.array([50.0]), "d_15m": np.array([50.0]),
+              "wt_bullish_3m": np.array([True]), "wt_bullish_15m": np.array([False]),
+              "wt_bullish_1h": np.array([True]), "wt_bullish_4h": np.array([False]),
+              "wt_bullish_D": np.array([False])}
+    context = {"current_price": np.array([105.0]), "last_reduction_price": np.array([100.0]),
+               "minutes_since_reduction": np.array([10.0]), "position_amt": np.array([0.0]),
+               "prev_cross_price": np.array([0.0]), "vol_ok": np.array([True]),
+               "vol_strong": np.array([False]), "rel_vol_3m": np.array([1.0]), "pnl_pct": np.array([0.0]),
+               "trend_is_bullish": np.array([True]), "trend_is_bearish": np.array([False]),
+               "bounce_reentry_k_reset": False}
+    result = apply_asr_reentry_entry_stage(values, context, True, _cfg(), np.zeros(1))
+    assert result["tier1_forced"].tolist() == [True]
+    assert result["entry_allowed"].tolist() == [True]
+    assert result["score"].tolist() == [60.0]
+
+
+def test_asr_reentry_stage_short_side_good_entry_and_signal_score_order():
+    from vec_decisions.asr_reentry_stage import apply_asr_reentry_entry_stage
+    values = {"k_1m": np.array([50.0]), "k_1m_prev": np.array([50.0]), "d_1m": np.array([50.0]),
+              "k_3m": np.array([80.0]), "k_3m_prev": np.array([75.0]), "d_3m": np.array([70.0]),
+              "k_15m": np.array([80.0]), "k_15m_prev": np.array([85.0]), "d_15m": np.array([70.0]),
+              "wt_bullish_3m": np.array([False]), "wt_bullish_15m": np.array([False]),
+              "wt_bullish_1h": np.array([False]), "wt_bullish_4h": np.array([False]),
+              "wt_bullish_D": np.array([False])}
+    context = {"current_price": np.array([100.0]), "last_reduction_price": np.array([0.0]),
+               "minutes_since_reduction": np.array([999.0]), "position_amt": np.array([1.0]),
+               "prev_cross_price": np.array([0.0]), "vol_ok": np.array([True]),
+               "vol_strong": np.array([False]), "rel_vol_3m": np.array([1.0]), "pnl_pct": np.array([0.0]),
+               "trend_is_bullish": np.array([False]), "trend_is_bearish": np.array([True]),
+               "bounce_reentry_k_reset": False}
+    result = apply_asr_reentry_entry_stage(values, context, False, _cfg(), np.array([10.0]))
+    assert result["entry_allowed"].tolist() == [True]
+    assert result["score"].tolist() == [10.0]

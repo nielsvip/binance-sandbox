@@ -13279,7 +13279,12 @@ def compute_entry_signals(npz, n, is_long, cfg, symbol=None):
             npz, n, symbol, is_long, cfg
         )
         _score_only = _score_fire & ~_base_entry
-        cfg._tradier_signal_score_mask = _score_only
+        _score_htf = np.asarray(getattr(cfg, "_tradier_signal_score_htf_mask", np.zeros(n, dtype=bool)), dtype=bool)
+        if _score_htf.shape != (n,):
+            _score_htf = np.zeros(n, dtype=bool)
+        _score_htf &= _score_only
+        cfg._tradier_signal_score_mask = _score_only & ~_score_htf
+        cfg._tradier_signal_score_htf_mask = _score_htf
         cfg._tradier_signal_score_reasons = _score_reasons
         if np.any(_score_only):
             _base_entry = _base_entry | _score_only
@@ -15859,6 +15864,11 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _tradier_score_mask = np.asarray(_tradier_score_mask, dtype=bool)
         if _tradier_score_mask.shape == (n,):
             _entry_or_srcs.append(("TRADIER_SIGNAL_SCORE", _tradier_score_mask))
+    _tradier_score_htf_mask = getattr(cfg, "_tradier_signal_score_htf_mask", None)
+    if _tradier_score_htf_mask is not None:
+        _tradier_score_htf_mask = np.asarray(_tradier_score_htf_mask, dtype=bool)
+        if _tradier_score_htf_mask.shape == (n,):
+            _entry_or_srcs.append(("TRADIER_SIGNAL_SCORE_HTF", _tradier_score_htf_mask))
     try:
         _force_bar0 = (
             int(np.argmax(np.asarray(close) > 0))

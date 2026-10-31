@@ -99,7 +99,18 @@ def test_replay_calls_state_for_on_strictly_causal_prefixes(tmp_path, monkeypatc
     active_path = tmp_path / "active.json"
     active_path.write_text(json.dumps(active))
     code_root = tmp_path / "code"
-    code_root.mkdir()
+    (code_root / "tools").mkdir(parents=True)
+    import shutil
+    from pathlib import Path
+    shutil.copyfile(
+        Path(__file__).parents[1] / "tools" / "replay_network_guard.py",
+        code_root / "tools" / "replay_network_guard.py",
+    )
+    import socket
+    for name in ("connect", "connect_ex", "sendto"):
+        monkeypatch.setattr(socket.socket, name, getattr(socket.socket, name))
+    for name in ("getaddrinfo", "gethostbyname", "gethostbyname_ex"):
+        monkeypatch.setattr(socket, name, getattr(socket, name))
     output_path = tmp_path / "out.jsonl"
     seen = []
 
@@ -155,6 +166,10 @@ def test_replay_calls_state_for_on_strictly_causal_prefixes(tmp_path, monkeypatc
     summary = next(row for row in rows if row["record"] == "replay_summary")
     assert summary["coverage_ok"] is True
     assert summary["phase_counts"] == {"warmup": 1, "scored": 1}
+    assert summary["network_guard"]["main_audit"]
+    assert summary["network_guard"]["main_blocked_attempts"] >= 0
+    header = next(row for row in rows if row["record"] == "replay_manifest")
+    assert header["network_guard_main"]["installed"] is True
 
 
 def test_actual_vector_planner_emits_convergence_open_and_honors_done_key(tmp_path):
