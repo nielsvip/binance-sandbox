@@ -4707,170 +4707,28 @@ class AdvancedSignalRater:
                 _wt_bull_cross_n,
                 _wt_bear_cross_n,
             )
-        # === 15M MOMENTUM GATE — penalise entries where 15m WT is declining (LONG) or rising (SHORT) ===
-        # Quicker than wt1<wt2 crossover: compares wt1_15m vs its own previous value.
-        # Bypass: if 3m WT is making higher highs (bull cross + rising) for LONG, or lower lows for SHORT.
+        # Shared WT15M against-score component preserves native penalty and bypass reason.
         if not is_exit:
-            _wt1_15m_prev_r = safe_fetch_float(
-                i.get("wt1_15m_prev", wt2_15m), wt2_15m
-            )  # 2026-06-03 USER: wt1_X_prev never produced → fall back to wt2_X (cross), not current (no-op)
-            _wt1_3m_prev_r = safe_fetch_float(i.get("wt1_3m_prev", wt2_3m), wt2_3m)
-            _15m_pen = float(getattr(config, "WT15M_AGAINST_PENALTY", -5.0))
-            # 2026-07-04 USER: true crossover-PRICE higher-high/lower-low (was wt2-as-prev proxy)
-            _xv3 = safe_fetch_float(i.get("wt_crossover_value_3m"), 0.0)
-            _xv3p = safe_fetch_float(i.get("wt_crossover_value_3m_prev"), 0.0)
-            _3m_hh_bypass = (
-                is_long and wt_cross_bull_3m and _xv3 > 0 and _xv3p > 0 and _xv3 > _xv3p
+            from vec_decisions.asr_score_core import apply_15m_momentum_scalar
+
+            score, reasons = apply_15m_momentum_scalar(
+                score,
+                reasons,
+                ind,
+                is_long,
+                config,
+                wt1_15m,
+                wt2_15m,
+                wt_cross_bull_3m,
+                wt_cross_bear_3m,
             )
-            _3m_ll_bypass = (
-                not is_long
-                and wt_cross_bear_3m
-                and _xv3 > 0
-                and _xv3p > 0
-                and _xv3 < _xv3p
+        # Shared pure structural/sentiment score components preserve native reason order.
+        if not is_exit:
+            from vec_decisions.asr_score_core import apply_structure_score_scalar
+
+            score, reasons = apply_structure_score_scalar(
+                score, reasons, ind, is_long, config
             )
-            if is_long and wt1_15m < _wt1_15m_prev_r and not _3m_hh_bypass:
-                score += _15m_pen
-                reasons.append(
-                    f"15M_AGAINST_L(wt15={wt1_15m:.1f}<prev={_wt1_15m_prev_r:.1f},{_15m_pen:.0f})"
-                )
-            elif not is_long and wt1_15m > _wt1_15m_prev_r and not _3m_ll_bypass:
-                score += _15m_pen
-                reasons.append(
-                    f"15M_AGAINST_S(wt15={wt1_15m:.1f}>prev={_wt1_15m_prev_r:.1f},{_15m_pen:.0f})"
-                )
-        # === R-S3 DIV_STACK — divergence stacking bonus/penalty ===
-        if bool(getattr(config, "R_S3_DIV_STACK_ENABLED", False)) and not is_exit:
-            _hid_bonus = float(getattr(config, "R_S3_HIDDEN_BONUS", 25.0))
-            _main_pen = float(getattr(config, "R_S3_MAIN_PENALTY", -20.0))
-            _htf_weighted = bool(getattr(config, "R_S3_HTF_WEIGHT_ENABLED", False))
-            _tf_weights = {
-                "3m": float(getattr(config, "R_S3_TF_WEIGHT_3M", 0.25)),
-                "15m": float(getattr(config, "R_S3_TF_WEIGHT_15M", 0.5)),
-                "1h": float(getattr(config, "R_S3_TF_WEIGHT_1H", 1.0)),
-                "4h": float(getattr(config, "R_S3_TF_WEIGHT_4H", 2.5)),
-                "D": float(getattr(config, "R_S3_TF_WEIGHT_D", 4.0)),
-            }
-            _hid_cnt = 0
-            _hid_w_sum = 0.0
-            _main_against = 0
-            _main_w_sum = 0.0
-            _main_tfs_hit = []
-            for _tf in ("3m", "15m", "1h", "4h", "D"):
-                _div = str(ind.get(f"wt_divergence_{_tf}", "") or "").upper()
-                _w = _tf_weights.get(_tf, 1.0)
-                if is_long:
-                    if _div == "HIDDEN_BULL":
-                        _hid_cnt += 1
-                        _hid_w_sum += _w
-                    elif _div == "BEAR":
-                        # HTF weighted mode: count ALL TFs; legacy mode: only 15m/1h
-                        if _htf_weighted or _tf in ("15m", "1h"):
-                            _main_against += 1
-                            _main_w_sum += _w
-                            _main_tfs_hit.append(_tf)
-                else:
-                    if _div == "HIDDEN_BEAR":
-                        _hid_cnt += 1
-                        _hid_w_sum += _w
-                    elif _div == "BULL":
-                        if _htf_weighted or _tf in ("15m", "1h"):
-                            _main_against += 1
-                            _main_w_sum += _w
-                            _main_tfs_hit.append(_tf)
-            if _hid_cnt >= 2:
-                _bonus = _hid_bonus * (
-                    _hid_w_sum / max(_hid_cnt, 1) if _htf_weighted else 1.0
-                )
-                score += _bonus
-                reasons.append(
-                    f"R_S3_HIDDEN_DIV({_hid_cnt}TF,w={_hid_w_sum:.1f},+{_bonus:.0f})"
-                )
-            if _main_against >= 1:
-                _pen = _main_pen * _main_w_sum if _htf_weighted else _main_pen
-                score += _pen
-                reasons.append(
-                    f"R_S3_MAIN_DIV_AGAINST({_main_tfs_hit},w={_main_w_sum:.1f},{_pen:.0f})"
-                )
-        # === R-S7 HH/LL MULTI-INDICATOR STACKING ===
-        # Confirms structural trend by requiring ≥ MIN indicators (price/WT/stoch) to show HH (LONG)
-        # or LL (SHORT) per TF, then counts TFs with confirmation. HTF stacks more reliably than LTF.
-        if bool(getattr(config, "R_S7_HHLL_STACK_ENABLED", False)) and not is_exit:
-            _s7_tfs_str = str(getattr(config, "R_S7_HHLL_TFS", "15m,1h,4h,D") or "")
-            _s7_tfs = [t.strip() for t in _s7_tfs_str.split(",") if t.strip()]
-            _s7_min_ind = int(getattr(config, "R_S7_HHLL_MIN_INDICATORS", 2))
-            _s7_bonus_pt = float(getattr(config, "R_S7_HHLL_BONUS_PER_TF", 3.0))
-            _s7_min_tfs = int(getattr(config, "R_S7_HHLL_MIN_TFS_FOR_BONUS", 2))
-            _s7_confirmed_tfs = []
-            for _tf in _s7_tfs:
-                _h_cur = safe_fetch_float(ind.get(f"high_{_tf}"), 0)
-                _h_prev = safe_fetch_float(ind.get(f"high_{_tf}_prev"), 0)
-                _l_cur = safe_fetch_float(ind.get(f"low_{_tf}"), 0)
-                _l_prev = safe_fetch_float(ind.get(f"low_{_tf}_prev"), 0)
-                _wt_st = str(ind.get(f"wt_structure_{_tf}", "") or "").upper()
-                _k_cur = safe_fetch_float(ind.get(f"k_{_tf}"), None)
-                _k_prev = safe_fetch_float(ind.get(f"k_{_tf}_prev"), None)
-                _count = 0
-                if is_long:
-                    if (
-                        _h_cur > 0
-                        and _h_prev > 0
-                        and _l_cur > 0
-                        and _l_prev > 0
-                        and _h_cur > _h_prev
-                        and _l_cur > _l_prev
-                    ):
-                        _count += 1  # price HH+HL structural
-                    if _wt_st == "HH":
-                        _count += 1  # WT HH label
-                    if _k_cur is not None and _k_prev is not None and _k_cur > _k_prev:
-                        _count += 1  # stoch K making HH
-                else:
-                    if (
-                        _h_cur > 0
-                        and _h_prev > 0
-                        and _l_cur > 0
-                        and _l_prev > 0
-                        and _h_cur < _h_prev
-                        and _l_cur < _l_prev
-                    ):
-                        _count += 1  # price LL+LH structural
-                    if _wt_st == "LL":
-                        _count += 1
-                    if _k_cur is not None and _k_prev is not None and _k_cur < _k_prev:
-                        _count += 1
-                if _count >= _s7_min_ind:
-                    _s7_confirmed_tfs.append(_tf)
-            if len(_s7_confirmed_tfs) >= _s7_min_tfs:
-                _s7_bonus = _s7_bonus_pt * len(_s7_confirmed_tfs)
-                score += _s7_bonus
-                reasons.append(f"R_S7_HHLL({_s7_confirmed_tfs},+{_s7_bonus:.0f})")
-        # === R-S4 HA_STREAK — bonus scales by consecutive HA color streak ===
-        if bool(getattr(config, "R_S4_HA_STREAK_ENABLED", False)) and not is_exit:
-            _ha_tf = str(getattr(config, "R_S4_HA_STREAK_TF", "1h"))
-            _ha_w = float(getattr(config, "R_S4_HA_STREAK_WEIGHT", 5.0))
-            _ha_streak = safe_fetch_float(ind.get(f"ha_streak_{_ha_tf}"), 0.0)
-            _ha_color = str(ind.get(f"ha_{_ha_tf}", "") or "").lower()
-            _ha_aligned = (is_long and _ha_color == "green") or (
-                (not is_long) and _ha_color == "red"
-            )
-            if _ha_aligned and _ha_streak > 0:
-                _bonus = _ha_w * min(float(_ha_streak or 0.0), 5.0)
-                score += _bonus
-                reasons.append(
-                    f"R_S4_HA_STREAK({_ha_tf}={_ha_streak:.0f},+{_bonus:.0f})"
-                )
-        # === R-S5 SENT_VEL — sentiment velocity accelerator ===
-        if bool(getattr(config, "R_S5_SENT_VEL_ENABLED", False)) and not is_exit:
-            _sv = safe_fetch_float(
-                ind.get("0sentiment_velocity", ind.get("velocity", 0)), 0.0
-            )
-            _sv_thr = float(getattr(config, "R_S5_SENT_VEL_PCT_THR", 75.0))
-            _sv_bonus = float(getattr(config, "R_S5_SENT_VEL_BONUS", 5.0))
-            _sv_align = (is_long and _sv > 0) or ((not is_long) and _sv < 0)
-            if _sv_align and abs(float(_sv or 0.0)) >= _sv_thr:
-                score += _sv_bonus
-                reasons.append(f"R_S5_SENT_VEL({_sv:+.0f},+{_sv_bonus:.0f})")
         # === MARKET REGIME DETECTION (replaces old ADX_REGIME_FILTER) ===
         _regime_info = None
         _regime_params = None
@@ -5105,31 +4963,12 @@ class AdvancedSignalRater:
                     "WAIT",
                     f"BLOCKED_SMA200D_EXTREME_BELOW({_sma200d_dist:.1%})_backtest#1",
                 )
-        # sma_500_dist + ema_20_dist: best indicators per sweep (D: 0.106, 4h: 0.129)
-        _sma500_1h = safe_fetch_float(i.get("sma_500_1h"), 0.0)
-        _ema20_4h = safe_fetch_float(i.get("ema_20_4h"), 0.0)
-        if _sma500_1h > 0:
-            _s500_dist = (current_price - _sma500_1h) / _sma500_1h
-            if is_long and _s500_dist < -0.03:
-                score += 15
-                reasons.append(f"SMA500_DEEP({_s500_dist:.1%},+15)")
-            elif is_long and _s500_dist > 0.08:
-                score -= 10
-                reasons.append(f"SMA500_OVER({_s500_dist:.1%},-10)")
-            elif not is_long and _s500_dist > 0.03:
-                score += 15
-                reasons.append(f"SMA500_ABOVE({_s500_dist:.1%},+15)")
-            elif not is_long and _s500_dist < -0.08:
-                score -= 10
-                reasons.append(f"SMA500_UNDER({_s500_dist:.1%},-10)")
-        if _ema20_4h > 0:
-            _e20_dist = (current_price - _ema20_4h) / _ema20_4h
-            if is_long and _e20_dist < -0.02:
-                score += 10
-                reasons.append(f"EMA20_4H_DEEP({_e20_dist:.1%},+10)")
-            elif not is_long and _e20_dist > 0.02:
-                score += 10
-                reasons.append(f"EMA20_4H_ABOVE({_e20_dist:.1%},+10)")
+        # Shared pure SMA/EMA distance score component preserves native reason text.
+        from vec_decisions.asr_score_core import apply_ma_distance_score_scalar
+
+        score, reasons = apply_ma_distance_score_scalar(
+            score, reasons, ind, current_price, is_long
+        )
         # K3M_CAP: Tournament winner - block entries at overbought/oversold extremes (k3m_cap=80, +242 avg Sharpe)
         _k3m_cap = (
             config.get_symbol_setting(account_key, _rpk, "K3M_CAP")

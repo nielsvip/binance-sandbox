@@ -1,5 +1,7 @@
 {
-  "coverage_status": "aggregate not implemented; inventory only; account/tracker/wall-clock dependencies and hard early-return semantics need explicit treatment",
+  "coverage_status": "Partial shared implementation only. These hooks preserve native score/reason order and have source-AST differential tests; no v12 consumer/entry threshold wiring yet. Other 393 native score mutations (including initialization) remain in rate() and the full aggregate is incomplete. Account/tracker, time, global ranking and early-return semantics remain explicit gaps.",
+  "current_native_score_mutations_including_initialization": 394,
+  "current_native_sha256": "71a781c2757a18ecaeba1007b649ef54f5f70bbeea22326c31816c360d0f08a9",
   "existing_vector_related_modules": [
     "vec_decisions/quick_missing_entry_score.py (partial, no v12 caller found)",
     "vec_paths/live_entry_engine.py (separate LIVE_ENTRY_ENGINE score, not AdvancedSignalRater aggregate)",
@@ -385,6 +387,7 @@
       "wt_velocity_4h"
     ]
   },
+  "pre_wire_source_sha256": "7634c897c67a28dbbfcbf99f39cabc1e564084bf82d07f632b6042267399d1a8",
   "score_updates": [
     {
       "expr": "8",
@@ -8469,6 +8472,23 @@
       ],
       "line": 9045,
       "op": "="
+    }
+  ],
+  "shared_score_components": [
+    {
+      "baseline_source_lines": "4696-4822",
+      "description": "WT composite tier/structure/divergence/cross bonuses, DC moment, WT composite delta; ordered scalar adapter and NumPy prefix.",
+      "native_hook_line": 4695
+    },
+    {
+      "baseline_source_lines": "4826-4854",
+      "description": "WT15M against penalty and 3m cross-price bypass.",
+      "native_hook_line": 4710
+    },
+    {
+      "baseline_source_lines": "R-S3 divergence stack, R-S7 HH/LL, R-S4 HA streak, R-S5 sentiment velocity through the pre-regime block",
+      "description": "Pure indicator/config structural score components; ordered scalar adapter and NumPy twin.",
+      "native_hook_line": 4725
     }
   ],
   "source_file": "ez_positions_quick.py",

@@ -303,6 +303,43 @@ def page_truth(path: Path, force_peak_method: str | None = None) -> dict:
     return out
 
 
+class BackupUnavailable(RuntimeError):
+    """There is no safe place for the pre-change backup, so the guard changes nothing this run."""
+
+
+# USER 2026-10-31 (verbatim): "we need ALL those tools to go to 5T directly wihout putting in danger mac integrity ever
+# again (or any of the s1 2 5 6 servers". This guard was the biggest single writer: 1,614 tars / 56.7 GB in
+# <root>/backups/board_name_truth since 2026-10-26, ~214 MB every few minutes, and it filled the Mac to 143 MiB twice.
+#   Mac     -> the 5 TB drive directly (tools/offload_target.py: mounted, answering, writable, above its floor), or the
+#              run changes nothing. There is no fallback to the Mac disk; a fallback is how it filled.
+#   servers -> they cannot reach a drive on the Mac's USB bus, so a small local spool, written ONLY while the host keeps
+#              SERVER_FLOOR_GB free and the spool stays under SPOOL_CAP_GB; the Mac drains it to the 5T drive
+#              (tools/offload_to_5t.py remote host:backups/board_name_truth_spool), verified before removal.
+SERVER_FLOOR_GB = float(os.environ.get("BNT_SERVER_FLOOR_GB", "10"))
+SPOOL_CAP_GB = float(os.environ.get("BNT_SPOOL_CAP_GB", "2"))
+TAR_NEED_BYTES = 400 * 1024 * 1024
+
+
+def backup_dir() -> Path:
+    if sys.platform == "darwin":
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import offload_target
+        path, why = offload_target.healthy_target("board_name_truth", TAR_NEED_BYTES)
+        if path is None:
+            raise BackupUnavailable(f"5T drive unavailable: {why}")
+        return path
+    import shutil
+    spool = Path.home() / "backups" / "board_name_truth_spool"
+    spool.mkdir(parents=True, exist_ok=True)
+    free = shutil.disk_usage(spool).free
+    used = sum(f.stat().st_size for f in spool.glob("*.tar"))
+    if free - TAR_NEED_BYTES < SERVER_FLOOR_GB * 1024 ** 3:
+        raise BackupUnavailable(f"host would fall below {SERVER_FLOOR_GB:.0f} GB free ({free / 1024 ** 3:.1f} GB now)")
+    if used > SPOOL_CAP_GB * 1024 ** 3:
+        raise BackupUnavailable(f"spool holds {used / 1024 ** 3:.1f} GB > {SPOOL_CAP_GB:.0f} GB cap, waiting for the Mac to drain it to the 5T drive")
+    return spool
+
+
 class Guard:
     def __init__(self, roots, dry: bool, min_age: int, state_path: Path):
         self.roots = [Path(r).expanduser().resolve() for r in roots]
@@ -374,9 +411,8 @@ class Guard:
             return
         root = self.root_of(p)
         if root not in self.tars:
-            bdir = root / "backups" / "board_name_truth"
-            bdir.mkdir(parents=True, exist_ok=True)
-            self.tars[root] = tarfile.open(bdir / f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}_{os.getpid()}.tar", "a")
+            bdir = backup_dir()   # the 5T drive (Mac) or a capped spool (servers); raises rather than fall back locally
+            self.tars[root] = tarfile.open(bdir / f"{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}_{os.getpid()}_{root.name}.tar", "a")
         self.tars[root].add(str(p), arcname=str(p.relative_to(root)), recursive=False)
 
     def _act(self, kind: str, src: Path, dst: Path | None = None, note: str = "") -> None:
@@ -600,6 +636,12 @@ def main(argv=None) -> int:
     except OSError:
         print("another board_name_truth_guard run holds the lock — exiting", flush=True)
         return 0
+    if not a.dry_run:
+        try:
+            backup_dir()
+        except BackupUnavailable as exc:
+            print(f"board_name_truth_guard: no safe backup target — changing NOTHING this run ({exc})", flush=True)
+            return 0
     res = Guard(roots, a.dry_run, a.min_age, state).run()
     if a.report:
         Path(a.report).write_text(json.dumps(res, indent=1, default=str))

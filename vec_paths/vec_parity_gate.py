@@ -56,6 +56,7 @@ VEC_ENTRY_TOKENS = (
     "HTF_WT_CHURN_REENTRY",                   # v12 twin_vec_special + post-close age check, same live family
     "REENTRY_PRICE_CROSS_BACK",               # stocks_reentry_sources PRICE_CROSS_BACK on closed-side state
     "MANDATORY_REENTRY_PRICE_CROSS",           # live guaranteed reclaim; v12 stocks PRICE_CROSS_BACK path
+    "B04_DC_RETEST_",
     "TRADIER_B12_WT_MOM_",
     "TRADIER_B14_HA_STACK_",
     "TRADIER_DC_BREAKOUT_",                   # live alias for v12 DC_BREAKOUT_TF_EXPANDED mask

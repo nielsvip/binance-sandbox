@@ -19084,36 +19084,28 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     except Exception:
         pass
     # Native Tradier B12 is also a fresh-entry fallback: process_position checks
-    # it only while no earlier route selected OPEN. Use the same shared predicate
-    # and live key-presence fallback (3m WT -> 15m WT; velocity 3m -> 15m -> 1h).
+    # it only while no earlier route selected OPEN. Resolve its 3m/15m inputs from
+    # USE_1M_3M_SIGNALS_ENABLED before applying the shared predicate.
     if str(getattr(cfg, "MODE", "crypto")) == "tradier" and bool(
         getattr(cfg, "REENTRY_B12_WT_MOM_ENABLED", False)
     ):
         try:
             from vec_decisions.check_entry_b12_wt_mom import b12_mask_vec
+            from vec_decisions.b12_inputs import resolve_b12_arrays
 
-            _b12_3m_wt1_key = "wt1_3m" if npz.get("wt1_3m") is not None else "wt1_15m"
-            _b12_3m_wt2_key = "wt2_3m" if npz.get("wt2_3m") is not None else "wt2_15m"
-            _b12_vel_key = next(
-                (key for key in ("wt_velocity_3m", "wt_velocity_15m", "wt_velocity_1h") if npz.get(key) is not None),
-                None,
+            _b12_inputs = resolve_b12_arrays(
+                npz,
+                n,
+                bool(getattr(cfg, "USE_1M_3M_SIGNALS_ENABLED", False)),
+                _safe,
             )
-            _b12_fresh = np.asarray(
-                b12_mask_vec(
-                    _safe(npz, _b12_3m_wt1_key, n),
-                    _safe(npz, _b12_3m_wt2_key, n),
-                    _safe(npz, "wt1_15m", n),
-                    _safe(npz, "wt2_15m", n),
-                    _safe(npz, "wt1_1h", n),
-                    _safe(npz, "wt2_1h", n),
-                    _safe(npz, _b12_vel_key, n) if _b12_vel_key else np.zeros(n),
-                    is_long,
-                ),
-                dtype=bool,
-            ) & ~np.asarray(entry_sig, dtype=bool)
-            if _b12_fresh.any():
-                entry_sig = np.asarray(entry_sig, dtype=bool) | _b12_fresh
-                _entry_or_srcs.append(("B12", _b12_fresh))
+            if _b12_inputs is not None:
+                _b12_fresh = np.asarray(
+                    b12_mask_vec(*_b12_inputs, is_long), dtype=bool
+                ) & ~np.asarray(entry_sig, dtype=bool)
+                if _b12_fresh.any():
+                    entry_sig = np.asarray(entry_sig, dtype=bool) | _b12_fresh
+                    _entry_or_srcs.append(("B12", _b12_fresh))
         except Exception:
             pass
     # 2026-10-13 VETO-FINAL (parity): re-apply the stashed KINDERGARTEN/EMA_9_21 hard-veto masks on the FINAL entry signal, after every OR-source (twin_entries_dead_a/b, twin_yellow_filters, ported_reentry, gr_htf_direct, wt_top_entry). Live vetoes the entry DECISION (tradier_manage.should_enter_long/short, ez_manage check_entry_alignment/execute_now); a veto applied before later ORs is silently undone (measured: AAPL_SHORT TF=D veto mask all-False yet 30 trades — teda OR restored 187 bars). No-op when vetoes disabled (stashes None) or later ORs inert. Masks NOT re-appended to _entry_filter_masks (single-count for REENTRY_ENTRY_FILTER_MIN_PASS; RAG capture above already includes the first application).

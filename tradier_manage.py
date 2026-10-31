@@ -23036,18 +23036,9 @@ async def process_position(
                         from vec_decisions import (
                             check_entry_b12_wt_mom as _b12_core,
                         )
+                        from vec_decisions.b12_inputs import resolve_b12_scalar
 
                         _b12_ind = indicators_raw if indicators_raw else i
-                        # NO-3M parity (matches the shared twin convention): the live
-                        # 15m lane carries no 3m WT keys, so 15m stands in for 3m.
-                        if os.environ.get("V8_B12_DIAG"):
-                            _b12dbg = globals().setdefault("_B12_DIAG", {"n": 0})
-                            _b12dbg["n"] += 1
-                            if _b12dbg["n"] <= 3:
-                                print(
-                                    f"V8_LOG B12_DIAG n={_b12dbg['n']} vel3m={(_b12_ind or {}).get('wt_velocity_3m')!r} vel15m={(_b12_ind or {}).get('wt_velocity_15m')!r} vel1h={(_b12_ind or {}).get('wt_velocity_1h')!r} wt1h={(_b12_ind or {}).get('wt1_1h')!r} wt115m={(_b12_ind or {}).get('wt1_15m')!r} px={current_price}",
-                                    flush=True,
-                                )
 
                         def _b12f(_k):
                             try:
@@ -23056,25 +23047,23 @@ async def process_position(
                             except (TypeError, ValueError):
                                 return 0.0
 
-                        # NOTE: the lane dict subclass coerces missing->0.0 on .get,
-                        # so presence (not None) decides the NO-3M fallback chain.
-                        _b12_src = _b12_ind or {}
-                        _b12_wt1_3m = _b12_src["wt1_3m"] if "wt1_3m" in _b12_src else None
-                        _b12_wt2_3m = _b12_src["wt2_3m"] if "wt2_3m" in _b12_src else None
-                        _b12_wtvel = None
-                        for _vk in ("wt_velocity_3m", "wt_velocity_15m", "wt_velocity_1h"):
-                            if _vk in _b12_src and _b12_src[_vk] is not None:
-                                _b12_wtvel = _b12_src[_vk]
-                                break
-                        _b12_fire = _b12_core.b12_fires_scalar(
-                            _b12_wt1_3m if _b12_wt1_3m is not None else _b12f("wt1_15m"),
-                            _b12_wt2_3m if _b12_wt2_3m is not None else _b12f("wt2_15m"),
-                            _b12f("wt1_15m"),
-                            _b12f("wt2_15m"),
-                            _b12f("wt1_1h"),
-                            _b12f("wt2_1h"),
-                            _b12_wtvel if _b12_wtvel is not None else 0.0,
-                            bool(is_long),
+                        _b12_use_ltf = bool(
+                            _cfg_auto("USE_1M_3M_SIGNALS_ENABLED", False)
+                        )
+                        _b12_inputs = resolve_b12_scalar(_b12_ind, _b12_use_ltf)
+                        _b12_wtvel = _b12_inputs[-1] if _b12_inputs is not None else None
+                        if os.environ.get("V8_B12_DIAG"):
+                            _b12dbg = globals().setdefault("_B12_DIAG", {"n": 0})
+                            _b12dbg["n"] += 1
+                            if _b12dbg["n"] <= 3:
+                                print(
+                                    f"V8_LOG B12_DIAG n={_b12dbg['n']} vel3m={(_b12_ind or {}).get('wt_velocity_3m')!r} vel15m={(_b12_ind or {}).get('wt_velocity_15m')!r} vel1h={(_b12_ind or {}).get('wt_velocity_1h')!r} wt1h={(_b12_ind or {}).get('wt1_1h')!r} wt115m={(_b12_ind or {}).get('wt1_15m')!r} px={current_price}",
+                                    flush=True,
+                                )
+                        _b12_fire = (
+                            _b12_core.b12_fires_scalar(*_b12_inputs, bool(is_long))
+                            if _b12_inputs is not None
+                            else False
                         )
                         if os.environ.get("V8_B12_DIAG"):
                             _b12dbg2 = globals().setdefault("_B12_DIAG2", {"n": 0})

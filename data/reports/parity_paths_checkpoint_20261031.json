@@ -347,7 +347,7 @@
       "status": "Disclosed by agent; no retroactive backup claimed"
     }
   ],
-  "checkpoint_updated_at": "2026-10-31T05:32:05.089129+00:00",
+  "checkpoint_updated_at": "2026-10-31T05:40:28.745764+00:00",
   "replay_clock": {
     "signal_clock": "NPZ bar-open timestamp",
     "decision_clock": "bar-open +900seconds when V12_COMPLETED_BAR_SECONDS=900",
@@ -509,13 +509,55 @@
     "start_exclusive": 1790822700,
     "score_start_exclusive": 1792205100,
     "end_inclusive": 1793414700,
-    "status": "Incorrect scored-only stream stopped; full prefix and reusable planner state being implemented",
-    "stocks": "1515 actual canonicalRTHrows:1255warmup+260scored; contiguouscalendar assumption being corrected"
+    "status": "RUNNING_FULL_2880_CAUSAL_PREFIXES_4_WORKERS",
+    "stocks": "1515 actual canonicalRTHrows:1255warmup+260scored; contiguouscalendar assumption being corrected",
+    "pid": 3842369,
+    "output": "/home/niels/parity_runs/pepe_rolling_14d_20261031T0528Z/output/rolling_state_30d_warmup_14d_scored.jsonl",
+    "harness_sha256": "aead20761c751bb4d5763f797ee3db4200f1691ab48d04928591ebe377ef2fd0",
+    "completed_provenance_observation": "360 records at root audit; shard results buffered until completion; not a coverage verdict"
   },
   "adx_regime_exception": {
     "status": "LOCAL_PREDICATE_TESTED_FULL_REPLAY_PENDING",
     "cause": "Vector blanket lowADX veto omitted native k_focus extreme exception; secondary hardgate used baseTF rather than configured TF_FOCUS",
     "fix": "Both vector consumers use configured ADX_TF and TF_FOCUS with strict native thresholds; no native diagnostic change",
     "tests": "9 passed against AST-extracted actual AdvancedSignalRater branch including long/short/boundary/NaN/missing/disabled cases"
+  },
+  "stock_input_repair": {
+    "invalid_input_sha256": "1fa37c8abcb6d72c93ff19bebf6024a8ed402e117fd4b5111fb9d9d45bb37ad9",
+    "cause": "Missing true RTH intraday bars in originalAAPLfixture, not just calendarclosure gaps",
+    "replacement_source": "S1 ~/binance-sandbox/klines_cache_backtest/tradier/AAPL_15m.json",
+    "replacement_source_sha256": "20dc4eaa4cb39ecd78079a87303df6e709b234ec8aa4b7d101785c2f89ea3c1d",
+    "status": "Agent validating overlaps and rebuildingisolatedNPZ fromrealbars; no syntheticfill"
+  },
+  "replay_log_contamination": {
+    "confirmed": "Candidate11 native replays wrote shared /home/niels/logs due Path.home()/logs ignoring BASE_PATH/EZ_LOG_DIR",
+    "evidence": [
+      "ez_positions_quick_general_main.log ends05:18:42 with replayANGPEPE messages",
+      "tradier_manage_trc.log ends05:08:08; trb log04:58:33-05:08:09 contains AAPLfixtureattempts"
+    ],
+    "action": "Preserve logs; excludeidentifiedreplaymessages fromactualfillproof; newpreimport tools/replay_log_redirect.py routesnativefilehandlers to isolatedoutput preservingformat/text",
+    "test": "Focusedredirecttest passed; nativefreshlaunch pending"
+  },
+  "tradier_mark_exit_review": {
+    "status": "LOCAL_FIXED_NATIVE_FULL_REPLAY_PENDING",
+    "cause": "Vector finalexit gate usedlifecycle pnl insteadnativecurrentgain; initialpatchusedoriginalentry notweightedentry afteraugments",
+    "fix": "Tradieroptinpositivecurrentmark vsposition.avg_price; mandatorylossstopexceptions retained; crypto unchanged",
+    "tests": "Actualcalculate_gain andpartialrealized/weightedbasisfocusedtests passed; requestedafterpositionentry100/avg105 fixture correction"
+  },
+  "registered_entry_families": {
+    "tokens": [
+      "TRADIER_B12_WT_MOM_",
+      "TRADIER_B14_HA_STACK_",
+      "B04_DC_RETEST_"
+    ],
+    "cause": "Existing switchedvectorfamilies were missing strict-familyregistry andproduced WOULD-BLOCK replaydiagnostics",
+    "tests": "5 passed actualcompute_reentry_blocks vsnative sharedpredicates/proposals bothsides ON/OFF; unimplementedfamily stillrefused",
+    "limitation": "Family classification only, notactionbaracceptance; logtextunchanged; localonly"
+  },
+  "asr_aggregate_status": {
+    "status": "INCOMPLETE",
+    "source_inventory": "data/reports/asr_scoreflow_inventory_20261031.json",
+    "corrected_count": "422 score mutations includinginitialization; 105returns; earlier434figureunsupported",
+    "implementation": "AgentextractingorderedsharedscalarandNumPycomponents, initialprefixnativewired, fullvectoraggregate notyetwired"
   }
 }

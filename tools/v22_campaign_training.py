@@ -92,7 +92,7 @@ def _context_key(record, audit):
     )
 
 
-def _verify_record(record, source, line, source_digest, audits, context):
+def _verify_record(record, source, line, source_digest, audits, context, require_naked_equivalence=False):
     cell = record.get("cell") or {}
     proof = record.get("actual_proof") or {}
     attempt_sha = sha256_bytes(canonical(record))
@@ -110,11 +110,17 @@ def _verify_record(record, source, line, source_digest, audits, context):
         raise ValueError(f"{source}:{line}: worker proof does not match frozen runtime/input context")
     if audit.get("input_cutoff_sha256") != context.get("input_cutoff_sha256"):
         raise ValueError(f"{source}:{line}: worker proof cutoff differs from campaign context")
+    if audit.get("accepted_chain_sha256") != (context.get("accepted_source") or {}).get("sha256"):
+        raise ValueError(f"{source}:{line}: accepted chain differs from campaign context")
+    if audit.get("window") != context.get("window"):
+        raise ValueError(f"{source}:{line}: evaluation window differs from campaign context")
     for key in ("effective_config_sha256", "execution_ledger_sha256", "result_sha256"):
         if audit.get(key) != (record.get("engine_proof") or {}).get(key):
             raise ValueError(f"{source}:{line}: engine proof hash mismatch for {key}")
     if record.get("requested_effective_mismatches"):
         raise ValueError(f"{source}:{line}: requested settings did not match the effective engine config")
+    if require_naked_equivalence and audit.get("naked_config_verified") is not True:
+        return {"record": record, "source": source, "line": line, "attempt_sha256": attempt_sha, "class": "actual_result_but_naked_effective_config_not_proven"}, None
     if record.get("proven_actual_result") is not True or record.get("engine_execution_attempted") is not True:
         return {"record": record, "source": source, "line": line, "attempt_sha256": attempt_sha, "class": "not_a_proven_actual_measurement"}, None
     value = record.get("raw_gain_pct")
@@ -123,6 +129,12 @@ def _verify_record(record, source, line, source_digest, audits, context):
     valid = record.get("raw_valid")
     if type(valid) is not bool:
         return {"record": record, "source": source, "line": line, "attempt_sha256": attempt_sha, "class": "validity_unknown_not_training_eligible"}, None
+    measured = audit.get("result") or {}
+    audit_gain = measured.get("gain_pct")
+    if not _finite(audit_gain) or not math.isclose(float(audit_gain), float(value), rel_tol=1e-12, abs_tol=1e-12):
+        raise ValueError(f"{source}:{line}: raw attempt gain differs from unpacked worker result")
+    if type(measured.get("valid")) is not bool or measured.get("valid") is not valid:
+        raise ValueError(f"{source}:{line}: attempt validity differs from unpacked worker result")
     verified = {
         "record": record,
         "source": source,
@@ -221,7 +233,7 @@ def _event_pair(cell_item, naked_item, context):
     return board, row
 
 
-def convert(attempt_paths, naked_paths, proof_paths, context_path, out_dir, cutoff):
+def convert(attempt_paths, naked_paths, proof_paths, context_path, out_dir, cutoff, market_end_proof=None):
     out_dir = Path(out_dir).expanduser().resolve()
     if out_dir.exists():
         raise ValueError(f"output directory must be fresh: {out_dir}")
@@ -235,6 +247,15 @@ def convert(attempt_paths, naked_paths, proof_paths, context_path, out_dir, cuto
     for key in ("engine_sha256", "npz_sha256", "input_cutoff_sha256", "baseline_ledger_sha256"):
         if not ctx.get(key):
             raise ValueError(f"campaign context missing {key}")
+    market_proof = None
+    if market_end_proof:
+        proof_path = Path(market_end_proof).expanduser().resolve()
+        market_proof = json.loads(proof_path.read_text())
+        if market_proof.get("schema") != "v22_npz_market_end/1" or market_proof.get("npz_sha256") != ctx["npz_sha256"]:
+            raise ValueError("market-end proof schema or NPZ hash mismatch")
+        if not _finite(market_proof.get("last_timestamp_epoch")) or not market_proof.get("last_timestamp_utc"):
+            raise ValueError("market-end proof lacks an actual final NPZ timestamp")
+        market_proof = dict(market_proof, path=str(proof_path), sha256=sha256_file(proof_path))
     audits, proof_sources = load_audits(proof_paths)
     cell_records, cell_sources = read_jsonl(attempt_paths)
     naked_records, naked_sources = read_jsonl(naked_paths)
@@ -243,7 +264,7 @@ def convert(attempt_paths, naked_paths, proof_paths, context_path, out_dir, cuto
     naked_sources_set = {item["path"] for item in naked_sources}
     for record, source, line, attempt_sha in cell_records + naked_records:
         digest = next(item["sha256"] for item in cell_sources + naked_sources if item["path"] == source)
-        result, verified = _verify_record(record, source, line, digest, audits, ctx)
+        result, verified = _verify_record(record, source, line, digest, audits, ctx, require_naked_equivalence=source in naked_sources_set)
         if verified is None:
             excluded.append(result)
             continue
@@ -272,12 +293,13 @@ def convert(attempt_paths, naked_paths, proof_paths, context_path, out_dir, cuto
         pairs.append((item, naked, pair_id))
     out_dir.mkdir(parents=True)
     (out_dir / "diagnostics.jsonl").write_text("".join(json.dumps(item, sort_keys=True, separators=(",", ":")) + "\n" for item in excluded + unpaired))
-    with gzip.open(out_dir / "v18_events.tsv.gz", "wt", compresslevel=3) as stream:
+    spill_path = out_dir / "spill_v22_campaign.tsv.gz"
+    with gzip.open(spill_path, "wt", compresslevel=3) as stream:
         for cell_item, naked_item, _pair_id in pairs:
             board, row = _event_pair(cell_item, naked_item, ctx)
             stream.write(board["t"] + "\t" + json.dumps(board, separators=(",", ":"), allow_nan=False) + "\n")
             stream.write(row["t"] + "\t" + json.dumps(row, separators=(",", ":"), allow_nan=False) + "\n")
-    events_sha = sha256_file(out_dir / "v18_events.tsv.gz")
+    events_sha = sha256_file(spill_path)
     diagnostics_sha = sha256_file(out_dir / "diagnostics.jsonl")
     training_market_end = (ctx.get("window") or {}).get("confirm_end")
     manifest = {
@@ -292,9 +314,9 @@ def convert(attempt_paths, naked_paths, proof_paths, context_path, out_dir, cuto
         "validity_rule": "only explicit boolean-valid, finite-gain source-verified attempts enter training; invalid and unknown remain diagnostics",
         "proven_result_threshold": 101,
         "authoritative_cell_classification": "not_performed; training observations do not themselves promote/demote cells",
-        "market_window": {"declared_confirm_end_epoch": training_market_end, "npz_payload_end_independently_verified": False, "oos_claim": False, "note": "preserve this frozen input identity for later holdout separation; do not score the refreshed model on these same market bytes as independent evidence"},
+        "market_window": {"declared_confirm_end_epoch": training_market_end, "npz_payload_end_independently_verified": bool(market_proof), "npz_market_end_max_epoch": market_proof.get("last_timestamp_epoch") if market_proof else None, "npz_market_end_max_utc": market_proof.get("last_timestamp_utc") if market_proof else None, "market_end_proof": market_proof, "oos_claim": False, "note": "preserve this frozen input identity for later holdout separation; do not score the refreshed model on these same market bytes as independent evidence"},
         "training_cut": cutoff,
-        "training_input": {"v18_spill": str(out_dir / "v18_events.tsv.gz"), "sha256": events_sha, "format": "v18_brain native event stream (board and row events)"},
+        "training_input": {"v18_spill": str(spill_path), "spill_dir": str(out_dir), "sha256": events_sha, "format": "v18_brain native event stream (board and row events); filename is compatible with spill_*.tsv.gz readers"},
         "diagnostics": {"path": str(out_dir / "diagnostics.jsonl"), "sha256": diagnostics_sha},
         "proposed_refresh_command": None,
         "promotion": False,
@@ -311,8 +333,9 @@ def main():
     parser.add_argument("--context", required=True, help="matching fullcell_actual_coverage_progress/1 receipt")
     parser.add_argument("--out-dir", required=True, help="fresh isolated conversion directory")
     parser.add_argument("--cut", required=True, help="explicit v18 trainer cutoff with timezone")
+    parser.add_argument("--market-end-proof", help="independently hashed NPZ timestamp census for this exact campaign input")
     args = parser.parse_args()
-    result = convert(args.attempts, args.naked_attempts, args.proof_audit, args.context, args.out_dir, args.cut)
+    result = convert(args.attempts, args.naked_attempts, args.proof_audit, args.context, args.out_dir, args.cut, args.market_end_proof)
     print(json.dumps({"status": result["status"], "counts": result["counts"], "out_dir": args.out_dir}, sort_keys=True))
 
 
