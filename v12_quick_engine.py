@@ -19400,6 +19400,17 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
         _ssh_closes = []
         _ssh_idx = 0
     _wirem_dd_state = None
+    # The native Tradier WT_3M_FORCE_OPEN producer is a reason-tagged entry
+    # source whose explicit bypass switch skips generic entry filters. Restore
+    # only that source after the ordinary pre-loop filter stack.
+    if (
+        is_tradier
+        and bool(getattr(cfg, "WT_3M_FORCE_OPEN_BYPASS_GATES", True))
+        and np.any(_mandatory_wt_force)
+    ):
+        entry_sig = np.asarray(entry_sig, dtype=bool) | np.asarray(
+            _mandatory_wt_force, dtype=bool
+        )
     for i in range(n):
         if _score_start_ts > 0 and float(ts[i]) <= _score_start_ts:
             continue

@@ -735,6 +735,8 @@ def load_environment_from_gpg(logger=None) -> bool:
     # step below is debug except ONE line naming the source that won, and a warning
     # only when BOTH fail. Same paths, same overwrite semantics, same return values.
     global ENV_LOADED
+    if os.environ.get("EZ_SKIP_ENV_GPG") == "1":
+        return False
     if logger is None:
         from utils import logger
     if ENV_LOADED:
@@ -889,6 +891,13 @@ def _get_env_internal():
     import platform
     import socket
     env_override = os.environ.get("EZ_ENVIRONMENT", "").strip().lower()
+    explicit_connections = {
+        "macbook": {"local": ("localhost", 6379), "gateway": ("localhost", 6380), "server": ("localhost", 6381)},
+        "gateway": {"local": ("localhost", 6379), "server": ("10.0.0.3", 6379)},
+        "server": {"local": ("localhost", 6379)},
+    }
+    if env_override in explicit_connections:
+        return {"env": env_override, "redis_connections": explicit_connections[env_override]}
     if _hostname_cache is None:
         _hostname_cache = socket.gethostname().lower()
     hostname = _hostname_cache

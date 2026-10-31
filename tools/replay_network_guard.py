@@ -27,6 +27,7 @@ def install(audit_path, run_root):
     if loaded:
         raise RuntimeError(f"Replay network guard must precede project imports: {loaded}")
     os.environ["PYTHON_DOTENV_DISABLED"] = "1"
+    os.environ["EZ_SKIP_ENV_GPG"] = "1"
     def blocked(operation, address):
         record = {"record": "blocked_replay_network_attempt", "pid": os.getpid(), "time_ns": time.time_ns(), "operation": operation, "address": str(address)}
         with _lock:
@@ -59,10 +60,10 @@ def install(audit_path, run_root):
 def status():
     guard = getattr(socket, "_frozen_replay_guard", None)
     installed = bool(guard) and socket.socket is guard["socket_type"] and all(getattr(owner, name) is callback for owner, name, callback in guard["hooks"])
-    return {"installed": bool(installed), "audit_path": guard["audit_path"] if guard else None, "blocked_attempts": len(guard["attempts"]) if guard else 0, "dotenv_disabled": os.environ.get("PYTHON_DOTENV_DISABLED") == "1"}
+    return {"installed": bool(installed), "audit_path": guard["audit_path"] if guard else None, "blocked_attempts": len(guard["attempts"]) if guard else 0, "dotenv_disabled": os.environ.get("PYTHON_DOTENV_DISABLED") == "1", "gpg_disabled": os.environ.get("EZ_SKIP_ENV_GPG") == "1"}
 
 def require_installed():
     state = status()
-    if not state["installed"] or not state["dotenv_disabled"]:
-        raise RuntimeError("Frozen replay requires its pre-import network guard and disabled dotenv")
+    if not state["installed"] or not state["dotenv_disabled"] or not state["gpg_disabled"]:
+        raise RuntimeError("Frozen replay requires its pre-import network guard and disabled dotenv/GPG")
     return state

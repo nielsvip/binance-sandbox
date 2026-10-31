@@ -31,6 +31,7 @@ from vec_decisions.asr_stoch_entry_score import stoch_entry_score_array
 from vec_decisions.asr_input_adapter import paired_npz_view
 from vec_decisions.asr_ordered_composer import bind_asr_npz_arrays
 from vec_decisions.asr_reentry_stage import apply_asr_reentry_entry_stage
+from vec_decisions.asr_pre_score_gates import asr_pre_score_entry_gates
 
 
 def _cfg(cfg, name, default):
@@ -99,6 +100,15 @@ def score_asr_entry_prefix_array(npz, n, is_long, cfg, context=None, score=None)
             for key, mask in extra_masks.items():
                 masks[f"{name}:{key}"] = active & np.asarray(mask, dtype=bool)
         masks[f"{name}:active"] = active
+
+    pre_score_gates = asr_pre_score_entry_gates(
+        arrays, cfg, is_long, current_price,
+        skip_boycott=bool(context.get("skip_boycott", False)),
+        is_hedge=bool(context.get("is_hedge", False)),
+    )
+    veto("ASR_PRE_SCORE", pre_score_gates["blocked"])
+    masks.update({f"pre_score:{key}": value for key, value in pre_score_gates["masks"].items()})
+    masks["pre_score:first_reason"] = pre_score_gates["reason"]
 
     # Native 4700 gate: composite gate takes precedence over HTF_STRICT.
     wt_comp_enabled = bool(_cfg(cfg, "WT_COMPOSITE_SCORING_ENABLED", False)) or bool(

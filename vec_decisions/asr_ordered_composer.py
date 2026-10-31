@@ -299,3 +299,43 @@ def compose_asr_late_score(inputs, is_long, is_exit=False):
         "complete_rate": False,
         "remaining_stages": ASR_REMAINING_AFTER_COMPOSER,
     }
+
+
+def compose_asr_entry_candidate_array(prefix_result, late_inputs, is_long, upstream_entry_eligible):
+    """Join the causal entry prefix to the ordered post-7169 score chain.
+
+    The caller supplies all earlier lifecycle/portfolio gates explicitly in
+    ``upstream_entry_eligible`` and the exact causal state/arrays required by
+    ``late_inputs``. This does not model scalp or exit lanes and is not a full
+    AdvancedSignalRater.rate() until the currently uncovered prefix gates and
+    source-family/action stages are composed.
+    """
+    if not isinstance(prefix_result, dict) or not isinstance(late_inputs, dict):
+        raise ValueError("prefix_result and late_inputs must be mappings")
+    if "entry_allowed" not in prefix_result or "score" not in prefix_result:
+        raise ValueError("prefix_result must contain score and entry_allowed")
+    n = int(late_inputs.get("n", 0))
+    if n < 1:
+        raise ValueError("late_inputs.n must be positive")
+    if upstream_entry_eligible is None:
+        raise ValueError("upstream_entry_eligible must be explicit")
+    score = _column(prefix_result["score"], "prefix score", n)
+    prefix_allowed = _column(prefix_result["entry_allowed"], "prefix entry_allowed", n, bool)
+    upstream = _column(upstream_entry_eligible, "upstream_entry_eligible", n, bool)
+    allowed = prefix_allowed & upstream
+    inputs = dict(late_inputs)
+    inputs["score_before_dc"] = np.where(allowed, score, 0.0)
+    late = compose_asr_late_score(inputs, is_long, is_exit=False)
+    output = dict(late)
+    output["score_before_dc"] = inputs["score_before_dc"].copy()
+    output["entry_allowed"] = allowed
+    output["final_score"] = np.where(allowed, late["final_score"], 0)
+    output["recommendation"] = np.where(allowed, late["recommendation"], "WAIT")
+    output["masks"] = dict(late["masks"])
+    output["masks"]["upstream_entry_veto"] = ~upstream
+    output["masks"]["entry_prefix_veto"] = upstream & ~prefix_allowed
+    output["complete_rate"] = False
+    output["remaining_stages"] = tuple(ASR_REMAINING_AFTER_COMPOSER) + (
+        "native_entry_family_sources_and_action_dispatch",
+    )
+    return output

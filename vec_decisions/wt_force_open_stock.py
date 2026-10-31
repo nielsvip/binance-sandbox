@@ -56,6 +56,9 @@ def force_open_mask(npz, n, is_long, cfg, close):
     """Return the native Tradier force-open indicator mask, before stateful limits."""
     if str(getattr(cfg, "MODE", "crypto")).lower() != "tradier":
         return np.zeros(n, dtype=bool)
+    # tradier_manage._cfg hard-blocks every sub-15m switch while this master is off.
+    if not bool(getattr(cfg, "LTF_SUB15M_TRADING_ENABLED", False)):
+        return np.zeros(n, dtype=bool)
     if not bool(getattr(cfg, "WT_3M_FORCE_OPEN_ENABLED", True)):
         return np.zeros(n, dtype=bool)
     price = np.asarray(close, dtype=np.float64)

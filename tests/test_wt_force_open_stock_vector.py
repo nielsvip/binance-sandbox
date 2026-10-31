@@ -9,6 +9,7 @@ from vec_decisions.wt_force_open_stock import force_open_mask
 def _cfg(**overrides):
     values = {
         "MODE": "tradier",
+        "LTF_SUB15M_TRADING_ENABLED": True,
         "WT_3M_FORCE_OPEN_ENABLED": True,
         "WT_3M_FORCE_OPEN_SMA_PCT": 1.0,
         "WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS": True,
@@ -84,3 +85,39 @@ def test_five_tf_numpy_agreement_scores_match_native_scalar():
             vector = _tf_ind_matrix(data, tf, n, is_long, close, False, 0.0, 0.0)
             scalar = np.asarray([_ind_score({key: value[i] for key, value in data.items() if key.endswith("_" + tf)}, tf, is_long, close[i])[0] for i in range(n)])
             np.testing.assert_array_equal(vector, scalar)
+
+
+def test_stock_force_open_vector_route_emits_actual_open_ledger_event():
+    import v12_quick_engine as engine
+    from tests.test_quick_srs_paired_15m import _cfg as quick_cfg, _npz
+    from vec_decisions.generic_filter_tf import FILTER_TF_MAP
+
+    data = _npz()
+    n = len(data["timestamps"])
+    data["timestamps"] = 1699972200.0 + np.arange(n) * 900.0
+    cfg = quick_cfg()
+    cfg.MODE = "tradier"
+    cfg.LTF_SUB15M_TRADING_ENABLED = True
+    cfg.WT_3M_FORCE_OPEN_ENABLED = True
+    cfg.WT_3M_FORCE_OPEN_GR_GATE_ENABLED = False
+    cfg.WT_3M_FORCE_OPEN_REQUIRE_HH_CROSS = False
+    cfg.WT_3M_FORCE_OPEN_BUILD_TO_TARGET = False
+    cfg.WT_3M_FORCE_OPEN_BYPASS_GATES = True
+    cfg.STOCKS_LIVE_ENTRY_STACK_ENABLED = False
+    cfg.ABLATION_DISABLE_QUICK_ENTRY = True
+    cfg.STRUCTURAL_RANGE_SHIFT_EXIT = False
+    cfg.OPTIMAL_HOLD_BARS_EXIT_ENABLED = False
+    cfg.STDEV_REJECT_EXIT_ENABLED = False
+    cfg.RULE_B_5M_EXIT_ENABLED = False
+    cfg.EMA50_15M_ENTRY_FILTER_ENABLED = False
+    for name, (target, _) in FILTER_TF_MAP.items():
+        if target == "entry":
+            setattr(cfg, name, "OFF")
+    data["ema_200_15m"] = np.full(n, 200.0)
+    data["ema_200_15m"][2] = 90.0
+    data["wt1_5m"] = np.full(n, 2.0)
+    data["wt2_5m"] = np.zeros(n)
+    result = engine.simulate_one(data, "WT_STOCK_FORCE_TEST", True, cfg)
+    opens = [row for row in result["ledger"] if row.get("type") == "OPEN"]
+    assert opens and opens[0]["bar"] == 2
+    assert "WT_3M_FORCE_OPEN" in opens[0]["reason"]
