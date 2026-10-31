@@ -925,23 +925,52 @@ def loss_grad(out, Y, M, lam=(1.0, 0.5, 0.2, 0.2, 0.2, 1.0)):
 # ------------------------------------------------------------------------------------------------ metrics
 
 def fit_platt(p, y, iters=50):
-    """Platt scaling on logit(p): -> (a, b) with P = sigmoid(a * logit(p) + b), Newton steps on the log-loss."""
-    p = np.clip(np.asarray(p, np.float64), 1e-7, 1 - 1e-7)
+    """Fit Platt scaling with descent-controlled Newton steps; identity remains the finite fallback."""
+    p = np.asarray(p, np.float64)
     y = np.asarray(y, np.float64)
+    if p.ndim != 1 or p.shape != y.shape or not np.isfinite(p).all() or not np.isfinite(y).all() or ((y < 0) | (y > 1)).any():
+        raise ValueError("Platt fitting requires equal finite probability/label vectors with labels in [0, 1]")
+    p = np.clip(p, 1e-7, 1 - 1e-7)
     if len(p) < 50 or y.sum() < 5 or y.sum() > len(y) - 5:
         return 1.0, 0.0
     z = np.log(p / (1 - p))
-    a, b = 1.0, 0.0
+    theta = np.array([1.0, 0.0])
+    def objective(parameters):
+        logits = parameters[0] * z + parameters[1]
+        if not np.isfinite(logits).all():
+            return float("inf")
+        return float((np.logaddexp(0.0, logits) - y * logits).sum())
+    loss = objective(theta)
+    best, best_loss = theta.copy(), loss
     for _ in range(iters):
-        q = sigmoid(a * z + b)
+        logits = theta[0] * z + theta[1]
+        q = np.exp(-np.logaddexp(0.0, -logits))
         g = np.array([((q - y) * z).sum(), (q - y).sum()])
-        w = q * (1 - q) + 1e-12
+        w = q * (1 - q)
         H = np.array([[(w * z * z).sum(), (w * z).sum()], [(w * z).sum(), w.sum()]]) + 1e-9 * np.eye(2)
-        step = np.linalg.solve(H, g)
-        a, b = a - step[0], b - step[1]
-        if np.abs(step).max() < 1e-8:
+        try:
+            step = np.linalg.solve(H, g)
+        except np.linalg.LinAlgError:
             break
-    return float(a), float(b)
+        slope = float(np.dot(g, step))
+        if not np.isfinite(step).all() or not np.isfinite(slope) or slope <= 0:
+            break
+        scale, accepted = 1.0, False
+        for _ in range(40):
+            candidate = theta - scale * step
+            candidate_loss = objective(candidate)
+            if np.isfinite(candidate).all() and candidate_loss <= loss - 1e-4 * scale * slope:
+                accepted = True
+                break
+            scale *= 0.5
+        if not accepted:
+            break
+        theta, loss = candidate, candidate_loss
+        if loss < best_loss:
+            best, best_loss = theta.copy(), loss
+        if np.abs(scale * step).max() < 1e-8:
+            break
+    return float(best[0]), float(best[1])
 
 
 def gain_mask(dataset):
