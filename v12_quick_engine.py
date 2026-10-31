@@ -14782,7 +14782,7 @@ _DEFAULTS_625 = {
     "HTF_W_M_ALIGN_GATE_TRADIER_ENABLED": False,
     "HTF_W_M_ALIGN_TRADIER_REQUIRED": 1,
     "HTF_W_REVERSAL_EXIT_TRADIER_ENABLED": False,
-    "HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D": False,
+    "HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D": True,
     "K3M_FLOOR": 30,
     "K3M_FLOOR_ENABLED": False,
     "K_ZONE_ENTRY_BONUS_TRADIER": 20,
@@ -19076,6 +19076,41 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     if _wt_exit_min_tfs_mask is not None and _wsx_score is not None:
         _wt_exit_min_tfs_mask = np.asarray(_wt_exit_min_tfs_mask, dtype=bool)
         _wt_exit_min_tfs_mask &= np.asarray(_wsx_score, dtype=float) < float(_wsx_thr)
+
+    _htf_w_reversal_mask = None
+    _htf_w_reversal_gr_pass = None
+    if is_tradier and bool(getattr(cfg, "HTF_W_REVERSAL_EXIT_TRADIER_ENABLED", False)):
+        try:
+            import vec_decisions.check_exit_candidates_stocks__htf_w_reversal as _htf_wrev
+
+            _htf_w_reversal_mask = _htf_wrev.check_htf_w_reversal_vec(
+                cfg,
+                _safe(npz, "wt1_W", n, 0.0),
+                _safe(npz, "wt2_W", n, 0.0),
+                _safe(npz, "wt1_D", n, 0.0),
+                _safe(npz, "wt2_D", n, 0.0),
+                is_long,
+            )
+            _gr_exit_min_tfs = int(getattr(cfg, "GOLDEN_RULE_EXIT_MIN_TFS", 0))
+            if _gr_exit_min_tfs > 0:
+                try:
+                    from vec_paths.golden_rule_htf_vote import evaluate_gr_htf_vec as _gr_exit_vec
+
+                    _gr_exit_pass, _ = _gr_exit_vec(
+                        npz,
+                        not is_long,
+                        mode="tradier",
+                        min_tfs=_gr_exit_min_tfs,
+                        min_ind=int(getattr(cfg, "GOLDEN_RULE_EXIT_MIN_IND", 2)),
+                        px=close,
+                        n=n,
+                    )
+                    _htf_w_reversal_gr_pass = np.asarray(_gr_exit_pass, dtype=bool)
+                except Exception:
+                    _htf_w_reversal_gr_pass = np.ones(n, dtype=bool)
+        except Exception:
+            _htf_w_reversal_mask = None
+            _htf_w_reversal_gr_pass = None
 
     _stdev_bbrz_mask = None
     _stdev_bbrz_now = None
@@ -23660,6 +23695,35 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
             closed = False  # [C2 b7c] live EXIT_BLOCKER_REQUIRE_LH_LL
         if closed and _htfv_block(i, reason):
             closed = False  # lane-D: stocks HTF_TREND_VETO_ON_REDUCE (live execute_now :27754)
+        if (
+            not closed
+            and is_tradier
+            and pos is not None
+            and _htf_w_reversal_mask is not None
+            and i < len(_htf_w_reversal_mask)
+            and bool(_htf_w_reversal_mask[i])
+            and live_pnl_pct > 0.0
+            and (
+                _htf_w_reversal_gr_pass is None
+                or (i < len(_htf_w_reversal_gr_pass) and bool(_htf_w_reversal_gr_pass[i]))
+            )
+        ):
+            _htfw_confirm_ok = (
+                _gftf.get("exit_confirm") is None
+                or (i < len(_gftf["exit_confirm"]) and bool(_gftf["exit_confirm"][i]))
+            )
+            _htfw_w1 = float(_safe(npz, "wt1_W", n, 0.0)[i])
+            _htfw_w2 = float(_safe(npz, "wt2_W", n, 0.0)[i])
+            _htfw_d1 = float(_safe(npz, "wt1_D", n, 0.0)[i])
+            _htfw_d2 = float(_safe(npz, "wt2_D", n, 0.0)[i])
+            _htfw_reason = (
+                f"HTF_W_REVERSAL_EXIT(W={_htfw_w1:.1f}/{_htfw_w2:.1f}"
+                f"_D={_htfw_d1:.1f}/{_htfw_d2:.1f}_g={live_pnl_pct:.2f}%)"
+            )
+            if _htfw_confirm_ok and not _htfv_block(i, _htfw_reason) and not (
+                _qta_eb_block is not None and bool(_qta_eb_block[i])
+            ):
+                closed, reason = True, _htfw_reason
         # lane-D 2026-10-06 STOCKS live evaluate_stop WT_DC scorer exit (after process_position's DAYTRADE DC in live order)
         if not closed and _wsx_score is not None and pos is not None:
             try:

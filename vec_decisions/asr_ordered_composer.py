@@ -41,7 +41,14 @@ ASR_LATE_STAGE_ORDER = (
     "finish_tail",
 )
 
-ASR_REMAINING_AFTER_COMPOSER = ("pre_7410_native_score_mutations", "early_vetoes_and_lifecycle_gates", "market_quality_bonus", "delta_signal", "family_lane_contributors", "entry_threshold_and_action")
+ASR_REMAINING_AFTER_COMPOSER = (
+    "rate_account_position_tradeability_and_hot_state_hydration:ez_positions_quick.py:3616-3669,4035-4695",
+    "portfolio_ratio_regime_mover_and_tracker_context:ez_positions_quick.py:4744-4803,5199-5210,5435-5484",
+    "full_universe_sentiment_context_producer:ez_indicators.py:4671-4954",
+    "native_full_rate_oracle_with_explicit_causal_context_and_reason_order",
+    "quick_open_augment_source_order_and_execution_dispatch:ez_positions_quick.py:28341-29773",
+    "actual_v12_simulate_one_candidate_consumer",
+)
 
 
 
@@ -208,8 +215,8 @@ def _column(value, name, n, dtype=None):
 def compose_asr_late_score(inputs, is_long, is_exit=False, post_late_entry_state=None):
     """Run the ordered NumPy score stages through the final tail.
 
-    Post-late MQ/Delta state is consumed only when supplied explicitly. Earlier
-    lifecycle gates and active family-lane predicates still prevent full-rate use.
+    Post-late MQ and Delta state is consumed only when supplied explicitly. Earlier
+    lifecycle gates and native result/action dispatch still prevent full-rate use.
     """
     n = int(inputs["n"])
     if n < 1:
@@ -320,7 +327,7 @@ def compose_asr_entry_candidate_array(prefix_result, late_inputs, is_long, upstr
     ``upstream_entry_eligible`` and the exact causal state/arrays required by
     ``late_inputs``. This does not model scalp or exit lanes and is not a full
     AdvancedSignalRater.rate() until the currently uncovered prefix gates and
-    source-family/action stages are composed.
+    native recommendation overrides and action dispatch are composed.
     """
     if not isinstance(prefix_result, dict) or not isinstance(late_inputs, dict):
         raise ValueError("prefix_result and late_inputs must be mappings")
@@ -369,7 +376,7 @@ def compose_asr_entry_candidate_array(prefix_result, late_inputs, is_long, upstr
         output["masks"].update({f"upstream:{key}": value for key,value in upstream_detail["masks"].items()})
     output["complete_rate"] = False
     output["remaining_stages"] = tuple(ASR_REMAINING_AFTER_COMPOSER) + (
-        "native_entry_family_sources_and_action_dispatch",
+        "native_recommendation_to_quick_open_or_augment_dispatch:ez_positions_quick.py:28341-29773",
     )
     return output
 

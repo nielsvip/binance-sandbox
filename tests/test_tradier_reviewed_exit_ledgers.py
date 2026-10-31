@@ -476,3 +476,44 @@ def test_stock_wt_min_tfs_missing_scalars_follow_native_zero_fallback():
     )
     cfg.WT_EXIT_TFS_TRADIER = ""
     assert wt_exit_min_tfs_mask(npz, 2, True, cfg) is None
+
+
+def test_stock_htf_weekly_reversal_changes_simulate_one_close_ledger():
+    npz = _base_npz()
+    fire_bar = 201
+    npz["timestamps"] = 1699972200.0 + np.arange(len(npz["close"])) * 900.0
+    npz["close"][fire_bar] = 104.0
+    if "close_15m" in npz:
+        npz["close_15m"][fire_bar] = 104.0
+    for tf in ("W", "D"):
+        npz[f"wt1_{tf}"] = np.zeros(len(npz["close"]))
+        npz[f"wt2_{tf}"] = np.zeros(len(npz["close"]))
+        npz[f"wt2_{tf}"][fire_bar] = 1.0
+
+    off_cfg = _cfg()
+    off_cfg.WT_DC_EXIT_ENABLED = True
+    off_cfg.STOCKS_WTDC_SCORER_EXIT_ENABLED = True
+    off_cfg.SIM_ACCOUNT = "margin"
+    off = V.simulate_one(npz, "HTF_W_REVERSAL_TEST", True, off_cfg, force_initial_seed=True)
+    assert _reason_events(off, "HTF_W_REVERSAL_EXIT") == []
+
+    on_cfg = _cfg()
+    on_cfg.HTF_W_REVERSAL_EXIT_TRADIER_ENABLED = True
+    on_cfg.HTF_W_REVERSAL_EXIT_TRADIER_REQUIRE_D = True
+    on_cfg.WT_DC_EXIT_ENABLED = True
+    on_cfg.STOCKS_WTDC_SCORER_EXIT_ENABLED = True
+    on_cfg.SIM_ACCOUNT = "margin"
+    on = V.simulate_one(npz, "HTF_W_REVERSAL_TEST", True, on_cfg, force_initial_seed=True)
+    fires = _reason_events(on, "HTF_W_REVERSAL_EXIT")
+    assert len(fires) == 1
+    assert fires[0]["bar_exit"] == fire_bar
+    assert fires[0]["reason"] == "HTF_W_REVERSAL_EXIT(W=0.0/1.0_D=0.0/1.0_g=4.00%)"
+
+    no_gain = {key: value.copy() if isinstance(value, np.ndarray) else value for key, value in npz.items()}
+    no_gain["close"][fire_bar] = 100.0
+    if "close_15m" in no_gain:
+        no_gain["close_15m"][fire_bar] = 100.0
+    no_gain_result = V.simulate_one(
+        no_gain, "HTF_W_REVERSAL_TEST", True, on_cfg, force_initial_seed=True
+    )
+    assert _reason_events(no_gain_result, "HTF_W_REVERSAL_EXIT") == []

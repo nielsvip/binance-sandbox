@@ -53,7 +53,7 @@ def test_duplicate_y_nz_does_not_duplicate_a_label_and_actual_small_marginal_is_
     assert trainer.D["d"][rows[-1]] != 0.0
     assert trainer.D["y"][rows].tolist() == [1, 0, 0]
     assert trainer.M[rows, 0].tolist() == [2.0, 1.0, 1.0]
-    event["y"].append(brain.source_noop_gain_cells(event, {})[0] if False else [event["nz"][0][0], expected, 1, 0.0, None, None, None, None, None, 1.0, event["nz"][0][1]])
+    event["y"].append([event["nz"][0][0], expected, 1, 0.0, None, None, None, None, None, 1.0, event["nz"][0][1]])
     assert len(linknet.gain_cells(event)) == 3
 
 

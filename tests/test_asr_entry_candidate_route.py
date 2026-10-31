@@ -31,7 +31,7 @@ def test_entry_candidate_route_passes_prefix_score_and_masks_upstream_veto(monke
     assert result["masks"]["upstream_entry_veto"].tolist() == [False, False, True]
     assert result["masks"]["entry_prefix_veto"].tolist() == [False, True, False]
     assert result["complete_rate"] is False
-    assert result["remaining_stages"][-1] == "native_entry_family_sources_and_action_dispatch"
+    assert result["remaining_stages"][-1] == "native_recommendation_to_quick_open_or_augment_dispatch:ez_positions_quick.py:28341-29773"
     assert late_inputs["score_before_dc"].tolist() == [-99.0, -99.0, -99.0]
 
 
