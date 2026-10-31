@@ -11,6 +11,7 @@ from vec_decisions.reentry_entry_filter import (
     min_pass_result,
     min_pass_required,
     shared_simple_live_masks,
+    vector_entry_mask_snapshot,
     wave4_live_masks,
 )
 import vec_decisions.twin_yellow_filters as yellow_filters
@@ -191,3 +192,32 @@ def test_wave4_native_provider_reports_only_active_shared_gates():
         "HTF_DIRECTION_GATE_ENABLED": True,
         "WT_PERCENTILE_ENTRY_GATE_ENABLED": True,
     }
+
+
+def test_full_provider_matches_active_vector_names_for_single_generic_gate():
+    cfg = SimpleNamespace(
+        MODE="crypto",
+        BASE_TF="15m",
+        ENTRY_CHOKE_GATES_ON_FINAL=False,
+        ENTRY_VET_RELAX_MODE=3,
+        ENTRY_VET_NO_STRUCT_OR_BREAKOUT_REQUIRED=False,
+        FUNDING_GATE_ENABLED=False,
+        WT_DIV_ENTRY_GATE_ENABLED=False,
+        HTF_DIRECTION_GATE_ENABLED=False,
+        OI_CONFIRM_ENABLED=False,
+        EMA_BLANKET_FILTER_ENABLED=False,
+        WT_PERCENTILE_ENTRY_GATE_ENABLED=False,
+        DC_BREAK_FILTER_TF="15m",
+        ENTRY_DC_TF="OFF",
+    )
+    indicators = {
+        "dc_high_15m_prev": 99.0,
+        "wt1_15m": 1.0,
+        "wt2_15m": 0.0,
+    }
+    native = vector_entry_mask_snapshot(indicators, True, cfg, 100.0)
+    vector_names = ["DC_BREAK_FILTER_TF", "YELLOW_DC_BREAK_FILTER_TF"]
+    coverage = compare_mask_coverage(vector_names, native)
+    assert native == {name: True for name in vector_names}
+    assert coverage["vector_active_count"] == coverage["native_active_count"] == 2
+    assert coverage["producer_sets_equal"]

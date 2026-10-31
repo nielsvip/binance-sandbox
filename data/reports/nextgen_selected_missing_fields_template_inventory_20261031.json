@@ -1,0 +1,154 @@
+{
+  "source_selected_diff": "data/reports/nextgen_selected_effective_inventory_20261031.json",
+  "source_selected_diff_sha256": "5aab026e63aceec78309920f5efebb8802d9f75f3aa1f03fb2631a3b5851494f",
+  "template": "data/reports/nextgen_inference_activation_20261030/context/SPREADSHEETS/TEMPLATE_FINAL_NORM/TEMPLATE_CRYPTO_SHORT.xlsx",
+  "template_sha256": "3e989e4fb5171a19ca48fb9865b463c28457a83e0641523ae75e4823f3aed1d4",
+  "raw_selected_not_effective_count": 117,
+  "matching_template_rows": [
+    {
+      "tab": "ENTRY_REVERSAL_BOUNCE",
+      "row": 216,
+      "field": "HTF_BULL_ENTRY_FILTER_ENABLED",
+      "candidate": true,
+      "bold": false,
+      "font_rgb": "FFBFBFBF",
+      "grey_by_pilot_color": true
+    },
+    {
+      "tab": "ENTRY_REVERSAL_BOUNCE",
+      "row": 217,
+      "field": "HTF_BULL_ENTRY_FILTER_ENABLED",
+      "candidate": false,
+      "bold": true,
+      "font_rgb": "FFBFBFBF",
+      "grey_by_pilot_color": true
+    },
+    {
+      "tab": "ENTRY_REVERSAL_BOUNCE",
+      "row": 306,
+      "field": "HTF_BULL_ENTRY_FILTER_TF",
+      "candidate": "OFF",
+      "bold": true,
+      "font_rgb": "FFBFBFBF",
+      "grey_by_pilot_color": true
+    },
+    {
+      "tab": "EXIT_STRUCTURAL",
+      "row": 3,
+      "field": "ULTIMATE_DC_4H_STOP_ENABLED",
+      "candidate": true,
+      "bold": true,
+      "font_rgb": "FFBFBFBF",
+      "grey_by_pilot_color": true
+    },
+    {
+      "tab": "EXIT_STRUCTURAL",
+      "row": 110,
+      "field": "DELTA_EXIT_MIN_HOLD",
+      "candidate": 2,
+      "bold": false,
+      "font_rgb": null,
+      "grey_by_pilot_color": false
+    },
+    {
+      "tab": "EXIT_STRUCTURAL",
+      "row": 111,
+      "field": "DELTA_EXIT_MIN_HOLD",
+      "candidate": 8,
+      "bold": false,
+      "font_rgb": null,
+      "grey_by_pilot_color": false
+    },
+    {
+      "tab": "EXIT_STRUCTURAL",
+      "row": 112,
+      "field": "DELTA_EXIT_MIN_HOLD",
+      "candidate": 4,
+      "bold": true,
+      "font_rgb": null,
+      "grey_by_pilot_color": false
+    },
+    {
+      "tab": "EXIT_VELOCITY",
+      "row": 187,
+      "field": "WT_MOMENTUM_EXIT_ENABLED",
+      "candidate": false,
+      "bold": true,
+      "font_rgb": null,
+      "grey_by_pilot_color": false
+    },
+    {
+      "tab": "EXIT_VELOCITY",
+      "row": 188,
+      "field": "WT_MOMENTUM_EXIT_ENABLED",
+      "candidate": true,
+      "bold": false,
+      "font_rgb": null,
+      "grey_by_pilot_color": false
+    },
+    {
+      "tab": "GLOBAL_RISK_GATES",
+      "row": 34,
+      "field": "FIXED_QUANTITY_ENABLED",
+      "candidate": true,
+      "bold": false,
+      "font_rgb": null,
+      "grey_by_pilot_color": false
+    },
+    {
+      "tab": "GLOBAL_RISK_GATES",
+      "row": 35,
+      "field": "FIXED_QUANTITY_ENABLED",
+      "candidate": false,
+      "bold": true,
+      "font_rgb": null,
+      "grey_by_pilot_color": false
+    },
+    {
+      "tab": "GLOBAL_RISK_GATES",
+      "row": 255,
+      "field": "MIN_HOLD_MINUTES_TRADIER",
+      "candidate": 15,
+      "bold": false,
+      "font_rgb": null,
+      "grey_by_pilot_color": false
+    },
+    {
+      "tab": "GLOBAL_RISK_GATES",
+      "row": 256,
+      "field": "MIN_HOLD_MINUTES_TRADIER",
+      "candidate": 30,
+      "bold": false,
+      "font_rgb": null,
+      "grey_by_pilot_color": false
+    },
+    {
+      "tab": "GLOBAL_RISK_GATES",
+      "row": 257,
+      "field": "MIN_HOLD_MINUTES_TRADIER",
+      "candidate": 45,
+      "bold": false,
+      "font_rgb": "FFBFBFBF",
+      "grey_by_pilot_color": true
+    },
+    {
+      "tab": "GLOBAL_RISK_GATES",
+      "row": 258,
+      "field": "MIN_HOLD_MINUTES_TRADIER",
+      "candidate": 60,
+      "bold": false,
+      "font_rgb": "FFBFBFBF",
+      "grey_by_pilot_color": true
+    },
+    {
+      "tab": "GLOBAL_RISK_GATES",
+      "row": 259,
+      "field": "MIN_HOLD_MINUTES_TRADIER",
+      "candidate": 30,
+      "bold": true,
+      "font_rgb": "FFBFBFBF",
+      "grey_by_pilot_color": true
+    }
+  ],
+  "scope": "Actual frozen reference template existence inventory only; unsupported fields may be migrated aliases, retired keys or unwired switches; reader mapping audit required."
+}

@@ -40,8 +40,8 @@ def test_catchup_reserves_one_slot_per_host_worst_first():
     got = {h: (s, w) for h, s, w in picks}
     assert got["s1"] == ("ETHUSDT_SHORT", "catchup CRYPTO_SHORT")
     assert got["s2"][1].startswith("catchup ")
-    assert got["s5"] == ("AAPL_SHORT", "catchup STOCKS_SHORT")
     assert got["s6"] == ("AAPL_LONG", "catchup STOCKS_LONG")
+    assert got["s5"] == ("AAPL_SHORT", "catchup STOCKS_SHORT")
     running = host(running=["ETHUSDT_SHORT"], launches={"ETHUSDT_SHORT": {"mode": "catchup"}}, tails={"BTCUSDT": TAIL})
     data["s1"] = running
     pend, partial, _ = F.pending_by_cat(UNI, data, NOW)
@@ -58,6 +58,13 @@ def test_catchup_relaunches_only_for_new_chart_run():
     assert F.unlaunched_catchup(doc, data, now=NOW + F.RETRY_S + 1) == ["BTCUSDT_SHORT"]
     doc["run_id"] = "next"
     assert F.unlaunched_catchup(doc, data, now=NOW) == ["AAPL_LONG", "BTCUSDT_SHORT"]
+
+
+def test_idle_stock_host_takes_worst_crypto_catchup():
+    data = fleet4(s1=host(mem=500), s2=host(mem=500))
+    pend, partial, _ = F.pending_by_cat(UNI, data, NOW)
+    picks, _, _ = F.plan(pend, partial, data, NOW, {}, catchup=["BTCUSDT_SHORT", "AAPL_LONG"])
+    assert any(h in ("s5", "s6") and ss == "BTCUSDT_SHORT" and why == "catchup CRYPTO_SHORT" for h, ss, why in picks)
 
 
 def test_overflow_when_home_exhausted_follows_priority():

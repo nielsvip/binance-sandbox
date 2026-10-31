@@ -15986,7 +15986,7 @@ def simulate_one(npz, sym, is_long, cfg, force_initial_seed=False):
     _dc15_pre_bar = -1  # USER 2026-10-28 DC15M_FORCE_EXIT: bar index on which the armed floor break fires (-1 = none)
 
     _crypto_final_htf_support = None
-    if not is_tradier and bool(getattr(cfg, "HTF_TREND_VETO_ON_REDUCE_ENABLED", False)):
+    if str(getattr(cfg, "MODE", "crypto")) != "tradier" and bool(getattr(cfg, "HTF_TREND_VETO_ON_REDUCE_ENABLED", False)):
         from vec_decisions.stocks_live_session_gates import daily_wt_supports_mask
         _crypto_final_htf_support = daily_wt_supports_mask(_safe(npz, "wt1_D", n, 0.0), _safe(npz, "wt2_D", n, 0.0), is_long)
 

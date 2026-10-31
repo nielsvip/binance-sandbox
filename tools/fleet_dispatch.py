@@ -602,10 +602,9 @@ def plan(pend, partial, fleet_data, now, orphan_since, prio=frozenset(), refresh
         # One catch-up board per host is the reserved slice; regular boards fill its other slots.
         catchup_running = any((fleet_data[name].get("launches") or {}).get(ss, {}).get("mode") == "catchup" for ss in running)
         if not catchup_running:
-            own_catchup = [ss for ss in catchup if ss not in claimed and partial.get(ss) in (None, name) and (not own or cat_of(ss) in own) and mem_fits(fleet_data[name], now, cat_of(ss))]
-            other_catchup = [ss for ss in catchup if ss not in claimed and partial.get(ss) in (None, name) and ss not in own_catchup and mem_fits(fleet_data[name], now, cat_of(ss))]
-            if own_catchup or other_catchup:
-                pick = (own_catchup or other_catchup)[0]
+            eligible_catchup = [ss for ss in catchup if ss not in claimed and partial.get(ss) in (None, name) and mem_fits(fleet_data[name], now, cat_of(ss))]
+            if eligible_catchup:
+                pick = eligible_catchup[0]
                 claimed.add(pick)
                 why = f"catchup {cat_of(pick)}"
         # priority sides go first WITHIN the host's own venue (USER 2026-10-28 venue rule supersedes the cross-venue priority ruling);

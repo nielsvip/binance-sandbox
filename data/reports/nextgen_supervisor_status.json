@@ -438,7 +438,7 @@
     "next_baseline_step": "Minimal accepted reader-input projection plus explicit neutral new keys, then assert full effective config/ledger/result against independent prior oracle; canonical local pilot still unchanged."
   },
   "latest_verified_progress": {
-    "updated_at": "2026-10-31T01:59:24.594883+00:00",
+    "updated_at": "2026-10-31T02:36:15.310713+00:00",
     "candidate_baseline": {
       "status": "ONE_SIDE_ACTUAL_BASELINE_PARITY_PASS_NO_OPTIMIZER",
       "sym_side": "1INCHUSDT_SHORT",
@@ -466,7 +466,7 @@
       "reclaimed_bytes": 4804077979,
       "member_bytes_verified": true,
       "qualification": "Deletion occurred before requested member-content verification; subsequent full checks passed.",
-      "matrix": "data/reports/learning_preservation_matrix_20261031T0131Z.json"
+      "matrix": "data/reports/learning_preservation_matrix_20261031T0232Z.json"
     },
     "rollout": "NOT_PROMOTED",
     "gain_improvement": "UNPROVEN",
@@ -537,7 +537,11 @@
     "additional_findings": [
       "Measured EMA_BLANKET_FILTER_ENABLED already False; offending hardcoded EMA20 veto differs semantically from actual blanket and KG predicates",
       "Prepared config serialization drops template-layer identity, enabling reoverlay to clobber selected values"
-    ]
+    ],
+    "review_dir": "data/reports/nextgen_authority_repair_20261031",
+    "review_status": "isolated forward repair prepared; actual corrected-engine measurements pending; no canonical engine overwrite",
+    "selected_effective_inventory": "data/reports/nextgen_selected_effective_inventory_20261031.json",
+    "selected_absent_template_inventory": "data/reports/nextgen_selected_missing_fields_template_inventory_20261031.json"
   },
   "required_execution_order": {
     "user_instruction_at": "2026-10-31T02:15:02.613847+00:00",
@@ -549,5 +553,11 @@
     ],
     "new_row_policy": "new or newly wired rows need yellow exploration during first pass plus reserved pinpoint coverage; old pos_sym and structurally masked zero results cannot suppress them",
     "speed_policy": "demonstrate >=90% reduction only after gain/authority validation on frozen identical inputs; distinguish measured zero from masking/skips/errors"
+  },
+  "template_versions_observed": {
+    "frozen_previous_reference_short": "3e989e4fb5171a19ca48fb9865b463c28457a83e0641523ae75e4823f3aed1d4",
+    "earlier_local_domain_census_short": "ec3384e042f6e22114e79c8586de634931de5f0c7b84f7df596b2ad93862c7b1",
+    "current_local_short_at_read": "099c457aee495922df2599fd7895b68c9a7b12ac315b52690a05ada2944cd10e",
+    "consequence": "unlaunched targeted stage rejected/rebuilt against exact frozen reference; current-domain reconciliation remains separate"
   }
 }

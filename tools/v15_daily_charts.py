@@ -678,11 +678,8 @@ def index_page(manifest: dict) -> str:
     )
 
 
-# USER 2026-10-30: "ANY number that deteriorates significantly gets lined up with priority in v15_fleet_scheduler and stops
-# trading immediately". The board launcher is tools/fleet_dispatch.py since 2026-10-27 (v15_fleet_scheduler's S1 cron is
-# disabled), so priority = data/fleet_priority.json on S1+S2; the stop = data/deterioration_halt.json in every
-# vector_direct_trader root (no OPEN / AUGMENT; exits never blocked). Today vs the published board, same set:
-DETERIORATION_RULES = (("gain_pct", "drop", 5.0), ("delta_vs_bh", "drop", 5.0), ("max_dd_pct", "rise", 2.0), ("wr_pct", "drop", 15.0))
+# A same-settings 30D gain drop of at least 15 pp halts entries while all negative gain drops enter catch-up.
+DETERIORATION_RULES = (("gain_pct", "drop", 15.0),)
 HALT_FILE = ROOT / "data" / "deterioration_halt.json"
 HALT_TARGETS = (("s1-int", "~/binance/data"), ("s5", "~/binance/data"), ("s5", "~/trc7d_root/data"))
 PRIORITY_HOSTS = ("s1-int", "s2")

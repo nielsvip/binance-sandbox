@@ -352,8 +352,7 @@ def entry_allowed(root: Path, venue: str, acct: str, ss: str) -> bool:
 
 
 def deterioration_halts(root: Path) -> dict:
-    """USER 2026-10-30: a sym_side whose daily 30D recalculation (tools/v15_daily_charts.py) deteriorated significantly versus
-    its published board stops trading immediately: no OPEN, no AUGMENT. Exits are never blocked. Unreadable file = no halt."""
+    """Read daily same-settings 30D gain drops of at least 15 pp. Exits remain allowed."""
     doc = read_json(root / "data" / "deterioration_halt.json", {}) or {}
     return {str(k).upper(): v for k, v in (doc.get("halts") or {}).items()} if isinstance(doc, dict) else {}
 
@@ -367,6 +366,7 @@ def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: 
     latched = read_json(path, {}) or {}
     if not isinstance(latched, dict):
         raise RuntimeError(f"invalid deterioration latch {path}")
+    original_latched = dict(latched)
     db = state_dir.parents[1] / "data" / "hourly_reconfig" / "per_sym_store.db"
     if not db.exists():
         log(f"rolling deterioration DB missing: {db}; existing latches kept")
@@ -414,10 +414,12 @@ def rolling_deterioration_halts(root: Path, state_dir: Path, states: dict, bar: 
                       share_pct=round(share, 1), sample=sorted(added)[:12], severity="CRITICAL")
             except Exception:
                 pass
+        if latched != original_latched:
+            atomic_write_json(path, latched)
         return latched
     if added:
         latched.update(added)
-    if added or latched != (read_json(path, {}) or {}):
+    if latched != original_latched:
         atomic_write_json(path, latched)
     if added:
         log(f"ROLLING DETERIORATION LATCH {len(added)} new crypto sides; CLOSE held and forbid reentry: {','.join(sorted(added))}")

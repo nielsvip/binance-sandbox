@@ -2,6 +2,33 @@
 
 import numpy as np
 
+_INDICATOR_STRING_CODES = {
+    "wt_cross": {"BEAR": -1, "NONE": 0, "BULL": 1},
+    "wt_signal": {"BEAR": -1, "NEUTRAL": 0, "BULL": 1},
+    "wt_divergence": {"BEAR": -1, "": 0, "BULL": 1},
+    "wt_momentum_state": {
+        "EXHAUST_DOWN": -2,
+        "IMPULSE_DOWN": -1,
+        "NEUTRAL": 0,
+        "IMPULSE_UP": 1,
+        "EXHAUST_UP": 2,
+    },
+    "wt_peak_structure": {"LH": -1, "NEUTRAL": 0, "HH": 1},
+    "wt_trough_structure": {"LL": -1, "NEUTRAL": 0, "HL": 1},
+    "wt_structure": {"LH": -1, "NEUTRAL": 0, "HH": 1},
+    "wt_wave_phase": {"CONTRACTING": -1, "NEUTRAL": 0, "EXPANDING": 1},
+    "wt_composite_bias": {"SHORT": -1, "NEUTRAL": 0, "LONG": 1},
+    "ha": {"red": -1, "neutral": 0, "green": 1},
+}
+
+
+def _snapshot_code(key, value):
+    if isinstance(value, str):
+        for prefix, mapping in _INDICATOR_STRING_CODES.items():
+            if key.startswith(prefix + "_") and value in mapping:
+                return mapping[value]
+    return value
+
 
 def min_pass_result(mask_results, min_pass=1):
     """Return (allowed, passed, required, active) for named optional predicates.
@@ -48,6 +75,185 @@ def compare_mask_coverage(vector_names, native_masks):
         "missing_native": [name for name in vector if name not in native_set],
         "native_only": [name for name in native if name not in vector_set],
     }
+
+
+def vector_entry_mask_snapshot(indicators, is_long, cfg, current_price, timestamp=None):
+    """Evaluate the v12 entry-mask producers on one native snapshot for parity audit.
+
+    This mirrors the mask append sites in `compute_entry_signals`, without making
+    an order decision. It returns named boolean outcomes only for producers that
+    v12 would append under the same config. Current snapshot history is limited
+    to fields actually present in `indicators`; missing fields use each producer's
+    existing fail-open/default behavior.
+    """
+    import copy
+    from vec_decisions import (
+        counter_trend,
+        entry_dc_gate,
+        filter_tf_gates,
+        grey_wire_entries,
+        generic_filter_tf,
+        kg_entry_gate,
+        live_kindergarten_gate,
+        live_kindergarten_stocks,
+        stocks_trend_gates,
+        twin_exits_dead,
+        twin_p0_crypto_a,
+        twin_yellow_filters,
+        wave4_families,
+    )
+
+    indicators = indicators or {}
+    npz = {}
+    for key, value in indicators.items():
+        if value is None:
+            continue
+        try:
+            value = _snapshot_code(key, value.decode() if isinstance(value, bytes) else value)
+            npz[key] = np.asarray([float(value)], dtype=np.float64)
+        except (TypeError, ValueError, OverflowError):
+            continue
+    n = 1
+    close = np.asarray([float(current_price or 0.0)], dtype=np.float64)
+
+    def safe(data, key, count, default=0.0):
+        if key in data:
+            try:
+                return np.asarray(data[key], dtype=np.float64)
+            except (TypeError, ValueError):
+                pass
+        return np.full(count, default, dtype=np.float64)
+
+    def record(name, mask, inverted=False):
+        if mask is None:
+            return
+        value = bool(np.asarray(mask, dtype=bool).reshape(-1)[0])
+        masks[name] = not value if inverted else value
+
+    preferred_tf = str(getattr(cfg, "BASE_TF", "15m") or "15m")
+    base_candidates = [preferred_tf] + [
+        tf for tf in ("3m", "5m", "15m", "1h", "4h", "D") if tf != preferred_tf
+    ]
+    base_tf = next(
+        (
+            tf
+            for tf in base_candidates
+            if f"close_{tf}" in npz and np.count_nonzero(npz[f"close_{tf}"]) > 0
+        ),
+        preferred_tf,
+    )
+
+    masks = {}
+    mode = str(getattr(cfg, "MODE", "crypto"))
+
+    if bool(getattr(cfg, "ENTRY_VET_COMBINED_STOCH_GATE_ENABLED", False)) and float(
+        getattr(cfg, "COMBINED_STOCH_GATE_TRADIER", 100.0)
+    ) < 100.0:
+        k = safe(npz, "stoch_k_5m", n, 50.0) if "stoch_k_5m" in npz else safe(
+            npz, f"stoch_k_{base_tf}", n, 50.0
+        )
+        record("ENTRY_VET_COMBINED_STOCH_GATE", twin_p0_crypto_a.vec_stoch_gate_pass(k, cfg, is_long))
+    for name, fn in (
+        ("MOM3_FILTER_TF", filter_tf_gates.mom3_entry_gate),
+        ("MOMENTUM_BREAKOUT_FILTER_TF", filter_tf_gates.momentum_breakout_gate),
+    ):
+        record(name, fn(npz, n, is_long, cfg, close, safe))
+    for name, fn in (
+        ("OI_CONFIRM_ENABLED", wave4_families.oi_confirm_entry_gate),
+        ("EMA_BLANKET_FILTER_ENABLED", wave4_families.ema_blanket_entry_gate),
+        ("HTF_DIRECTION_GATE_ENABLED", wave4_families.htf_direction_gate),
+        ("WT_PERCENTILE_ENTRY_GATE_ENABLED", grey_wire_entries.wt_percentile_entry_gate),
+    ):
+        record(name, fn(npz, n, is_long, cfg, close, safe))
+
+    gcfg = cfg
+    if mode == "tradier" and bool(getattr(cfg, "STOCKS_LIVE_ENTRY_STACK_ENABLED", False)):
+        gcfg = copy.copy(cfg)
+        gcfg.BAR_PATTERNS_FILTER_TF = "OFF"
+        if not bool(getattr(cfg, "EMA_BLANKET_FILTER_ENABLED", False)):
+            gcfg.EMA_BLANKET_FILTER_FILTER_TF = "OFF"
+    for tf_name, master_name in (
+        ("EMA_BLANKET_FILTER_FILTER_TF", "EMA_BLANKET_FILTER_ENABLED"),
+        ("BREAKOUT_RETEST_FILTER_TF", "BREAKOUT_RETEST_ARMED_ENABLED"),
+        ("PEAK_GIVEBACK_BE_EROSION_FILTER_TF", "PEAK_GIVEBACK_PROTECTION_ENABLED"),
+    ):
+        if not bool(getattr(cfg, master_name, False)) and str(
+            getattr(gcfg, tf_name, "OFF") or "OFF"
+        ).strip().upper() != "OFF":
+            if gcfg is cfg:
+                gcfg = copy.copy(cfg)
+            setattr(gcfg, tf_name, "OFF")
+    generic_filter_tf.build_masks(npz, n, is_long, gcfg, close, safe)
+    for name, (target, kind) in generic_filter_tf.FILTER_TF_MAP.items():
+        tf = str(getattr(gcfg, name, "OFF") or "OFF").strip()
+        if target == "entry" and tf.upper() != "OFF":
+            record(name, generic_filter_tf._cond(kind, npz, n, tf, is_long, close, safe))
+
+    bb_filter_tf = str(getattr(cfg, "BB_PULLBACK_GATE_FILTER_TF", "OFF") or "OFF").strip()
+    if bb_filter_tf.upper() != "OFF":
+        from vec_decisions import bb_pullback_gate
+
+        record(
+            "BB_PULLBACK_GATE_FILTER_TF",
+            bb_pullback_gate.bb_pullback_gate_vec(npz, n, cfg, is_long),
+            inverted=True,
+        )
+    if bool(getattr(cfg, "EMA50_15M_ENTRY_FILTER_ENABLED", False)):
+        ema = safe(npz, "ema_50_15m", n, 0.0)[0]
+        price = close[0]
+        pct = float(getattr(cfg, "EMA50_15M_ENTRY_FILTER_PCT", 0.0) or 0.0) / 100.0
+        valid = ema > 0 and price > 0
+        blocked = valid and (price <= ema * (1.0 + pct) if is_long else price >= ema * (1.0 - pct))
+        masks["EMA50_15M_ENTRY_FILTER_ENABLED"] = not blocked
+
+    if mode == "tradier" and bool(getattr(cfg, "KG_STOCKS_LIVE_GATE", True)) and bool(
+        getattr(cfg, "KG_STOCKS_HARD_VETO_ENABLED", False)
+    ):
+        record("KG_STOCKS_HARD_VETO_ENABLED", live_kindergarten_stocks.pass_mask(npz, n, is_long, cfg, close, safe))
+    if mode == "tradier" and bool(getattr(cfg, "STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED", False)):
+        record("STOCKS_FRESH_ENTRY_TREND_GATES_ENABLED", stocks_trend_gates.pass_mask(npz, n, is_long, cfg, close, safe))
+    if mode == "tradier":
+        from vec_decisions import entry_vet_stocks
+
+        ts = np.asarray([float(timestamp or indicators.get("timestamp", indicators.get("ts", 0.0)) or 0.0)])
+        fresh_block = entry_vet_stocks.fresh_block_mask(npz, n, is_long, cfg, close, safe, ts)
+        record("STOCKS_FRESH_ENTRY_VET", fresh_block, inverted=True)
+
+    if mode != "tradier" and bool(getattr(cfg, "ENTRY_CHOKE_GATES_ON_FINAL", True)):
+        if bool(getattr(cfg, "COUNTER_TREND_ADD_BLOCK_ENABLED", False)):
+            record("COUNTER_TREND_ADD_BLOCK_ENABLED", counter_trend.counter_trend_vec(npz, n, cfg, is_long), inverted=True)
+        if bool(getattr(cfg, "BB_PULLBACK_GATE_ON_FINAL", True)) and bool(getattr(cfg, "BB_PULLBACK_GATE_ENABLED", False)):
+            from vec_decisions import bb_pullback_gate
+
+            record("BB_PULLBACK_GATE_ON_FINAL", bb_pullback_gate.bb_pullback_gate_vec(npz, n, cfg, is_long), inverted=True)
+    if mode != "tradier" and bool(getattr(cfg, "KINDERGARTEN_EMA_GATE_ENABLED", False)):
+        record("KINDERGARTEN_EMA_GATE_ENABLED", live_kindergarten_gate.kg_block_mask(npz, n, is_long, close, safe, cfg), inverted=True)
+    if mode != "tradier":
+        record("EMA_9_21_ENTRY_GATE", kg_entry_gate.ema921_pass_vec(npz, n, is_long, cfg, safe))
+
+    ted_get = lambda name, default: getattr(cfg, name, default)
+    record("BBKC_ENTRY_GATE", twin_exits_dead.bbkc_entry_pass_mask(npz, n, is_long, ted_get, safe, close))
+    record("WICK_ENTRY_GATE", twin_exits_dead.wick_entry_pass_mask(npz, n, is_long, ted_get, safe))
+
+    masks_list, names_list = [], []
+    twin_yellow_filters.apply_yellow_entry_masks(
+        npz, n, is_long, cfg, close, np.ones(n, dtype=bool), masks_list, safe,
+        include_kg=(mode != "tradier"), entry_filter_mask_names=names_list,
+    )
+    for name, mask in zip(names_list, masks_list):
+        record(name, mask)
+
+    from vec_decisions import ported_entry
+
+    ported_entry.apply(
+        npz, n, is_long, copy.copy(cfg), np.ones(n, dtype=bool), safe, close,
+        masks_list := [], names_list := [],
+    )
+    for name, mask in zip(names_list, masks_list):
+        record(name, mask)
+
+    record("ENTRY_DC_GATE", entry_dc_gate.pass_mask(npz, n, is_long, cfg, close, safe))
+    return masks
 
 
 def live_15m_masks(indicators, is_long):
