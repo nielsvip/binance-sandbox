@@ -141,6 +141,35 @@ def test_native_force_open_stateful_config_zero_and_identity_semantics():
         100.0, 0.0, state, float(data["timestamps"][0]),
     )
     assert open_without_build_target["size_usd"] == 10.0
+    open_zero_target_without_build = stateful_fire(
+        data, 0, True, _cfg(
+            WT_3M_FORCE_OPEN_BUILD_TO_TARGET=False,
+            WT_3M_FORCE_OPEN_TARGET_USD=0.0,
+            WT_3M_FORCE_OPEN_SIZE_USD=10.0,
+            WT_3M_FORCE_OPEN_TF_LADDER=False,
+        ),
+        100.0, 0.0, state, float(data["timestamps"][0]),
+    )
+    assert open_zero_target_without_build["size_usd"] == 10.0
+    open_negative_target_without_build = stateful_fire(
+        data, 0, True, _cfg(
+            WT_3M_FORCE_OPEN_BUILD_TO_TARGET=False,
+            WT_3M_FORCE_OPEN_TARGET_USD=-5.0,
+            WT_3M_FORCE_OPEN_SIZE_USD=10.0,
+            WT_3M_FORCE_OPEN_TF_LADDER=False,
+        ),
+        100.0, 0.0, state, float(data["timestamps"][0]),
+    )
+    assert open_negative_target_without_build["size_usd"] == 10.0
+    assert stateful_fire(
+        data, 0, True, _cfg(
+            WT_3M_FORCE_OPEN_BUILD_TO_TARGET=False,
+            WT_3M_FORCE_OPEN_TARGET_USD=1000.0,
+            WT_3M_FORCE_OPEN_SIZE_USD=10.0,
+            WT_3M_FORCE_OPEN_TF_LADDER=False,
+        ),
+        100.0, 1.0, state, float(data["timestamps"][0]),
+    ) is None
     assert stateful_fire(
         data, 0, True, _cfg(
             WT_3M_FORCE_OPEN_BUILD_TO_TARGET=False,

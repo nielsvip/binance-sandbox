@@ -119,6 +119,8 @@ def stateful_fire(npz, index, is_long, cfg, price, position_value, state, bar_ts
     build = bool(getattr(cfg, "WT_3M_FORCE_OPEN_BUILD_TO_TARGET", True))
     if position_value > 0 and not build:
         return None
+    # Native `_cfg_auto(..., 2500.0) or 2500.0` semantics: explicit zero
+    # means the fallback for these two caps, unlike the raw per-symbol target.
     hard_cap = float(getattr(cfg, "HARD_MAX_SYMBOL_VALUE_TRADIER", 2500.0) or 2500.0)
     trb_cap = float(getattr(cfg, "TRB_MAX_SYMBOL_VALUE", 2500.0) or 2500.0)
     target = min(
@@ -126,7 +128,7 @@ def stateful_fire(npz, index, is_long, cfg, price, position_value, state, bar_ts
         hard_cap,
         trb_cap,
     )
-    if (build and target <= position_value) or price <= 0:
+    if (build and position_value >= target) or price <= 0:
         return None
     timestamp = float(bar_ts)
     day = int(timestamp // 86400)

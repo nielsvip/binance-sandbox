@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T08:34:58Z",
+ "ts": "2026-10-31T08:39:47Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -29,7 +29,7 @@
   "fin": {
    "fills_6h": 2,
    "open_positions": 1,
-   "unrealised_usd": -0.07,
+   "unrealised_usd": -0.06,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 48,
    "open_positions": 15,
-   "unrealised_usd": -0.23,
+   "unrealised_usd": -0.04,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 82,
    "open_positions": 13,
-   "unrealised_usd": -1.06,
+   "unrealised_usd": -1.34,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 19,
    "open_positions": 5,
-   "unrealised_usd": -0.12,
+   "unrealised_usd": -0.09,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -127,71 +127,79 @@
     "23901"
    ],
    "starts_30m": 1,
-   "log_age_s": 446.0
+   "log_age_s": 736.0
   },
   "men": {
    "pids": [
     "84264"
    ],
    "starts_30m": 1,
-   "log_age_s": 1.0
+   "log_age_s": 48.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 20.0
+   "log_age_s": 18.0
   },
   "inf": {
    "pids": [
     "68362"
    ],
    "starts_30m": 1,
-   "log_age_s": 17.0
+   "log_age_s": 24.0
   },
   "flz": {
    "pids": [
     "88793"
    ],
    "starts_30m": 1,
-   "log_age_s": 3158.0
+   "log_age_s": 3447.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 13960.0
+   "log_age_s": 14249.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 14276.0
+   "log_age_s": 14565.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T08:34:59Z",
+   "ts": "2026-10-31T08:39:47Z",
+   "severity": "CRITICAL",
+   "kind": "RAPID_LOSS_KEY",
+   "key": "ang:RSRUSDT_SHORT",
+   "evidence": "unrealised -4.12% (60-min high +0.55%), amt 10366"
+  },
+  {
+   "ts": "2026-10-31T08:39:48Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "inf:HYPEUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T06:26:14Z bar=2026-10-31T04:30:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T08:35:00Z",
+   "ts": "2026-10-31T08:39:49Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "fin",
-   "evidence": "ez_manage_fin.log not written for 446s"
+   "evidence": "ez_manage_fin.log not written for 736s"
   },
   {
-   "ts": "2026-10-31T08:35:00Z",
+   "ts": "2026-10-31T08:39:49Z",
    "severity": "CRITICAL",
    "kind": "STALE_LOG",
    "key": "flz",
-   "evidence": "ez_manage_flz.log not written for 3158s"
+   "evidence": "ez_manage_flz.log not written for 3447s"
   }
  ],
  "alert_counts": {
+  "RAPID_LOSS_KEY": 1,
   "VEC_DECISION_NOT_FILLED": 1,
   "STALE_LOG": 2
  },
@@ -267,5 +275,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.65
+ "sweep_s": 2.17
 }

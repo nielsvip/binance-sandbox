@@ -175,161 +175,15 @@ def _fin(a: np.ndarray) -> np.ndarray:
     return np.isfinite(a)
 
 
-def _mts_scores(npz: Mapping[str, Any], n: int, is_long: bool) -> tuple | None:
-    """Vec mirror of analyze_multi_tf_state bottom_score/entry_quality.
-
-    Live: ez_positions_quick.py:732-980. Frozen subset (15m/1h/4h/D) per the
-    module docstring. Returns (bottom, entry) capped to [-100, 100], or None
-    when any required key is absent. NaN bars yield no legs (fail-open).
-    """
+def _mts_scores(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any = None) -> tuple | None:
+    """Use the full native six-timeframe MTS producer for this vector lane."""
     if n <= 0:
         return None
-    tot_b = np.zeros(n)
-    tot_e = np.zeros(n)
-    tot_w = 0.0
-    extreme = np.zeros(n, dtype=int)
-    htf_bull = np.zeros(n, dtype=int)
-    per_tf: list = []
-    for tf, w in _MTS_TFS:
-        k = _col(npz, f"k_{tf}", n)
-        w1 = _col(npz, f"wt1_{tf}", n)
-        w2 = _col(npz, f"wt2_{tf}", n)
-        xc = _col(npz, f"wt_cross_{tf}", n)
-        xcv = _col(npz, f"wt_cross_value_{tf}", n)
-        xpv = _col(npz, f"wt_cross_prev_value_{tf}", n)
-        xrs = _col(npz, f"wt_cross_rising_{tf}", n)
-        vel = _col(npz, f"wt_velocity_{tf}", n)
-        bago = _col(npz, f"wt_cross_bars_ago_{tf}", n)
-        div = _col(npz, f"wt_divergence_{tf}", n)
-        mom = _col(npz, f"wt_momentum_state_{tf}", n)
-        bull = _col(npz, f"wt_bullish_{tf}", n)
-        dcp = _col(npz, f"dc_position_{tf}", n)
-        if k is None or w1 is None or w2 is None or xc is None or xcv is None or xpv is None or xrs is None or vel is None or bago is None or div is None or mom is None or bull is None or dcp is None:
-            return None
-        kp = _col(npz, f"k_{tf}_prev", n)
-        if kp is None:
-            kp = k  # live defaults prev to current -> k_rising False
-        hid_b = _col(npz, f"div_hid_bull_wt_{tf}", n)
-        hid_s = _col(npz, f"div_hid_bear_wt_{tf}", n)
-        kf = _fin(k)
-        w1f = _fin(w1)
-        w2f = _fin(w2)
-        wsc = np.where(w1f & w2f, w1 - w2, np.nan)
-        rising = kf & _fin(kp) & (k > kp)
-        bago_f = np.where(_fin(bago), bago, 999.0)
-        xrs_f = xrs == 1
-        bullish = bull == 1
-        xcv_f = _fin(xcv)
-        xpv_f = _fin(xpv)
-        raw_dc = np.where(_fin(dcp), dcp, 0.5)
-        raw_dc = np.where(raw_dc > 1.0, raw_dc / 100.0, raw_dc)
-        dc = np.clip(raw_dc, 0.0, 1.0)
-        tf_b = np.zeros(n)
-        tf_e = np.zeros(n)
-        if is_long:
-            k_ext = kf & (k < 10.0)
-            k_zone = kf & (k < 30.0)
-            extreme += k_ext.astype(int)
-            tf_b += np.where(k_ext, 20.0, 0.0)
-            tf_b += np.where(k_zone, 10.0, 0.0)
-            tf_b += np.where((xc == 1) & (bago_f < 5.0), 15.0, 0.0)
-            tf_b += np.where(xcv_f & (xcv < -40.0), 15.0, np.where(xcv_f & (xcv < -20.0), 8.0, 0.0))
-            tf_b += np.where(xrs_f, 10.0, 0.0)
-            div_bull = (div == 1) | ((hid_b == 1) if hid_b is not None else False)
-            tf_b += np.where(div_bull, 20.0, 0.0)
-            tf_b += np.where(mom == -2, 10.0, 0.0)
-            tf_b += np.where(_fin(vel) & (vel > 0.0) & rising, 5.0, 0.0)
-            tf_b += np.where(dc < 0.10, 25.0, np.where(dc < 0.20, 18.0, np.where(dc < 0.30, 12.0, np.where(dc < 0.40, 5.0, np.where(dc > 0.80, -10.0, 0.0)))))
-            tf_e += np.where(xcv_f & xpv_f & (xcv > xpv), 15.0, 0.0)
-            tf_e += np.where(bago_f < 3.0, 15.0, np.where(bago_f < 10.0, 5.0, 0.0))
-            tf_e += np.where(xrs_f, 10.0, 0.0)
-            tf_e += np.where((dc < 0.25) & bullish, 15.0, 0.0)
-        else:
-            k_ext = kf & (k > 90.0)
-            k_zone = kf & (k > 70.0)
-            extreme += k_ext.astype(int)
-            tf_b += np.where(k_ext, 20.0, 0.0)
-            tf_b += np.where(k_zone, 10.0, 0.0)
-            tf_b += np.where((xc == -1) & (bago_f < 5.0), 15.0, 0.0)
-            tf_b += np.where(xcv_f & (xcv > 40.0), 15.0, np.where(xcv_f & (xcv > 20.0), 8.0, 0.0))
-            tf_b += np.where(xrs_f, 10.0, 0.0)
-            div_bear = (div == -1) | ((hid_s == 1) if hid_s is not None else False)
-            tf_b += np.where(div_bear, 20.0, 0.0)
-            tf_b += np.where(mom == 2, 10.0, 0.0)
-            tf_b += np.where(_fin(vel) & (vel < 0.0) & ~rising & kf, 5.0, 0.0)
-            tf_b += np.where(dc > 0.90, 25.0, np.where(dc > 0.80, 18.0, np.where(dc > 0.70, 12.0, np.where(dc > 0.60, 5.0, np.where(dc < 0.20, -10.0, 0.0)))))
-            tf_e += np.where(xcv_f & xpv_f & (xcv < xpv), 15.0, 0.0)
-            tf_e += np.where(bago_f < 3.0, 15.0, np.where(bago_f < 10.0, 5.0, 0.0))
-            tf_e += np.where(xrs_f, 10.0, 0.0)
-            tf_e += np.where((dc > 0.75) & ~bullish, 15.0, 0.0)
-        htf_bull += bullish.astype(int)
-        tot_b += tf_b * w
-        tot_e += tf_e * w
-        tot_w += w
-        per_tf.append((dc, k, wsc, bago_f, bullish))
-    bottom = tot_b / tot_w
-    entry = tot_e / tot_w
-    bottom = np.where(extreme >= 4, bottom * 2.0, np.where(extreme >= 3, bottom * 1.5, bottom))
-    entry = entry + htf_bull * 5.0
-    bottom = np.clip(bottom, -100.0, 100.0)
-    entry = np.clip(entry, -100.0, 100.0)
-    htf_pos = _col(npz, "0dc_htf_pos", n)
-    ltf_pos = _col(npz, "0dc_ltf_pos", n)
-    dc_moment = _col(npz, "0dc_moment", n)
-    dc_exp = _col(npz, "0dc_expansion", n)
-    if htf_pos is not None and ltf_pos is not None and dc_moment is not None and dc_exp is not None:
-        hp = np.where(_fin(htf_pos), htf_pos, 0.5)
-        lp = np.where(_fin(ltf_pos), ltf_pos, 0.5)
-        dm = np.where(_fin(dc_moment), dc_moment, 0.0)
-        ex = np.where(_fin(dc_exp), dc_exp, 1.0)
-        if is_long:
-            bottom += np.where((hp < 0.30) & (lp < 0.30), 15.0, np.where((hp < 0.40) & (lp < 0.40), 8.0, 0.0))
-            entry += np.where((lp > hp) & (hp < 0.30), 10.0, 0.0)
-            bottom += np.where(hp > 0.80, -10.0, 0.0)
-            bottom += np.where(dm < -30.0, 8.0, 0.0)
-        else:
-            bottom += np.where((hp > 0.70) & (lp > 0.70), 15.0, np.where((hp > 0.60) & (lp > 0.60), 8.0, 0.0))
-            entry += np.where((lp < hp) & (hp > 0.70), 10.0, 0.0)
-            bottom += np.where(hp < 0.20, -10.0, 0.0)
-            bottom += np.where(dm > 30.0, 8.0, 0.0)
-        entry += np.where(ex > 1.2, 5.0, 0.0)
-        bottom += np.where(ex < 0.7, 5.0, 0.0)
-        bottom = np.clip(bottom, -100.0, 100.0)
-        entry = np.clip(entry, -100.0, 100.0)
-    bot_cnt = np.zeros(n, dtype=int)
-    top_cnt = np.zeros(n, dtype=int)
-    for dc_p, kk, wt_sc, wt_ba, wt_bu in per_tf:
-        bot_sig = (dc_p < 0.15).astype(int) + (wt_sc < -15.0).astype(int) + (kk < 25.0).astype(int) + ((wt_ba < 12.0) & wt_bu).astype(int)
-        bot_cnt += (bot_sig >= 2).astype(int)
-        top_sig = (dc_p > 0.85).astype(int) + (wt_sc > 15.0).astype(int) + (kk > 75.0).astype(int) + ((wt_ba < 12.0) & ~wt_bu).astype(int)
-        top_cnt += (top_sig >= 2).astype(int)
-    scalp_dc = _col(npz, "dc_position_3m", n)
-    if scalp_dc is None:
-        focus = np.full(n, 0.5)  # live default when the key is missing
-    else:
-        focus = np.where(_fin(scalp_dc), scalp_dc, 0.5)
-    focus = np.where(focus > 1.0, focus / 100.0, focus)
-    below = focus < 0.05
-    above = focus > 0.95
-    near_lo = focus < 0.15
-    near_hi = focus > 0.85
-    if is_long:
-        bounce = (bot_cnt >= 2) & (near_lo | below)
-        bottom += np.where(bounce, 10.0 * bot_cnt, 0.0)
-        entry += np.where(bounce, 8.0 * bot_cnt, 0.0)
-        brk = (~bounce) & (top_cnt >= 2) & above
-        bottom += np.where(brk, 15.0 * top_cnt, 0.0)
-        entry += np.where(brk, 12.0 * top_cnt, 0.0)
-    else:
-        rev = (top_cnt >= 2) & (near_hi | above)
-        bottom += np.where(rev, 10.0 * top_cnt, 0.0)
-        entry += np.where(rev, 8.0 * top_cnt, 0.0)
-        brk = (~rev) & (bot_cnt >= 2) & below
-        bottom += np.where(brk, 15.0 * bot_cnt, 0.0)
-        entry += np.where(brk, 12.0 * bot_cnt, 0.0)
-    bottom = np.clip(bottom, -100.0, 100.0)
-    entry = np.clip(entry, -100.0, 100.0)
-    return bottom, entry
+    from vec_decisions.asr_mts_provider import analyze_mts_state_array
+
+    effective_cfg = cfg if cfg is not None else {}
+    state = analyze_mts_state_array(npz, cfg=effective_cfg, is_long=is_long, n=n)
+    return state["bottom_score"], state["entry_quality"]
 
 
 # === 1. MTS_GATE_ENABLED (live :2786-2805) — side-aware pass-mask ===
@@ -341,7 +195,7 @@ def mts_gate_pass_mask(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any, 
         bmin = 10.0 if is_long else 5.0
     if eqmin is None:
         eqmin = 5.0 if is_long else 0.0
-    sc = _mts_scores(npz, n, is_long)
+    sc = _mts_scores(npz, n, is_long, cfg)
     if sc is None:
         return None
     b, e = sc
@@ -351,7 +205,7 @@ def mts_gate_pass_mask(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any, 
 # === 2. MTS_BOTTOM_BONUS_THRESHOLD (live :2813-2814) — pure threshold ===
 @_fail_open
 def mts_bottom_bonus_mask(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any) -> np.ndarray | None:
-    sc = _mts_scores(npz, n, is_long)
+    sc = _mts_scores(npz, n, is_long, cfg)
     if sc is None:
         return None
     return sc[0] > _f(cfg, "MTS_BOTTOM_BONUS_THRESHOLD", 25.0)
@@ -360,7 +214,7 @@ def mts_bottom_bonus_mask(npz: Mapping[str, Any], n: int, is_long: bool, cfg: An
 # === 3. MTS_BOTTOM_STRONG_THRESHOLD (live :2813) — pure threshold ===
 @_fail_open
 def mts_bottom_strong_mask(npz: Mapping[str, Any], n: int, is_long: bool, cfg: Any) -> np.ndarray | None:
-    sc = _mts_scores(npz, n, is_long)
+    sc = _mts_scores(npz, n, is_long, cfg)
     if sc is None:
         return None
     return sc[0] > _f(cfg, "MTS_BOTTOM_STRONG_THRESHOLD", 40.0)
