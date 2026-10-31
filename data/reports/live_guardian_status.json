@@ -1,5 +1,5 @@
 {
- "ts": "2026-10-31T16:17:45Z",
+ "ts": "2026-10-31T16:22:53Z",
  "dry_run": false,
  "regime_start": null,
  "thresholds": {
@@ -45,7 +45,7 @@
   "men": {
    "fills_6h": 0,
    "open_positions": 18,
-   "unrealised_usd": 1.62,
+   "unrealised_usd": 1.66,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 2,
@@ -61,7 +61,7 @@
   "ang": {
    "fills_6h": 9,
    "open_positions": 3,
-   "unrealised_usd": -0.18,
+   "unrealised_usd": -0.16,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -93,7 +93,7 @@
   "flz": {
    "fills_6h": 0,
    "open_positions": 3,
-   "unrealised_usd": -0.03,
+   "unrealised_usd": -0.02,
    "pos_mismatch": 0,
    "vec_parity": {
     "live_vec_decisions": 0,
@@ -111,9 +111,9 @@
  "tradeable_guard": {
   "poison": false,
   "restored": false,
-  "total": 191,
+  "total": 189,
   "per_acct": {
-   "men": 57,
+   "men": 55,
    "fin": 50,
    "ang": 50,
    "inf": 8,
@@ -127,124 +127,111 @@
     "19581"
    ],
    "starts_30m": 1,
-   "log_age_s": 66.0
+   "log_age_s": 74.0
   },
   "men": {
    "pids": [
     "73227"
    ],
-   "starts_30m": 2,
-   "log_age_s": 49.0
+   "starts_30m": 1,
+   "log_age_s": 258.0
   },
   "ang": {
    "pids": [
     "83759"
    ],
    "starts_30m": 1,
-   "log_age_s": 4.0
+   "log_age_s": 6.0
   },
   "inf": {
    "pids": [
     "72669"
    ],
-   "starts_30m": 2,
-   "log_age_s": 2.0
+   "starts_30m": 1,
+   "log_age_s": 74.0
   },
   "flz": {
    "pids": [
     "87309"
    ],
    "starts_30m": 1,
-   "log_age_s": 0.0
+   "log_age_s": 18.0
   },
   "trb": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 41727.0
+   "log_age_s": 42036.0
   },
   "trc": {
    "pids": [],
    "starts_30m": 0,
-   "log_age_s": 42043.0
+   "log_age_s": 42352.0
   }
  },
  "alerts": [
   {
-   "ts": "2026-10-31T16:17:45Z",
+   "ts": "2026-10-31T16:22:54Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "fin:FLUXUSDT_LONG",
    "evidence": "CLOSE FIXED_STOP decided 2026-10-31T11:14:33Z bar=2026-10-31T10:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T16:17:46Z",
+   "ts": "2026-10-31T16:22:54Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:BANDUSDT_LONG",
    "evidence": "REDUCE CYCLE_TP_TIERED_T2_0.50pct_gain0.86 decided 2026-10-31T15:08:43Z bar=2026-10-31T13:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T16:17:46Z",
+   "ts": "2026-10-31T16:22:54Z",
    "severity": "CRITICAL",
    "kind": "VEC_DECISION_NOT_FILLED",
    "key": "men:BANDUSDT_LONG",
    "evidence": "REDUCE SATOSHIT_EXIT_PARTIAL 0.70 decided 2026-10-31T15:08:43Z bar=2026-10-31T13:45:00Z: no fill in 1800s and no refusal logged"
   },
   {
-   "ts": "2026-10-31T16:17:46Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "flz:HYPEUSDT_SHORT",
-   "evidence": "31 16:03:36 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:HYPEUSDT_SHORT: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $3142 on bounce (prior max 0.3400)"
-  },
-  {
-   "ts": "2026-10-31T16:17:46Z",
-   "severity": "CRITICAL",
-   "kind": "SIZE_ANOMALY",
-   "key": "flz:HYPEUSDT_SHORT",
-   "evidence": "order notional $3141.92 > MAX_ORDER_VALUE $300: 31 16:03:36 - INFO - [flz] [execute_trade_action][flz] \u2705 \u2705 \u2705 \u2705 OPEN flz:HYPEUSDT_SHORT @ 87.559971 qty=35.883010 ($3141.92) side=SELL | QUICK_OPEN_STRONG_SELL_k1:50/d150/k3:50.0/d3:50.0_@87.6118_REENT"
-  },
-  {
-   "ts": "2026-10-31T16:17:46Z",
-   "severity": "CRITICAL",
-   "kind": "CAP_BYPASS",
-   "key": "flz:DASHUSDT_LONG",
-   "evidence": "31 16:05:05 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:DASHUSDT_LONG: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $150 \u2014 restoring $16 on bounce (prior max 1.3760)"
-  },
-  {
-   "ts": "2026-10-31T16:17:46Z",
+   "ts": "2026-10-31T16:22:55Z",
    "severity": "CRITICAL",
    "kind": "CAP_BYPASS",
    "key": "flz:BTCUSDC_LONG",
    "evidence": "31 16:14:02 - WARNING - [flz] [REENTRY_GRANDFATHERED] flz:BTCUSDC_LONG: bypass MAX_ORDER_VALUE $60 / MAX_POSITION_SIZE $2000 \u2014 restoring $309 on bounce (prior max 0.0160)"
   },
   {
-   "ts": "2026-10-31T16:17:46Z",
+   "ts": "2026-10-31T16:22:55Z",
    "severity": "CRITICAL",
    "kind": "SIZE_ANOMALY",
    "key": "flz:BTCUSDC_LONG",
    "evidence": "order notional $308.63 > MAX_ORDER_VALUE $300: 31 16:14:02 - INFO - [flz] [execute_trade_action][flz] \u2705 \u2705 \u2705 \u2705 OPEN flz:BTCUSDC_LONG @ 77501.300000 qty=0.003982 ($308.63) side=BUY | QUICK_OPEN_STRONG_BUY_k1:79/d178/k3:88.48/d3:86.67_@77498.5590_REE"
   },
   {
-   "ts": "2026-10-31T16:17:46Z",
-   "severity": "WARN",
-   "kind": "ATTEMPT_STORM_KEY",
-   "key": "men:IMXUSDT_SHORT",
-   "evidence": "45 execute_now attempts in 5 min (pre-gate)"
-  },
-  {
-   "ts": "2026-10-31T16:17:46Z",
+   "ts": "2026-10-31T16:22:55Z",
    "severity": "WARN",
    "kind": "ATTEMPT_STORM_KEY",
    "key": "ang:IMXUSDT_SHORT",
    "evidence": "45 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-31T16:22:55Z",
+   "severity": "WARN",
+   "kind": "ATTEMPT_STORM_KEY",
+   "key": "men:IMXUSDT_SHORT",
+   "evidence": "44 execute_now attempts in 5 min (pre-gate)"
+  },
+  {
+   "ts": "2026-10-31T16:22:55Z",
+   "severity": "CRITICAL",
+   "kind": "STALE_LOG",
+   "key": "men",
+   "evidence": "ez_manage_men.log not written for 258s"
   }
  ],
  "alert_counts": {
   "VEC_DECISION_NOT_FILLED": 3,
-  "CAP_BYPASS": 3,
-  "SIZE_ANOMALY": 2,
-  "ATTEMPT_STORM_KEY": 2
+  "CAP_BYPASS": 1,
+  "SIZE_ANOMALY": 1,
+  "ATTEMPT_STORM_KEY": 2,
+  "STALE_LOG": 1
  },
  "active_interventions": {
   "acct:trc": {
@@ -297,5 +284,5 @@
    "dry_run": false
   }
  },
- "sweep_s": 1.25
+ "sweep_s": 2.08
 }
